@@ -1,0 +1,688 @@
+basePath: /api/v1
+definitions:
+  fiber.Map:
+    additionalProperties: true
+    type: object
+  gamification.Rank:
+    enum:
+      - Quartz
+      - Amber
+      - Jade
+      - Sapphire
+      - Ruby
+      - Diamond
+      - Platinum
+      - Sovereign
+    type: string
+    x-enum-varnames:
+      - RankQuartz
+      - RankAmber
+      - RankJade
+      - RankSapphire
+      - RankRuby
+      - RankDiamond
+      - RankPlatinum
+      - RankSovereign
+  gamification.RankInfo:
+    properties:
+      current_rank:
+        $ref: "#/definitions/gamification.Rank"
+      gold_balance:
+        type: integer
+      next_rank:
+        $ref: "#/definitions/gamification.RankThreshold"
+      progress_percent:
+        type: number
+      rank_threshold:
+        $ref: "#/definitions/gamification.RankThreshold"
+      user_id:
+        type: string
+    type: object
+  gamification.RankThreshold:
+    properties:
+      color:
+        description: Hex color for UI
+        type: string
+      icon:
+        description: Icon identifier
+        type: string
+      maxGold:
+        format: int64
+        type: integer
+      minGold:
+        format: int64
+        type: integer
+      rank:
+        $ref: "#/definitions/gamification.Rank"
+    type: object
+  internal_modules_auth.LoginRequest:
+    properties:
+      device_id:
+        type: string
+      provider_token:
+        type: string
+      provider_type:
+        allOf:
+          - $ref: "#/definitions/internal_modules_auth.ProviderType"
+        enum:
+          - apple
+          - google
+    required:
+      - device_id
+      - provider_token
+      - provider_type
+    type: object
+  internal_modules_auth.LoginResponse:
+    properties:
+      access_token:
+        type: string
+      user:
+        $ref: "#/definitions/internal_modules_auth.User"
+    type: object
+  internal_modules_auth.ProviderType:
+    enum:
+      - apple
+      - google
+    type: string
+    x-enum-varnames:
+      - ProviderApple
+      - ProviderGoogle
+  internal_modules_auth.User:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_shadow_banned:
+        type: boolean
+      last_active_at:
+        type: string
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  internal_modules_economy.Currency:
+    enum:
+      - SILVER
+      - GOLD
+    type: string
+    x-enum-varnames:
+      - CurrencySilver
+      - CurrencyGold
+  internal_modules_economy.EntryType:
+    enum:
+      - DEBIT
+      - CREDIT
+    type: string
+    x-enum-varnames:
+      - EntryTypeDebit
+      - EntryTypeCredit
+  internal_modules_economy.LedgerEntry:
+    properties:
+      account_id:
+        type: string
+      amount:
+        type: integer
+      created_at:
+        type: string
+      currency:
+        $ref: "#/definitions/internal_modules_economy.Currency"
+      id:
+        type: string
+      reason:
+        type: string
+      transaction_id:
+        type: string
+      type:
+        $ref: "#/definitions/internal_modules_economy.EntryType"
+    type: object
+  internal_modules_economy.TransferRequest:
+    properties:
+      amount:
+        type: integer
+      currency:
+        allOf:
+          - $ref: "#/definitions/internal_modules_economy.Currency"
+        enum:
+          - SILVER
+          - GOLD
+      reason:
+        maxLength: 255
+        type: string
+      to_user_id:
+        type: string
+    required:
+      - amount
+      - currency
+      - reason
+      - to_user_id
+    type: object
+  internal_modules_economy.TransferResponse:
+    properties:
+      amount:
+        type: integer
+      created_at:
+        type: string
+      currency:
+        $ref: "#/definitions/internal_modules_economy.Currency"
+      from_user_id:
+        type: string
+      reason:
+        type: string
+      to_user_id:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+  internal_modules_economy.WalletResponse:
+    properties:
+      gold_balance:
+        type: integer
+      silver_balance:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  internal_modules_feed.FeedMeta:
+    properties:
+      count:
+        type: integer
+      degraded:
+        type: boolean
+      session_duration:
+        $ref: "#/definitions/time.Duration"
+    type: object
+  internal_modules_feed.FeedResponse:
+    properties:
+      data:
+        items:
+          $ref: "#/definitions/internal_modules_feed.Post"
+        type: array
+      meta:
+        $ref: "#/definitions/internal_modules_feed.FeedMeta"
+    type: object
+  internal_modules_feed.Post:
+    properties:
+      author_id:
+        type: string
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+    type: object
+  internal_modules_leaderboard.LeaderboardEntry:
+    properties:
+      avatar_url:
+        type: string
+      rank:
+        type: integer
+      score:
+        type: integer
+      user_id:
+        type: string
+      username:
+        type: string
+    type: object
+  internal_modules_map.CreateTaskRequest:
+    properties:
+      location:
+        $ref: "#/definitions/internal_modules_map.Location"
+      reward:
+        type: integer
+      title:
+        maxLength: 100
+        minLength: 3
+        type: string
+    required:
+      - location
+      - reward
+      - title
+    type: object
+  internal_modules_map.Location:
+    properties:
+      lat:
+        type: number
+      lng:
+        type: number
+    required:
+      - lat
+      - lng
+    type: object
+  internal_modules_map.TaskResponse:
+    properties:
+      created_at:
+        type: string
+      creator_id:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      location:
+        $ref: "#/definitions/internal_modules_map.Location"
+      reward:
+        type: integer
+      title:
+        type: string
+    type: object
+  payment.RevenueCatEvent:
+    properties:
+      app_user_id:
+        type: string
+      data:
+        additionalProperties: true
+        type: object
+      environment:
+        type: string
+      id:
+        type: string
+      product_id:
+        type: string
+      purchase_date:
+        type: string
+      type:
+        type: string
+    type: object
+  time.Duration:
+    enum:
+      - 1
+      - 1000
+      - 1000000
+      - 1000000000
+      - 60000000000
+      - 3600000000000
+    format: int64
+    type: integer
+    x-enum-varnames:
+      - Nanosecond
+      - Microsecond
+      - Millisecond
+      - Second
+      - Minute
+      - Hour
+host: localhost:8080
+info:
+  contact:
+    email: support@brightbund.com
+    name: API Support
+  description:
+    API for the BrightBund social platform with economy, maps, chat, and
+    gamification
+  license:
+    name: Proprietary
+    url: https://brightbund.com/license
+  termsOfService: https://brightbund.com/terms
+  title: BrightBund API
+  version: "1.0"
+paths:
+  /auth/login:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Login request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_auth.LoginRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Login or register with OAuth provider
+      tags:
+        - Auth
+  /economy/ledger:
+    get:
+      consumes:
+        - application/json
+      parameters:
+        - default: 50
+          description: Limit
+          in: query
+          name: limit
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: "#/definitions/internal_modules_economy.LedgerEntry"
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Get ledger history
+      tags:
+        - Economy
+  /economy/transfer:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Transfer request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_economy.TransferRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_economy.TransferResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "402":
+          description: Insufficient funds - triggers frontend animation
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Transfer currency between users
+      tags:
+        - Economy
+  /economy/wallet:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_economy.WalletResponse"
+        "404":
+          description: Not Found
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Get user wallet
+      tags:
+        - Economy
+    post:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: "#/definitions/internal_modules_economy.WalletResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Create user wallet
+      tags:
+        - Economy
+  /feed:
+    get:
+      consumes:
+        - application/json
+      parameters:
+        - default: 20
+          description: Limit
+          in: query
+          name: limit
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_feed.FeedResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Get user feed
+      tags:
+        - Feed
+  /gamification/rank:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/gamification.RankInfo"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Get my rank information
+      tags:
+        - Gamification
+  /gamification/ranks:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: "#/definitions/gamification.RankThreshold"
+            type: array
+      summary: Get all rank thresholds
+      tags:
+        - Gamification
+  /leaderboards/global:
+    get:
+      consumes:
+        - application/json
+      parameters:
+        - default: 50
+          description: Limit
+          in: query
+          name: limit
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Get global leaderboard
+      tags:
+        - Leaderboard
+  /leaderboards/local/{region_id}:
+    get:
+      consumes:
+        - application/json
+      parameters:
+        - description: Region ID
+          in: path
+          name: region_id
+          required: true
+          type: string
+        - default: 50
+          description: Limit
+          in: query
+          name: limit
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Get regional leaderboard
+      tags:
+        - Leaderboard
+  /leaderboards/me:
+    get:
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "404":
+          description: Not Found
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Get my rank and score
+      tags:
+        - Leaderboard
+  /map/tasks:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Task creation request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_map.CreateTaskRequest"
+      produces:
+        - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: "#/definitions/internal_modules_map.TaskResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "402":
+          description: Insufficient funds
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Create a new task
+      tags:
+        - Map
+  /map/tasks/nearby:
+    get:
+      consumes:
+        - application/json
+      parameters:
+        - description: Latitude
+          in: query
+          name: lat
+          required: true
+          type: number
+        - description: Longitude
+          in: query
+          name: lng
+          required: true
+          type: number
+        - description: Radius in meters
+          in: query
+          name: radius
+          required: true
+          type: integer
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: "#/definitions/internal_modules_map.TaskResponse"
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Find nearby tasks
+      tags:
+        - Map
+  /payment/webhook/revenuecat:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Webhook secret
+          in: header
+          name: Authorization
+          required: true
+          type: string
+        - description: RevenueCat event
+          in: body
+          name: event
+          required: true
+          schema:
+            $ref: "#/definitions/payment.RevenueCatEvent"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Handle RevenueCat webhook
+      tags:
+        - Payment
+securityDefinitions:
+  Bearer:
+    description: Type "Bearer" followed by a space and JWT token
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
