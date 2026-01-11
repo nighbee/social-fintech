@@ -5,12 +5,12 @@
         "title": "BrightBund API",
         "termsOfService": "https://brightbund.com/terms",
         "contact": {
-            "name": "",
-            "email": ""
+            "name": "API Support",
+            "email": "support@brightbund.com"
         },
         "license": {
             "name": "Proprietary",
-            "url": ""
+            "url": "https://brightbund.com/license"
         },
         "version": "1.0"
     },

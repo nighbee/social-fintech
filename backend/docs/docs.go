@@ -9,14 +9,14 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "",
+        "termsOfService": "https://brightbund.com/terms",
         "contact": {
-            "name": ",
-            "email": ""
+            "name": "API Support",
+            "email": "support@brightbund.com"
         },
         "license": {
-            "name": "",
-            "url": ""
+            "name": "Proprietary",
+            "url": "https://brightbund.com/license"
         },
         "version": "{{.Version}}"
     },
