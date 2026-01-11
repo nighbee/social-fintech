@@ -1,0 +1,101 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: brightbund-db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: brightbund
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d brightbund"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - brightbund-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: brightbund-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - brightbund-network
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: brightbund-api
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./backend:/app
+      - /app/tmp
+      - /app/bin
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=brightbund
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GIN_MODE=debug
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - brightbund-network
+    command: air -c .air.toml
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+    container_name: brightbund-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app
+      - /app/.dart_tool
+      - /app/build
+    environment:
+      - API_BASE_URL=http://localhost:8081/api/v1
+      - FLUTTER_WEB_PORT=3000
+    depends_on:
+      - api
+    networks:
+      - brightbund-network
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  brightbund-network:
+    driver: bridge
+    name: brightbund-network

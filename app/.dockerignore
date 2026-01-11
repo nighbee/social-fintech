@@ -1,0 +1,21 @@
+# .dockerignore for Flutter app
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+android/
+ios/
+linux/
+macos/
+windows/
+test/
+.git/
+.gitignore
+README.md
