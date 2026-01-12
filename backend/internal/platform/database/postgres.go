@@ -64,7 +64,7 @@ func (db *Database)  HealthCheck(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
-	return db.PingContext(ctx)
+	return db.DB.PingContext(ctx)
 }
 
 func (db *Database) Close() error {
