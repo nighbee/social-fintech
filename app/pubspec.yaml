@@ -1,0 +1,193 @@
+name: app
+description: "A new Flutter project."
+# The following line prevents the package from being accidentally published to
+# pub.dev using `flutter pub publish`. This is preferred for private packages.
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+# The following defines the version and build number for your application.
+# A version number is three numbers separated by dots, like 1.2.43
+# followed by an optional build number separated by a +.
+# Both the version and the builder number may be overridden in flutter
+# build by specifying --build-name and --build-number, respectively.
+# In Android, build-name is used as versionName while build-number used as versionCode.
+# Read more about Android versioning at https://developer.android.com/studio/publish/versioning
+# In iOS, build-name is used as CFBundleShortVersionString while build-number is used as CFBundleVersion.
+# Read more about iOS versioning at
+# https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
+# In Windows, build-name is used as the major, minor, and patch parts
+# of the product and file versions while build-number is used as the build suffix.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+# Dependencies specify other packages that your package needs in order to work.
+# To automatically upgrade your package dependencies to the latest versions
+# consider running `flutter pub upgrade --major-versions`. Alternatively,
+# dependencies can be manually updated by changing the version numbers below to
+# the latest version available on pub.dev. To see which dependencies have newer
+# versions available, run `flutter pub outdated`.
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # The following adds the Cupertino Icons font to your application.
+  # Use with the CupertinoIcons class for iOS style icons.
+  cupertino_icons: ^1.0.8
+
+  # ========================
+  # UI компоненты
+  # ========================
+  # Поддержка SVG изображений
+  flutter_svg: ^2.0.10+1
+
+  # ========================
+  # Навигация и маршрутизация
+  # ========================
+  # Основной роутер приложения с типобезопасностью
+  go_router: ^14.1.2
+
+  # ========================
+  # Хранение данных
+  # ========================
+  # Простые настройки и preferences
+  shared_preferences: ^2.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  # The "flutter_lints" package below contains a set of recommended lints to
+  # encourage good coding practices. The lint set provided by the package is
+  # activated in the `analysis_options.yaml` file located at the root of your
+  # package. See that file for information about deactivating specific lint
+  # rules and activating additional ones.
+  flutter_lints: ^5.0.0
+
+  # ========================
+  # Генераторы кода
+  # ========================
+  # Основной runner для генерации кода
+  build_runner: ^2.4.10
+  # Генерация типобезопасных ссылок на ассеты
+  flutter_gen_runner: ^5.5.0+1
+
+# For information on the generic Dart part of this file, see the
+# following page: https://dart.dev/tools/pub/pubspec
+
+# The following section is specific to Flutter packages.
+flutter:
+  # Использование Material Design компонентов
+  uses-material-design: true
+  # Включить автогенерацию локализации
+  generate: true
+
+  # ========================
+  # Ресурсы приложения
+  # ========================
+  assets:
+    # Изображения и графические ресурсы
+    - assets/images/
+    # Иконки приложения
+    - assets/icons/
+    # Общие шрифты
+    - assets/fonts/
+    # Семейство шрифтов Lora
+    - assets/fonts/Lora/
+    # Семейство шрифтов CanelaDeckTrial
+    - assets/fonts/CanelaDeckTrial/
+
+  # ========================
+  # Конфигурация шрифтов
+  # ========================
+  fonts:
+    # Семейство шрифтов Lora (основной шрифт приложения)
+    - family: Lora
+      fonts:
+        # Обычный (400)
+        - asset: assets/fonts/Lora/Lora-Regular.ttf
+          weight: 400
+        # Обычный курсив (400)
+        - asset: assets/fonts/Lora/Lora-Italic.ttf
+          weight: 400
+          style: italic
+        # Средний (500)
+        - asset: assets/fonts/Lora/Lora-Medium.ttf
+          weight: 500
+        # Средний курсив (500)
+        - asset: assets/fonts/Lora/Lora-MediumItalic.ttf
+          weight: 500
+          style: italic
+        # Полужирный (600)
+        - asset: assets/fonts/Lora/Lora-SemiBold.ttf
+          weight: 600
+        # Полужирный курсив (600)
+        - asset: assets/fonts/Lora/Lora-SemiBoldItalic.ttf
+          weight: 600
+          style: italic
+        # Жирный (700)
+        - asset: assets/fonts/Lora/Lora-Bold.ttf
+          weight: 700
+        # Жирный курсив (700)
+        - asset: assets/fonts/Lora/Lora-BoldItalic.ttf
+          weight: 700
+          style: italic
+
+    # Семейство шрифтов CanelaDeckTrial (альтернативный шрифт)
+    - family: CanelaDeckTrial
+      fonts:
+        # Тонкий (100)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-Thin-Trial.otf
+          weight: 100
+        # Тонкий курсив (100)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-ThinItalic-Trial.otf
+          weight: 100
+          style: italic
+        # Светлый (300)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-Light-Trial.otf
+          weight: 300
+        # Светлый курсив (300)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-LightItalic-Trial.otf
+          weight: 300
+          style: italic
+        # Обычный (400)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-Regular-Trial.otf
+          weight: 400
+        # Обычный курсив (400)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-RegularItalic-Trial.otf
+          weight: 400
+          style: italic
+        # Средний (500)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-Medium-Trial.otf
+          weight: 500
+        # Средний курсив (500)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-MediumItalic-Trial.otf
+          weight: 500
+          style: italic
+        # Жирный (700)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-Bold-Trial.otf
+          weight: 700
+        # Жирный курсив (700)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-BoldItalic-Trial.otf
+          weight: 700
+          style: italic
+        # Очень жирный (900)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-Black-Trial.otf
+          weight: 900
+        # Очень жирный курсив (900)
+        - asset: assets/fonts/CanelaDeckTrial/CanelaDeck-BlackItalic-Trial.otf
+          weight: 900
+          style: italic
+
+# ========================
+# Конфигурация генератора ресурсов
+# ========================
+flutter_gen:
+  # Папка для генерации типобезопасных ссылок на ресурсы
+  output: lib/gen/
+  # Максимальная длина строки
+  line_length: 80
+  # Интеграции с пакетами
+  integrations:
+    # Поддержка flutter_svg
+    flutter_svg: true
