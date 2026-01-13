@@ -53,6 +53,32 @@ dependencies:
   # Простые настройки и preferences
   shared_preferences: ^2.5.3
 
+  # ========================
+  # Управление состоянием
+  # ========================
+  # BLoC паттерн для архитектуры приложения
+  flutter_bloc: ^8.1.5
+
+  # ========================
+  # Логирование и отладка
+  # ========================
+  # Основная библиотека логирования
+  talker: ^4.5.4
+  # Flutter интеграция для Talker
+  talker_flutter: ^4.5.4
+  # Логирование Dio запросов
+  talker_dio_logger: ^4.5.4
+  # Логирование BLoC событий
+  talker_bloc_logger: ^4.5.4
+
+  # ========================
+  # Внедрение зависимостей
+  # ========================
+  # Service Locator для управления зависимостями
+  get_it: ^8.0.0
+  # Аннотации для автогенерации DI
+  injectable: ^2.4.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -71,6 +97,8 @@ dev_dependencies:
   build_runner: ^2.4.10
   # Генерация типобезопасных ссылок на ассеты
   flutter_gen_runner: ^5.5.0+1
+  # Генератор для injectable
+  injectable_generator: ^2.8.1
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
