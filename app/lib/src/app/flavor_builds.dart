@@ -1,66 +1,63 @@
 part of 'application.dart';
 
-Widget _buildApp({required AppFlavor flavor, required String languageCode}) {
+Widget _buildApp({
+  required AppFlavor flavor,
+  required GoRouter router,
+  required String languageCode,
+}) {
   switch (flavor) {
     case AppFlavor.development:
-      return _devApp(languageCode, flavor);
+      return _devApp(router, languageCode, flavor);
     case AppFlavor.production:
-      return _prodApp(languageCode, flavor);
+      return _prodApp(router, languageCode, flavor);
   }
 }
 
-MaterialApp _devApp(String languageCode, AppFlavor flavor) => _buildMaterialApp(
-  title: 'BrightBund Dev',
-  languageCode: languageCode,
-  flavor: flavor,
-);
-
-MaterialApp _prodApp(String languageCode, AppFlavor flavor) =>
+MaterialApp _devApp(GoRouter router, String languageCode, AppFlavor flavor) =>
     _buildMaterialApp(
+      router: router,
+      title: 'BrightBund Dev',
+      languageCode: languageCode,
+      flavor: flavor,
+    );
+
+MaterialApp _prodApp(GoRouter router, String languageCode, AppFlavor flavor) =>
+    _buildMaterialApp(
+      router: router,
       title: 'BrightBund',
       languageCode: languageCode,
       flavor: flavor,
     );
 
 MaterialApp _buildMaterialApp({
+  required GoRouter router,
   required String title,
   required String languageCode,
   required AppFlavor flavor,
 }) {
-  return MaterialApp(
+  return MaterialApp.router(
     title: title,
+    routerDelegate: router.routerDelegate,
+    routeInformationParser: router.routeInformationParser,
+    routeInformationProvider: router.routeInformationProvider,
     debugShowCheckedModeBanner: false,
-    home: const HomePage(),
     builder: (context, child) {
       return MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1)),
-        child:
-            flavor == AppFlavor.development
-                ? Align(
-                  alignment: Alignment.topRight,
-                  child: Banner(
-                    message: flavor.envPath,
-                    location: BannerLocation.topEnd,
-                    color: Colors.red,
-                    child: child!,
-                  ),
-                )
-                : child!,
+        child: flavor == AppFlavor.development
+            ? Align(
+                alignment: Alignment.topRight,
+                child: Banner(
+                  message: flavor.envPath,
+                  location: BannerLocation.topEnd,
+                  color: Colors.red,
+                  child: child!,
+                ),
+              )
+            : child!,
       );
     },
   );
-}
-
-class HomePage extends StatelessWidget {
-  const HomePage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('BrightBund')),
-      body: const Center(child: Text('Welcome to BrightBund')),
-    );
-  }
 }
 
 enum AppFlavor {
