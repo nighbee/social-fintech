@@ -58,6 +58,14 @@ dependencies:
   # ========================
   # BLoC паттерн для архитектуры приложения
   flutter_bloc: ^8.1.5
+  # Реактивное программирование и работа со стримами
+  rxdart: ^0.28.0
+
+  # ========================
+  # Функциональное программирование
+  # ========================
+  # Either монада для обработки ошибок и результатов
+  fpdart: ^1.1.0
 
   # ========================
   # Логирование и отладка
@@ -98,7 +106,15 @@ dev_dependencies:
   # Генерация типобезопасных ссылок на ассеты
   flutter_gen_runner: ^5.5.0+1
   # Генератор для injectable
-  injectable_generator: ^2.8.1
+  injectable_generator: ^2.7.0
+  # Генератор для freezed (immutable classes)
+  freezed: ^2.5.2
+  # Аннотации для freezed
+  freezed_annotation: ^2.4.4
+  # JSON сериализация
+  json_serializable: ^6.8.0
+  # Аннотации для JSON
+  json_annotation: ^4.9.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
