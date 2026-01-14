@@ -20,15 +20,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
           GoRoute(
             path: RoutePaths.log,
             name: RouteNames.log,
-            builder:
-                (context, state) => TalkerScreen(
-                  talker: talker,
-                  theme: TalkerScreenTheme.fromTheme(Theme.of(context), {
-                    TalkerLogType.blocEvent.key: Colors.green,
-                    TalkerLogType.blocTransition.key: Colors.green,
-                    TalkerLogType.httpResponse.key: Colors.green,
-                  }),
-                ),
+            builder: (context, state) => TalkerScreen(
+              talker: talker,
+              theme: TalkerScreenTheme.fromTheme(Theme.of(context), {
+                TalkerLogType.blocEvent.key: Colors.green,
+                TalkerLogType.blocTransition.key: Colors.green,
+                TalkerLogType.httpResponse.key: Colors.green,
+              }),
+            ),
           ),
         ],
       ),
@@ -50,16 +49,34 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             routes: [
               // Auth routes
               GoRoute(
-                path: RoutePaths.auth,
-                name: RouteNames.auth,
-                builder: (context, state) => const LoginPage(),
-                routes: [
-                  GoRoute(
-                    path: RoutePaths.login,
-                    name: RouteNames.login,
-                    builder: (context, state) => const LoginPage(),
-                  ),
-                ],
+                path: RoutePaths.login,
+                name: RouteNames.login,
+                builder: (context, state) => const LoginWithNumberPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.loginWithEmail,
+                name: RouteNames.loginWithEmail,
+                builder: (context, state) => const LoginWithEmailPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.code,
+                name: RouteNames.code,
+                builder: (context, state) => const CodePage(),
+              ),
+              GoRoute(
+                path: RoutePaths.info,
+                name: RouteNames.info,
+                builder: (context, state) => const InfoPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.referal,
+                name: RouteNames.referal,
+                builder: (context, state) => const ReferalPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.createPassword,
+                name: RouteNames.createPassword,
+                builder: (context, state) => const CreatePasswordPage(),
               ),
 
               // Home route

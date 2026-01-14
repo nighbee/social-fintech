@@ -6,7 +6,12 @@ class RouteNames {
   // Auth routes
   static const String auth = 'auth';
   static const String login = 'login';
+  static const String loginWithEmail = 'loginWithEmail';
   static const String register = 'register';
+  static const String code = 'code';
+  static const String info = 'info';
+  static const String referal = 'referal';
+  static const String createPassword = 'createPassword';
 
   // Home routes
   static const String home = 'home';

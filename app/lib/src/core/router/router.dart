@@ -4,7 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:app/src/app/application.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
-import 'package:app/src/features/auth/presentation/pages/login_page.dart';
+import 'package:app/src/features/auth/presentation/pages/login_with_number_page.dart';
+import 'package:app/src/features/auth/presentation/pages/login_with_email_page.dart';
+import 'package:app/src/features/auth/presentation/pages/code_page.dart';
+import 'package:app/src/features/auth/presentation/pages/info_page.dart';
+import 'package:app/src/features/auth/presentation/pages/referal_page.dart';
+import 'package:app/src/features/auth/presentation/pages/create_password_page.dart';
 import 'package:app/src/features/home/presentation/pages/home_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/developer_features_page.dart';
 

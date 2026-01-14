@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:app/gen/fonts.gen.dart';
 
 import '../constants/ui_constants.dart';
 

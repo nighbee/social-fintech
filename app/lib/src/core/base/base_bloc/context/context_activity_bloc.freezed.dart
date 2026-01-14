@@ -84,11 +84,10 @@ class _$ContextActivityEventCopyWithImpl<
   $Res call({Object? callback = null}) {
     return _then(
       _value.copyWith(
-            callback:
-                null == callback
-                    ? _value.callback
-                    : callback // ignore: cast_nullable_to_non_nullable
-                        as ContextActivityCallback,
+            callback: null == callback
+                ? _value.callback
+                : callback // ignore: cast_nullable_to_non_nullable
+                      as ContextActivityCallback,
           )
           as $Val,
     );
@@ -130,7 +129,7 @@ class __$$HandleContextActivityEventImplCopyWithImpl<$Res>
         null == callback
             ? _value.callback
             : callback // ignore: cast_nullable_to_non_nullable
-                as ContextActivityCallback,
+                  as ContextActivityCallback,
       ),
     );
   }
@@ -167,9 +166,10 @@ class _$HandleContextActivityEventImpl extends HandleContextActivityEvent {
   @override
   @pragma('vm:prefer-inline')
   _$$HandleContextActivityEventImplCopyWith<_$HandleContextActivityEventImpl>
-  get copyWith => __$$HandleContextActivityEventImplCopyWithImpl<
-    _$HandleContextActivityEventImpl
-  >(this, _$identity);
+  get copyWith =>
+      __$$HandleContextActivityEventImplCopyWithImpl<
+        _$HandleContextActivityEventImpl
+      >(this, _$identity);
 
   @override
   @optionalTypeArgs
@@ -319,11 +319,10 @@ class _$ContextActivityStateCopyWithImpl<
   $Res call({Object? contextActivityHandler = freezed}) {
     return _then(
       _value.copyWith(
-            contextActivityHandler:
-                freezed == contextActivityHandler
-                    ? _value.contextActivityHandler
-                    : contextActivityHandler // ignore: cast_nullable_to_non_nullable
-                        as ContextActivityCallback?,
+            contextActivityHandler: freezed == contextActivityHandler
+                ? _value.contextActivityHandler
+                : contextActivityHandler // ignore: cast_nullable_to_non_nullable
+                      as ContextActivityCallback?,
           )
           as $Val,
     );
@@ -362,7 +361,7 @@ class __$$HandleActionWithContextImplCopyWithImpl<$Res>
         freezed == contextActivityHandler
             ? _value.contextActivityHandler
             : contextActivityHandler // ignore: cast_nullable_to_non_nullable
-                as ContextActivityCallback?,
+                  as ContextActivityCallback?,
       ),
     );
   }
@@ -399,9 +398,10 @@ class _$HandleActionWithContextImpl extends HandleActionWithContext {
   @override
   @pragma('vm:prefer-inline')
   _$$HandleActionWithContextImplCopyWith<_$HandleActionWithContextImpl>
-  get copyWith => __$$HandleActionWithContextImplCopyWithImpl<
-    _$HandleActionWithContextImpl
-  >(this, _$identity);
+  get copyWith =>
+      __$$HandleActionWithContextImplCopyWithImpl<
+        _$HandleActionWithContextImpl
+      >(this, _$identity);
 
   @override
   @optionalTypeArgs

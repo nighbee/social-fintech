@@ -5,12 +5,14 @@ class AppColors {
   static const backgroundGray = Color(0xffd9d9d9);
   static const whiteBackground = Color(0xffffffff);
   static const blackBackground = Color(0xff000000);
+  static const mainBackground = Color(0xff19191A);
 
   static const textGray1 = Color(0xffcacaca);
   static const textGray2 = Color(0xff838383);
   static const textGray3 = Color(0xff87898f);
 
-  static const btnGray = Color(0xffdbdbdb);
+  static const btnGray1 = Color(0xffdbdbdb);
+  static const btnGray2 = Color(0xffa9a9a9);
   static const redText = Color(0xffa43337);
 
   static const blueText1 = Color(0xff74afe3);
@@ -25,6 +27,7 @@ extension ColorThemeDataExtension on ThemeData {
   Color get backgroundGray => AppColors.backgroundGray;
   Color get whiteBackground => AppColors.whiteBackground;
   Color get blackBackground => AppColors.blackBackground;
+  Color get mainBackground => AppColors.mainBackground;
 
   // text colors
   Color get textGray1 => AppColors.textGray1;
@@ -37,5 +40,5 @@ extension ColorThemeDataExtension on ThemeData {
   Color get greenText => AppColors.greenText;
 
   // button colors
-  Color get btnGray => AppColors.btnGray;
+  Color get btnGray => AppColors.btnGray1;
 }
