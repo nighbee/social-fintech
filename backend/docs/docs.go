@@ -4,12 +4,11 @@ package docs
 import "github.com/swaggo/swag"
 
 const docTemplate = `{
-    "schemes": {{ marshal .Schemes }},
     "swagger": "2.0",
     "info": {
-        "description": "{{escape .Description}}",
-        "title": "{{.Title}}",
-        "termsOfService": "https://brightbund.com/terms",
+        "title": "BrightBund API",
+        "description": "Complete API specification for the BrightBund social platform with economy, maps, chat, and gamification.\\n\\n## Authentication\\nMost endpoints require authentication via Bearer token in the ` + "`" + `Authorization` + "`" + ` header.\\nFormat: ` + "`" + `Authorization: Bearer <access_token>` + "`" + `\\n\\n## Rate Limiting\\nAPI endpoints are rate-limited to prevent abuse. Limits vary by endpoint.\\n\\n## Error Codes\\n- ` + "`" + `402 Payment Required` + "`" + `: Insufficient funds (triggers frontend \"Quiet Shop\" animation)\\n- ` + "`" + `429 Too Many Requests` + "`" + `: Rate limit exceeded\\n- ` + "`" + `401 Unauthorized` + "`" + `: Invalid or expired token",
+        "version": "1.0.0",
         "contact": {
             "name": "API Support",
             "email": "support@brightbund.com"
@@ -18,136 +17,1456 @@ const docTemplate = `{
             "name": "Proprietary",
             "url": "https://brightbund.com/license"
         },
-        "version": "{{.Version}}"
+        "termsOfService": "https://brightbund.com/terms"
     },
-    "host": "{{.Host}}",
-    "basePath": "{{.BasePath}}",
+    "host": "localhost:8081",
+    "basePath": "/api/v1",
+    "schemes": [
+        "https",
+        "http"
+    ],
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",
+            "description": "JWT Authorization header using the Bearer scheme. Format: \"Bearer {token}\""
+        }
+    },
+    "tags": [
+        {
+            "name": "Auth",
+            "description": "Authentication and session management"
+        },
+        {
+            "name": "Profile",
+            "description": "User profiles and statistics"
+        },
+        {
+            "name": "Feed",
+            "description": "Content feed and interactions"
+        },
+        {
+            "name": "Economy",
+            "description": "Wallet, ledger, and currency transactions"
+        },
+        {
+            "name": "Map",
+            "description": "Geospatial tasks and discovery"
+        },
+        {
+            "name": "Gamification",
+            "description": "Ranks, seasons, and progression"
+        },
+        {
+            "name": "Leaderboard",
+            "description": "Global and regional rankings"
+        },
+        {
+            "name": "Chat",
+            "description": "Real-time messaging"
+        },
+        {
+            "name": "Notifications",
+            "description": "Push and in-app notifications"
+        },
+        {
+            "name": "Payment",
+            "description": "In-app purchases and monetization"
+        },
+        {
+            "name": "Social",
+            "description": "Allies, followers, and social graph"
+        },
+        {
+            "name": "System",
+            "description": "Health checks and configuration"
+        }
+    ],
     "paths": {
-        "/auth/login": {
+        "/auth/register/phone/init": {
             "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Login or register with OAuth provider",
-                "parameters": [
-                    {
-                        "description": "Login request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/economy/ledger": {
-            "get": {
+                "summary": "Initialize phone registration",
+                "description": "Send OTP to phone number for registration",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Economy"
-                ],
-                "summary": "Get ledger history",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "phone",
+                                "country_code"
+                            ],
+                            "properties": {
+                                "phone": {
+                                    "type": "string",
+                                    "example": "+77001234567",
+                                    "description": "Full phone number with country code"
+                                },
+                                "country_code": {
+                                    "type": "string",
+                                    "example": "KZ",
+                                    "description": "ISO 3166-1 alpha-2 country code"
+                                }
+                            }
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "OTP sent successfully",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_modules_economy.LedgerEntry"
+                            "type": "object",
+                            "properties": {
+                                "session_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "expires_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                "retry_after": {
+                                    "type": "integer",
+                                    "description": "Seconds until next OTP request allowed"
+                                }
                             }
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid phone number or country code",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "Too many OTP requests",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
                         }
                     }
                 }
             }
         },
-        "/economy/transfer": {
+        "/auth/register/phone/verify": {
             "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify OTP for phone registration",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Economy"
-                ],
-                "summary": "Transfer currency between users",
                 "parameters": [
                     {
-                        "description": "Transfer request",
-                        "name": "request",
                         "in": "body",
+                        "name": "request",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferRequest"
+                            "type": "object",
+                            "required": [
+                                "session_id",
+                                "otp_code"
+                            ],
+                            "properties": {
+                                "session_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "otp_code": {
+                                    "type": "string",
+                                    "example": "1234",
+                                    "minLength": 4,
+                                    "maxLength": 6
+                                }
+                            }
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "OTP verified, temporary token issued",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "type": "object",
+                            "properties": {
+                                "verified": {
+                                    "type": "boolean"
+                                },
+                                "temp_token": {
+                                    "type": "string",
+                                    "description": "Temporary JWT for completing registration"
+                                },
+                                "expires_in": {
+                                    "type": "integer",
+                                    "description": "Token validity in seconds"
+                                }
+                            }
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid OTP or session",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register/phone/complete": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Complete phone registration",
+                "description": "Finish registration by providing user details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "temp_token",
+                                "first_name",
+                                "last_name",
+                                "date_of_birth",
+                                "username"
+                            ],
+                            "properties": {
+                                "temp_token": {
+                                    "type": "string"
+                                },
+                                "first_name": {
+                                    "type": "string",
+                                    "minLength": 2,
+                                    "maxLength": 50
+                                },
+                                "last_name": {
+                                    "type": "string",
+                                    "minLength": 2,
+                                    "maxLength": 50
+                                },
+                                "username": {
+                                    "type": "string",
+                                    "minLength": 3,
+                                    "maxLength": 30,
+                                    "pattern": "^[a-zA-Z0-9_]+$"
+                                },
+                                "date_of_birth": {
+                                    "type": "string",
+                                    "format": "date",
+                                    "example": "1995-01-01"
+                                },
+                                "referral_username": {
+                                    "type": "string",
+                                    "description": "Optional referral code"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Registration completed",
+                        "schema": {
+                            "$ref": "#/definitions/AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input or username taken",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register/email": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register with email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "email",
+                                "password",
+                                "password_confirm",
+                                "first_name",
+                                "last_name",
+                                "username",
+                                "date_of_birth"
+                            ],
+                            "properties": {
+                                "email": {
+                                    "type": "string",
+                                    "format": "email"
+                                },
+                                "password": {
+                                    "type": "string",
+                                    "minLength": 8,
+                                    "maxLength": 128
+                                },
+                                "password_confirm": {
+                                    "type": "string"
+                                },
+                                "first_name": {
+                                    "type": "string"
+                                },
+                                "last_name": {
+                                    "type": "string"
+                                },
+                                "username": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_]+$"
+                                },
+                                "date_of_birth": {
+                                    "type": "string",
+                                    "format": "date"
+                                },
+                                "referral_username": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Registration successful",
+                        "schema": {
+                            "$ref": "#/definitions/AuthResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or email already exists",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register/oauth/apple": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register/Login via Apple OAuth",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "id_token",
+                                "device_id"
+                            ],
+                            "properties": {
+                                "id_token": {
+                                    "type": "string",
+                                    "description": "Apple ID token"
+                                },
+                                "authorization_code": {
+                                    "type": "string",
+                                    "description": "Apple authorization code"
+                                },
+                                "device_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "referral_username": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login/Registration successful",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/AuthResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "is_new_user": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register/oauth/google": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register/Login via Google OAuth",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "id_token",
+                                "device_id"
+                            ],
+                            "properties": {
+                                "id_token": {
+                                    "type": "string",
+                                    "description": "Google ID token"
+                                },
+                                "device_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "referral_username": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login/Registration successful",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/AuthResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "is_new_user": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login/phone/init": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Initialize phone login",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "phone",
+                                "country_code"
+                            ],
+                            "properties": {
+                                "phone": {
+                                    "type": "string"
+                                },
+                                "country_code": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OTP sent",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "session_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "expires_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login/phone/verify": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify OTP and login",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "session_id",
+                                "otp_code",
+                                "device_id"
+                            ],
+                            "properties": {
+                                "session_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "otp_code": {
+                                    "type": "string"
+                                },
+                                "device_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "device_info": {
+                                    "$ref": "#/definitions/DeviceInfo"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "$ref": "#/definitions/AuthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login/email": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login with email/password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "email",
+                                "password",
+                                "device_id"
+                            ],
+                            "properties": {
+                                "email": {
+                                    "type": "string",
+                                    "format": "email"
+                                },
+                                "password": {
+                                    "type": "string"
+                                },
+                                "device_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "device_info": {
+                                    "$ref": "#/definitions/DeviceInfo"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "$ref": "#/definitions/AuthResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login/oauth/apple": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login via Apple OAuth",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "id_token",
+                                "device_id"
+                            ],
+                            "properties": {
+                                "id_token": {
+                                    "type": "string"
+                                },
+                                "authorization_code": {
+                                    "type": "string"
+                                },
+                                "device_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "$ref": "#/definitions/AuthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login/oauth/google": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Login via Google OAuth",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "id_token",
+                                "device_id"
+                            ],
+                            "properties": {
+                                "id_token": {
+                                    "type": "string"
+                                },
+                                "device_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "$ref": "#/definitions/AuthResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "refresh_token"
+                            ],
+                            "properties": {
+                                "refresh_token": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token refreshed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "access_token": {
+                                    "type": "string"
+                                },
+                                "refresh_token": {
+                                    "type": "string"
+                                },
+                                "expires_in": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout and invalidate session",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "refresh_token": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Logged out successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Get current user session",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Current user info",
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/{user_id}": {
+            "get": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Get user profile",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User profile",
+                        "schema": {
+                            "$ref": "#/definitions/ProfileResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/comments": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get comments for post",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "post_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Comments list",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "comments": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/Comment"
+                                    }
+                                },
+                                "next_cursor": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Create comment",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "post_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "content"
+                            ],
+                            "properties": {
+                                "content": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                },
+                                "parent_comment_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Comment created",
+                        "schema": {
+                            "$ref": "#/definitions/Comment"
+                        }
+                    }
+                }
+            }
+        },
+        "/comments/{comment_id}": {
+            "delete": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Delete own comment",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "comment_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Comment deleted",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/give-seal": {
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Give Silver Seal to post",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "post_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "amount"
+                            ],
+                            "properties": {
+                                "amount": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 10
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Seal given successfully",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "new_balance": {
+                                    "type": "integer"
+                                },
+                                "transaction_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
                         }
                     },
                     "402": {
-                        "description": "Insufficient funds - triggers frontend animation",
+                        "description": "Insufficient funds - triggers Quiet Shop animation",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string",
+                                    "example": "INSUFFICIENT_FUNDS"
+                                },
+                                "required": {
+                                    "type": "integer"
+                                },
+                                "available": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{user_id}/give-seal": {
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Give Silver Seal directly to user",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "amount"
+                            ],
+                            "properties": {
+                                "amount": {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                "message": {
+                                    "type": "string",
+                                    "maxLength": 200
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Seal transferred",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "new_balance": {
+                                    "type": "integer"
+                                },
+                                "transaction_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "402": {
+                        "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/InsufficientFundsError"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/seal-givers": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get users who gave seals to post",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "post_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Seal givers list",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "givers": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "user_id": {
+                                                "type": "string",
+                                                "format": "uuid"
+                                            },
+                                            "username": {
+                                                "type": "string"
+                                            },
+                                            "avatar_url": {
+                                                "type": "string"
+                                            },
+                                            "amount": {
+                                                "type": "integer"
+                                            },
+                                            "given_at": {
+                                                "type": "string",
+                                                "format": "date-time"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/session/start": {
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Mark feed session start (anti-doomscroll)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Session started",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "session_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "started_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/session/heartbeat": {
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Update session activity",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "session_id"
+                            ],
+                            "properties": {
+                                "session_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Session updated",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "session_duration_mins": {
+                                    "type": "integer"
+                                },
+                                "feed_degraded": {
+                                    "type": "boolean",
+                                    "description": "True if session > 20 mins"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/session/end": {
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "End feed session",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "session_id"
+                            ],
+                            "properties": {
+                                "session_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Session ended",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "total_duration_mins": {
+                                    "type": "integer"
+                                },
+                                "posts_viewed": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/economy/balance": {
+            "get": {
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Get current wallet balances",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Wallet balances",
+                        "schema": {
+                            "$ref": "#/definitions/WalletResponse"
                         }
                     }
                 }
@@ -155,90 +1474,283 @@ const docTemplate = `{
         },
         "/economy/wallet": {
             "get": {
-                "consumes": [
-                    "application/json"
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Get user wallet (deprecated - use /economy/balance)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Economy"
-                ],
-                "summary": "Get user wallet",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Wallet info",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.WalletResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/WalletResponse"
                         }
                     }
                 }
             },
             "post": {
-                "consumes": [
-                    "application/json"
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Create user wallet (internal use)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Economy"
-                ],
-                "summary": "Create user wallet",
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Wallet created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.WalletResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/WalletResponse"
                         }
                     }
                 }
             }
         },
-        "/feed": {
+        "/economy/transactions": {
             "get": {
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Get transaction history",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    },
+                    {
+                        "in": "query",
+                        "name": "type",
+                        "type": "string",
+                        "enum": [
+                            "silver",
+                            "gold",
+                            "all"
+                        ],
+                        "default": "all"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transaction history",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "transactions": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/Transaction"
+                                    }
+                                },
+                                "next_cursor": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/economy/ledger": {
+            "get": {
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Get ledger history (detailed)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ledger entries",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/LedgerEntry"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/economy/limits": {
+            "get": {
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Get spending limits and cooldowns",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Current limits",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "monthly_transfer_limit": {
+                                    "type": "integer"
+                                },
+                                "monthly_transferred": {
+                                    "type": "integer"
+                                },
+                                "remaining": {
+                                    "type": "integer"
+                                },
+                                "next_reset": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                },
+                                "daily_accrual_claimed": {
+                                    "type": "boolean"
+                                },
+                                "next_accrual": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/economy/transfer": {
+            "post": {
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Transfer currency between users",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Get user feed",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/TransferRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Transfer successful",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedResponse"
+                            "$ref": "#/definitions/TransferResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "402": {
+                        "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/InsufficientFundsError"
+                        }
+                    }
+                }
+            }
+        },
+        "/economy/claim-daily": {
+            "post": {
+                "tags": [
+                    "Economy"
+                ],
+                "summary": "Claim free daily Silver Seals",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Daily seals claimed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "amount": {
+                                    "type": "integer"
+                                },
+                                "new_balance": {
+                                    "type": "integer"
+                                },
+                                "next_claim": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Already claimed today",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string",
+                                    "example": "ALREADY_CLAIMED"
+                                },
+                                "next_claim": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
                         }
                     }
                 }
@@ -246,27 +1758,23 @@ const docTemplate = `{
         },
         "/gamification/rank": {
             "get": {
-                "consumes": [
-                    "application/json"
+                "tags": [
+                    "Gamification"
+                ],
+                "summary": "Get own rank information",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Gamification"
-                ],
-                "summary": "Get my rank information",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Rank details",
                         "schema": {
-                            "$ref": "#/definitions/gamification.RankInfo"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/RankInfo"
                         }
                     }
                 }
@@ -274,23 +1782,555 @@ const docTemplate = `{
         },
         "/gamification/ranks": {
             "get": {
+                "tags": [
+                    "Gamification"
+                ],
+                "summary": "Get all rank thresholds",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All rank tiers",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/RankThreshold"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/gamification/ranks/{user_id}": {
+            "get": {
+                "tags": [
+                    "Gamification"
+                ],
+                "summary": "Get user rank details",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User rank",
+                        "schema": {
+                            "$ref": "#/definitions/RankInfo"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/me": {
+            "get": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Get own profile",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Own profile",
+                        "schema": {
+                            "$ref": "#/definitions/ProfileResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Update own profile",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Gamification"
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "first_name": {
+                                    "type": "string"
+                                },
+                                "last_name": {
+                                    "type": "string"
+                                },
+                                "bio": {
+                                    "type": "string",
+                                    "maxLength": 500
+                                },
+                                "region": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
                 ],
-                "summary": "Get all rank thresholds",
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Profile updated",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/gamification.RankThreshold"
+                            "$ref": "#/definitions/ProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/me/avatar": {
+            "post": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Upload avatar image",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "formData",
+                        "name": "file",
+                        "type": "file",
+                        "required": true,
+                        "description": "Avatar image (max 5MB, jpg/png)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Avatar uploaded",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "avatar_url": {
+                                    "type": "string",
+                                    "format": "uri"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/{user_id}/stats": {
+            "get": {
+                "tags": [
+                    "Profile"
+                ],
+                "summary": "Get user statistics",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "User stats",
+                        "schema": {
+                            "$ref": "#/definitions/ProfileStats"
+                        }
+                    }
+                }
+            }
+        },
+        "/feed": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get mixed feed (allies + local + world)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string",
+                        "description": "Pagination cursor"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 20,
+                        "maximum": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Feed data",
+                        "schema": {
+                            "$ref": "#/definitions/FeedResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/allies": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get allies-only feed",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 20
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Allies feed",
+                        "schema": {
+                            "$ref": "#/definitions/FeedResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/local": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get local geo-based feed",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 20
+                    },
+                    {
+                        "in": "query",
+                        "name": "lat",
+                        "type": "number",
+                        "format": "double",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "lng",
+                        "type": "number",
+                        "format": "double",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "radius_km",
+                        "type": "number",
+                        "default": 5
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Local feed",
+                        "schema": {
+                            "$ref": "#/definitions/FeedResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/world": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get random world feed",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 20
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "World feed",
+                        "schema": {
+                            "$ref": "#/definitions/FeedResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts": {
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Create new post",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "content"
+                            ],
+                            "properties": {
+                                "content": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                },
+                                "media_urls": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "format": "uri"
+                                    },
+                                    "maxItems": 5
+                                },
+                                "location": {
+                                    "$ref": "#/definitions/Location"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Post created",
+                        "schema": {
+                            "$ref": "#/definitions/Post"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/upload-media": {
+            "post": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Upload media for post",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "formData",
+                        "name": "files",
+                        "type": "file",
+                        "required": true,
+                        "description": "Media files (max 5 files, 10MB each)"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Media uploaded",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "media_urls": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string",
+                                        "format": "uri"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get single post",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "post_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Post details",
+                        "schema": {
+                            "$ref": "#/definitions/Post"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Delete own post",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "post_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Post deleted",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                }
                             }
                         }
                     }
@@ -299,39 +2339,82 @@ const docTemplate = `{
         },
         "/leaderboards/global": {
             "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Leaderboard"
                 ],
                 "summary": "Get global leaderboard",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "parameters": [
                     {
+                        "in": "query",
+                        "name": "season",
+                        "type": "string",
+                        "default": "current"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
                         "type": "integer",
                         "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
+                        "maximum": 100
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Global leaderboard",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-                            }
+                            "$ref": "#/definitions/LeaderboardResponse"
                         }
+                    }
+                }
+            }
+        },
+        "/leaderboards/local": {
+            "get": {
+                "tags": [
+                    "Leaderboard"
+                ],
+                "summary": "Get local/regional leaderboard",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "region",
+                        "type": "string",
+                        "required": true
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    {
+                        "in": "query",
+                        "name": "season",
+                        "type": "string",
+                        "default": "current"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Regional leaderboard",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/LeaderboardResponse"
                         }
                     }
                 }
@@ -339,46 +2422,78 @@ const docTemplate = `{
         },
         "/leaderboards/local/{region_id}": {
             "get": {
-                "consumes": [
-                    "application/json"
+                "tags": [
+                    "Leaderboard"
+                ],
+                "summary": "Get leaderboard by region ID",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Leaderboard"
-                ],
-                "summary": "Get regional leaderboard",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Region ID",
-                        "name": "region_id",
                         "in": "path",
-                        "required": true
+                        "name": "region_id",
+                        "required": true,
+                        "type": "string"
                     },
                     {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
+                        "in": "query",
                         "name": "limit",
-                        "in": "query"
+                        "type": "integer",
+                        "default": 50
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Regional leaderboard",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
+                                "$ref": "#/definitions/LeaderboardEntry"
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/leaderboards/allies": {
+            "get": {
+                "tags": [
+                    "Leaderboard"
+                ],
+                "summary": "Get allies leaderboard",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "season",
+                        "type": "string",
+                        "default": "current"
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Allies leaderboard",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/LeaderboardResponse"
                         }
                     }
                 }
@@ -386,78 +2501,87 @@ const docTemplate = `{
         },
         "/leaderboards/me": {
             "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
                 "tags": [
                     "Leaderboard"
                 ],
                 "summary": "Get my rank and score",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "My leaderboard position",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/LeaderboardEntry"
                         }
                     }
                 }
             }
         },
-        "/map/tasks": {
-            "post": {
-                "consumes": [
-                    "application/json"
+        "/seasons/current": {
+            "get": {
+                "tags": [
+                    "Gamification"
+                ],
+                "summary": "Get current season info",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
                 ],
                 "produces": [
                     "application/json"
                 ],
+                "responses": {
+                    "200": {
+                        "description": "Current season",
+                        "schema": {
+                            "$ref": "#/definitions/Season"
+                        }
+                    }
+                }
+            }
+        },
+        "/seasons/history": {
+            "get": {
                 "tags": [
-                    "Map"
+                    "Gamification"
                 ],
-                "summary": "Create a new task",
+                "summary": "Get past seasons",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "parameters": [
                     {
-                        "description": "Task creation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CreateTaskRequest"
-                        }
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 10
                     }
                 ],
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "Season history",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.TaskResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    },
-                    "402": {
-                        "description": "Insufficient funds",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "type": "object",
+                            "properties": {
+                                "seasons": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/SeasonHistory"
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -465,53 +2589,911 @@ const docTemplate = `{
         },
         "/map/tasks/nearby": {
             "get": {
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Find nearby tasks",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "lat",
+                        "type": "number",
+                        "format": "double",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "lng",
+                        "type": "number",
+                        "format": "double",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "radius",
+                        "type": "integer",
+                        "default": 5000,
+                        "description": "Meters"
+                    },
+                    {
+                        "in": "query",
+                        "name": "status",
+                        "type": "string",
+                        "enum": [
+                            "open",
+                            "in_progress",
+                            "completed",
+                            "all"
+                        ],
+                        "default": "open"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Nearby tasks",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "tasks": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/TaskResponse"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/map/tasks": {
+            "post": {
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Create new task",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/CreateTaskRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Task created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/TaskResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "new_balance": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "402": {
+                        "description": "Insufficient funds",
+                        "schema": {
+                            "$ref": "#/definitions/InsufficientFundsError"
+                        }
+                    }
+                }
+            }
+        },
+        "/map/tasks/{task_id}": {
+            "get": {
                 "tags": [
                     "Map"
                 ],
-                "summary": "Find nearby tasks",
+                "summary": "Get task details",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
                 "parameters": [
                     {
-                        "type": "number",
-                        "description": "Latitude",
-                        "name": "lat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "Longitude",
-                        "name": "lng",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Radius in meters",
-                        "name": "radius",
-                        "in": "query",
-                        "required": true
+                        "in": "path",
+                        "name": "task_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Task details",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_modules_map.TaskResponse"
+                            "$ref": "#/definitions/TaskResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Delete own task (if not claimed)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task deleted and refunded",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "refunded_amount": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/map/tasks/{task_id}/claim": {
+            "post": {
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Claim/accept task",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task claimed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "example": "in_progress"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/map/tasks/{task_id}/complete": {
+            "post": {
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Mark task as complete",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "completion_proof": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task completed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "status": {
+                                    "type": "string"
+                                },
+                                "reward_credited": {
+                                    "type": "integer"
+                                },
+                                "new_balance": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/map/tasks/{task_id}/cancel": {
+            "post": {
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Cancel own task",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "task_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Task cancelled",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "refunded_amount": {
+                                    "type": "integer"
+                                },
+                                "new_balance": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/conversations": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get list of conversations",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversations list",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "conversations": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/Conversation"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/conversations/{user_id}": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Start or get conversation with user",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Conversation info",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "conversation_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "other_user": {
+                                    "$ref": "#/definitions/User"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/conversations/{conversation_id}/messages": {
+            "get": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Get messages in conversation",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "conversation_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Messages",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "messages": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/Message"
+                                    }
+                                },
+                                "next_cursor": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/messages": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send message (also available via WebSocket)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "conversation_id",
+                                "content"
+                            ],
+                            "properties": {
+                                "conversation_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "content": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Message sent",
+                        "schema": {
+                            "$ref": "#/definitions/Message"
+                        }
+                    }
+                }
+            }
+        },
+        "/chat/messages/{message_id}/read": {
+            "post": {
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Mark message as read",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "message_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Message marked as read",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get notification list",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "cursor",
+                        "type": "string"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    },
+                    {
+                        "in": "query",
+                        "name": "unread_only",
+                        "type": "boolean",
+                        "default": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notifications",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "notifications": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/Notification"
+                                    }
+                                },
+                                "next_cursor": {
+                                    "type": "string"
+                                },
+                                "unread_count": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{notification_id}/read": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark notification as read",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "notification_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Marked as read",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read-all": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "All marked as read",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "marked_count": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/settings": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Get notification preferences",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification settings",
+                        "schema": {
+                            "$ref": "#/definitions/NotificationSettings"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Update notification preferences",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "schema": {
+                            "$ref": "#/definitions/NotificationSettings"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Settings updated",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shop/products": {
+            "get": {
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Get available IAP products",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Product list",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "products": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/IAPProduct"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/shop/purchase/validate": {
+            "post": {
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Validate and process in-app purchase",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "platform",
+                                "receipt_data",
+                                "product_id",
+                                "transaction_id"
+                            ],
+                            "properties": {
+                                "platform": {
+                                    "type": "string",
+                                    "enum": [
+                                        "apple",
+                                        "google"
+                                    ]
+                                },
+                                "receipt_data": {
+                                    "type": "string",
+                                    "description": "Base64 encoded"
+                                },
+                                "product_id": {
+                                    "type": "string"
+                                },
+                                "transaction_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Purchase validated and processed",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "transaction_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "silver_credited": {
+                                    "type": "integer"
+                                },
+                                "new_balance": {
+                                    "type": "integer"
+                                }
                             }
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid receipt",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/shop/purchases": {
+            "get": {
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Get purchase history",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Purchase history",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "purchases": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/Purchase"
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -519,51 +3501,505 @@ const docTemplate = `{
         },
         "/payment/webhook/revenuecat": {
             "post": {
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Handle RevenueCat webhook",
                 "consumes": [
                     "application/json"
                 ],
                 "produces": [
                     "application/json"
                 ],
-                "tags": [
-                    "Payment"
-                ],
-                "summary": "Handle RevenueCat webhook",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Webhook secret",
-                        "name": "Authorization",
                         "in": "header",
-                        "required": true
+                        "name": "Authorization",
+                        "required": true,
+                        "type": "string"
                     },
                     {
-                        "description": "RevenueCat event",
-                        "name": "event",
                         "in": "body",
+                        "name": "event",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payment.RevenueCatEvent"
+                            "$ref": "#/definitions/RevenueCatEvent"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Webhook processed",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
-                    },
-                    "400": {
-                        "description": "Bad Request",
+                    }
+                }
+            }
+        },
+        "/users/{user_id}/ally": {
+            "post": {
+                "tags": [
+                    "Social"
+                ],
+                "summary": "Add user as ally (follow)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ally added",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "is_ally": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Social"
+                ],
+                "summary": "Remove ally (unfollow)",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ally removed",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "type": "object",
+                            "properties": {
+                                "success": {
+                                    "type": "boolean"
+                                },
+                                "is_ally": {
+                                    "type": "boolean"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{user_id}/allies": {
+            "get": {
+                "tags": [
+                    "Social"
+                ],
+                "summary": "Get user's allies",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Allies list",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "allies": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/User"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{user_id}/followers": {
+            "get": {
+                "tags": [
+                    "Social"
+                ],
+                "summary": "Get user's followers",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "user_id",
+                        "required": true,
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 50
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Followers list",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "followers": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/User"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/search/users": {
+            "get": {
+                "tags": [
+                    "Social"
+                ],
+                "summary": "Search users",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "q",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 20
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search results",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "users": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/User"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/search/posts": {
+            "get": {
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Search posts",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "query",
+                        "name": "q",
+                        "type": "string",
+                        "required": true
+                    },
+                    {
+                        "in": "query",
+                        "name": "limit",
+                        "type": "integer",
+                        "default": 20
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Search results",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "posts": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/Post"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/reports": {
+            "post": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Report content or user",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "request",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "required": [
+                                "type",
+                                "target_id",
+                                "reason"
+                            ],
+                            "properties": {
+                                "type": {
+                                    "type": "string",
+                                    "enum": [
+                                        "post",
+                                        "comment",
+                                        "user",
+                                        "task"
+                                    ]
+                                },
+                                "target_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                        "spam",
+                                        "inappropriate",
+                                        "abuse",
+                                        "harassment",
+                                        "other"
+                                    ]
+                                },
+                                "details": {
+                                    "type": "string",
+                                    "maxLength": 1000
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Report submitted",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "report_id": {
+                                    "type": "string",
+                                    "format": "uuid"
+                                },
+                                "submitted_at": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Health check endpoint",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Service healthy",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "status": {
+                                    "type": "string",
+                                    "example": "healthy"
+                                },
+                                "timestamp": {
+                                    "type": "string",
+                                    "format": "date-time"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/version": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "API version information",
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Version info",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "version": {
+                                    "type": "string",
+                                    "example": "1.0.0"
+                                },
+                                "build": {
+                                    "type": "string"
+                                },
+                                "environment": {
+                                    "type": "string",
+                                    "enum": [
+                                        "production",
+                                        "staging",
+                                        "development"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/config": {
+            "get": {
+                "tags": [
+                    "System"
+                ],
+                "summary": "Get app configuration",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "App config",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "features": {
+                                    "type": "object",
+                                    "properties": {
+                                        "chat_enabled": {
+                                            "type": "boolean"
+                                        },
+                                        "tasks_enabled": {
+                                            "type": "boolean"
+                                        }
+                                    }
+                                },
+                                "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                        "max_seals_per_post": {
+                                            "type": "integer"
+                                        },
+                                        "max_media_per_post": {
+                                            "type": "integer"
+                                        }
+                                    }
+                                },
+                                "maintenance_mode": {
+                                    "type": "boolean"
+                                }
+                            }
                         }
                     }
                 }
@@ -571,371 +4007,172 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "fiber.Map": {
-            "type": "object",
-            "additionalProperties": true
-        },
-        "gamification.Rank": {
-            "type": "string",
-            "enum": [
-                "Quartz",
-                "Amber",
-                "Jade",
-                "Sapphire",
-                "Ruby",
-                "Diamond",
-                "Platinum",
-                "Sovereign"
-            ],
-            "x-enum-varnames": [
-                "RankQuartz",
-                "RankAmber",
-                "RankJade",
-                "RankSapphire",
-                "RankRuby",
-                "RankDiamond",
-                "RankPlatinum",
-                "RankSovereign"
-            ]
-        },
-        "gamification.RankInfo": {
+        "ErrorResponse": {
             "type": "object",
             "properties": {
-                "current_rank": {
-                    "$ref": "#/definitions/gamification.Rank"
+                "error": {
+                    "type": "string"
                 },
-                "gold_balance": {
+                "message": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                }
+            }
+        },
+        "InsufficientFundsError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "INSUFFICIENT_FUNDS"
+                },
+                "required": {
                     "type": "integer"
                 },
-                "next_rank": {
-                    "$ref": "#/definitions/gamification.RankThreshold"
-                },
-                "progress_percent": {
-                    "type": "number"
-                },
-                "rank_threshold": {
-                    "$ref": "#/definitions/gamification.RankThreshold"
-                },
-                "user_id": {
-                    "type": "string"
+                "available": {
+                    "type": "integer"
                 }
             }
         },
-        "gamification.RankThreshold": {
+        "DeviceInfo": {
             "type": "object",
             "properties": {
-                "color": {
-                    "description": "Hex color for UI",
-                    "type": "string"
-                },
-                "icon": {
-                    "description": "Icon identifier",
-                    "type": "string"
-                },
-                "maxGold": {
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "minGold": {
-                    "type": "integer",
-                    "format": "int64"
-                },
-                "rank": {
-                    "$ref": "#/definitions/gamification.Rank"
-                }
-            }
-        },
-        "internal_modules_auth.LoginRequest": {
-            "type": "object",
-            "required": [
-                "device_id",
-                "provider_token",
-                "provider_type"
-            ],
-            "properties": {
-                "device_id": {
-                    "type": "string"
-                },
-                "provider_token": {
-                    "type": "string"
-                },
-                "provider_type": {
+                "os": {
+                    "type": "string",
                     "enum": [
-                        "apple",
-                        "google"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/internal_modules_auth.ProviderType"
-                        }
+                        "iOS",
+                        "Android"
                     ]
+                },
+                "model": {
+                    "type": "string"
+                },
+                "os_version": {
+                    "type": "string"
+                },
+                "app_version": {
+                    "type": "string"
                 }
             }
         },
-        "internal_modules_auth.LoginResponse": {
+        "AuthResponse": {
             "type": "object",
             "properties": {
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
                 "access_token": {
                     "type": "string"
                 },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "expires_in": {
+                    "type": "integer"
+                },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/User"
                 }
             }
         },
-        "internal_modules_auth.ProviderType": {
-            "type": "string",
-            "enum": [
-                "apple",
-                "google"
-            ],
-            "x-enum-varnames": [
-                "ProviderApple",
-                "ProviderGoogle"
-            ]
-        },
-        "internal_modules_auth.User": {
+        "User": {
             "type": "object",
             "properties": {
-                "avatar_url": {
-                    "type": "string"
+                "id": {
+                    "type": "string",
+                    "format": "uuid"
                 },
-                "created_at": {
+                "username": {
                     "type": "string"
                 },
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "email"
                 },
-                "id": {
-                    "type": "string"
+                "avatar_url": {
+                    "type": "string",
+                    "format": "uri"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "last_active_at": {
+                    "type": "string",
+                    "format": "date-time"
                 },
                 "is_shadow_banned": {
                     "type": "boolean"
-                },
-                "last_active_at": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
+                }
+            }
+        },
+        "ProfileResponse": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid"
                 },
                 "username": {
                     "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.Currency": {
-            "type": "string",
-            "enum": [
-                "SILVER",
-                "GOLD"
-            ],
-            "x-enum-varnames": [
-                "CurrencySilver",
-                "CurrencyGold"
-            ]
-        },
-        "internal_modules_economy.EntryType": {
-            "type": "string",
-            "enum": [
-                "DEBIT",
-                "CREDIT"
-            ],
-            "x-enum-varnames": [
-                "EntryTypeDebit",
-                "EntryTypeCredit"
-            ]
-        },
-        "internal_modules_economy.LedgerEntry": {
-            "type": "object",
-            "properties": {
-                "account_id": {
+                },
+                "first_name": {
                     "type": "string"
                 },
-                "amount": {
-                    "type": "integer"
-                },
-                "created_at": {
+                "last_name": {
                     "type": "string"
                 },
-                "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.Currency"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "transaction_id": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/internal_modules_economy.EntryType"
-                }
-            }
-        },
-        "internal_modules_economy.TransferRequest": {
-            "type": "object",
-            "required": [
-                "amount",
-                "currency",
-                "reason",
-                "to_user_id"
-            ],
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "enum": [
-                        "SILVER",
-                        "GOLD"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/internal_modules_economy.Currency"
-                        }
-                    ]
-                },
-                "reason": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "to_user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.TransferResponse": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.Currency"
-                },
-                "from_user_id": {
-                    "type": "string"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "to_user_id": {
-                    "type": "string"
-                },
-                "transaction_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.WalletResponse": {
-            "type": "object",
-            "properties": {
-                "gold_balance": {
-                    "type": "integer"
-                },
-                "silver_balance": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_feed.FeedMeta": {
-            "type": "object",
-            "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "degraded": {
-                    "type": "boolean"
-                },
-                "session_duration": {
-                    "$ref": "#/definitions/time.Duration"
-                }
-            }
-        },
-        "internal_modules_feed.FeedResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_modules_feed.Post"
-                    }
-                },
-                "meta": {
-                    "$ref": "#/definitions/internal_modules_feed.FeedMeta"
-                }
-            }
-        },
-        "internal_modules_feed.Post": {
-            "type": "object",
-            "properties": {
-                "author_id": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_leaderboard.LeaderboardEntry": {
-            "type": "object",
-            "properties": {
                 "avatar_url": {
-                    "type": "string"
-                },
-                "rank": {
-                    "type": "integer"
-                },
-                "score": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_map.CreateTaskRequest": {
-            "type": "object",
-            "required": [
-                "location",
-                "reward",
-                "title"
-            ],
-            "properties": {
-                "location": {
-                    "$ref": "#/definitions/internal_modules_map.Location"
-                },
-                "reward": {
-                    "type": "integer"
-                },
-                "title": {
                     "type": "string",
-                    "maxLength": 100,
-                    "minLength": 3
+                    "format": "uri"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "stats": {
+                    "$ref": "#/definitions/ProfileStats"
                 }
             }
         },
-        "internal_modules_map.Location": {
+        "ProfileStats": {
+            "type": "object",
+            "properties": {
+                "total_seals_given": {
+                    "type": "integer"
+                },
+                "total_seals_received": {
+                    "type": "integer"
+                },
+                "posts_created": {
+                    "type": "integer"
+                },
+                "tasks_completed": {
+                    "type": "integer"
+                },
+                "current_rank": {
+                    "type": "string"
+                },
+                "rank_progress": {
+                    "type": "number",
+                    "format": "float"
+                }
+            }
+        },
+        "Location": {
             "type": "object",
             "required": [
                 "lat",
@@ -943,105 +4180,742 @@ const docTemplate = `{
             ],
             "properties": {
                 "lat": {
-                    "type": "number"
+                    "type": "number",
+                    "format": "double"
                 },
                 "lng": {
-                    "type": "number"
+                    "type": "number",
+                    "format": "double"
+                },
+                "city": {
+                    "type": "string"
+                },
+                "address": {
+                    "type": "string"
                 }
             }
         },
-        "internal_modules_map.TaskResponse": {
+        "Post": {
             "type": "object",
             "properties": {
-                "created_at": {
+                "post_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "author": {
+                    "$ref": "#/definitions/User"
+                },
+                "content": {
                     "type": "string"
                 },
-                "creator_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
+                "media_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "format": "uri"
+                    }
                 },
                 "location": {
-                    "$ref": "#/definitions/internal_modules_map.Location"
+                    "$ref": "#/definitions/Location"
+                },
+                "seal_count": {
+                    "type": "integer"
+                },
+                "comment_count": {
+                    "type": "integer"
+                },
+                "has_given_seal": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "Comment": {
+            "type": "object",
+            "properties": {
+                "comment_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "post_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "author": {
+                    "$ref": "#/definitions/User"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "parent_comment_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "FeedResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Post"
+                    }
+                },
+                "meta": {
+                    "type": "object",
+                    "properties": {
+                        "count": {
+                            "type": "integer"
+                        },
+                        "degraded": {
+                            "type": "boolean"
+                        },
+                        "session_duration": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "WalletResponse": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "silver_balance": {
+                    "type": "integer"
+                },
+                "gold_balance": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "Transaction": {
+            "type": "object",
+            "properties": {
+                "transaction_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "credit",
+                        "debit"
+                    ]
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string",
+                    "enum": [
+                        "SILVER",
+                        "GOLD"
+                    ]
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "from_user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "to_user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "LedgerEntry": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "transaction_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "account_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "DEBIT",
+                        "CREDIT"
+                    ]
+                },
+                "currency": {
+                    "type": "string",
+                    "enum": [
+                        "SILVER",
+                        "GOLD"
+                    ]
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "TransferRequest": {
+            "type": "object",
+            "required": [
+                "to_user_id",
+                "amount",
+                "currency",
+                "reason"
+            ],
+            "properties": {
+                "to_user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "amount": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "currency": {
+                    "type": "string",
+                    "enum": [
+                        "SILVER",
+                        "GOLD"
+                    ]
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "TransferResponse": {
+            "type": "object",
+            "properties": {
+                "transaction_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "from_user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "to_user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "amount": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "RankInfo": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "current_rank": {
+                    "type": "string",
+                    "enum": [
+                        "Quartz",
+                        "Amber",
+                        "Jade",
+                        "Sapphire",
+                        "Ruby",
+                        "Diamond",
+                        "Platinum",
+                        "Sovereign"
+                    ]
+                },
+                "rank_threshold": {
+                    "$ref": "#/definitions/RankThreshold"
+                },
+                "next_rank": {
+                    "$ref": "#/definitions/RankThreshold"
+                },
+                "gold_balance": {
+                    "type": "integer"
+                },
+                "progress_percent": {
+                    "type": "number",
+                    "format": "float"
+                }
+            }
+        },
+        "RankThreshold": {
+            "type": "object",
+            "properties": {
+                "rank": {
+                    "type": "string"
+                },
+                "minGold": {
+                    "type": "integer"
+                },
+                "maxGold": {
+                    "type": "integer"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                }
+            }
+        },
+        "LeaderboardEntry": {
+            "type": "object",
+            "properties": {
+                "rank": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "avatar_url": {
+                    "type": "string",
+                    "format": "uri"
+                },
+                "score": {
+                    "type": "integer"
+                }
+            }
+        },
+        "LeaderboardResponse": {
+            "type": "object",
+            "properties": {
+                "season_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "leaderboard": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/LeaderboardEntry"
+                    }
+                },
+                "my_rank": {
+                    "type": "object",
+                    "properties": {
+                        "rank": {
+                            "type": "integer"
+                        },
+                        "gold_seals": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "Season": {
+            "type": "object",
+            "properties": {
+                "season_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "end_date": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "days_remaining": {
+                    "type": "integer"
+                }
+            }
+        },
+        "SeasonHistory": {
+            "type": "object",
+            "properties": {
+                "season_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "my_rank": {
+                    "type": "integer"
+                },
+                "gold_seals": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "end_date": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "CreateTaskRequest": {
+            "type": "object",
+            "required": [
+                "title",
+                "location",
+                "reward"
+            ],
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 100
+                },
+                "description": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "location": {
+                    "$ref": "#/definitions/Location"
+                },
+                "reward": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "expires_in_hours": {
+                    "type": "integer",
+                    "default": 24
+                }
+            }
+        },
+        "TaskResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/Location"
                 },
                 "reward": {
                     "type": "integer"
                 },
-                "title": {
-                    "type": "string"
+                "creator_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "creator": {
+                    "$ref": "#/definitions/User"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "in_progress",
+                        "completed",
+                        "expired",
+                        "cancelled"
+                    ]
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "claimed_by": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "expires_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
                 }
             }
         },
-        "payment.RevenueCatEvent": {
+        "Conversation": {
             "type": "object",
             "properties": {
-                "app_user_id": {
+                "conversation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "other_user": {
+                    "$ref": "#/definitions/User"
+                },
+                "last_message": {
+                    "$ref": "#/definitions/Message"
+                },
+                "unread_count": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "Message": {
+            "type": "object",
+            "properties": {
+                "message_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "conversation_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "sender_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "content": {
+                    "type": "string"
+                },
+                "sent_at": {
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "read": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "Notification": {
+            "type": "object",
+            "properties": {
+                "notification_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "seal_received",
+                        "comment_reply",
+                        "task_claimed",
+                        "task_completed",
+                        "ally_added",
+                        "post_mentioned"
+                    ]
+                },
+                "title": {
+                    "type": "string"
+                },
+                "body": {
                     "type": "string"
                 },
                 "data": {
-                    "type": "object",
-                    "additionalProperties": true
+                    "type": "object"
                 },
-                "environment": {
+                "read": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "NotificationSettings": {
+            "type": "object",
+            "properties": {
+                "push_enabled": {
+                    "type": "boolean"
+                },
+                "email_enabled": {
+                    "type": "boolean"
+                },
+                "types": {
+                    "type": "object",
+                    "properties": {
+                        "seal_received": {
+                            "type": "boolean"
+                        },
+                        "comment_reply": {
+                            "type": "boolean"
+                        },
+                        "task_updates": {
+                            "type": "boolean"
+                        },
+                        "ally_activity": {
+                            "type": "boolean"
+                        },
+                        "system_announcements": {
+                            "type": "boolean"
+                        }
+                    }
+                }
+            }
+        },
+        "IAPProduct": {
+            "type": "object",
+            "properties": {
+                "product_id": {
                     "type": "string"
                 },
+                "name": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "price_usd": {
+                    "type": "number",
+                    "format": "float"
+                },
+                "silver_amount": {
+                    "type": "integer"
+                },
+                "apple_product_id": {
+                    "type": "string"
+                },
+                "google_product_id": {
+                    "type": "string"
+                },
+                "is_featured": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "Purchase": {
+            "type": "object",
+            "properties": {
+                "purchase_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "amount_usd": {
+                    "type": "number",
+                    "format": "float"
+                },
+                "silver_credited": {
+                    "type": "integer"
+                },
+                "platform": {
+                    "type": "string",
+                    "enum": [
+                        "apple",
+                        "google"
+                    ]
+                },
+                "transaction_id": {
+                    "type": "string"
+                },
+                "purchased_at": {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            }
+        },
+        "RevenueCatEvent": {
+            "type": "object",
+            "properties": {
                 "id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "app_user_id": {
                     "type": "string"
                 },
                 "product_id": {
                     "type": "string"
                 },
                 "purchase_date": {
-                    "type": "string"
+                    "type": "string",
+                    "format": "date-time"
                 },
-                "type": {
-                    "type": "string"
+                "environment": {
+                    "type": "string",
+                    "enum": [
+                        "SANDBOX",
+                        "PRODUCTION"
+                    ]
+                },
+                "data": {
+                    "type": "object"
                 }
             }
-        },
-        "time.Duration": {
-            "type": "integer",
-            "format": "int64",
-            "enum": [
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
-                3600000000000
-            ],
-            "x-enum-varnames": [
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
-                "Hour"
-            ]
-        }
-    },
-    "securityDefinitions": {
-        "Bearer": {
-            "description": "Type \"Bearer\" followed by a space and JWT token",
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
         }
     }
 }`
 
-// SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:8080",
+	Version:          "1.0.0",
+	Host:             "api.brightbund.com",
 	BasePath:         "/api/v1",
-	Schemes:          []string{},
+	Schemes:          []string{"https", "http"},
 	Title:            "BrightBund API",
-	Description:      "API for the BrightBund social platform with economy, maps, chat, and gamification",
+	Description:      `Complete API specification for the BrightBund social platform with economy, maps, chat, and gamification.
+
+## Authentication
+Most endpoints require authentication via Bearer token in the ` + "`" + `Authorization` + "`" + ` header.
+Format: ` + "`" + `Authorization: Bearer <access_token>` + "`" + `
+
+## Rate Limiting
+API endpoints are rate-limited to prevent abuse. Limits vary by endpoint.
+
+## Error Codes
+- ` + "`" + `402 Payment Required` + "`" + `: Insufficient funds (triggers frontend "Quiet Shop" animation)
+- ` + "`" + `429 Too Many Requests` + "`" + `: Rate limit exceeded
+- ` + "`" + `401 Unauthorized` + "`" + `: Invalid or expired token`,
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
