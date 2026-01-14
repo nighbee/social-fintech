@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 // import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/theme/theme.dart';
 
 part 'flavor_builds.dart';
 

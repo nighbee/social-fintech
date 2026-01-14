@@ -37,6 +37,7 @@ MaterialApp _buildMaterialApp({
 }) {
   return MaterialApp.router(
     title: title,
+    theme: MaterialAppTheme.light,
     routerDelegate: router.routerDelegate,
     routeInformationParser: router.routeInformationParser,
     routeInformationProvider: router.routeInformationProvider,
@@ -44,18 +45,17 @@ MaterialApp _buildMaterialApp({
     builder: (context, child) {
       return MediaQuery(
         data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1)),
-        child:
-            flavor == AppFlavor.development
-                ? Align(
-                  alignment: Alignment.topRight,
-                  child: Banner(
-                    message: flavor.envPath,
-                    location: BannerLocation.topEnd,
-                    color: Colors.red,
-                    child: child!,
-                  ),
-                )
-                : child!,
+        child: flavor == AppFlavor.development
+            ? Align(
+                alignment: Alignment.topRight,
+                child: Banner(
+                  message: flavor.envPath,
+                  location: BannerLocation.topEnd,
+                  color: Colors.red,
+                  child: child!,
+                ),
+              )
+            : child!,
       );
     },
   );

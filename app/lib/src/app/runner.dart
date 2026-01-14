@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'application.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/core/service/storage/app_storage/storage_service.dart';
 
 class Runner {
   Future<void> initializeAndRun({
@@ -10,8 +11,8 @@ class Runner {
     required List<String> args,
   }) async {
     WidgetsFlutterBinding.ensureInitialized();
+    await KeyValueStorageImpl().initialize();
 
-    // Configure dependencies (DI) - this initializes Talker
     await configureDependencies();
     debugPrint('Dependencies configured successfully');
 
