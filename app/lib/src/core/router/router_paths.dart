@@ -5,13 +5,17 @@ class RoutePaths {
 
   // Auth routes
   static const String auth = '/auth';
+  static const String signup = '/signup';
+  static const String signupWithEmail = '/signup/email';
   static const String login = '/login';
   static const String loginWithEmail = '/login/email';
+  static const String loginCode = '/login/code';
   static const String register = '/register';
   static const String code = '/code';
   static const String info = '/info';
   static const String referal = '/referal';
   static const String createPassword = '/create-password';
+  static const String changePassword = '/change-password';
 
   // Home routes
   static const String home = '/home';

@@ -1,5 +1,6 @@
 import 'package:app/src/core/theme/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 
 class CustomTextField extends StatefulWidget {
@@ -16,6 +17,7 @@ class CustomTextField extends StatefulWidget {
     this.prefixIcon,
     this.onTap,
     this.readOnly = false,
+    this.inputFormatters,
   });
 
   final TextEditingController controller;
@@ -29,6 +31,7 @@ class CustomTextField extends StatefulWidget {
   final Widget? prefixIcon;
   final VoidCallback? onTap;
   final bool readOnly;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -86,6 +89,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   obscureText: widget.obscureText,
                   readOnly: widget.readOnly,
                   onTap: widget.onTap,
+                  inputFormatters: widget.inputFormatters,
                   textAlignVertical: hasText
                       ? TextAlignVertical.top
                       : TextAlignVertical.center,

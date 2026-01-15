@@ -47,16 +47,16 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
           StatefulShellBranch(
             observers: [TalkerRouteObserver(talker)],
             routes: [
-              // Auth routes
+              // Auth routes - Signup
               GoRoute(
-                path: RoutePaths.login,
-                name: RouteNames.login,
-                builder: (context, state) => const LoginWithNumberPage(),
+                path: RoutePaths.signup,
+                name: RouteNames.signup,
+                builder: (context, state) => const SignupWithNumberPage(),
               ),
               GoRoute(
-                path: RoutePaths.loginWithEmail,
-                name: RouteNames.loginWithEmail,
-                builder: (context, state) => const LoginWithEmailPage(),
+                path: RoutePaths.signupWithEmail,
+                name: RouteNames.signupWithEmail,
+                builder: (context, state) => const SignupWithEmailPage(),
               ),
               GoRoute(
                 path: RoutePaths.code,
@@ -77,6 +77,27 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 path: RoutePaths.createPassword,
                 name: RouteNames.createPassword,
                 builder: (context, state) => const CreatePasswordPage(),
+              ),
+              // Auth routes - Login
+              GoRoute(
+                path: RoutePaths.login,
+                name: RouteNames.login,
+                builder: (context, state) => const LoginWithNumberPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.loginWithEmail,
+                name: RouteNames.loginWithEmail,
+                builder: (context, state) => const LoginWithEmailPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.loginCode,
+                name: RouteNames.loginCode,
+                builder: (context, state) => const LoginCodePage(),
+              ),
+              GoRoute(
+                path: RoutePaths.changePassword,
+                name: RouteNames.changePassword,
+                builder: (context, state) => const ChangePasswordPage(),
               ),
 
               // Home route

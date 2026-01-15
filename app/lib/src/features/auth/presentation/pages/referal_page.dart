@@ -1,10 +1,12 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 
 class ReferalPage extends StatefulWidget {
   const ReferalPage({super.key});
@@ -39,7 +41,7 @@ class _ReferalPageState extends State<ReferalPage> {
         actions: [
           TextButton(
             onPressed: () {
-              // Handle skip action
+              context.pushNamed(RouteNames.home);
             },
             child: Text(
               'Skip',
@@ -103,7 +105,7 @@ class _ReferalPageState extends State<ReferalPage> {
             CustomButton(
               text: "Confirm",
               onTap: () {
-                // Handle confirm action
+                context.pushNamed(RouteNames.home);
               },
             ),
           ],

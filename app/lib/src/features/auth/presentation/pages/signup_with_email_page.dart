@@ -8,22 +8,19 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
-class LoginWithEmailPage extends StatefulWidget {
-  const LoginWithEmailPage({super.key});
+class SignupWithEmailPage extends StatefulWidget {
+  const SignupWithEmailPage({super.key});
 
   @override
-  State<LoginWithEmailPage> createState() => _LoginWithEmailPageState();
+  State<SignupWithEmailPage> createState() => _SignupWithEmailPageState();
 }
 
-class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
+class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
     super.dispose();
   }
 
@@ -41,7 +38,9 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      context.pushReplacementNamed(RouteNames.loginWithEmail);
+                    },
                     child: Text(
                       "Log in",
                       style: context.theme.textStyles.titleLarge,
@@ -51,9 +50,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                   Text("or", style: context.theme.textStyles.titleLarge),
 
                   TextButton(
-                    onPressed: () {
-                      context.pushReplacementNamed(RouteNames.signupWithEmail);
-                    },
+                    onPressed: () {},
                     child: Text(
                       "Sign up",
                       style: context.theme.textStyles.titleLarge,
@@ -64,71 +61,9 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
               Gap(63),
               CustomTextField(
                 controller: _emailController,
-                labelText: "E-mail",
-                hintText: "E-mail",
+                labelText: "Email",
+                hintText: "Email",
                 keyboardType: TextInputType.emailAddress,
-              ),
-
-              Gap(16),
-
-              CustomTextField(
-                controller: _passwordController,
-                labelText: "Password",
-                hintText: "Password",
-                obscureText: !_isPasswordVisible,
-                suffixIcon: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: _isPasswordVisible
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeOpened.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          )
-                        : SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeClosed.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-
-              Gap(16),
-
-              Align(
-                alignment: Alignment.centerLeft,
-                child: GestureDetector(
-                  onTap: () {
-                    context.pushNamed(RouteNames.changePassword);
-                  },
-                  child: Text(
-                    "Forgot your password?",
-                    style: context.theme.textStyles.labelText.copyWith(
-                      fontSize: 14,
-                      color: AppColors.textGray2,
-                    ),
-                  ),
-                ),
               ),
 
               Gap(28),
@@ -136,7 +71,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
               CustomButton(
                 text: "Continue",
                 onTap: () {
-                  context.pushNamed(RouteNames.home);
+                  context.pushNamed(RouteNames.createPassword);
                 },
               ),
 
@@ -167,9 +102,9 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                 spacing: 16,
                 children: [
                   CustomOutlinedButton(
-                    text: "Continue with number",
+                    text: "Continue with phone",
                     onTap: () {
-                      context.pushNamed(RouteNames.login);
+                      context.pushNamed(RouteNames.signup);
                     },
                   ),
                   CustomButton(

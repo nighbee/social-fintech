@@ -16,9 +16,9 @@ class HomePage extends StatelessWidget {
             Text('Welcome to BrightBund'),
             TextButton(
               onPressed: () {
-                context.pushNamed(RouteNames.login);
+                context.pushNamed(RouteNames.signup);
               },
-              child: Text("Login"),
+              child: Text("Sign up"),
             ),
           ],
         ),
