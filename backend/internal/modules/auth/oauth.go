@@ -7,6 +7,8 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 )
 
+
+// базовая верификация для OAuth
 type ProviderType string
 
 const (
