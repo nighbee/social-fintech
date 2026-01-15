@@ -1,78 +1,86 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/logger"
-	swagger "github.com/swaggo/fiber-swagger"
-
-	_ "github.com/brightbund-backend/docs"
+	"github.com/brightbund-backend/internal/config"
+	"github.com/brightbund-backend/internal/modules/auth"
+	"github.com/brightbund-backend/internal/platform/cache"
+	"github.com/brightbund-backend/internal/platform/database"
+	"github.com/brightbund-backend/internal/server"
 )
 
-// @title BrightBund API
-// @version 1.0
-// @description API for the BrightBund social platform with economy, maps, chat, and gamification
-// @termsOfService http://swagger.io/terms/
-
-// @contact.name API Support
-// @contact.email support@brightbund.com
-
-// @license.name MIT
-// @license.url https://opensource.org/licenses/MIT
-
-// @host localhost:8081
-// @BasePath /api/v1
-// @schemes http https
-
-// @securityDefinitions.apikey Bearer
-// @in header
-// @name Authorization
-// @description Type "Bearer" followed by a space and JWT token
-
 func main() {
-	app := fiber.New(fiber.Config{
-		AppName: "BrightBund API v1.0",
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
+	db, err := database.New(database.Config{
+		Host:            cfg.Database.Host,
+		Port:            cfg.Database.Port,
+		User:            cfg.Database.User,
+		Password:        cfg.Database.Password,
+		DBName:          cfg.Database.Name,
+		SSLMode:         cfg.Database.SSLMode,
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
 	})
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer db.Close()
 
-	// Middleware
-	app.Use(logger.New())
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-	}))
-
-	// Root endpoint
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"message": "BrightBund API is running",
-			"version": "1.0.0",
-			"docs":    "/swagger/index.html",
-		})
+	redisCache, err := cache.New(cache.Config{
+		Address:      cfg.Redis.Address,
+		Password:     cfg.Redis.Password,
+		DB:           cfg.Redis.DB,
+		PoolSize:     cfg.Redis.PoolSize,
+		MinIdleConns: cfg.Redis.MinIdleConns,
 	})
+	if err != nil {
+		log.Fatalf("failed to connect to redis: %v", err)
+	}
+	defer redisCache.Close()
 
-	// Swagger documentation
-	app.Get("/swagger/*", swagger.WrapHandler)
+	if err := db.HealthCheck(context.Background()); err != nil {
+		log.Fatalf("db health check failed: %v", err)
+	}
+	if err := redisCache.HealthCheck(context.Background()); err != nil {
+		log.Fatalf("redis health check failed: %v", err)
+	}
 
-	// API v1 routes
-	api := app.Group("/api/v1")
+	appleVerifier, err := auth.NewOIDCVerifier(auth.ProviderApple, cfg.OAuth.Apple.Issuer, cfg.OAuth.Apple.ClientID)
+	if err != nil {
+		log.Fatalf("apple verifier init failed: %v", err)
+	}
+	googleVerifier, err := auth.NewOIDCVerifier(auth.ProviderGoogle, cfg.OAuth.Google.Issuer, cfg.OAuth.Google.ClientID)
+	if err != nil {
+		log.Fatalf("google verifier init failed: %v", err)
+	}
 
-	// Health check
-	api.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{
-			"status":  "healthy",
-			"service": "brightbund-api",
-		})
+	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
+	authRepo := auth.NewRepository(db.DB)
+	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
+		auth.ProviderApple:  appleVerifier,
+		auth.ProviderGoogle: googleVerifier,
 	})
+	authHandler := auth.NewHandler(authService)
 
-	// Placeholder routes (to be implemented)
-	api.Get("/ping", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"message": "pong"})
-	})
+	app := server.New(cfg, authHandler, jwtManager)
 
-	fmt.Println("🚀 Server starting on port 8080...")
-	fmt.Println("📚 Swagger docs: http://localhost:8081/swagger/index.html")
-	log.Fatal(app.Listen(":8080"))
+	addr := fmt.Sprintf(":%d", cfg.Server.Port)
+	log.Printf("server starting on %s", addr)
+	if err := app.Listen(addr); err != nil {
+		log.Fatalf("server stopped: %v", err)
+	}
 }
