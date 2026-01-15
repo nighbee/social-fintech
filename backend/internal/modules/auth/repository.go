@@ -7,6 +7,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+
+//Первый слой репо для базовых функций
+
 type Repository interface {
 	GetUserByIdentity(ctx context.Context, provider, subject string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
