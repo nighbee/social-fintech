@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
+//Слой сервиса так же включает в себя репо + jwt и верификация логина рефреша и логаута
+
 type Service struct {
 	repo      Repository
 	jwt       *JWTManager
