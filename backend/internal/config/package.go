@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -16,6 +17,17 @@ type Config struct {
 	Logging  LoggingConfig  `yaml:"logging"`
 	JWT      JWTConfig      `yaml:"jwt"`
 	CORS     CORSConfig     `yaml:"cors"`
+	OAuth OAuthConfig 		`yaml:"oauth"`
+}
+
+type OAuthConfig struct {
+	Apple OAuthProviderConfig `yaml:"apple"`
+	Google OAuthProviderConfig `yaml:"google"`
+}
+
+type OAuthProviderConfig  struct {
+	ClientID string `yaml:"client_id"`
+	Issuer string `yaml:"issuer"`
 }
 
 type ServerConfig struct {
@@ -143,6 +155,20 @@ func overrideFromEnv(cfg *Config) {
 	if v := os.Getenv("JWT_SECRET"); v != "" {
 		cfg.JWT.Secret = v
 	}
+
+	// oauth
+	if v := os.Getenv("OAUTH_APPLE_CLIENT_ID"); v != "" {
+		cfg.OAuth.Apple.ClientID = v
+	}
+	if v := os.Getenv("OAUTH_APPLE_ISSUER"); v != "" {
+		cfg.OAuth.Apple.Issuer = v
+	}
+	if v := os.Getenv("OAUTH_GOOGLE_CLIENT"); v != "" {
+		cfg.OAuth.Google.ClientID = v
+	}
+	if v := os.Getenv("OAUTH_GOOGLE_ISSUER"); v != "" {
+		cfg.OAuth.Google.Issuer = v
+	}
 }
 
 func (c *Config) Validate() error {
@@ -158,5 +184,33 @@ func (c *Config) Validate() error {
 	if c.Server.Port == 0 {
 		return fmt.Errorf("server port is required")
 	}
+
+	if c.OAuth.Apple.ClientID == "" {
+		return fmt.Errorf("oauth apple client id is required")
+	}
+
+	if c.OAuth.Google.ClientID == "" {
+		return fmt.Errorf("oauth google clinet id if required")
+	}
+
 	return nil
+}
+
+func parseDurationEnv(raw string) (time.Duration, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, fmt.Errorf("empty duration")
+	}
+
+	//если есть буквы парсить как по индексу
+	if strings.IndexFunc(raw, func(r rune) bool {return r < '0' || r > '9'}) != -1 {
+		return time.ParseDuration(raw)
+	}
+
+	//если нет то парсить быстрее через атой
+	secs, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, err
+	}
+	return time.Duration(secs) * time.Second, nil
 }
