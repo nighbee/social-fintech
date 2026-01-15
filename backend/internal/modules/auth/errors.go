@@ -2,6 +2,8 @@ package auth
 
 import "errors"
 
+//errors
+
 var (
 	ErrInvalidProviderToken = errors.New("invalid+provider_token")
 	ErrEmailRequired = errors.New("email_required")
