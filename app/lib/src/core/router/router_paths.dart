@@ -20,6 +20,15 @@ class RoutePaths {
   // Home routes
   static const String home = '/home';
 
+  // Map routes
+  static const String map = '/map';
+
+  // Rating routes
+  static const String rating = '/rating';
+
+  // Chats routes
+  static const String chats = '/chats';
+
   // Profile routes
   static const String profile = '/profile';
   static const String settings = '/settings';

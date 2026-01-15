@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:app/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
@@ -15,7 +16,13 @@ import 'package:app/src/features/auth/presentation/pages/referal_page.dart';
 import 'package:app/src/features/auth/presentation/pages/create_password_page.dart';
 import 'package:app/src/features/auth/presentation/pages/change_password_page.dart';
 import 'package:app/src/features/home/presentation/pages/home_page.dart';
+import 'package:app/src/features/map/presentation/pages/map_page.dart';
+import 'package:app/src/features/rating/presentation/pages/rating_page.dart';
+import 'package:app/src/features/chats/presentation/pages/chats_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/developer_features_page.dart';
+import 'package:app/src/core/widgets/custom_app_bar.dart';
+import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
+import 'package:app/src/core/theme/theme.dart';
 
 part 'router_paths.dart';
 part 'router_names.dart';

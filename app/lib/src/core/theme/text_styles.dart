@@ -70,6 +70,13 @@ abstract class TextStyles {
     fontWeight: FontWeight.w500,
     color: AppColors.whiteBackground,
   );
+
+  // Navigation bar styles
+  static const titleHeadline = TextStyle(
+    fontSize: 12,
+    fontFamily: FontFamily.lora,
+    fontWeight: FontWeight.w500,
+  );
 }
 
 class AppTextStyles {
@@ -82,6 +89,7 @@ class AppTextStyles {
   TextStyle get codePageTitle => TextStyles.mainTitle;
   TextStyle get codePageSubtitle => TextStyles.bodyMain;
   TextStyle get sectionHeading => TextStyles.sectionHeading;
+  TextStyle get titleHeadline => TextStyles.titleHeadline;
 }
 
 extension TextStyleThemeDataExtension on ThemeData {

@@ -109,16 +109,40 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 },
               ),
 
+              // Map route
+              GoRoute(
+                path: RoutePaths.map,
+                name: RouteNames.map,
+                pageBuilder: (context, state) {
+                  return const NoTransitionPage(child: MapPage());
+                },
+              ),
+
+              // Rating route
+              GoRoute(
+                path: RoutePaths.rating,
+                name: RouteNames.rating,
+                pageBuilder: (context, state) {
+                  return const NoTransitionPage(child: RatingPage());
+                },
+              ),
+
+              // Chats route
+              GoRoute(
+                path: RoutePaths.chats,
+                name: RouteNames.chats,
+                pageBuilder: (context, state) {
+                  return const NoTransitionPage(child: ChatsPage());
+                },
+              ),
+
               // Profile route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.profile,
                 name: RouteNames.profile,
                 redirect: AuthGuard,
-                builder: (context, state) {
-                  return Scaffold(
-                    appBar: AppBar(title: const Text('Profile')),
-                    body: const Center(child: Text('Profile Page')),
-                  );
+                pageBuilder: (context, state) {
+                  return NoTransitionPage(child: ProfilePage());
                 },
                 routes: [
                   GoRoute(
