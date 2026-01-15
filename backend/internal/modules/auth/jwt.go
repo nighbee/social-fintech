@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+//jwt с claims создал для токенов в OAuth
+
 const (
 	tokenTypeAccess  = "access"
 	tokenTypeRefresh = "refresh"
