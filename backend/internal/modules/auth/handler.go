@@ -2,6 +2,8 @@ package auth
 
 import "github.com/gofiber/fiber/v2"
 
+//последний layer хэндлера для логина и логаута
+
 type Handler struct {
 	service *Service
 }
