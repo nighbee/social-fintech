@@ -67,14 +67,73 @@ definitions:
         enum:
           - apple
           - google
+      user_agent:
+        type: string
+      app_version:
+        type: string
     required:
       - device_id
       - provider_token
       - provider_type
     type: object
+  internal_modules_auth.EmailRegisterRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      date_of_birth:
+        format: date
+        type: string
+      referral:
+        type: string
+      device_id:
+        type: string
+      user_agent:
+        type: string
+      app_version:
+        type: string
+    required:
+      - email
+      - password
+      - first_name
+      - last_name
+      - date_of_birth
+      - device_id
+    type: object
+  internal_modules_auth.EmailLoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+      device_id:
+        type: string
+      user_agent:
+        type: string
+      app_version:
+        type: string
+    required:
+      - email
+      - password
+      - device_id
+    type: object
+  internal_modules_auth.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+      - refresh_token
+    type: object
   internal_modules_auth.LoginResponse:
     properties:
       access_token:
+        type: string
+      refresh_token:
         type: string
       user:
         $ref: "#/definitions/internal_modules_auth.User"
@@ -93,7 +152,12 @@ definitions:
         type: string
       created_at:
         type: string
+      date_of_birth:
+        format: date
+        type: string
       email:
+        type: string
+      first_name:
         type: string
       id:
         type: string
@@ -101,10 +165,94 @@ definitions:
         type: boolean
       last_active_at:
         type: string
+      last_name:
+        type: string
+      referral_code:
+        type: string
       updated_at:
         type: string
       username:
         type: string
+    type: object
+  internal_modules_auth.PhoneCodeRequest:
+    properties:
+      country_code:
+        type: string
+      phone_number:
+        type: string
+      purpose:
+        type: string
+        enum:
+          - login
+          - register
+    required:
+      - country_code
+      - phone_number
+      - purpose
+    type: object
+
+  internal_modules_auth.PhoneCodeResponse:
+    properties:
+      verification_id:
+        type: string
+      expires_at:
+        type: string
+    type: object
+  internal_modules_auth.PhoneVerifyRequest:
+    properties:
+      verification_id:
+        type: string
+      code:
+        type: string
+      device_id:
+        type: string
+      user_agent:
+        type: string
+      app_version:
+        type: string
+    required:
+      - verification_id
+      - code
+      - device_id
+    type: object
+  internal_modules_auth.PhoneVerifyResponse:
+    properties:
+      verified:
+        type: boolean
+      verification_id:
+        type: string
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: "#/definitions/internal_modules_auth.User"
+    type: object
+  internal_modules_auth.PhoneRegisterRequest:
+    properties:
+      verification_id:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      date_of_birth:
+        format: date
+        type: string
+      referral:
+        type: string
+      device_id:
+        type: string
+      user_agent:
+        type: string
+      app_version:
+        type: string
+    required:
+      - verification_id
+      - first_name
+      - last_name
+      - date_of_birth
+      - device_id
     type: object
   internal_modules_economy.Currency:
     enum:
@@ -329,7 +477,7 @@ paths:
       consumes:
         - application/json
       parameters:
-        - description: Login request
+        - description: OAuth login request
           in: body
           name: request
           required: true
@@ -346,7 +494,209 @@ paths:
           description: Bad Request
           schema:
             $ref: "#/definitions/fiber.Map"
-      summary: Login or register with OAuth provider
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: OAuth login or register
+      tags:
+        - Auth
+
+  /auth/register-email:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Email registration request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_auth.EmailRegisterRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "409":
+          description: Conflict
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Register with email and password
+      tags:
+        - Auth
+
+  /auth/login-email:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Email login request
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_auth.EmailLoginRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Login with email and password
+      tags:
+        - Auth
+
+  /auth/refresh:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Refresh token
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_auth.RefreshRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Refresh tokens
+      tags:
+        - Auth
+
+  /auth/logout:
+    post:
+      produces:
+        - application/json
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Logout (revoke session)
+      tags:
+        - Auth
+  /auth/phone/request:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Request SMS code
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_auth.PhoneCodeRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_auth.PhoneCodeResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "404":
+          description: Not Found
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "409":
+          description: Conflict
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Request SMS verification code
+      tags:
+        - Auth
+
+  /auth/phone/verify:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Verify SMS code
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_auth.PhoneVerifyRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_auth.PhoneVerifyResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "404":
+          description: Not Found
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Verify SMS code
+      tags:
+        - Auth
+
+  /auth/register-phone:
+    post:
+      consumes:
+        - application/json
+      parameters:
+        - description: Complete phone registration
+          in: body
+          name: request
+          required: true
+          schema:
+            $ref: "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+      produces:
+        - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+        "400":
+          description: Bad Request
+          schema:
+            $ref: "#/definitions/fiber.Map"
+        "409":
+          description: Conflict
+          schema:
+            $ref: "#/definitions/fiber.Map"
+      summary: Register with phone number
       tags:
         - Auth
   /economy/ledger:
