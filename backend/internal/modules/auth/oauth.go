@@ -7,15 +7,17 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc"
 )
 
-
-// базовая верификация для OAuth
+//для понимания провайдера входа
 type ProviderType string
 
 const (
 	ProviderApple  ProviderType = "apple"
 	ProviderGoogle ProviderType = "google"
+	ProviderEmail  ProviderType = "email"
+	ProviderPhone  ProviderType = "phone"
 )
 
+// нормализованные данные с токена
 type ProviderUser struct {
 	Provider ProviderType
 	Subject  string
@@ -23,16 +25,20 @@ type ProviderUser struct {
 	Name     string
 }
 
+//всего одна функция интерфейса для верификации
 type OAuthVerifier interface {
 	Verify(ctx context.Context, idToken string) (*ProviderUser, error)
 }
 
+// OIDC проверка для Apple/Google
 type OIDCVerifier struct {
 	provider ProviderType
 	verifier *oidc.IDTokenVerifier
 }
 
-func NewOIDCVerifier(provider ProviderType, issuer, clienID string) (*OIDCVerifier, error) {
+
+//инициализация именно oauth с client_id
+func NewOIDCVerifier(provider ProviderType, issuer, clientID string) (*OIDCVerifier, error) {
 	ctx := context.Background()
 	oidcProvider, err := oidc.NewProvider(ctx, issuer)
 	if err != nil {
@@ -40,7 +46,7 @@ func NewOIDCVerifier(provider ProviderType, issuer, clienID string) (*OIDCVerifi
 	}
 
 	verifier := oidcProvider.Verifier(&oidc.Config{
-		ClientID: clienID,
+		ClientID: clientID,
 	})
 	return &OIDCVerifier{
 		provider: provider,
@@ -48,6 +54,8 @@ func NewOIDCVerifier(provider ProviderType, issuer, clienID string) (*OIDCVerifi
 	}, nil
 }
 
+
+// валидирует айди токен и вытаскивает claims
 func (v *OIDCVerifier) Verify(ctx context.Context, idToken string) (*ProviderUser, error) {
 	token, err := v.verifier.Verify(ctx, idToken)
 	if err != nil {
@@ -69,8 +77,8 @@ func (v *OIDCVerifier) Verify(ctx context.Context, idToken string) (*ProviderUse
 
 	return &ProviderUser{
 		Provider: v.provider,
-		Subject: sub,
-		Email: email,
-		Name: name,
+		Subject:  sub,
+		Email:    email,
+		Name:     name,
 	}, nil
 }
