@@ -1,0 +1,48 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "brightbund (dev, env: dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main_dev.dart",
+      "args": [
+        "--flavor",
+        "dev"
+      ]
+    },
+    {
+      "name": "brightbund (dev, env: prod)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main_prod.dart",
+      "args": [
+        "--flavor",
+        "dev"
+      ]
+    },
+    {
+      "name": "brightbund (release, env: dev)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main_dev.dart",
+      "flutterMode": "release",
+      "args": [
+        "--flavor",
+        "prod"
+      ]
+    },
+    {
+      "name": "brightbund (release, env: prod)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main_prod.dart",
+      "flutterMode": "release",
+      "args": [
+        "--flavor",
+        "prod"
+      ]
+    }
+  ]
+}
+
