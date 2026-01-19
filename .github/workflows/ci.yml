@@ -38,7 +38,6 @@ jobs:
         with:
           version: latest
           working-directory: ./backend
-          args: --timeout=5m
 
       - name: Run Unit Tests
         run: |
