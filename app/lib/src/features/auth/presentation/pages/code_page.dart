@@ -31,12 +31,12 @@ class _CodePageState extends State<CodePage> {
             Gap(40),
             Text(
               "Enter the code",
-              style: context.theme.textStyles.codePageTitle,
+              style: context.theme.textStyles.titleXLarge,
             ),
             Gap(16),
             Text(
               "Enter the code we've sent by SMS to $_phoneNumber:",
-              style: context.theme.textStyles.codePageSubtitle,
+              style: context.theme.textStyles.bodyMedium,
             ),
             Gap(40),
             Center(

@@ -58,7 +58,7 @@ class CustomButton extends StatelessWidget {
                       if (icon != null) icon!,
                       Text(
                         text,
-                        style: textStyle ?? Theme.of(context).textStyles.buttonText,
+                        style: textStyle ?? Theme.of(context).textStyles.bodyMediumBold,
                       ),
                     ],
                   ),

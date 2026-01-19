@@ -36,6 +36,7 @@ class RoutePaths {
   // Developer features
   static const String developerFeatures = '/developer_features';
   static const String log = '/log';
+  static const String widgetBook = '/widget_book';
 
   // Add more routes as needed
 }

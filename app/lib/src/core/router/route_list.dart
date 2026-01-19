@@ -18,7 +18,7 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
         builder: (context, state) => const DeveloperFeaturesPage(),
         routes: [
           GoRoute(
-            path: RoutePaths.log,
+            path: 'log',
             name: RouteNames.log,
             builder: (context, state) => TalkerScreen(
               talker: talker,
@@ -28,6 +28,11 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 TalkerLogType.httpResponse.key: Colors.green,
               }),
             ),
+          ),
+          GoRoute(
+            path: 'widget_book',
+            name: RouteNames.widgetBook,
+            builder: (context, state) => const WidgetBookPage(),
           ),
         ],
       ),

@@ -88,7 +88,7 @@ class _CodeInputFieldState extends State<CodeInputField> {
                       FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(1),
                     ],
-                    style: context.theme.textStyles.inputText.copyWith(
+                    style: context.theme.textStyles.bodyLarge.copyWith(
                       fontSize: 24,
                       color: AppColors.textGray1,
                     ),

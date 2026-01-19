@@ -58,12 +58,12 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
             Gap(40),
             Text(
               "Create a password",
-              style: context.theme.textStyles.codePageTitle,
+              style: context.theme.textStyles.titleXLarge,
             ),
             Gap(16),
             Text(
               "It needs to be at least 8 characters long and contain a number or symbol",
-              style: context.theme.textStyles.codePageSubtitle,
+              style: context.theme.textStyles.bodyMedium,
             ),
             Gap(40),
             CustomTextField(

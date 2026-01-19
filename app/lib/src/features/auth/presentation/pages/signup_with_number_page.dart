@@ -177,7 +177,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                       color: AppColors.textGray2,
                     ),
                   ),
-                  Text("or", style: context.theme.textStyles.dividerText),
+                  Text("or", style: context.theme.textStyles.bodyBold),
                   Expanded(
                     child: Container(
                       width: double.infinity,
@@ -202,7 +202,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                     icon: Assets.icons.appleLogo.svg(),
                     onTap: () {},
                     padding: EdgeInsets.symmetric(vertical: 10),
-                    textStyle: context.theme.textStyles.buttonText.copyWith(
+                    textStyle: context.theme.textStyles.bodyMediumBold.copyWith(
                       fontSize: 17,
                     ),
                   ),
@@ -211,14 +211,14 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                     icon: Assets.icons.googleLogo.svg(),
                     onTap: () {},
                     padding: EdgeInsets.symmetric(vertical: 10),
-                    textStyle: context.theme.textStyles.buttonText.copyWith(
+                    textStyle: context.theme.textStyles.bodyMediumBold.copyWith(
                       fontSize: 17,
                     ),
                   ),
                   Text(
                     "Continuing, I agree with\nTerms and conditions.",
                     textAlign: TextAlign.center,
-                    style: context.theme.textStyles.labelText.copyWith(
+                    style: context.theme.textStyles.caption.copyWith(
                       fontSize: 14,
                     ),
                   ),

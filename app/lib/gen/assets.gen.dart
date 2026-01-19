@@ -46,6 +46,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/close.svg
   SvgGenImage get close => const SvgGenImage('assets/icons/close.svg');
 
+  /// File path: assets/icons/coin.svg
+  SvgGenImage get coin => const SvgGenImage('assets/icons/coin.svg');
+
   /// File path: assets/icons/eye_closed.svg
   SvgGenImage get eyeClosed => const SvgGenImage('assets/icons/eye_closed.svg');
 
@@ -62,6 +65,10 @@ class $AssetsIconsGen {
   /// File path: assets/icons/map_icon.svg
   SvgGenImage get mapIcon => const SvgGenImage('assets/icons/map_icon.svg');
 
+  /// File path: assets/icons/person_favourites.svg
+  SvgGenImage get personFavourites =>
+      const SvgGenImage('assets/icons/person_favourites.svg');
+
   /// File path: assets/icons/profile_icon.svg
   SvgGenImage get profileIcon =>
       const SvgGenImage('assets/icons/profile_icon.svg');
@@ -69,6 +76,13 @@ class $AssetsIconsGen {
   /// File path: assets/icons/rating_icon.svg
   SvgGenImage get ratingIcon =>
       const SvgGenImage('assets/icons/rating_icon.svg');
+
+  /// File path: assets/icons/settings_icon.svg
+  SvgGenImage get settingsIcon =>
+      const SvgGenImage('assets/icons/settings_icon.svg');
+
+  /// File path: assets/icons/stats_icon.svg
+  SvgGenImage get statsIcon => const SvgGenImage('assets/icons/stats_icon.svg');
 
   /// List of all assets
   List<SvgGenImage> get values => [
@@ -78,13 +92,17 @@ class $AssetsIconsGen {
     calendar,
     chatsIcon,
     close,
+    coin,
     eyeClosed,
     eyeOpened,
     feedIcon,
     googleLogo,
     mapIcon,
+    personFavourites,
     profileIcon,
     ratingIcon,
+    settingsIcon,
+    statsIcon,
   ];
 }
 

@@ -71,7 +71,7 @@ class _InfoPageState extends State<InfoPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Gap(40),
-            Text("Legal Name", style: context.theme.textStyles.sectionHeading),
+            Text("Legal Name", style: context.theme.textStyles.titleMedium),
             Gap(16),
             CustomTextField(
               controller: _firstNameController,
@@ -87,7 +87,7 @@ class _InfoPageState extends State<InfoPage> {
             Gap(40),
             Text(
               "Date of birth",
-              style: context.theme.textStyles.sectionHeading,
+              style: context.theme.textStyles.titleMedium,
             ),
             Gap(16),
             CustomTextField(

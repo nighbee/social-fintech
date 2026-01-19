@@ -45,7 +45,7 @@ class _ReferalPageState extends State<ReferalPage> {
             },
             child: Text(
               'Skip',
-              style: context.theme.textStyles.codePageSubtitle.copyWith(
+              style: context.theme.textStyles.bodyMedium.copyWith(
                 color: AppColors.whiteBackground,
               ),
             ),
@@ -60,12 +60,12 @@ class _ReferalPageState extends State<ReferalPage> {
             Gap(40),
             Text(
               "Have you been invited?",
-              style: context.theme.textStyles.codePageTitle,
+              style: context.theme.textStyles.titleXLarge,
             ),
             Gap(16),
             Text(
               "If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.",
-              style: context.theme.textStyles.codePageSubtitle,
+              style: context.theme.textStyles.bodyMedium,
             ),
             Gap(40),
             CustomTextField(
