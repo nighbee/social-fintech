@@ -6,4 +6,3 @@ void main(List<String> args) {
   debugPrint('=== Running Production Build ===');
   mainWithFlavor(AppFlavor.production, args);
 }
-

@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: ^3.8.1
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -40,6 +40,8 @@ dependencies:
   # ========================
   # Поддержка SVG изображений
   flutter_svg: ^2.0.10+1
+  # Утилита для создания отступов между виджетами
+  gap: ^3.0.1
 
   # ========================
   # Навигация и маршрутизация
@@ -52,6 +54,40 @@ dependencies:
   # ========================
   # Простые настройки и preferences
   shared_preferences: ^2.5.3
+
+  # ========================
+  # Управление состоянием
+  # ========================
+  # BLoC паттерн для архитектуры приложения
+  flutter_bloc: ^8.1.5
+  # Реактивное программирование и работа со стримами
+  rxdart: ^0.28.0
+
+  # ========================
+  # Функциональное программирование
+  # ========================
+  # Either монада для обработки ошибок и результатов
+  fpdart: ^1.1.0
+
+  # ========================
+  # Логирование и отладка
+  # ========================
+  # Основная библиотека логирования
+  talker: ^4.5.4
+  # Flutter интеграция для Talker
+  talker_flutter: ^4.5.4
+  # Логирование Dio запросов
+  talker_dio_logger: ^4.5.4
+  # Логирование BLoC событий
+  talker_bloc_logger: ^4.5.4
+
+  # ========================
+  # Внедрение зависимостей
+  # ========================
+  # Service Locator для управления зависимостями
+  get_it: ^8.0.0
+  # Аннотации для автогенерации DI
+  injectable: ^2.4.2
 
 dev_dependencies:
   flutter_test:
@@ -71,6 +107,16 @@ dev_dependencies:
   build_runner: ^2.4.10
   # Генерация типобезопасных ссылок на ассеты
   flutter_gen_runner: ^5.5.0+1
+  # Генератор для injectable
+  injectable_generator: ^2.7.0
+  # Генератор для freezed (immutable classes)
+  freezed: ^2.5.2
+  # Аннотации для freezed
+  freezed_annotation: ^2.4.4
+  # JSON сериализация
+  json_serializable: ^6.8.0
+  # Аннотации для JSON
+  json_annotation: ^4.9.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
