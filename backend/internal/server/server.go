@@ -1,26 +1,29 @@
 package server
 
 import (
-	"fmt"
+	"strings"
+	"time"
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager) *fiber.App {
+// создает Fiber app, cors auth routes limiter и middleware для бэка
+func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager, authRepo auth.Repository) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	})
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     fmt.Sprintf("%v", cfg.CORS.AllowedOrigins),
-		AllowMethods:     fmt.Sprintf("%v", cfg.CORS.AllowedMethods),
-		AllowHeaders:     fmt.Sprintf("%v", cfg.CORS.AllowedHeaders),
-		ExposeHeaders:    fmt.Sprintf("%v", cfg.CORS.ExposeHeaders),
+		AllowOrigins:     strings.Join(cfg.CORS.AllowedOrigins, ","),
+		AllowMethods:     strings.Join(cfg.CORS.AllowedMethods, ","),
+		AllowHeaders:     strings.Join(cfg.CORS.AllowedHeaders, ","),
+		ExposeHeaders:    strings.Join(cfg.CORS.ExposeHeaders, ","),
 		AllowCredentials: cfg.CORS.AllowCredentials,
 		MaxAge:           int(cfg.CORS.MaxAge.Seconds()),
 	}))
@@ -31,9 +34,22 @@ func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager) *f
 
 	api := app.Group("/api/v1")
 	authGroup := api.Group("/auth")
-	authGroup.Post("/login", authHandler.Login)
-	authGroup.Post("/refresh", authHandler.Refresh)
-	authGroup.Post("/logout", middleware.RequireAuth(jwt), authHandler.Logout)
+
+	authLim := limiter.New(limiter.Config{
+		Max:        10,
+		Expiration: 1 * time.Minute,
+	})
+
+	authGroup.Post("/login", authLim, authHandler.Login)
+	authGroup.Post("/register-email", authLim, authHandler.RegisterEmail)
+	authGroup.Post("/login-email", authLim, authHandler.LoginEmail)
+
+	authGroup.Post("/phone/request", authLim, authHandler.RequestPhoneCode)
+	authGroup.Post("/phone/verify", authLim, authHandler.VerifyPhoneCode)
+	authGroup.Post("/register-phone", authLim, authHandler.RegisterPhone)
+
+	authGroup.Post("/refresh", authLim, authHandler.Refresh)
+	authGroup.Post("/logout", middleware.RequireAuth(jwt, authRepo), middleware.TouchSession(authRepo), authHandler.Logout)
 
 	return app
 }
