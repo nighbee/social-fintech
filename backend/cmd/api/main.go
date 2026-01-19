@@ -11,9 +11,13 @@ import (
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/server"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// загружает конфиг, подключает бд и инит OAuth jwt 
+	_ = godotenv.Load(".env")
+
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
 		configPath = "config.yaml"
@@ -70,13 +74,15 @@ func main() {
 
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
+
+	smsSender := auth.NewNoopSMSSender()
 	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
 		auth.ProviderApple:  appleVerifier,
 		auth.ProviderGoogle: googleVerifier,
-	})
+	}, smsSender)
 	authHandler := auth.NewHandler(authService)
 
-	app := server.New(cfg, authHandler, jwtManager)
+	app := server.New(cfg, authHandler, jwtManager, authRepo)
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	log.Printf("server starting on %s", addr)
