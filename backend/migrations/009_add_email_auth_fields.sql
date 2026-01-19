@@ -1,0 +1,7 @@
+-- поля для auth юзеров
+ALTER TABLE users
+	ADD COLUMN IF NOT EXISTS password_hash TEXT,
+	ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
+	ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
+	ADD COLUMN IF NOT EXISTS date_of_birth DATE,
+	ADD COLUMN IF NOT EXISTS referral_code VARCHAR(100);
