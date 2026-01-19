@@ -60,12 +60,15 @@ func New(cfg Config) (*Database, error) {
 }
 
 func verifyPostGIS(db *sqlx.DB) error {
-	var version string
-	query := "SELECT PostGIS_Version();"
-	if err := db.Get(&version, query); err != nil {
+	var exists bool
+	query := "SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis')"
+	if err := db.Get(&exists, query); err != nil {
 		return fmt.Errorf("PostGIS not available: %w", err)
 	}
-	fmt.Printf("✅ PostGIS version: %s\n", version)
+	if !exists {
+		return fmt.Errorf("PostGIS extension is not installed")
+	}
+	fmt.Println("PostGIS extension found")
 	return nil
 }
 
@@ -74,8 +77,4 @@ func (db *Database) HealthCheck(ctx context.Context) error {
 	defer cancel()
 
 	return db.PingContext(ctx)
-}
-
-func (db *Database) Close() error {
-	return db.DB.Close()
 }
