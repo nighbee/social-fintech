@@ -40,8 +40,6 @@ cors:
     - http://localhost:3000
     - http://localhost:8081
     - http://localhost:8082
-    - exp://*
-    - http://*
   allowed_methods:
     - GET
     - POST
@@ -59,10 +57,10 @@ cors:
   allow_credentials: true
   max_age: 12h
 
-# oauth:
-#   apple:
-#     client_id: com.your.bundle.id
-#     issuer: https://appleid.apple.com
-#   google:
-#     client_id: your-google-client-id.apps.googleusercontent.com
-#     issuer: https://accounts.google.com
+oauth:
+  apple:
+    client_id: com.your.bundle.id
+    issuer: https://appleid.apple.com
+  google:
+    client_id: your-google-client-id.apps.googleusercontent.com
+    issuer: https://accounts.google.com
