@@ -14,11 +14,12 @@
         },
         "version": "1.0"
     },
-    "host": "localhost:8080",
+    "host": "localhost:8081",
     "basePath": "/api/v1",
     "paths": {
         "/auth/login": {
             "post": {
+                "description": "Authenticate with Apple or Google OAuth token",
                 "consumes": [
                     "application/json"
                 ],
@@ -52,43 +53,9 @@
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
                         }
-                    }
-                }
-            }
-        },
-        "/economy/ledger": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Economy"
-                ],
-                "summary": "Get ledger history",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_modules_economy.LedgerEntry"
-                            }
-                        }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
                         }
@@ -96,8 +63,9 @@
                 }
             }
         },
-        "/economy/transfer": {
+        "/auth/login-email": {
             "post": {
+                "description": "Authenticate using email and password",
                 "consumes": [
                     "application/json"
                 ],
@@ -105,17 +73,17 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Economy"
+                    "Auth"
                 ],
-                "summary": "Transfer currency between users",
+                "summary": "Login with email and password",
                 "parameters": [
                     {
-                        "description": "Transfer request",
+                        "description": "Login request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferRequest"
+                            "$ref": "#/definitions/internal_modules_auth.EmailLoginRequest"
                         }
                     }
                 ],
@@ -123,17 +91,42 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
                         }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Revoke the current session and refresh token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Logout",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     },
-                    "402": {
-                        "description": "Insufficient funds - triggers frontend animation",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
                         }
@@ -147,34 +140,9 @@
                 }
             }
         },
-        "/economy/wallet": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Economy"
-                ],
-                "summary": "Get user wallet",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.WalletResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            },
+        "/auth/phone/request": {
             "post": {
+                "description": "Send SMS verification code to phone number for login or registration",
                 "consumes": [
                     "application/json"
                 ],
@@ -182,324 +150,25 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Economy"
+                    "Auth"
                 ],
-                "summary": "Create user wallet",
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.WalletResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/feed": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Get user feed",
+                "summary": "Request phone verification code",
                 "parameters": [
                     {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/gamification/rank": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Gamification"
-                ],
-                "summary": "Get my rank information",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/gamification.RankInfo"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/gamification/ranks": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Gamification"
-                ],
-                "summary": "Get all rank thresholds",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/gamification.RankThreshold"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/leaderboards/global": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Leaderboard"
-                ],
-                "summary": "Get global leaderboard",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/leaderboards/local/{region_id}": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Leaderboard"
-                ],
-                "summary": "Get regional leaderboard",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Region ID",
-                        "name": "region_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/leaderboards/me": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Leaderboard"
-                ],
-                "summary": "Get my rank and score",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/map/tasks": {
-            "post": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Map"
-                ],
-                "summary": "Create a new task",
-                "parameters": [
-                    {
-                        "description": "Task creation request",
+                        "description": "Phone code request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CreateTaskRequest"
+                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeRequest"
                         }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/internal_modules_map.TaskResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    },
-                    "402": {
-                        "description": "Insufficient funds",
-                        "schema": {
-                            "$ref": "#/definitions/fiber.Map"
-                        }
-                    }
-                }
-            }
-        },
-        "/map/tasks/nearby": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Map"
-                ],
-                "summary": "Find nearby tasks",
-                "parameters": [
-                    {
-                        "type": "number",
-                        "description": "Latitude",
-                        "name": "lat",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "number",
-                        "description": "Longitude",
-                        "name": "lng",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Radius in meters",
-                        "name": "radius",
-                        "in": "query",
-                        "required": true
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/internal_modules_map.TaskResponse"
-                            }
+                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeResponse"
                         }
                     },
                     "400": {
@@ -507,12 +176,25 @@
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
                         }
+                    },
+                    "404": {
+                        "description": "User not found (login purpose)",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    },
+                    "409": {
+                        "description": "Phone already exists (register purpose)",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
                     }
                 }
             }
         },
-        "/payment/webhook/revenuecat": {
+        "/auth/phone/verify": {
             "post": {
+                "description": "Verify the SMS code and complete phone login",
                 "consumes": [
                     "application/json"
                 ],
@@ -520,24 +202,17 @@
                     "application/json"
                 ],
                 "tags": [
-                    "Payment"
+                    "Auth"
                 ],
-                "summary": "Handle RevenueCat webhook",
+                "summary": "Verify phone code",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Webhook secret",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "RevenueCat event",
-                        "name": "event",
+                        "description": "Phone verification request",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/payment.RevenueCatEvent"
+                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyRequest"
                         }
                     }
                 ],
@@ -545,17 +220,149 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid or expired code",
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Get a new access token using refresh token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_auth.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register-email": {
+            "post": {
+                "description": "Create a new account with email, password, and personal details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register with email and password",
+                "parameters": [
+                    {
+                        "description": "Registration request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_auth.EmailRegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already exists",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register-phone": {
+            "post": {
+                "description": "Complete registration after phone verification with personal details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Complete phone registration",
+                "parameters": [
+                    {
+                        "description": "Phone registration request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/fiber.Map"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/fiber.Map"
                         }
@@ -569,84 +376,65 @@
             "type": "object",
             "additionalProperties": true
         },
-        "gamification.Rank": {
-            "type": "string",
-            "enum": [
-                "Quartz",
-                "Amber",
-                "Jade",
-                "Sapphire",
-                "Ruby",
-                "Diamond",
-                "Platinum",
-                "Sovereign"
-            ],
-            "x-enum-varnames": [
-                "RankQuartz",
-                "RankAmber",
-                "RankJade",
-                "RankSapphire",
-                "RankRuby",
-                "RankDiamond",
-                "RankPlatinum",
-                "RankSovereign"
-            ]
-        },
-        "gamification.RankInfo": {
+        "internal_modules_auth.EmailLoginRequest": {
             "type": "object",
             "properties": {
-                "current_rank": {
-                    "$ref": "#/definitions/gamification.Rank"
+                "app_version": {
+                    "type": "string"
                 },
-                "gold_balance": {
-                    "type": "integer"
+                "device_id": {
+                    "type": "string"
                 },
-                "next_rank": {
-                    "$ref": "#/definitions/gamification.RankThreshold"
+                "email": {
+                    "type": "string"
                 },
-                "progress_percent": {
-                    "type": "number"
+                "password": {
+                    "type": "string"
                 },
-                "rank_threshold": {
-                    "$ref": "#/definitions/gamification.RankThreshold"
-                },
-                "user_id": {
+                "user_agent": {
                     "type": "string"
                 }
             }
         },
-        "gamification.RankThreshold": {
+        "internal_modules_auth.EmailRegisterRequest": {
             "type": "object",
             "properties": {
-                "color": {
-                    "description": "Hex color for UI",
+                "app_version": {
                     "type": "string"
                 },
-                "icon": {
-                    "description": "Icon identifier",
+                "date_of_birth": {
+                    "description": "YYYY-MM-DD",
                     "type": "string"
                 },
-                "maxGold": {
-                    "type": "integer",
-                    "format": "int64"
+                "device_id": {
+                    "type": "string"
                 },
-                "minGold": {
-                    "type": "integer",
-                    "format": "int64"
+                "email": {
+                    "type": "string"
                 },
-                "rank": {
-                    "$ref": "#/definitions/gamification.Rank"
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "referral": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
                 }
             }
         },
         "internal_modules_auth.LoginRequest": {
             "type": "object",
-            "required": [
-                "device_id",
-                "provider_token",
-                "provider_type"
-            ],
             "properties": {
+                "app_version": {
+                    "type": "string"
+                },
                 "device_id": {
                     "type": "string"
                 },
@@ -654,15 +442,10 @@
                     "type": "string"
                 },
                 "provider_type": {
-                    "enum": [
-                        "apple",
-                        "google"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/internal_modules_auth.ProviderType"
-                        }
-                    ]
+                    "$ref": "#/definitions/internal_modules_auth.ProviderType"
+                },
+                "user_agent": {
+                    "type": "string"
                 }
             }
         },
@@ -672,8 +455,107 @@
                 "access_token": {
                     "type": "string"
                 },
+                "refresh_token": {
+                    "type": "string"
+                },
                 "user": {
                     "$ref": "#/definitions/internal_modules_auth.User"
+                }
+            }
+        },
+        "internal_modules_auth.PhoneCodeRequest": {
+            "type": "object",
+            "properties": {
+                "country_code": {
+                    "type": "string"
+                },
+                "phone_number": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "description": "login|register",
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_auth.PhoneCodeResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_auth.PhoneRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "referral": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_auth.PhoneVerifyRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_auth.PhoneVerifyResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_modules_auth.User"
+                },
+                "verification_id": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
                 }
             }
         },
@@ -681,12 +563,24 @@
             "type": "string",
             "enum": [
                 "apple",
-                "google"
+                "google",
+                "email",
+                "phone"
             ],
             "x-enum-varnames": [
                 "ProviderApple",
-                "ProviderGoogle"
+                "ProviderGoogle",
+                "ProviderEmail",
+                "ProviderPhone"
             ]
+        },
+        "internal_modules_auth.RefreshRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
         },
         "internal_modules_auth.User": {
             "type": "object",
@@ -697,7 +591,13 @@
                 "created_at": {
                     "type": "string"
                 },
+                "date_of_birth": {
+                    "type": "string"
+                },
                 "email": {
+                    "type": "string"
+                },
+                "first_name": {
                     "type": "string"
                 },
                 "id": {
@@ -709,6 +609,12 @@
                 "last_active_at": {
                     "type": "string"
                 },
+                "last_name": {
+                    "type": "string"
+                },
+                "referral_code": {
+                    "type": "string"
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -716,306 +622,6 @@
                     "type": "string"
                 }
             }
-        },
-        "internal_modules_economy.Currency": {
-            "type": "string",
-            "enum": [
-                "SILVER",
-                "GOLD"
-            ],
-            "x-enum-varnames": [
-                "CurrencySilver",
-                "CurrencyGold"
-            ]
-        },
-        "internal_modules_economy.EntryType": {
-            "type": "string",
-            "enum": [
-                "DEBIT",
-                "CREDIT"
-            ],
-            "x-enum-varnames": [
-                "EntryTypeDebit",
-                "EntryTypeCredit"
-            ]
-        },
-        "internal_modules_economy.LedgerEntry": {
-            "type": "object",
-            "properties": {
-                "account_id": {
-                    "type": "string"
-                },
-                "amount": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.Currency"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "transaction_id": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/internal_modules_economy.EntryType"
-                }
-            }
-        },
-        "internal_modules_economy.TransferRequest": {
-            "type": "object",
-            "required": [
-                "amount",
-                "currency",
-                "reason",
-                "to_user_id"
-            ],
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "enum": [
-                        "SILVER",
-                        "GOLD"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/internal_modules_economy.Currency"
-                        }
-                    ]
-                },
-                "reason": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "to_user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.TransferResponse": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.Currency"
-                },
-                "from_user_id": {
-                    "type": "string"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "to_user_id": {
-                    "type": "string"
-                },
-                "transaction_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.WalletResponse": {
-            "type": "object",
-            "properties": {
-                "gold_balance": {
-                    "type": "integer"
-                },
-                "silver_balance": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_feed.FeedMeta": {
-            "type": "object",
-            "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "degraded": {
-                    "type": "boolean"
-                },
-                "session_duration": {
-                    "$ref": "#/definitions/time.Duration"
-                }
-            }
-        },
-        "internal_modules_feed.FeedResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_modules_feed.Post"
-                    }
-                },
-                "meta": {
-                    "$ref": "#/definitions/internal_modules_feed.FeedMeta"
-                }
-            }
-        },
-        "internal_modules_feed.Post": {
-            "type": "object",
-            "properties": {
-                "author_id": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_leaderboard.LeaderboardEntry": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "rank": {
-                    "type": "integer"
-                },
-                "score": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_map.CreateTaskRequest": {
-            "type": "object",
-            "required": [
-                "location",
-                "reward",
-                "title"
-            ],
-            "properties": {
-                "location": {
-                    "$ref": "#/definitions/internal_modules_map.Location"
-                },
-                "reward": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 3
-                }
-            }
-        },
-        "internal_modules_map.Location": {
-            "type": "object",
-            "required": [
-                "lat",
-                "lng"
-            ],
-            "properties": {
-                "lat": {
-                    "type": "number"
-                },
-                "lng": {
-                    "type": "number"
-                }
-            }
-        },
-        "internal_modules_map.TaskResponse": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "creator_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "location": {
-                    "$ref": "#/definitions/internal_modules_map.Location"
-                },
-                "reward": {
-                    "type": "integer"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "payment.RevenueCatEvent": {
-            "type": "object",
-            "properties": {
-                "app_user_id": {
-                    "type": "string"
-                },
-                "data": {
-                    "type": "object",
-                    "additionalProperties": true
-                },
-                "environment": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "product_id": {
-                    "type": "string"
-                },
-                "purchase_date": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "time.Duration": {
-            "type": "integer",
-            "format": "int64",
-            "enum": [
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
-                3600000000000
-            ],
-            "x-enum-varnames": [
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
-                "Hour"
-            ]
         }
     },
     "securityDefinitions": {
