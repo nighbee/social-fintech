@@ -78,6 +78,7 @@ dependencies:
   talker_flutter: ^4.5.4
   # Логирование Dio запросов
   talker_dio_logger: ^4.5.4
+  dio: ^5.4.3+1
   # Логирование BLoC событий
   talker_bloc_logger: ^4.5.4
 
@@ -88,6 +89,7 @@ dependencies:
   get_it: ^8.0.0
   # Аннотации для автогенерации DI
   injectable: ^2.4.2
+  json_annotation: ^4.9.0
 
 dev_dependencies:
   flutter_test:
@@ -116,7 +118,6 @@ dev_dependencies:
   # JSON сериализация
   json_serializable: ^6.8.0
   # Аннотации для JSON
-  json_annotation: ^4.9.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
