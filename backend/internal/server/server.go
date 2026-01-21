@@ -10,6 +10,9 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
+
+	_ "github.com/brightbund-backend/docs"
+	swagger "github.com/swaggo/fiber-swagger"
 )
 
 // создает Fiber app, cors auth routes limiter и middleware для бэка
@@ -31,6 +34,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager, au
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
+
+	// Swagger documentation
+	app.Get("/swagger/*", swagger.FiberWrapHandler())
 
 	api := app.Group("/api/v1")
 	authGroup := api.Group("/auth")

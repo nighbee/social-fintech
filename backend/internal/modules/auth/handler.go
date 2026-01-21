@@ -13,7 +13,17 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// логин пост запрос на /auth/login 
+// Login godoc
+// @Summary Login or register with OAuth provider
+// @Description Authenticate with Apple or Google OAuth token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login request"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} fiber.Map
+// @Failure 401 {object} fiber.Map
+// @Router /auth/login [post]
 func (h *Handler) Login(c *fiber.Ctx) error {
 	var req LoginRequest
 
@@ -46,7 +56,17 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/register-email post
+// RegisterEmail godoc
+// @Summary Register with email and password
+// @Description Create a new account with email, password, and personal details
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body EmailRegisterRequest true "Registration request"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} fiber.Map
+// @Failure 409 {object} fiber.Map "Email already exists"
+// @Router /auth/register-email [post]
 func (h *Handler) RegisterEmail(c *fiber.Ctx) error {
 	var req EmailRegisterRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -76,7 +96,16 @@ func (h *Handler) RegisterEmail(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/login-email post
+// LoginEmail godoc
+// @Summary Login with email and password
+// @Description Authenticate using email and password
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body EmailLoginRequest true "Login request"
+// @Success 200 {object} LoginResponse
+// @Failure 401 {object} fiber.Map
+// @Router /auth/login-email [post]
 func (h *Handler) LoginEmail(c *fiber.Ctx) error {
 	var req EmailLoginRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -97,7 +126,18 @@ func (h *Handler) LoginEmail(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/phone/request post 
+// RequestPhoneCode godoc
+// @Summary Request phone verification code
+// @Description Send SMS verification code to phone number for login or registration
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body PhoneCodeRequest true "Phone code request"
+// @Success 200 {object} PhoneCodeResponse
+// @Failure 400 {object} fiber.Map
+// @Failure 404 {object} fiber.Map "User not found (login purpose)"
+// @Failure 409 {object} fiber.Map "Phone already exists (register purpose)"
+// @Router /auth/phone/request [post]
 func (h *Handler) RequestPhoneCode(c *fiber.Ctx) error {
 	var req PhoneCodeRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -118,7 +158,17 @@ func (h *Handler) RequestPhoneCode(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/phone/verify post
+// VerifyPhoneCode godoc
+// @Summary Verify phone code
+// @Description Verify the SMS code and complete phone login
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body PhoneVerifyRequest true "Phone verification request"
+// @Success 200 {object} PhoneVerifyResponse
+// @Failure 400 {object} fiber.Map "Invalid or expired code"
+// @Failure 404 {object} fiber.Map
+// @Router /auth/phone/verify [post]
 func (h *Handler) VerifyPhoneCode(c *fiber.Ctx) error {
 	var req PhoneVerifyRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -146,8 +196,17 @@ func (h *Handler) VerifyPhoneCode(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-
-// /auth/register-phone post
+// RegisterPhone godoc
+// @Summary Complete phone registration
+// @Description Complete registration after phone verification with personal details
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body PhoneRegisterRequest true "Phone registration request"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} fiber.Map
+// @Failure 409 {object} fiber.Map
+// @Router /auth/register-phone [post]
 func (h *Handler) RegisterPhone(c *fiber.Ctx) error {
 	var req PhoneRegisterRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -175,7 +234,16 @@ func (h *Handler) RegisterPhone(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/refresh post
+// Refresh godoc
+// @Summary Refresh access token
+// @Description Get a new access token using refresh token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body RefreshRequest true "Refresh token request"
+// @Success 200 {object} LoginResponse
+// @Failure 401 {object} fiber.Map
+// @Router /auth/refresh [post]
 func (h *Handler) Refresh(c *fiber.Ctx) error {
 	var req RefreshRequest
 	if err := c.BodyParser(&req); err != nil || req.RefreshToken == "" {
@@ -190,8 +258,17 @@ func (h *Handler) Refresh(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-
-// /auth/logout post
+// Logout godoc
+// @Summary Logout
+// @Description Revoke the current session and refresh token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 204
+// @Failure 401 {object} fiber.Map
+// @Failure 500 {object} fiber.Map
+// @Router /auth/logout [post]
 func (h *Handler) Logout(c *fiber.Ctx) error {
 	sessionID, ok := c.Locals("session_id").(string)
 	if !ok || sessionID == "" {

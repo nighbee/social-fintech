@@ -14,8 +14,27 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// @title BrightBund API
+// @version 1.0
+// @description API for the BrightBund social platform with economy, maps, chat, and gamification
+// @termsOfService https://brightbund.com/terms
+
+// @contact.name API Support
+// @contact.email support@brightbund.com
+
+// @license.name Proprietary
+// @license.url https://brightbund.com/license
+
+// @host localhost:8081
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey Bearer
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token
+
 func main() {
-	// загружает конфиг, подключает бд и инит OAuth jwt 
+	// загружает конфиг, подключает бд и инит OAuth jwt
 	_ = godotenv.Load(".env")
 
 	configPath := os.Getenv("CONFIG_PATH")
