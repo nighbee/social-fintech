@@ -35,82 +35,82 @@ class _ReferalPageState extends State<ReferalPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: context.theme.mainBackground,
-      appBar: CustomAppBar(
-        title: 'Code',
-        actions: [
-          TextButton(
-            onPressed: () {
-              context.pushNamed(RouteNames.home);
-            },
-            child: Text(
-              'Skip',
-              style: context.theme.textStyles.bodyMedium.copyWith(
-                color: AppColors.whiteBackground,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Gap(40),
-            Text(
-              "Have you been invited?",
-              style: context.theme.textStyles.titleXLarge,
-            ),
-            Gap(16),
-            Text(
-              "If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.",
-              style: context.theme.textStyles.bodyMedium,
-            ),
-            Gap(40),
-            CustomTextField(
-              controller: _nicknameController,
-              labelText: "Nickname",
-              hintText: "",
-              prefixIcon: Assets.icons.atsign.svg(
-                width: 30,
-                height: 30,
-                colorFilter: const ColorFilter.mode(
-                  AppColors.whiteBackground,
-                  BlendMode.srcIn,
+            backgroundColor: context.theme.mainBackground,
+            appBar: CustomAppBar(
+              title: 'Code',
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    context.pushNamed(RouteNames.home);
+                  },
+                  child: Text(
+                    'Skip',
+                    style: context.theme.textStyles.bodyMedium.copyWith(
+                      color: AppColors.whiteBackground,
+                    ),
+                  ),
                 ),
-              ),
-              suffixIcon: _nicknameController.text.isNotEmpty
-                  ? GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _nicknameController.clear();
-                        });
-                      },
-                      child: Assets.icons.close.svg(
-                        width: 16,
-                        height: 16,
-                        colorFilter: const ColorFilter.mode(
-                          AppColors.textGray2,
-                          BlendMode.srcIn,
-                        ),
+              ],
+            ),
+            body: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Gap(40),
+                  Text(
+                    "Have you been invited?",
+                    style: context.theme.textStyles.titleXLarge,
+                  ),
+                  Gap(16),
+                  Text(
+                    "If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.",
+                    style: context.theme.textStyles.bodyMedium,
+                  ),
+                  Gap(40),
+                  CustomTextField(
+                    controller: _nicknameController,
+                    labelText: "Nickname",
+                    hintText: "",
+                    prefixIcon: Assets.icons.atsign.svg(
+                      width: 30,
+                      height: 30,
+                      colorFilter: const ColorFilter.mode(
+                        AppColors.whiteBackground,
+                        BlendMode.srcIn,
                       ),
-                    )
-                  : null,
-              onChanged: (value) {
-                setState(() {});
-              },
+                    ),
+                    suffixIcon: _nicknameController.text.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _nicknameController.clear();
+                              });
+                            },
+                            child: Assets.icons.close.svg(
+                              width: 16,
+                              height: 16,
+                              colorFilter: const ColorFilter.mode(
+                                AppColors.textGray2,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          )
+                        : null,
+                    onChanged: (value) {
+                      setState(() {});
+                    },
+                  ),
+                  Gap(40),
+                  CustomButton(
+                    text: "Confirm",
+                    onTap: () {
+                      context.pushNamed(RouteNames.home);
+                    },
+                  ),
+                ],
+              ),
             ),
-            Gap(40),
-            CustomButton(
-              text: "Confirm",
-              onTap: () {
-                context.pushNamed(RouteNames.home);
-              },
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

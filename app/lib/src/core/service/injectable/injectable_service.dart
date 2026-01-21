@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:injectable/injectable.dart';
 import 'package:talker_bloc_logger/talker_bloc_logger.dart';
+import 'package:talker_dio_logger/talker_dio_logger.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 
 import '../../utils/loggers/log.dart';
@@ -26,6 +27,20 @@ Future<void> _initializeTalker() async {
 
   // Configure Log class with the Talker instance
   Log.configureWithTalker(talker);
+
+  // Register TalkerDioLogger for detailed HTTP logging
+  getIt.registerLazySingleton<TalkerDioLogger>(
+    () => TalkerDioLogger(
+      talker: talker,
+      settings: TalkerDioLoggerSettings(
+        printRequestHeaders: true,
+        printResponseHeaders: true,
+        printResponseMessage: true,
+        printRequestData: true,
+        printResponseData: true,
+      ),
+    ),
+  );
 
   // Set up BLoC observer for logging BLoC events
   Bloc.observer = TalkerBlocObserver(

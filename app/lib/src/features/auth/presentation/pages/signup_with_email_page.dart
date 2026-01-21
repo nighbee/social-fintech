@@ -1,9 +1,11 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -17,11 +19,56 @@ class SignupWithEmailPage extends StatefulWidget {
 
 class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
   final TextEditingController _emailController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
     _emailController.dispose();
     super.dispose();
+  }
+
+  Future<void> _register() async {
+    if (_emailController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please enter email')));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final authRepository = getIt<IAuthRepository>(
+      instanceName: 'AuthRepositoryImpl',
+    );
+    final result = await authRepository.registerWithEmail(
+      email: _emailController.text.trim(),
+      password: 'TempPassword123!', // Fixed password
+      firstName: 'User', // Fixed first name
+      lastName: 'Name', // Fixed last name
+      dateOfBirth: '2000-01-01', // Fixed date of birth (YYYY-MM-DD format)
+      referral: null, // Fixed referral code
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    if (!mounted) return;
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+        );
+      },
+      (loginEntity) {
+        // Tokens are automatically saved by the repository
+        // Navigate to home
+        context.go(RoutePaths.home);
+      },
+    );
   }
 
   @override
@@ -69,10 +116,9 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
               Gap(28),
 
               CustomButton(
-                text: "Continue",
-                onTap: () {
-                  context.pushNamed(RouteNames.createPassword);
-                },
+                text: _isLoading ? "Loading..." : "Continue",
+                isDisabled: _isLoading,
+                onTap: _register,
               ),
 
               Gap(57),

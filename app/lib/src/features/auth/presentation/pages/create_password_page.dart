@@ -154,6 +154,13 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
               text: "Create",
               onTap: () {
                 if (_isFormValid) {
+                  if (_passwordController.text !=
+                      _confirmPasswordController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Passwords do not match')),
+                    );
+                    return;
+                  }
                   context.pushNamed(RouteNames.info);
                 }
               },

@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
@@ -29,10 +31,7 @@ class _LoginCodePageState extends State<LoginCodePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Gap(40),
-            Text(
-              "Enter the code",
-              style: context.theme.textStyles.titleXLarge,
-            ),
+            Text("Enter the code", style: context.theme.textStyles.titleXLarge),
             Gap(16),
             Text(
               "Enter the code we've sent by SMS to $_phoneNumber:",
@@ -65,4 +64,3 @@ class _LoginCodePageState extends State<LoginCodePage> {
     );
   }
 }
-

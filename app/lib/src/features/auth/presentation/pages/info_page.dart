@@ -85,10 +85,7 @@ class _InfoPageState extends State<InfoPage> {
               hintText: "Last name",
             ),
             Gap(40),
-            Text(
-              "Date of birth",
-              style: context.theme.textStyles.titleMedium,
-            ),
+            Text("Date of birth", style: context.theme.textStyles.titleMedium),
             Gap(16),
             CustomTextField(
               controller: _dateOfBirthController,
@@ -112,6 +109,15 @@ class _InfoPageState extends State<InfoPage> {
             CustomButton(
               text: "Next",
               onTap: () {
+                if (_firstNameController.text.isEmpty ||
+                    _lastNameController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please fill all required fields'),
+                    ),
+                  );
+                  return;
+                }
                 context.pushNamed(RouteNames.referal);
               },
             ),

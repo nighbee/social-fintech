@@ -1,3 +1,5 @@
+// ignore_for_file: unused_field
+
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
