@@ -2,7 +2,6 @@ package auth
 
 import "time"
 
-
 // модель для аккаунта для хранения имени, юзернейма имейла и дату рождения тд...
 type User struct {
 	ID             string     `db:"id" json:"id"`
@@ -13,15 +12,14 @@ type User struct {
 	LastName       string     `db:"last_name" json:"last_name"`
 	DateOfBirth    *time.Time `db:"date_of_birth" json:"date_of_birth"`
 	ReferralCode   string     `db:"referral_code" json:"referral_code"`
-	PhoneCountry   string     `db:"phone_country_code" json:"-"`
-	PhoneNumber    string     `db:"phone_number" json:"-"`
+	PhoneCountry   *string    `db:"phone_country_code" json:"-"`
+	PhoneNumber    *string    `db:"phone_number" json:"-"`
 	AvatarURL      string     `db:"avatar_url" json:"avatar_url"`
 	IsShadowBanned bool       `db:"is_shadow_banned" json:"is_shadow_banned"`
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
 	LastActiveAt   time.Time  `db:"last_active_at" json:"last_active_at"`
 }
-
 
 // модель для определенной сессии входа, чтобы рефрешить и трекать их (юзер активити)
 type Session struct {
@@ -81,7 +79,6 @@ type EmailRegisterRequest struct {
 	AppVersion  string `json:"app_version"`
 }
 
-
 //логин по имейлу
 type EmailLoginRequest struct {
 	Email      string `json:"email"`
@@ -90,7 +87,6 @@ type EmailLoginRequest struct {
 	UserAgent  string `json:"user_agent"`
 	AppVersion string `json:"app_version"`
 }
-
 
 // запрос для кода верифиакиций нужен
 type PhoneCodeRequest struct {
@@ -105,8 +101,6 @@ type PhoneCodeResponse struct {
 	ExpiresAt      time.Time `json:"expires_at"`
 }
 
-
-
 type PhoneVerifyRequest struct {
 	VerificationID string `json:"verification_id"`
 	Code           string `json:"code"`
@@ -116,13 +110,12 @@ type PhoneVerifyRequest struct {
 }
 
 type PhoneVerifyResponse struct {
-	Verified        bool   `json:"verified"`
-	VerificationID  string `json:"verification_id,omitempty"`
-	AccessToken     string `json:"access_token,omitempty"`
-	RefreshToken    string `json:"refresh_token,omitempty"`
-	User            *User  `json:"user,omitempty"`
+	Verified       bool   `json:"verified"`
+	VerificationID string `json:"verification_id,omitempty"`
+	AccessToken    string `json:"access_token,omitempty"`
+	RefreshToken   string `json:"refresh_token,omitempty"`
+	User           *User  `json:"user,omitempty"`
 }
-
 
 // для завершения регистрации с телефоном
 type PhoneRegisterRequest struct {
@@ -136,7 +129,6 @@ type PhoneRegisterRequest struct {
 	AppVersion     string `json:"app_version"`
 }
 
-
 // ответ единый токенами
 type LoginResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -147,4 +139,10 @@ type LoginResponse struct {
 //запрос на рефреш токена
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
+}
+
+// Swagger error response
+type ErrorResponse struct {
+	Error   string `json:"error" example:"invalid_credentials"`
+	Message string `json:"message,omitempty" example:"Invalid email or password"`
 }
