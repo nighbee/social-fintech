@@ -13,15 +13,20 @@ import (
 
 // бизнес логика которая связывает jwt, repo, sms и verifiers
 type Service struct {
-	repo      Repository
-	jwt       *JWTManager
-	verifiers map[ProviderType]OAuthVerifier
-	sms       SMSSender
-	logger    *zap.Logger
+	repo           Repository
+	jwt            *JWTManager
+	verifiers      map[ProviderType]OAuthVerifier
+	sms            SMSSender
+	logger         *zap.Logger
+	economyService EconomyService
+}
+
+type EconomyService interface {
+	GetOrCreateWallets(ctx context.Context, userID string) error
 }
 
 // конструктор который принимает все свойства структуры сервиса
-func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAuthVerifier, smsSender SMSSender) *Service {
+func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAuthVerifier, smsSender SMSSender, economyService EconomyService) *Service {
 	if smsSender == nil {
 		smsSender = NewNoopSMSSender()
 	}
@@ -29,11 +34,12 @@ func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAu
 	logger, _ := zap.NewProduction()
 
 	return &Service{
-		repo:      repo,
-		jwt:       jwt,
-		verifiers: verifiers,
-		sms:       smsSender,
-		logger:    logger,
+		repo:           repo,
+		jwt:            jwt,
+		verifiers:      verifiers,
+		sms:            smsSender,
+		logger:         logger,
+		economyService: economyService,
 	}
 }
 
@@ -125,6 +131,13 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 			if err := s.repo.CreateUser(ctx, user); err != nil {
 				s.logger.Error("failed_to_create_user", zap.Error(err))
 				return nil, err
+			}
+
+			if err := s.createUserWallets(ctx, user.ID); err != nil {
+				s.logger.Error("failed_to_create_wallets",
+					zap.String("user_id", user.ID),
+					zap.Error(err),
+				)
 			}
 
 			s.logger.Info("new_user_created",
@@ -268,6 +281,13 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		s.logger.Error("failed_to_create_user_in_registration", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
+	}
+
+	if err := s.createUserWallets(ctx, user.ID); err != nil {
+		s.logger.Error("failed_to_create_wallets",
+			zap.String("user_id", user.ID),
+			zap.Error(err),
+		)
 	}
 
 	identity := &Identity{
@@ -561,6 +581,13 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		return nil, err
 	}
 
+	if err := s.createUserWallets(ctx, user.ID); err != nil {
+		s.logger.Error("failed_to_create_wallets",
+			zap.String("user_id", user.ID),
+			zap.Error(err),
+		)
+	}
+
 	identity := &Identity{
 		UserID:    user.ID,
 		Provider:  string(ProviderPhone),
@@ -653,6 +680,26 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*LoginRespo
 // ревоукнуть сессии
 func (s *Service) Logout(ctx context.Context, sessionID string) error {
 	return s.repo.RevokeSession(ctx, sessionID, time.Now())
+}
+
+func (s *Service) createUserWallets(ctx context.Context, userID string) error {
+	if s.economyService == nil {
+		s.logger.Warn("economy_service_not_configured")
+		return nil
+	}
+
+	if err := s.economyService.GetOrCreateWallets(ctx, userID); err != nil {
+		s.logger.Error("wallet_creation_failed",
+			zap.String("user_id", userID),
+			zap.Error(err),
+		)
+		return err
+	}
+
+	s.logger.Info("wallets_created",
+		zap.String("user_id", userID),
+	)
+	return nil
 }
 
 // для генерациии юзернейма универсального

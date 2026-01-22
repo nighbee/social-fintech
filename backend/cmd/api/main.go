@@ -8,6 +8,7 @@ import (
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
+	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -119,16 +120,26 @@ func main() {
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
 
+	economyRepo := economy.NewRepository(db.DB)
+	economyService := economy.NewService(economyRepo)
+	economyHandler := economy.NewHandler(economyService)
+	logger.Info("economy module initialized")
+
 	smsSender := auth.NewNoopSMSSender()
 	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
 		auth.ProviderApple:  appleVerifier,
 		auth.ProviderGoogle: googleVerifier,
-	}, smsSender)
+	}, smsSender, economyService)
 	authHandler := auth.NewHandler(authService)
 
 	logger.Info("auth module initialized")
 
-	app := server.New(cfg, authHandler, jwtManager, authRepo, logger.Get())
+	economyWorker := economy.NewWorker(economyService, economyRepo)
+	economyWorker.Start()
+	defer economyWorker.Stop()
+	logger.Info("economy worker started")
+
+	app := server.New(cfg, authHandler, economyHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
