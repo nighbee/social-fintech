@@ -119,7 +119,20 @@ func main() {
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
 
-	smsSender := auth.NewNoopSMSSender()
+	// Initialize SMS sender based on configuration
+	var smsSender auth.SMSSender
+	if cfg.Firebase.Enabled {
+		firebaseSender, err := auth.NewFirebaseSMSSender(context.Background(), cfg.Firebase.CredentialsPath)
+		if err != nil {
+			logger.Fatal("firebase SMS sender init failed", zap.Error(err))
+		}
+		smsSender = firebaseSender
+		logger.Info("Firebase SMS sender initialized", zap.String("project_id", cfg.Firebase.ProjectID))
+	} else {
+		smsSender = auth.NewNoopSMSSender()
+		logger.Info("Using NoopSMSSender (development mode - OTP codes logged to console)")
+	}
+
 	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
 		auth.ProviderApple:  appleVerifier,
 		auth.ProviderGoogle: googleVerifier,

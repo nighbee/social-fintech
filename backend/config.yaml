@@ -64,3 +64,8 @@ oauth:
   google:
     client_id: your-google-client-id.apps.googleusercontent.com
     issuer: https://accounts.google.com
+
+firebase:
+  enabled: false  # Set to true to enable Firebase SMS
+  credentials_path: ./firebase-service-account.json  # Path to Firebase service account JSON
+  project_id: your-firebase-project-id

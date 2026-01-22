@@ -1,9 +1,10 @@
 -- Migration: Create Auth Tables
 -- Description: Creates users and sessions tables
+-- Note: Email can be NULL for phone-only registrations
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
     avatar_url VARCHAR(500),
     is_shadow_banned BOOLEAN NOT NULL DEFAULT false,

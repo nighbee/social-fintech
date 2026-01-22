@@ -1,0 +1,22 @@
+[debug] [2026-01-22T15:19:37.291Z] ----------------------------------------------------------------------
+[debug] [2026-01-22T15:19:37.294Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\almaz\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js projects:list
+[debug] [2026-01-22T15:19:37.295Z] CLI Version:   15.3.1
+[debug] [2026-01-22T15:19:37.295Z] Platform:      win32
+[debug] [2026-01-22T15:19:37.295Z] Node Version:  v23.11.0
+[debug] [2026-01-22T15:19:37.295Z] Time:          Thu Jan 22 2026 20:19:37 GMT+0500 (Екатеринбург, стандартное время)
+[debug] [2026-01-22T15:19:37.296Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-01-22T15:19:37.306Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-01-22T15:19:37.307Z] > authorizing via signed-in user (mvp.bright.auth@gmail.com)
+[debug] [2026-01-22T15:19:37.314Z] Checked if tokens are valid: true, expires at: 1769098336626
+[debug] [2026-01-22T15:19:37.314Z] Checked if tokens are valid: true, expires at: 1769098336626
+[debug] [2026-01-22T15:19:37.316Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-01-22T15:19:39.253Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 500
+[debug] [2026-01-22T15:19:39.253Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[debug] [2026-01-22T15:19:39.256Z] Request to https://firebase.googleapis.com/v1beta1/projects?pageSize=1000 had HTTP Error: 500, Internal error encountered.
+[debug] [2026-01-22T15:19:39.897Z] FirebaseError: Request to https://firebase.googleapis.com/v1beta1/projects?pageSize=1000 had HTTP Error: 500, Internal error encountered.
+    at responseToError (C:\Users\almaz\AppData\Roaming\npm\node_modules\firebase-tools\lib\responseToError.js:53:12)
+    at RetryOperation._fn (C:\Users\almaz\AppData\Roaming\npm\node_modules\firebase-tools\lib\apiv2.js:320:77)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[error] 
+[error] Error: Failed to list Firebase projects. See firebase-debug.log for more info.

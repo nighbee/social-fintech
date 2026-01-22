@@ -17,17 +17,24 @@ type Config struct {
 	Logging  LoggingConfig  `yaml:"logging"`
 	JWT      JWTConfig      `yaml:"jwt"`
 	CORS     CORSConfig     `yaml:"cors"`
-	OAuth OAuthConfig 		`yaml:"oauth"`
+	OAuth    OAuthConfig    `yaml:"oauth"`
+	Firebase FirebaseConfig `yaml:"firebase"`
 }
 
 type OAuthConfig struct {
-	Apple OAuthProviderConfig `yaml:"apple"`
+	Apple  OAuthProviderConfig `yaml:"apple"`
 	Google OAuthProviderConfig `yaml:"google"`
 }
 
-type OAuthProviderConfig  struct {
+type OAuthProviderConfig struct {
 	ClientID string `yaml:"client_id"`
-	Issuer string `yaml:"issuer"`
+	Issuer   string `yaml:"issuer"`
+}
+
+type FirebaseConfig struct {
+	Enabled         bool   `yaml:"enabled"`
+	CredentialsPath string `yaml:"credentials_path"`
+	ProjectID       string `yaml:"project_id"`
 }
 
 type ServerConfig struct {
@@ -169,6 +176,17 @@ func overrideFromEnv(cfg *Config) {
 	if v := os.Getenv("OAUTH_GOOGLE_ISSUER"); v != "" {
 		cfg.OAuth.Google.Issuer = v
 	}
+
+	// Firebase
+	if v := os.Getenv("FIREBASE_ENABLED"); v != "" {
+		cfg.Firebase.Enabled = v == "true"
+	}
+	if v := os.Getenv("FIREBASE_CREDENTIALS_PATH"); v != "" {
+		cfg.Firebase.CredentialsPath = v
+	}
+	if v := os.Getenv("FIREBASE_PROJECT_ID"); v != "" {
+		cfg.Firebase.ProjectID = v
+	}
 }
 
 func (c *Config) Validate() error {
@@ -203,7 +221,7 @@ func parseDurationEnv(raw string) (time.Duration, error) {
 	}
 
 	//если есть буквы парсить как по индексу
-	if strings.IndexFunc(raw, func(r rune) bool {return r < '0' || r > '9'}) != -1 {
+	if strings.IndexFunc(raw, func(r rune) bool { return r < '0' || r > '9' }) != -1 {
 		return time.ParseDuration(raw)
 	}
 

@@ -141,7 +141,7 @@ func (h *Handler) LoginEmail(c *fiber.Ctx) error {
 
 // RequestPhoneCode godoc
 // @Summary Request Phone Verification Code
-// @Description Send 6-digit SMS code. Purpose: login (phone must exist) or register (phone must not exist)
+// @Description Send 4-digit SMS code. Purpose: login (phone must exist) or register (phone must not exist)
 // @Tags Auth
 // @Accept json
 // @Produce json
