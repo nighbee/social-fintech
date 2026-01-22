@@ -14,8 +14,8 @@ abstract interface class IAuthRepository {
     required String password,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
-    String? referral,
+    required String dateOfBirth,
+    required String referral,
   });
   Future<Either<DomainException, void>> requestPhoneCode({
     required String countryCode,
@@ -35,4 +35,3 @@ abstract interface class IAuthRepository {
   });
   Future<Either<DomainException, void>> logout();
 }
-

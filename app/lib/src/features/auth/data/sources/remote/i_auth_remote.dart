@@ -23,8 +23,8 @@ abstract interface class IAuthRemote {
     required String firstName,
     required String lastName,
     required String deviceId,
-    String? dateOfBirth,
-    String? referral,
+    required String dateOfBirth,
+    required String referral,
   });
   Future<Either<DomainException, PhoneCodeResponseDto>> requestPhoneCode({
     required String countryCode,

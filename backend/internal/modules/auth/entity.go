@@ -13,8 +13,8 @@ type User struct {
 	LastName       string     `db:"last_name" json:"last_name"`
 	DateOfBirth    *time.Time `db:"date_of_birth" json:"date_of_birth"`
 	ReferralCode   string     `db:"referral_code" json:"referral_code"`
-	PhoneCountry   string     `db:"phone_country_code" json:"-"`
-	PhoneNumber    string     `db:"phone_number" json:"-"`
+	PhoneCountry   *string    `db:"phone_country_code" json:"-"`
+	PhoneNumber    *string    `db:"phone_number" json:"-"`
 	AvatarURL      string     `db:"avatar_url" json:"avatar_url"`
 	IsShadowBanned bool       `db:"is_shadow_banned" json:"is_shadow_banned"`
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`

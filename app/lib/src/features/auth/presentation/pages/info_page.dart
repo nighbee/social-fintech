@@ -20,6 +20,23 @@ class _InfoPageState extends State<InfoPage> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _dateOfBirthController = TextEditingController();
   DateTime? _selectedDate;
+  String? _email;
+  String? _password;
+
+  @override
+  void initState() {
+    super.initState();
+    // Get email and password from route extra
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
+      if (extra != null) {
+        setState(() {
+          _email = extra['email'] as String?;
+          _password = extra['password'] as String?;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -60,69 +77,100 @@ class _InfoPageState extends State<InfoPage> {
     }
   }
 
+  void _continueToReferral() {
+    if (_firstNameController.text.isEmpty ||
+        _lastNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill all required fields'),
+        ),
+      );
+      return;
+    }
+
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select date of birth'),
+        ),
+      );
+      return;
+    }
+
+    // Format date as YYYY-MM-DD
+    final dateStr =
+        '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+
+    // Navigate to referral page with all collected data
+    context.pushNamed(
+      RouteNames.referal,
+      extra: {
+        'email': _email,
+        'password': _password,
+        'firstName': _firstNameController.text.trim(),
+        'lastName': _lastNameController.text.trim(),
+        'dateOfBirth': dateStr,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.theme.mainBackground,
       appBar: const CustomAppBar(title: 'Info'),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Gap(40),
-            Text("Legal Name", style: context.theme.textStyles.titleMedium),
-            Gap(16),
-            CustomTextField(
-              controller: _firstNameController,
-              labelText: "First name",
-              hintText: "First name",
-            ),
-            Gap(16),
-            CustomTextField(
-              controller: _lastNameController,
-              labelText: "Last name",
-              hintText: "Last name",
-            ),
-            Gap(40),
-            Text("Date of birth", style: context.theme.textStyles.titleMedium),
-            Gap(16),
-            CustomTextField(
-              controller: _dateOfBirthController,
-              labelText: "Date of birth",
-              hintText: "MM/DD/YY",
-              readOnly: true,
-              onTap: () => _selectDate(context),
-              suffixIcon: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: Assets.icons.calendar.svg(
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    AppColors.whiteBackground,
-                    BlendMode.srcIn,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                Gap(40),
+              Text("Legal Name", style: context.theme.textStyles.titleMedium),
+              Gap(16),
+              CustomTextField(
+                controller: _firstNameController,
+                labelText: "First name",
+                hintText: "First name",
+              ),
+              Gap(16),
+              CustomTextField(
+                controller: _lastNameController,
+                labelText: "Last name",
+                hintText: "Last name",
+              ),
+              Gap(40),
+              Text("Date of birth", style: context.theme.textStyles.titleMedium),
+              Gap(16),
+              CustomTextField(
+                controller: _dateOfBirthController,
+                labelText: "Date of birth",
+                hintText: "MM/DD/YY",
+                readOnly: true,
+                onTap: () => _selectDate(context),
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: Assets.icons.calendar.svg(
+                    width: 20,
+                    height: 20,
+                    colorFilter: const ColorFilter.mode(
+                      AppColors.whiteBackground,
+                      BlendMode.srcIn,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const Spacer(),
-            CustomButton(
-              text: "Next",
-              onTap: () {
-                if (_firstNameController.text.isEmpty ||
-                    _lastNameController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please fill all required fields'),
-                    ),
-                  );
-                  return;
-                }
-                context.pushNamed(RouteNames.referal);
-              },
-            ),
-            Gap(20),
-          ],
+              Gap(40),
+              CustomButton(
+                text: "Next",
+                onTap: _continueToReferral,
+              ),
+              Gap(20),
+              SizedBox(
+                height: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+            ],
+          ),
         ),
       ),
     );

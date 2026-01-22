@@ -1,6 +1,10 @@
 package auth
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"log"
+
+	"github.com/gofiber/fiber/v2"
+)
 
 // третий слой логики
 
@@ -89,7 +93,10 @@ func (h *Handler) RegisterEmail(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "weak_password"})
 		case ErrInvalidDateOfBirth:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
 		default:
+			log.Printf("RegisterEmail unexpected error: %v", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_registration"})
 		}
 	}
@@ -227,7 +234,16 @@ func (h *Handler) RegisterPhone(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "phone_exists"})
 		case ErrInvalidDateOfBirth:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
+		case ErrInvalidCode, ErrVerificationExpired, ErrVerificationConsumed:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_verification"})
+		case ErrVerificationNotReady:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "verification_not_ready"})
+		case ErrInvalidPurpose:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_purpose"})
 		default:
+			log.Printf("RegisterPhone unexpected error: %v", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_registration"})
 		}
 	}

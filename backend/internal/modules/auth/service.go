@@ -193,6 +193,8 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
 		ReferralCode:   req.Referral,
+		PhoneCountry:   nil,
+		PhoneNumber:    nil,
 		AvatarURL:      "",
 		IsShadowBanned: false,
 		CreatedAt:      now,
@@ -250,20 +252,33 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 // логин по имейлу+паролю
 func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip string) (*LoginResponse, error) {
 	if req.Email == "" || req.Password == "" {
+		log.Printf("LoginEmail: empty email or password")
 		return nil, ErrInvalidCredentials
 	}
 
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
+		log.Printf("LoginEmail: user not found for email: %s, error: %v", req.Email, err)
 		return nil, ErrInvalidCredentials
 	}
 	if user.PasswordHash == "" {
+		log.Printf("LoginEmail: password hash is empty for user: %s (id: %s)", user.Email, user.ID)
 		return nil, ErrInvalidCredentials
 	}
 
+	hashPrefix := user.PasswordHash
+	if len(hashPrefix) > 10 {
+		hashPrefix = hashPrefix[:10]
+	}
+	log.Printf("LoginEmail: comparing password for user: %s, hash length: %d, hash prefix: %s",
+		user.Email, len(user.PasswordHash), hashPrefix)
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		log.Printf("LoginEmail: password mismatch for user: %s (id: %s), bcrypt error: %v", user.Email, user.ID, err)
 		return nil, ErrInvalidCredentials
 	}
+
+	log.Printf("LoginEmail: successful login for user: %s (id: %s)", user.Email, user.ID)
 
 	session := &Session{
 		ID:           uuid.NewString(),
@@ -476,8 +491,8 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
 		ReferralCode:   req.Referral,
-		PhoneCountry:   v.PhoneCountry,
-		PhoneNumber:    v.PhoneNumber,
+		PhoneCountry:   &v.PhoneCountry,
+		PhoneNumber:    &v.PhoneNumber,
 		AvatarURL:      "",
 		IsShadowBanned: false,
 		CreatedAt:      now,

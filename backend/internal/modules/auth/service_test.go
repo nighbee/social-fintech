@@ -82,8 +82,8 @@ func (r *fakeRepo) CreateUser(ctx context.Context, user *User) error {
 	if user.Email != "" {
 		r.usersByEmail[user.Email] = user.ID
 	}
-	if user.PhoneCountry != "" && user.PhoneNumber != "" {
-		key := user.PhoneCountry + ":" + user.PhoneNumber
+	if user.PhoneCountry != nil && user.PhoneNumber != nil {
+		key := *user.PhoneCountry + ":" + *user.PhoneNumber
 		r.usersByPhone[key] = user.ID
 	}
 	return nil
@@ -397,11 +397,13 @@ func TestPhoneLoginFlow(t *testing.T) {
 	sms := &captureSMSSender{}
 	svc := NewService(repo, jwt, map[ProviderType]OAuthVerifier{}, sms)
 
+	phoneCountry := "+1"
+	phoneNumber := "5550002"
 	user := &User{
 		ID:           uuid.NewString(),
 		Username:     "phoneuser",
-		PhoneCountry: "+1",
-		PhoneNumber:  "5550002",
+		PhoneCountry: &phoneCountry,
+		PhoneNumber:  &phoneNumber,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 		LastActiveAt: time.Now(),

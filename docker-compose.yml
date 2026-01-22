@@ -68,27 +68,27 @@ services:
       - brightbund-network
     command: air -c .air.toml
 
-  app:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.dev
-    container_name: brightbund-app
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./app:/app
-      - /app/.dart_tool
-      - /app/build
-    environment:
-      - API_BASE_URL=http://localhost:8081/api/v1
-      - FLUTTER_WEB_PORT=3000
-    depends_on:
-      - api
-    networks:
-      - brightbund-network
-    stdin_open: true
-    tty: true
+  # app:
+  #   build:
+  #     context: ./app
+  #     dockerfile: Dockerfile.dev
+  #   container_name: brightbund-app
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./app:/app
+  #     - /app/.dart_tool
+  #     - /app/build
+  #   environment:
+  #     - API_BASE_URL=http://localhost:8081/api/v1
+  #     - FLUTTER_WEB_PORT=3000
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - brightbund-network
+  #   stdin_open: true
+  #   tty: true
 
 volumes:
   postgres_data:

@@ -102,12 +102,14 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.theme.mainBackground,
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Center(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.1,
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -223,6 +225,9 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                     ),
                   ),
                 ],
+              ),
+              SizedBox(
+                height: MediaQuery.of(context).viewInsets.bottom + 20,
               ),
             ],
           ),

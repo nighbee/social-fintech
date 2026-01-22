@@ -65,12 +65,14 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
               orElse: () => false,
             );
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              child: Center(
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.1,
+                    ),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -257,6 +259,9 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                           ),
                         ),
                       ],
+                    ),
+                    SizedBox(
+                      height: MediaQuery.of(context).viewInsets.bottom + 20,
                     ),
                   ],
                 ),

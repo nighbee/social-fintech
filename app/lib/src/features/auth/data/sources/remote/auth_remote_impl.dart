@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
+import 'package:app/src/core/utils/loggers/log.dart';
 import 'package:app/src/features/auth/data/models/login_dto.dart';
 import 'package:app/src/features/auth/data/models/phone_code_response_dto.dart';
 import 'package:app/src/features/auth/data/sources/remote/i_auth_remote.dart';
@@ -91,19 +92,55 @@ class AuthRemoteImpl implements IAuthRemote {
     required String password,
     required String deviceId,
   }) async {
+    final appVersion = await _getAppVersion();
+    final userAgent = _getUserAgent();
+
+    final requestData = {
+      'email': email,
+      'password': password,
+      'device_id': deviceId,
+      'app_version': appVersion,
+      'user_agent': userAgent,
+    };
+
+    print('=== LOGIN EMAIL REQUEST ===');
+    print('URL: ${EndPoints.authLoginEmail}');
+    print('Email: $email');
+    print('Password: $password');
+    print('Data: $requestData');
+    print('===========================');
+
     final result = await _client.post(
       EndPoints.authLoginEmail,
-      data: {'email': email, 'password': password, 'device_id': deviceId},
+      data: requestData,
     );
 
-    return result.fold((error) => Left(error), (response) {
-      try {
-        final dto = LoginDto.fromJson(response.data);
-        return Right(dto);
-      } catch (e) {
-        return Left(NetworkException(message: 'Failed to parse response: $e'));
-      }
-    });
+    return result.fold(
+      (error) {
+        print('=== LOGIN EMAIL ERROR ===');
+        print('Error: ${error.message}');
+        print('Error type: ${error.runtimeType}');
+        print('=========================');
+        Log.error('AuthRemote', 'Login Email Error: ${error.message}');
+        return Left(error);
+      },
+      (response) {
+        print('=== LOGIN EMAIL SUCCESS ===');
+        print('Response: ${response.data}');
+        print('===========================');
+        Log.debug('AuthRemote', 'Login Email Success:');
+        Log.debug('AuthRemote', 'Response: ${response.data}');
+        try {
+          final dto = LoginDto.fromJson(response.data);
+          return Right(dto);
+        } catch (e) {
+          Log.error('AuthRemote', 'Failed to parse response: $e');
+          return Left(
+            NetworkException(message: 'Failed to parse response: $e'),
+          );
+        }
+      },
+    );
   }
 
   @override
@@ -113,35 +150,52 @@ class AuthRemoteImpl implements IAuthRemote {
     required String firstName,
     required String lastName,
     required String deviceId,
-    String? dateOfBirth,
-    String? referral,
+    required String dateOfBirth,
+    required String referral,
   }) async {
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
+    final requestData = {
+      'email': email,
+      'password': password,
+      'first_name': firstName,
+      'last_name': lastName,
+      'device_id': deviceId,
+      'app_version': appVersion,
+      'user_agent': userAgent,
+      'date_of_birth': dateOfBirth,
+      // 'referral': referral,
+    };
+
+    Log.debug('AuthRemote', 'Register Email Request:');
+    Log.debug('AuthRemote', 'URL: ${EndPoints.authRegisterEmail}');
+    Log.debug('AuthRemote', 'Data: $requestData');
+
     final result = await _client.post(
       EndPoints.authRegisterEmail,
-      data: {
-        'email': email,
-        'password': password,
-        'first_name': firstName,
-        'last_name': lastName,
-        'device_id': deviceId,
-        'app_version': appVersion,
-        'user_agent': userAgent,
-        if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
-        if (referral != null) 'referral': referral,
-      },
+      data: requestData,
     );
 
-    return result.fold((error) => Left(error), (response) {
-      try {
-        final dto = LoginDto.fromJson(response.data);
-        return Right(dto);
-      } catch (e) {
-        return Left(NetworkException(message: 'Failed to parse response: $e'));
-      }
-    });
+    return result.fold(
+      (error) {
+        Log.error('AuthRemote', 'Register Email Error: ${error.message}');
+        return Left(error);
+      },
+      (response) {
+        Log.debug('AuthRemote', 'Register Email Success:');
+        Log.debug('AuthRemote', 'Response: ${response.data}');
+        try {
+          final dto = LoginDto.fromJson(response.data);
+          return Right(dto);
+        } catch (e) {
+          Log.error('AuthRemote', 'Failed to parse response: $e');
+          return Left(
+            NetworkException(message: 'Failed to parse response: $e'),
+          );
+        }
+      },
+    );
   }
 
   @override

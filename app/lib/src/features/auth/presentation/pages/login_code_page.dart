@@ -25,40 +25,44 @@ class _LoginCodePageState extends State<LoginCodePage> {
     return Scaffold(
       backgroundColor: context.theme.mainBackground,
       appBar: const CustomAppBar(),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Gap(40),
-            Text("Enter the code", style: context.theme.textStyles.titleXLarge),
-            Gap(16),
-            Text(
-              "Enter the code we've sent by SMS to $_phoneNumber:",
-              style: context.theme.textStyles.bodyMedium,
-            ),
-            Gap(40),
-            Center(
-              child: CodeInputField(
-                length: 4,
-                onChanged: (code) {
-                  setState(() {
-                    _code = code;
-                  });
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Gap(40),
+              Text("Enter the code", style: context.theme.textStyles.titleXLarge),
+              Gap(16),
+              Text(
+                "Enter the code we've sent by SMS to $_phoneNumber:",
+                style: context.theme.textStyles.bodyMedium,
+              ),
+              Gap(40),
+              Center(
+                child: CodeInputField(
+                  length: 4,
+                  onChanged: (code) {
+                    setState(() {
+                      _code = code;
+                    });
+                  },
+                ),
+              ),
+              Gap(40),
+              CustomButton(
+                text: "Continue",
+                onTap: () {
+                  // if (_code.length == 4) {}
+                  context.pushNamed(RouteNames.home);
                 },
               ),
-            ),
-            Gap(40),
-            CustomButton(
-              text: "Continue",
-              onTap: () {
-                // if (_code.length == 4) {}
-                context.pushNamed(RouteNames.home);
-              },
-            ),
-
-            Gap(20),
-          ],
+              Gap(20),
+              SizedBox(
+                height: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+            ],
+          ),
         ),
       ),
     );

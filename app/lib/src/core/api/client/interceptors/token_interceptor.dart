@@ -24,9 +24,24 @@ class TokenInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    final accessToken = await storage.getAccessToken();
-    if (accessToken != null && accessToken.isNotEmpty) {
-      options.headers['Authorization'] = 'Bearer $accessToken';
+    // Public endpoints that don't require authentication
+    const publicPaths = [
+      '/auth/login',
+      '/auth/register-email',
+      '/auth/login-email',
+      '/auth/phone/request',
+      '/auth/phone/verify',
+      '/auth/register-phone',
+    ];
+
+    final isPublicPath = publicPaths.any((path) => options.path.contains(path));
+
+    // Don't add token to public endpoints
+    if (!isPublicPath) {
+      final accessToken = await storage.getAccessToken();
+      if (accessToken != null && accessToken.isNotEmpty) {
+        options.headers['Authorization'] = 'Bearer $accessToken';
+      }
     }
     handler.next(options);
   }

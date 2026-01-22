@@ -42,8 +42,8 @@ class AuthEvent with _$AuthEvent {
     required String password,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
-    String? referral,
+    required String dateOfBirth,
+    required String referral,
   }) = _RegisterWithEmail;
   const factory AuthEvent.requestPhoneCode({
     required String countryCode,
@@ -89,8 +89,8 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
                 password,
                 firstName,
                 lastName,
-                dateOfBirth,
-                referral,
+                dateOfBirth ?? '2000-01-01',
+                referral ?? '',
                 emit,
               ),
       requestPhoneCode: (countryCode, phoneNumber, purpose) =>
@@ -177,8 +177,8 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     String password,
     String firstName,
     String lastName,
-    String? dateOfBirth,
-    String? referral,
+    String dateOfBirth,
+    String referral,
     Emitter emit,
   ) async {
     _viewModel = _viewModel.copyWith(isLoading: true);

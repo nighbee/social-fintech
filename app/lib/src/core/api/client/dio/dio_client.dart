@@ -28,6 +28,22 @@ class DioClient extends DioRestClient implements RestClient {
 
     // Add token interceptor BEFORE other interceptors
     dio.interceptors.add(TokenInterceptor(dio: dio));
+
+    // Add standard Dio LogInterceptor for console logging
+    dio.interceptors.add(
+      LogInterceptor(
+        request: true,
+        requestHeader: true,
+        requestBody: true,
+        responseHeader: true,
+        responseBody: true,
+        error: true,
+        logPrint: (obj) {
+          Log.debug('Dio', obj.toString());
+        },
+      ),
+    );
+
     _addTalkerInterceptor();
   }
 

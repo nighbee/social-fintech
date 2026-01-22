@@ -121,8 +121,8 @@ class AuthRepositoryImpl implements IAuthRepository {
     required String password,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
-    String? referral,
+    required String dateOfBirth,
+    required String referral,
   }) async {
     final deviceId = await _deviceId.getDeviceId();
     final result = await _authRemote.registerWithEmail(
