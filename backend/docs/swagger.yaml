@@ -1,41 +1,55 @@
 basePath: /api/v1
 definitions:
-  internal_modules_auth.EmailLoginRequest:
+  auth.EmailLoginRequest:
     properties:
       app_version:
+        example: 1.0.0
         type: string
       device_id:
+        example: device-uuid-12345
         type: string
       email:
+        example: john.doe@example.com
         type: string
       password:
+        example: SecurePass123!
         type: string
       user_agent:
+        example: BrightBund-iOS/1.0
         type: string
     type: object
-  internal_modules_auth.EmailRegisterRequest:
+  auth.EmailRegisterRequest:
     properties:
       app_version:
+        example: 1.0.0
         type: string
       date_of_birth:
         description: YYYY-MM-DD
+        example: "2000-01-01"
         type: string
       device_id:
+        example: device-uuid-12345
         type: string
       email:
+        example: john.doe@example.com
         type: string
       first_name:
+        example: John
         type: string
       last_name:
+        example: Doe
         type: string
       password:
+        example: SecurePass123!
         type: string
       referral:
+        example: FRIEND123
         type: string
       user_agent:
+        example: BrightBund-iOS/1.0
         type: string
     type: object
-  internal_modules_auth.ErrorResponse:
+  auth.ErrorResponse:
     properties:
       error:
         example: invalid_credentials
@@ -44,7 +58,7 @@ definitions:
         example: Invalid email or password
         type: string
     type: object
-  internal_modules_auth.LoginRequest:
+  auth.LoginRequest:
     properties:
       app_version:
         type: string
@@ -53,37 +67,40 @@ definitions:
       provider_token:
         type: string
       provider_type:
-        $ref: '#/definitions/internal_modules_auth.ProviderType'
+        $ref: '#/definitions/auth.ProviderType'
       user_agent:
         type: string
     type: object
-  internal_modules_auth.LoginResponse:
+  auth.LoginResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
       user:
-        $ref: '#/definitions/internal_modules_auth.User'
+        $ref: '#/definitions/auth.User'
     type: object
-  internal_modules_auth.PhoneCodeRequest:
+  auth.PhoneCodeRequest:
     properties:
       country_code:
+        example: "+1"
         type: string
       phone_number:
+        example: "5551234567"
         type: string
       purpose:
         description: login|register
+        example: register
         type: string
     type: object
-  internal_modules_auth.PhoneCodeResponse:
+  auth.PhoneCodeResponse:
     properties:
       expires_at:
         type: string
       verification_id:
         type: string
     type: object
-  internal_modules_auth.PhoneRegisterRequest:
+  auth.PhoneRegisterRequest:
     properties:
       app_version:
         type: string
@@ -103,7 +120,7 @@ definitions:
       verification_id:
         type: string
     type: object
-  internal_modules_auth.PhoneVerifyRequest:
+  auth.PhoneVerifyRequest:
     properties:
       app_version:
         type: string
@@ -116,20 +133,20 @@ definitions:
       verification_id:
         type: string
     type: object
-  internal_modules_auth.PhoneVerifyResponse:
+  auth.PhoneVerifyResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
       user:
-        $ref: '#/definitions/internal_modules_auth.User'
+        $ref: '#/definitions/auth.User'
       verification_id:
         type: string
       verified:
         type: boolean
     type: object
-  internal_modules_auth.ProviderType:
+  auth.ProviderType:
     enum:
     - apple
     - google
@@ -141,12 +158,12 @@ definitions:
     - ProviderGoogle
     - ProviderEmail
     - ProviderPhone
-  internal_modules_auth.RefreshRequest:
+  auth.RefreshRequest:
     properties:
       refresh_token:
         type: string
     type: object
-  internal_modules_auth.User:
+  auth.User:
     properties:
       avatar_url:
         type: string
@@ -199,26 +216,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_modules_auth.LoginRequest'
+          $ref: '#/definitions/auth.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_modules_auth.LoginResponse'
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       summary: OAuth Login (Apple/Google)
       tags:
       - Auth
@@ -233,26 +250,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_modules_auth.EmailLoginRequest'
+          $ref: '#/definitions/auth.EmailLoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_modules_auth.LoginResponse'
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       summary: Login with Email and Password
       tags:
       - Auth
@@ -269,11 +286,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       security:
       - Bearer: []
       summary: Logout Current Session
@@ -291,30 +308,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_modules_auth.PhoneCodeRequest'
+          $ref: '#/definitions/auth.PhoneCodeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_modules_auth.PhoneCodeResponse'
+            $ref: '#/definitions/auth.PhoneCodeResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       summary: Request Phone Verification Code
       tags:
       - Auth
@@ -330,26 +347,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_modules_auth.PhoneVerifyRequest'
+          $ref: '#/definitions/auth.PhoneVerifyRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_modules_auth.PhoneVerifyResponse'
+            $ref: '#/definitions/auth.PhoneVerifyResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       summary: Verify Phone Code (Step 2)
       tags:
       - Auth
@@ -365,26 +382,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_modules_auth.RefreshRequest'
+          $ref: '#/definitions/auth.RefreshRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_modules_auth.LoginResponse'
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       summary: Refresh Access Token
       tags:
       - Auth
@@ -400,26 +417,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_modules_auth.EmailRegisterRequest'
+          $ref: '#/definitions/auth.EmailRegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_modules_auth.LoginResponse'
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       summary: Register with Email and Password
       tags:
       - Auth
@@ -434,26 +451,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/internal_modules_auth.PhoneRegisterRequest'
+          $ref: '#/definitions/auth.PhoneRegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_modules_auth.LoginResponse'
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
+            $ref: '#/definitions/auth.ErrorResponse'
       summary: Complete Phone Registration (Step 3)
       tags:
       - Auth

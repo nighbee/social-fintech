@@ -68,31 +68,31 @@ type LoginRequest struct {
 
 // регистрация по имейлу
 type EmailRegisterRequest struct {
-	Email       string `json:"email"`
-	Password    string `json:"password"`
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	DateOfBirth string `json:"date_of_birth"` // YYYY-MM-DD
-	Referral    string `json:"referral"`
-	DeviceID    string `json:"device_id"`
-	UserAgent   string `json:"user_agent"`
-	AppVersion  string `json:"app_version"`
+	Email       string `json:"email" example:"john.doe@example.com"`
+	Password    string `json:"password" example:"SecurePass123!"`
+	FirstName   string `json:"first_name" example:"John"`
+	LastName    string `json:"last_name" example:"Doe"`
+	DateOfBirth string `json:"date_of_birth" example:"2000-01-01"` // YYYY-MM-DD
+	Referral    string `json:"referral" example:"FRIEND123"`
+	DeviceID    string `json:"device_id" example:"device-uuid-12345"`
+	UserAgent   string `json:"user_agent" example:"BrightBund-iOS/1.0"`
+	AppVersion  string `json:"app_version" example:"1.0.0"`
 }
 
 //логин по имейлу
 type EmailLoginRequest struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	DeviceID   string `json:"device_id"`
-	UserAgent  string `json:"user_agent"`
-	AppVersion string `json:"app_version"`
+	Email      string `json:"email" example:"john.doe@example.com"`
+	Password   string `json:"password" example:"SecurePass123!"`
+	DeviceID   string `json:"device_id" example:"device-uuid-12345"`
+	UserAgent  string `json:"user_agent" example:"BrightBund-iOS/1.0"`
+	AppVersion string `json:"app_version" example:"1.0.0"`
 }
 
 // запрос для кода верифиакиций нужен
 type PhoneCodeRequest struct {
-	CountryCode string `json:"country_code"`
-	PhoneNumber string `json:"phone_number"`
-	Purpose     string `json:"purpose"` // login|register
+	CountryCode string `json:"country_code" example:"+1"`
+	PhoneNumber string `json:"phone_number" example:"5551234567"`
+	Purpose     string `json:"purpose" example:"register"` // login|register
 }
 
 // ответ с верификацией
