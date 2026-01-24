@@ -13,9 +13,9 @@ CREATE TABLE IF NOT EXISTS payment_logs (
 );
 
 -- Create indexes
-CREATE INDEX idx_payment_logs_user_id ON payment_logs(user_id);
-CREATE INDEX idx_payment_logs_event_id ON payment_logs(event_id);
-CREATE INDEX idx_payment_logs_created_at ON payment_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_payment_logs_user_id ON payment_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_payment_logs_event_id ON payment_logs(event_id);
+CREATE INDEX IF NOT EXISTS idx_payment_logs_created_at ON payment_logs(created_at DESC);
 
 -- Add comments
 COMMENT ON TABLE payment_logs IS 'Logs of processed IAP purchases from RevenueCat';

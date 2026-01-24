@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS user_identities (
     UNIQUE (user_id, provider)
 );
 
-CREATE INDEX idx_user_idetntities_user_id ON user_identities(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_idetntities_user_id ON user_identities(user_id);
 COMMENT ON TABLE user_identities IS 'OAuth identities for users (provider + subject)';

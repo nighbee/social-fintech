@@ -105,37 +105,41 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 builder: (context, state) => const ChangePasswordPage(),
               ),
 
-              // Home route
+              // Home route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.home,
                 name: RouteNames.home,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: HomePage());
                 },
               ),
 
-              // Map route
+              // Map route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.map,
                 name: RouteNames.map,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: MapPage());
                 },
               ),
 
-              // Rating route
+              // Rating route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.rating,
                 name: RouteNames.rating,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: RatingPage());
                 },
               ),
 
-              // Chats route
+              // Chats route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.chats,
                 name: RouteNames.chats,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: ChatsPage());
                 },
