@@ -10,17 +10,25 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"go.uber.org/zap"
 
 	_ "github.com/brightbund-backend/docs"
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
 // создает Fiber app, cors auth routes limiter и middleware для бэка
-func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager, authRepo auth.Repository) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
 	})
+
+	// Request ID для трейсинга
+	app.Use(requestid.New())
+
+	// Логирование всех запросов
+	app.Use(middleware.Logger(logger))
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     strings.Join(cfg.CORS.AllowedOrigins, ","),

@@ -25,7 +25,7 @@ const docTemplate = `{
     "paths": {
         "/auth/login": {
             "post": {
-                "description": "Authenticate with Apple or Google OAuth token",
+                "description": "Authenticate or register with Apple or Google OAuth. Auto-creates user if not exists.",
                 "consumes": [
                     "application/json"
                 ],
@@ -35,15 +35,15 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Login or register with OAuth provider",
+                "summary": "OAuth Login (Apple/Google)",
                 "parameters": [
                     {
-                        "description": "Login request",
+                        "description": "OAuth login request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
@@ -51,19 +51,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -71,7 +77,7 @@ const docTemplate = `{
         },
         "/auth/login-email": {
             "post": {
-                "description": "Authenticate using email and password",
+                "description": "Authenticate existing user with email and password credentials",
                 "consumes": [
                     "application/json"
                 ],
@@ -81,15 +87,15 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Login with email and password",
+                "summary": "Login with Email and Password",
                 "parameters": [
                     {
-                        "description": "Login request",
+                        "description": "Email login credentials",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailLoginRequest"
+                            "$ref": "#/definitions/auth.EmailLoginRequest"
                         }
                     }
                 ],
@@ -97,13 +103,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -116,7 +134,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Revoke the current session and refresh token",
+                "description": "Revoke current session and invalidate refresh token. Requires auth.",
                 "consumes": [
                     "application/json"
                 ],
@@ -126,7 +144,7 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Logout",
+                "summary": "Logout Current Session",
                 "responses": {
                     "204": {
                         "description": "No Content"
@@ -134,13 +152,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -148,7 +166,7 @@ const docTemplate = `{
         },
         "/auth/phone/request": {
             "post": {
-                "description": "Send SMS verification code to phone number for login or registration",
+                "description": "Send 6-digit SMS code. Purpose: login (phone must exist) or register (phone must not exist)",
                 "consumes": [
                     "application/json"
                 ],
@@ -158,15 +176,15 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Request phone verification code",
+                "summary": "Request Phone Verification Code",
                 "parameters": [
                     {
-                        "description": "Phone code request",
+                        "description": "Phone number and purpose",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeRequest"
+                            "$ref": "#/definitions/auth.PhoneCodeRequest"
                         }
                     }
                 ],
@@ -174,25 +192,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeResponse"
+                            "$ref": "#/definitions/auth.PhoneCodeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
-                        "description": "User not found (login purpose)",
+                        "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Phone already exists (register purpose)",
+                        "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -200,7 +224,7 @@ const docTemplate = `{
         },
         "/auth/phone/verify": {
             "post": {
-                "description": "Verify the SMS code and complete phone login",
+                "description": "Verify SMS code. Returns tokens for login, or verification_id for register flow",
                 "consumes": [
                     "application/json"
                 ],
@@ -210,15 +234,15 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Verify phone code",
+                "summary": "Verify Phone Code (Step 2)",
                 "parameters": [
                     {
-                        "description": "Phone verification request",
+                        "description": "Verification ID and SMS code",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyRequest"
+                            "$ref": "#/definitions/auth.PhoneVerifyRequest"
                         }
                     }
                 ],
@@ -226,19 +250,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyResponse"
+                            "$ref": "#/definitions/auth.PhoneVerifyResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid or expired code",
+                        "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -246,7 +276,7 @@ const docTemplate = `{
         },
         "/auth/refresh": {
             "post": {
-                "description": "Get a new access token using refresh token",
+                "description": "Exchange refresh token for new access and refresh tokens (token rotation)",
                 "consumes": [
                     "application/json"
                 ],
@@ -256,15 +286,15 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Refresh access token",
+                "summary": "Refresh Access Token",
                 "parameters": [
                     {
-                        "description": "Refresh token request",
+                        "description": "Refresh token from login/register",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.RefreshRequest"
+                            "$ref": "#/definitions/auth.RefreshRequest"
                         }
                     }
                 ],
@@ -272,13 +302,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -286,7 +328,7 @@ const docTemplate = `{
         },
         "/auth/register-email": {
             "post": {
-                "description": "Create a new account with email, password, and personal details",
+                "description": "Create a new account with email, password, and personal details. Password min 8 chars.",
                 "consumes": [
                     "application/json"
                 ],
@@ -296,15 +338,15 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Register with email and password",
+                "summary": "Register with Email and Password",
                 "parameters": [
                     {
-                        "description": "Registration request",
+                        "description": "Complete registration information",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailRegisterRequest"
+                            "$ref": "#/definitions/auth.EmailRegisterRequest"
                         }
                     }
                 ],
@@ -312,19 +354,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
-                        "description": "Email already exists",
+                        "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -332,7 +380,7 @@ const docTemplate = `{
         },
         "/auth/register-phone": {
             "post": {
-                "description": "Complete registration after phone verification with personal details",
+                "description": "Complete registration with profile info after phone verification",
                 "consumes": [
                     "application/json"
                 ],
@@ -342,15 +390,15 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Complete phone registration",
+                "summary": "Complete Phone Registration (Step 3)",
                 "parameters": [
                     {
-                        "description": "Phone registration request",
+                        "description": "Profile info and verification ID",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.PhoneRegisterRequest"
                         }
                     }
                 ],
@@ -358,19 +406,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/fiber.Map"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -378,64 +432,87 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "fiber.Map": {
-            "type": "object",
-            "additionalProperties": true
-        },
-        "internal_modules_auth.EmailLoginRequest": {
+        "auth.EmailLoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "1.0.0"
                 },
                 "device_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "device-uuid-12345"
                 },
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "john.doe@example.com"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "SecurePass123!"
                 },
                 "user_agent": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "BrightBund-iOS/1.0"
                 }
             }
         },
-        "internal_modules_auth.EmailRegisterRequest": {
+        "auth.EmailRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "1.0.0"
                 },
                 "date_of_birth": {
                     "description": "YYYY-MM-DD",
-                    "type": "string"
+                    "type": "string",
+                    "example": "2000-01-01"
                 },
                 "device_id": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "device-uuid-12345"
                 },
                 "email": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "john.doe@example.com"
                 },
                 "first_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "John"
                 },
                 "last_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Doe"
                 },
                 "password": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "SecurePass123!"
                 },
                 "referral": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "FRIEND123"
                 },
                 "user_agent": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "BrightBund-iOS/1.0"
                 }
             }
         },
-        "internal_modules_auth.LoginRequest": {
+        "auth.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "invalid_credentials"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid email or password"
+                }
+            }
+        },
+        "auth.LoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -448,14 +525,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "provider_type": {
-                    "$ref": "#/definitions/internal_modules_auth.ProviderType"
+                    "$ref": "#/definitions/auth.ProviderType"
                 },
                 "user_agent": {
                     "type": "string"
                 }
             }
         },
-        "internal_modules_auth.LoginResponse": {
+        "auth.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -465,26 +542,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeRequest": {
+        "auth.PhoneCodeRequest": {
             "type": "object",
             "properties": {
                 "country_code": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "+1"
                 },
                 "phone_number": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "5551234567"
                 },
                 "purpose": {
                     "description": "login|register",
-                    "type": "string"
+                    "type": "string",
+                    "example": "register"
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeResponse": {
+        "auth.PhoneCodeResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -495,7 +575,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneRegisterRequest": {
+        "auth.PhoneRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -525,7 +605,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyRequest": {
+        "auth.PhoneVerifyRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -545,7 +625,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyResponse": {
+        "auth.PhoneVerifyResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -555,7 +635,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 },
                 "verification_id": {
                     "type": "string"
@@ -565,7 +645,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.ProviderType": {
+        "auth.ProviderType": {
             "type": "string",
             "enum": [
                 "apple",
@@ -580,7 +660,7 @@ const docTemplate = `{
                 "ProviderPhone"
             ]
         },
-        "internal_modules_auth.RefreshRequest": {
+        "auth.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -588,7 +668,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.User": {
+        "auth.User": {
             "type": "object",
             "properties": {
                 "avatar_url": {

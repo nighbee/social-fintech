@@ -32,8 +32,7 @@ type Repository interface {
 	UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error
 }
 
-
-//структурирование бд в первый слой репозитория
+// структурирование бд в первый слой репозитория
 type PostgresRepository struct {
 	db *sqlx.DB
 }
@@ -43,7 +42,7 @@ func NewRepository(db *sqlx.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 
-//найти провайдера + и subject с бд
+// найти провайдера + и subject с бд
 func (r *PostgresRepository) GetUserByIdentity(ctx context.Context, provider, subject string) (*User, error) {
 	var user User
 	query := `
@@ -92,7 +91,7 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 			phone_country_code, phone_number,
 			avatar_url, is_shadow_banned, created_at, updated_at, last_active_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), $11, $12, $13, $14, $15)
 	`
 	// Convert empty strings to NULL for phone fields to avoid unique constraint violations
 	var phoneCountry, phoneNumber interface{}
@@ -219,7 +218,6 @@ func (r *PostgresRepository) GetPhoneVerificationByID(ctx context.Context, id st
 	}
 	return &v, nil
 }
-
 
 // для подтверждения принятия кода
 func (r *PostgresRepository) ConsumePhoneVerification(ctx context.Context, id string, consumedAt time.Time) error {

@@ -2,7 +2,6 @@ package auth
 
 import "time"
 
-
 // модель для аккаунта для хранения имени, юзернейма имейла и дату рождения тд...
 type User struct {
 	ID             string     `db:"id" json:"id"`
@@ -21,7 +20,6 @@ type User struct {
 	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
 	LastActiveAt   time.Time  `db:"last_active_at" json:"last_active_at"`
 }
-
 
 // модель для определенной сессии входа, чтобы рефрешить и трекать их (юзер активити)
 type Session struct {
@@ -70,33 +68,31 @@ type LoginRequest struct {
 
 // регистрация по имейлу
 type EmailRegisterRequest struct {
-	Email       string `json:"email"`
-	Password    string `json:"password"`
-	FirstName   string `json:"first_name"`
-	LastName    string `json:"last_name"`
-	DateOfBirth string `json:"date_of_birth"` // YYYY-MM-DD
-	Referral    string `json:"referral"`
-	DeviceID    string `json:"device_id"`
-	UserAgent   string `json:"user_agent"`
-	AppVersion  string `json:"app_version"`
+	Email       string `json:"email" example:"john.doe@example.com"`
+	Password    string `json:"password" example:"SecurePass123!"`
+	FirstName   string `json:"first_name" example:"John"`
+	LastName    string `json:"last_name" example:"Doe"`
+	DateOfBirth string `json:"date_of_birth" example:"2000-01-01"` // YYYY-MM-DD
+	Referral    string `json:"referral" example:"FRIEND123"`
+	DeviceID    string `json:"device_id" example:"device-uuid-12345"`
+	UserAgent   string `json:"user_agent" example:"BrightBund-iOS/1.0"`
+	AppVersion  string `json:"app_version" example:"1.0.0"`
 }
-
 
 //логин по имейлу
 type EmailLoginRequest struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	DeviceID   string `json:"device_id"`
-	UserAgent  string `json:"user_agent"`
-	AppVersion string `json:"app_version"`
+	Email      string `json:"email" example:"john.doe@example.com"`
+	Password   string `json:"password" example:"SecurePass123!"`
+	DeviceID   string `json:"device_id" example:"device-uuid-12345"`
+	UserAgent  string `json:"user_agent" example:"BrightBund-iOS/1.0"`
+	AppVersion string `json:"app_version" example:"1.0.0"`
 }
-
 
 // запрос для кода верифиакиций нужен
 type PhoneCodeRequest struct {
-	CountryCode string `json:"country_code"`
-	PhoneNumber string `json:"phone_number"`
-	Purpose     string `json:"purpose"` // login|register
+	CountryCode string `json:"country_code" example:"+1"`
+	PhoneNumber string `json:"phone_number" example:"5551234567"`
+	Purpose     string `json:"purpose" example:"register"` // login|register
 }
 
 // ответ с верификацией
@@ -104,8 +100,6 @@ type PhoneCodeResponse struct {
 	VerificationID string    `json:"verification_id"`
 	ExpiresAt      time.Time `json:"expires_at"`
 }
-
-
 
 type PhoneVerifyRequest struct {
 	VerificationID string `json:"verification_id"`
@@ -116,13 +110,12 @@ type PhoneVerifyRequest struct {
 }
 
 type PhoneVerifyResponse struct {
-	Verified        bool   `json:"verified"`
-	VerificationID  string `json:"verification_id,omitempty"`
-	AccessToken     string `json:"access_token,omitempty"`
-	RefreshToken    string `json:"refresh_token,omitempty"`
-	User            *User  `json:"user,omitempty"`
+	Verified       bool   `json:"verified"`
+	VerificationID string `json:"verification_id,omitempty"`
+	AccessToken    string `json:"access_token,omitempty"`
+	RefreshToken   string `json:"refresh_token,omitempty"`
+	User           *User  `json:"user,omitempty"`
 }
-
 
 // для завершения регистрации с телефоном
 type PhoneRegisterRequest struct {
@@ -136,7 +129,6 @@ type PhoneRegisterRequest struct {
 	AppVersion     string `json:"app_version"`
 }
 
-
 // ответ единый токенами
 type LoginResponse struct {
 	AccessToken  string `json:"access_token"`
@@ -147,4 +139,10 @@ type LoginResponse struct {
 //запрос на рефреш токена
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
+}
+
+// Swagger error response
+type ErrorResponse struct {
+	Error   string `json:"error" example:"invalid_credentials"`
+	Message string `json:"message,omitempty" example:"Invalid email or password"`
 }

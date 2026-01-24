@@ -26,7 +26,6 @@ func NewNoopSMSSender() *NoopSMSSender {
 	return &NoopSMSSender{}
 }
 
-
 // проверка статуса отправки
 func (s *NoopSMSSender) Send(ctx context.Context, to, message string) error {
 	// Placeholder: log instead of sending SMS.
@@ -34,7 +33,7 @@ func (s *NoopSMSSender) Send(ctx context.Context, to, message string) error {
 	return nil
 }
 
-//форамтриуер норм в удобном формате
+// форамтриуер норм в удобном формате
 func normalizePhone(countryCode, number string) (string, string) {
 	cc := strings.TrimSpace(countryCode)
 	n := strings.TrimSpace(number)
@@ -43,23 +42,23 @@ func normalizePhone(countryCode, number string) (string, string) {
 	return cc, n
 }
 
-//отпередляет для country code-а
+// отпередляет для country code-а
 func phoneKey(countryCode, number string) string {
 	cc, n := normalizePhone(countryCode, number)
 	return fmt.Sprintf("%s%s", cc, n)
 }
 
-//нужен OTP генерироваться
+// нужен OTP генерироваться (4-digit code)
 func generateOTP() (string, error) {
-	max := big.NewInt(1000000)
+	max := big.NewInt(10000)
 	n, err := rand.Int(rand.Reader, max)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%06d", n.Int64()), nil
+	return fmt.Sprintf("%04d", n.Int64()), nil
 }
 
-//именно генерит sha256
+// именно генерит sha256
 func hashCode(code string) string {
 	sum := sha256.Sum256([]byte(code))
 	return hex.EncodeToString(sum[:])
