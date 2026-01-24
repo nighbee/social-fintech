@@ -5,11 +5,14 @@ class EndPoints {
 
   //* Auth
   static const String authLogin = '/auth/login';
+  static const String authCheckEmail = '/auth/check-email';
   static const String authLoginEmail = '/auth/login-email';
   static const String authRegisterEmail = '/auth/register-email';
   static const String authRegisterPhone = '/auth/register-phone';
   static const String authPhoneRequest = '/auth/phone/request';
   static const String authPhoneVerify = '/auth/phone/verify';
+  static const String authFirebasePhoneLogin = '/auth/firebase-phone-login';
+  static const String authFirebasePhoneRegister = '/auth/firebase-phone-register';
   static const String authRefresh = '/auth/refresh';
   static const String authLogout = '/auth/logout';
   static const String profile = '/auth/profile';

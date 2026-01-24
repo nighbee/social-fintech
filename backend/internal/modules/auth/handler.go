@@ -12,7 +12,7 @@ type Handler struct {
 	service *Service
 }
 
-//конструктор хэндлера
+// конструктор хэндлера
 func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
@@ -141,6 +141,35 @@ func (h *Handler) LoginEmail(c *fiber.Ctx) error {
 		}
 	}
 	return c.JSON(resp)
+}
+
+// CheckEmail godoc
+// @Summary Check if Email Exists
+// @Description Check if an email is already registered in the system
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body CheckEmailRequest true "Email to check"
+// @Success 200 {object} CheckEmailResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/check-email [post]
+func (h *Handler) CheckEmail(c *fiber.Ctx) error {
+	var req CheckEmailRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if req.Email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "email_required"})
+	}
+
+	exists, err := h.service.CheckEmailExists(c.Context(), req.Email)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
+	}
+
+	return c.JSON(CheckEmailResponse{Exists: exists})
 }
 
 // RequestPhoneCode godoc
@@ -311,4 +340,92 @@ func (h *Handler) Logout(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// FirebasePhoneAuth godoc
+// @Summary Firebase Phone Authentication
+// @Description Authenticate user with Firebase ID token from phone verification. For existing users.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body FirebasePhoneAuthRequest true "Firebase ID token and device info"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/firebase-phone-login [post]
+func (h *Handler) FirebasePhoneAuth(c *fiber.Ctx) error {
+	var req FirebasePhoneAuthRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if req.UserAgent == "" {
+		req.UserAgent = c.Get("User-Agent")
+	}
+	if req.AppVersion == "" {
+		req.AppVersion = c.Get("X-App-Version")
+	}
+
+	resp, err := h.service.FirebasePhoneAuth(c.Context(), req, c.IP())
+	if err != nil {
+		switch err {
+		case ErrInvalidProviderToken:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_firebase_token"})
+		case ErrUserNotFound:
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user_not_found", "message": "Please register first"})
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
+		default:
+			log.Printf("FirebasePhoneAuth unexpected error: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
+		}
+	}
+	return c.JSON(resp)
+}
+
+// FirebasePhoneRegister godoc
+// @Summary Firebase Phone Registration
+// @Description Register new user with Firebase ID token and profile information
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body FirebasePhoneRegisterRequest true "Firebase ID token and user profile"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/firebase-phone-register [post]
+func (h *Handler) FirebasePhoneRegister(c *fiber.Ctx) error {
+	var req FirebasePhoneRegisterRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if req.UserAgent == "" {
+		req.UserAgent = c.Get("User-Agent")
+	}
+	if req.AppVersion == "" {
+		req.AppVersion = c.Get("X-App-Version")
+	}
+
+	resp, err := h.service.FirebasePhoneRegister(c.Context(), req, c.IP())
+	if err != nil {
+		switch err {
+		case ErrInvalidProviderToken:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_firebase_token"})
+		case ErrPhoneExists:
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "phone_exists", "message": "User already exists, please login"})
+		case ErrInvalidDateOfBirth:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
+		default:
+			log.Printf("FirebasePhoneRegister unexpected error: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
+		}
+	}
+	return c.JSON(resp)
 }

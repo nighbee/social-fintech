@@ -22,6 +22,8 @@ class _ReferalPageState extends State<ReferalPage> {
   bool _isLoading = false;
   String? _email;
   String? _password;
+  String? _phoneNumber;
+  String? _firebaseIdToken;
   String? _firstName;
   String? _lastName;
   String? _dateOfBirth;
@@ -29,13 +31,14 @@ class _ReferalPageState extends State<ReferalPage> {
   @override
   void initState() {
     super.initState();
-    // Get registration data from route extra
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
       if (extra != null) {
         setState(() {
           _email = extra['email'] as String?;
           _password = extra['password'] as String?;
+          _phoneNumber = extra['phoneNumber'] as String?;
+          _firebaseIdToken = extra['firebaseIdToken'] as String?;
           _firstName = extra['firstName'] as String?;
           _lastName = extra['lastName'] as String?;
           _dateOfBirth = extra['dateOfBirth'] as String?;
@@ -54,52 +57,92 @@ class _ReferalPageState extends State<ReferalPage> {
   }
 
   Future<void> _register() async {
-    if (_email == null ||
-        _password == null ||
-        _firstName == null ||
-        _lastName == null ||
-        _dateOfBirth == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Missing registration data')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final authRepository = getIt<IAuthRepository>(
-      instanceName: 'AuthRepositoryImpl',
-    );
-
-    final result = await authRepository.registerWithEmail(
-      email: _email!,
-      password: _password!,
-      firstName: _firstName!,
-      lastName: _lastName!,
-      dateOfBirth: _dateOfBirth!,
-      referral: _nicknameController.text.trim(),
-    );
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    if (!mounted) return;
-
-    result.fold(
-      (error) {
+    if (_firebaseIdToken != null) {
+      if (_firstName == null || _lastName == null || _dateOfBirth == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Missing registration data')),
         );
-      },
-      (loginEntity) {
-        // Tokens are automatically saved by the repository
-        // Navigate to home
-        context.go(RoutePaths.home);
-      },
-    );
+        return;
+      }
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      final authRepository = getIt<IAuthRepository>(
+        instanceName: 'AuthRepositoryImpl',
+      );
+
+      final result = await authRepository.firebasePhoneRegister(
+        firebaseIdToken: _firebaseIdToken!,
+        firstName: _firstName!,
+        lastName: _lastName!,
+        dateOfBirth: _dateOfBirth!,
+        referral: _nicknameController.text.trim(),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      result.fold(
+        (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+          );
+        },
+        (loginEntity) {
+          context.go(RoutePaths.home);
+        },
+      );
+    } else {
+      if (_email == null ||
+          _password == null ||
+          _firstName == null ||
+          _lastName == null ||
+          _dateOfBirth == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Missing registration data')),
+        );
+        return;
+      }
+
+      setState(() {
+        _isLoading = true;
+      });
+
+      final authRepository = getIt<IAuthRepository>(
+        instanceName: 'AuthRepositoryImpl',
+      );
+
+      final result = await authRepository.registerWithEmail(
+        email: _email!,
+        password: _password!,
+        firstName: _firstName!,
+        lastName: _lastName!,
+        dateOfBirth: _dateOfBirth!,
+        referral: _nicknameController.text.trim(),
+      );
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      result.fold(
+        (error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error.message), backgroundColor: Colors.red),
+          );
+        },
+        (loginEntity) {
+          context.go(RoutePaths.home);
+        },
+      );
+    }
   }
 
   @override

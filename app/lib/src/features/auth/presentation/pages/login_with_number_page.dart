@@ -120,9 +120,19 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
               goRegister: () {},
               loaded: (viewModel) {},
               authenticated: (loginEntity) {
-                // Navigate to home on successful login
                 context.go(RoutePaths.home);
               },
+              phoneVerificationStarted: (verificationId, phoneNumber) {
+                context.pushNamed(
+                  RouteNames.loginCode,
+                  extra: {
+                    'verificationId': verificationId,
+                    'phoneNumber': phoneNumber,
+                    'isLogin': true,
+                  },
+                );
+              },
+              emailChecked: (exists, email) {},
             );
           },
           builder: (context, state) {
@@ -195,8 +205,23 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
 
                     CustomButton(
                       text: "Continue",
+                      isDisabled: isLoading,
                       onTap: () {
-                        context.pushNamed(RouteNames.loginCode);
+                        final phoneText = _phoneController.text.trim();
+                        final phoneNumber = phoneText.replaceAll(' ', '').replaceAll('-', '');
+                        
+                        if (phoneNumber.length < 10) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter a valid phone number')),
+                          );
+                          return;
+                        }
+                        
+                        context.read<AuthBloc>().add(
+                          AuthEvent.startPhoneVerification(
+                            phoneNumber: phoneNumber,
+                          ),
+                        );
                       },
                     ),
 
@@ -229,7 +254,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                         CustomOutlinedButton(
                           text: "Continue with email",
                           onTap: () {
-                            context.pushNamed(RouteNames.loginWithEmail);
+                            context.pushNamed(RouteNames.emailEntry);
                           },
                         ),
                         CustomButton(

@@ -87,6 +87,27 @@ class AuthRemoteImpl implements IAuthRemote {
   }
 
   @override
+  Future<Either<DomainException, bool>> checkEmailExists({
+    required String email,
+  }) async {
+    final result = await _client.post(
+      EndPoints.authCheckEmail,
+      data: {
+        'email': email,
+      },
+    );
+
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final exists = response.data['exists'] as bool;
+        return Right(exists);
+      } catch (e) {
+        return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
+  }
+
+  @override
   Future<Either<DomainException, LoginDto>> loginWithEmail({
     required String email,
     required String password,
@@ -284,5 +305,81 @@ class AuthRemoteImpl implements IAuthRemote {
     final result = await _client.post(EndPoints.authLogout);
 
     return result.fold((error) => Left(error), (_) => const Right(null));
+  }
+
+  @override
+  Future<Either<DomainException, LoginDto>> firebasePhoneLogin({
+    required String firebaseIdToken,
+    required String deviceId,
+  }) async {
+    final appVersion = await _getAppVersion();
+    final userAgent = _getUserAgent();
+
+    final result = await _client.post(
+      EndPoints.authFirebasePhoneLogin,
+      data: {
+        'firebase_id_token': firebaseIdToken,
+        'device_id': deviceId,
+        'app_version': appVersion,
+        'user_agent': userAgent,
+      },
+    );
+
+    return result.fold(
+      (error) => Left(error),
+      (response) {
+        try {
+          final dto = LoginDto.fromJson(response.data);
+          return Right(dto);
+        } catch (e) {
+          return Left(
+            NetworkException(message: 'Failed to parse response: $e'),
+          );
+        }
+      },
+    );
+  }
+
+  @override
+  Future<Either<DomainException, LoginDto>> firebasePhoneRegister({
+    required String firebaseIdToken,
+    required String firstName,
+    required String lastName,
+    required String deviceId,
+    String? dateOfBirth,
+    String? referral,
+  }) async {
+    final appVersion = await _getAppVersion();
+    final userAgent = _getUserAgent();
+
+    final requestData = {
+      'firebase_id_token': firebaseIdToken,
+      'first_name': firstName,
+      'last_name': lastName,
+      'device_id': deviceId,
+      'app_version': appVersion,
+      'user_agent': userAgent,
+      if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
+      if (referral != null) 'referral': referral,
+    };
+
+    final result = await _client.post(
+      EndPoints.authFirebasePhoneRegister,
+      data: requestData,
+    );
+
+    return result.fold(
+      (error) => Left(error),
+      (response) {
+        try {
+          final dto = LoginDto.fromJson(response.data);
+          return Right(dto);
+        } catch (e) {
+          return Left(
+            NetworkException(message: 'Failed to parse response: $e'),
+          );
+        }
+      },
+    );
   }
 }

@@ -6,6 +6,7 @@ import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/core/utils/device_id.dart';
 import 'package:app/src/features/auth/data/sources/local/i_auth_local.dart';
 import 'package:app/src/features/auth/data/sources/remote/i_auth_remote.dart';
+import 'package:app/src/features/auth/data/sources/remote/firebase_auth_service.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 
@@ -21,6 +22,7 @@ class AuthRepositoryImpl implements IAuthRepository {
   final IAuthLocal _authLocal;
   final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
   final DeviceId _deviceId = DeviceId();
+  final FirebaseAuthService _firebaseAuth = FirebaseAuthService();
 
   @override
   Future<Either<DomainException, LoginEntity>> loginWithGoogle() async {
@@ -113,6 +115,13 @@ class AuthRepositoryImpl implements IAuthRepository {
       );
       return Right(entity);
     });
+  }
+
+  @override
+  Future<Either<DomainException, bool>> checkEmailExists({
+    required String email,
+  }) async {
+    return await _authRemote.checkEmailExists(email: email);
   }
 
   @override
@@ -213,8 +222,89 @@ class AuthRepositoryImpl implements IAuthRepository {
   @override
   Future<Either<DomainException, void>> logout() async {
     await _googleSignIn.signOut();
+    await _firebaseAuth.signOut();
     await _authRemote.logout();
     await _authLocal.clearTokens();
     return const Right(null);
+  }
+
+  @override
+  Future<Either<DomainException, String>> startPhoneVerification({
+    required String phoneNumber,
+  }) async {
+    try {
+      final verificationId = await _firebaseAuth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        onCodeSent: (String verificationId) {},
+        onError: (String error) {},
+      );
+      return Right(verificationId);
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, String>> verifyOtpAndGetToken({
+    required String verificationId,
+    required String code,
+  }) async {
+    try {
+      final idToken = await _firebaseAuth.verifyOtpCode(
+        verificationId: verificationId,
+        smsCode: code,
+      );
+      return Right(idToken);
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, LoginEntity>> firebasePhoneLogin({
+    required String firebaseIdToken,
+  }) async {
+    final deviceId = await _deviceId.getDeviceId();
+    final result = await _authRemote.firebasePhoneLogin(
+      firebaseIdToken: firebaseIdToken,
+      deviceId: deviceId,
+    );
+
+    return await result.fold((error) => Left(error), (dto) async {
+      final entity = dto.toEntity();
+      await _authLocal.saveTokens(
+        accessToken: entity.accessToken,
+        refreshToken: entity.refreshToken,
+      );
+      return Right(entity);
+    });
+  }
+
+  @override
+  Future<Either<DomainException, LoginEntity>> firebasePhoneRegister({
+    required String firebaseIdToken,
+    required String firstName,
+    required String lastName,
+    String? dateOfBirth,
+    String? referral,
+  }) async {
+    final deviceId = await _deviceId.getDeviceId();
+    final result = await _authRemote.firebasePhoneRegister(
+      firebaseIdToken: firebaseIdToken,
+      firstName: firstName,
+      lastName: lastName,
+      deviceId: deviceId,
+      dateOfBirth: dateOfBirth,
+      referral: referral,
+    );
+
+    return await result.fold((error) => Left(error), (dto) async {
+      final entity = dto.toEntity();
+      await _authLocal.saveTokens(
+        accessToken: entity.accessToken,
+        refreshToken: entity.refreshToken,
+      );
+      return Right(entity);
+    });
   }
 }

@@ -1,0 +1,1 @@
+flutter run --debug --flavor dev -t lib/main_dev.dart

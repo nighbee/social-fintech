@@ -12,6 +12,9 @@ abstract interface class IAuthRemote {
     required String providerToken,
     required String deviceId,
   });
+  Future<Either<DomainException, bool>> checkEmailExists({
+    required String email,
+  });
   Future<Either<DomainException, LoginDto>> loginWithEmail({
     required String email,
     required String password,
@@ -38,6 +41,18 @@ abstract interface class IAuthRemote {
   });
   Future<Either<DomainException, LoginDto>> registerWithPhone({
     required String verificationId,
+    required String firstName,
+    required String lastName,
+    required String deviceId,
+    String? dateOfBirth,
+    String? referral,
+  });
+  Future<Either<DomainException, LoginDto>> firebasePhoneLogin({
+    required String firebaseIdToken,
+    required String deviceId,
+  });
+  Future<Either<DomainException, LoginDto>> firebasePhoneRegister({
+    required String firebaseIdToken,
     required String firstName,
     required String lastName,
     required String deviceId,

@@ -61,9 +61,10 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
               goRegister: () {},
               loaded: (viewModel) {},
               authenticated: (loginEntity) {
-                // Navigate to home on successful login
                 context.go(RoutePaths.home);
               },
+              phoneVerificationStarted: (verificationId, phoneNumber) {},
+              emailChecked: (exists, email) {},
             );
           },
           builder: (context, state) {

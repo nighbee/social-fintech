@@ -9,12 +9,12 @@ import (
 	"google.golang.org/api/option"
 )
 
-// FirebaseSMSSender sends OTP via Firebase Auth
+// FirebaseSMSSender manages Firebase Authentication integration
 type FirebaseSMSSender struct {
 	client *auth.Client
 }
 
-// NewFirebaseSMSSender creates a new Firebase SMS sender
+// NewFirebaseSMSSender creates a new Firebase SMS sender with Admin SDK
 // credentialsPath should point to your Firebase service account JSON key file
 func NewFirebaseSMSSender(ctx context.Context, credentialsPath string) (*FirebaseSMSSender, error) {
 	opt := option.WithCredentialsFile(credentialsPath)
@@ -33,35 +33,18 @@ func NewFirebaseSMSSender(ctx context.Context, credentialsPath string) (*Firebas
 	}, nil
 }
 
-// Send sends an OTP code via Firebase
-// Note: Firebase handles the actual SMS sending through their infrastructure
-// The 'to' parameter should be in format: +[country_code][phone_number]
-// The 'message' parameter is ignored as Firebase generates its own message
+// Send is a placeholder for SMS sending
+// In Firebase Phone Auth flow, SMS is sent by Firebase SDK on the client side
+// This method exists to satisfy the SMSSender interface
 func (f *FirebaseSMSSender) Send(ctx context.Context, to, message string) error {
-	// Firebase Auth doesn't provide a direct API to send custom SMS with custom messages
-	// Instead, it handles the entire phone auth flow through their SDK
-	// For production use, you have two options:
-	//
-	// Option 1: Use Firebase Auth on client-side
-	//   - Client uses Firebase Auth SDK to send OTP
-	//   - Firebase sends SMS automatically
-	//   - Client verifies OTP with Firebase
-	//   - Client sends Firebase ID token to your backend
-	//   - Your backend verifies the Firebase token
-	//
-	// Option 2: Use a dedicated SMS service (Twilio, AWS SNS, etc.)
-	//   - Keep your current OTP generation logic
-	//   - Use SMS service to send the actual message
-
-	// For now, we'll implement a verification helper
-	// This is a placeholder that shows how to verify a phone number exists
-	// You'll need to integrate with client-side Firebase Auth for full functionality
-
-	return fmt.Errorf("firebase SMS sending requires client-side Firebase Auth SDK integration")
+	// Firebase Phone Auth handles SMS sending on the client side
+	// This is just a placeholder to satisfy the interface
+	// The actual OTP is sent by Firebase when client calls verifyPhoneNumber()
+	return nil
 }
 
 // VerifyIDToken verifies a Firebase ID token from the client
-// This is useful if your client app uses Firebase Auth SDK
+// Returns the decoded token with user information including phone number
 func (f *FirebaseSMSSender) VerifyIDToken(ctx context.Context, idToken string) (*auth.Token, error) {
 	token, err := f.client.VerifyIDToken(ctx, idToken)
 	if err != nil {

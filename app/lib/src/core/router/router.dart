@@ -11,6 +11,8 @@ import 'package:app/src/features/auth/presentation/pages/login_with_number_page.
 import 'package:app/src/features/auth/presentation/pages/login_with_email_page.dart';
 import 'package:app/src/features/auth/presentation/pages/login_code_page.dart';
 import 'package:app/src/features/auth/presentation/pages/code_page.dart';
+import 'package:app/src/features/auth/presentation/pages/email_entry_page.dart';
+import 'package:app/src/features/auth/presentation/pages/email_password_page.dart';
 import 'package:app/src/features/auth/presentation/pages/info_page.dart';
 import 'package:app/src/features/auth/presentation/pages/referal_page.dart';
 import 'package:app/src/features/auth/presentation/pages/create_password_page.dart';

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="NONE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="f8763c8c-656c-4c6e-ab61-e8e447fcc2f4" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/app/android/app/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/app/android/app/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/android/app/src/main/AndroidManifest.xml" beforeDir="false" afterPath="$PROJECT_DIR$/app/android/app/src/main/AndroidManifest.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/android/build.gradle.kts" beforeDir="false" afterPath="$PROJECT_DIR$/app/android/build.gradle.kts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/android/gradle.properties" beforeDir="false" afterPath="$PROJECT_DIR$/app/android/gradle.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/ios/Runner/Info.plist" beforeDir="false" afterPath="$PROJECT_DIR$/app/ios/Runner/Info.plist" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/gen/assets.gen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/gen/assets.gen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/gen/fonts.gen.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/gen/fonts.gen.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/app/runner.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/app/runner.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/api/client/endpoints.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/api/client/endpoints.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/base/base_bloc/context/context_activity_bloc.freezed.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/base/base_bloc/context/context_activity_bloc.freezed.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/router/route_list.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/router/route_list.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/router/router.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/router/router.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/router/router_names.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/router/router_names.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/router/router_paths.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/router/router_paths.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/service/injectable/injectable_service.config.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/service/injectable/injectable_service.config.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/core/widgets/code_input_field.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/core/widgets/code_input_field.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/data/repositories/auth_repository_impl.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/data/repositories/auth_repository_impl.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/data/sources/remote/auth_remote_impl.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/data/sources/remote/auth_remote_impl.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/data/sources/remote/i_auth_remote.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/data/sources/remote/i_auth_remote.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/domain/repositories/i_auth_repository.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/domain/repositories/i_auth_repository.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/bloc/auth_bloc.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/bloc/auth_bloc.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/code_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/code_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/info_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/info_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/login_code_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/login_code_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/login_with_email_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/login_with_email_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/login_with_number_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/login_with_number_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/referal_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/referal_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/signup_with_email_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/signup_with_email_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/signup_with_number_page.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/presentation/pages/signup_with_number_page.dart" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/pubspec.lock" beforeDir="false" afterPath="$PROJECT_DIR$/app/pubspec.lock" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/pubspec.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/app/pubspec.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/bin/api.exe" beforeDir="false" afterPath="$PROJECT_DIR$/backend/bin/api.exe" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/config.local.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/config.local.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/internal/modules/auth/entity.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/internal/modules/auth/entity.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/internal/modules/auth/firebase_sms.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/internal/modules/auth/firebase_sms.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/internal/modules/auth/handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/internal/modules/auth/handler.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/internal/modules/auth/service.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/internal/modules/auth/service.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/internal/server/server.go" beforeDir="false" afterPath="$PROJECT_DIR$/backend/internal/server/server.go" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;nighbee&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/nighbee/brightbund.git&quot;,
+    &quot;accountId&quot;: &quot;40279993-75b2-4831-a8d6-b14ba95778f4&quot;
+  }
+}</component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
+  <component name="ProjectId" id="38hCEg1kaI9gsuovPTawYzIt0PR" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;com.android.tools.idea.streaming.zoom.toolbar.visible&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;develop&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/projects/test/brightbund&quot;
+  }
+}</component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="f8763c8c-656c-4c6e-ab61-e8e447fcc2f4" name="Changes" comment="" />
+      <created>1769242307970</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1769242307970</updated>
+    </task>
+    <servers />
+  </component>
+</project>

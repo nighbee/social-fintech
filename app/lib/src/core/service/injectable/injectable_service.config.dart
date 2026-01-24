@@ -88,7 +88,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i664.IAuthRepository>(instanceName: 'AuthRepositoryImpl'),
       ),
     );
-
     return this;
   }
 }

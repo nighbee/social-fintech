@@ -46,16 +46,13 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                   SnackBar(content: Text(message), backgroundColor: Colors.red),
                 );
               },
-              goRegister: () {
-                // Handle registration flow if needed
-              },
-              loaded: (viewModel) {
-                // Handle loaded state
-              },
+              goRegister: () {},
+              loaded: (viewModel) {},
               authenticated: (loginEntity) {
-                // Navigate to home on successful login
                 context.go(RoutePaths.home);
               },
+              phoneVerificationStarted: (verificationId, phoneNumber) {},
+              emailChecked: (exists, email) {},
             );
           },
           builder: (context, state) {

@@ -17,6 +17,14 @@ class AuthState with _$AuthState {
   const factory AuthState.loaded({required AuthViewModel viewModel}) = _Loaded;
   const factory AuthState.authenticated({required LoginEntity loginEntity}) =
       _Authenticated;
+  const factory AuthState.phoneVerificationStarted({
+    required String verificationId,
+    required String phoneNumber,
+  }) = _PhoneVerificationStarted;
+  const factory AuthState.emailChecked({
+    required bool exists,
+    required String email,
+  }) = _EmailChecked;
 }
 
 // MARK: - ViewModel
@@ -25,6 +33,9 @@ class AuthViewModel with _$AuthViewModel {
   factory AuthViewModel({
     @Default(false) bool isLoading,
     @Default(false) bool isLoggedIn,
+    String? firebaseIdToken,
+    String? email,
+    String? password,
   }) = _AuthViewModel;
 }
 
@@ -61,6 +72,27 @@ class AuthEvent with _$AuthEvent {
     String? dateOfBirth,
     String? referral,
   }) = _RegisterWithPhone;
+  const factory AuthEvent.startPhoneVerification({
+    required String phoneNumber,
+  }) = _StartPhoneVerification;
+  const factory AuthEvent.checkEmail({
+    required String email,
+  }) = _CheckEmail;
+  const factory AuthEvent.verifyOtpCode({
+    required String verificationId,
+    required String code,
+    required bool isLogin,
+  }) = _VerifyOtpCode;
+  const factory AuthEvent.firebasePhoneLogin({
+    required String firebaseIdToken,
+  }) = _FirebasePhoneLogin;
+  const factory AuthEvent.firebasePhoneRegister({
+    required String firebaseIdToken,
+    required String firstName,
+    required String lastName,
+    String? dateOfBirth,
+    String? referral,
+  }) = _FirebasePhoneRegister;
   const factory AuthEvent.logout() = _Logout;
 }
 
@@ -74,6 +106,8 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
 
   final IAuthRepository _authRepository;
   AuthViewModel _viewModel = AuthViewModel();
+  
+  AuthViewModel get viewModel => _viewModel;
 
   @override
   void onEventHandler(AuthEvent event, Emitter emit) async {
@@ -107,6 +141,15 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
                 referral,
                 emit,
               ),
+      startPhoneVerification: (phoneNumber) =>
+          _startPhoneVerification(phoneNumber, emit),
+      checkEmail: (email) => _checkEmail(email, emit),
+      verifyOtpCode: (verificationId, code, isLogin) =>
+          _verifyOtpCode(verificationId, code, isLogin, emit),
+      firebasePhoneLogin: (firebaseIdToken) =>
+          _firebasePhoneLogin(firebaseIdToken, emit),
+      firebasePhoneRegister: (firebaseIdToken, firstName, lastName, dateOfBirth, referral) =>
+          _firebasePhoneRegister(firebaseIdToken, firstName, lastName, dateOfBirth, referral, emit),
       logout: () => _logout(emit),
     );
   }
@@ -201,6 +244,24 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       (loginEntity) {
         _viewModel = _viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
+      },
+    );
+  }
+
+  Future<void> _checkEmail(String email, Emitter emit) async {
+    _viewModel = _viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: _viewModel));
+
+    final result = await _authRepository.checkEmailExists(email: email);
+
+    _viewModel = _viewModel.copyWith(isLoading: false);
+    result.fold(
+      (error) {
+        emit(AuthState.loadingFailure(error.message));
+      },
+      (exists) {
+        _viewModel = _viewModel.copyWith(email: email);
+        emit(AuthState.emailChecked(exists: exists, email: email));
       },
     );
   }
@@ -301,6 +362,130 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       (_) {
         _viewModel = _viewModel.copyWith(isLoggedIn: false);
         emit(AuthState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _startPhoneVerification(
+    String phoneNumber,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: _viewModel));
+
+    final result = await _authRepository.startPhoneVerification(
+      phoneNumber: phoneNumber,
+    );
+
+    _viewModel = _viewModel.copyWith(isLoading: false);
+    result.fold(
+      (error) {
+        emit(AuthState.loadingFailure(error.message));
+      },
+      (verificationId) {
+        emit(AuthState.phoneVerificationStarted(
+          verificationId: verificationId,
+          phoneNumber: phoneNumber,
+        ));
+      },
+    );
+  }
+
+  Future<void> _verifyOtpCode(
+    String verificationId,
+    String code,
+    bool isLogin,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: _viewModel));
+
+    final tokenResult = await _authRepository.verifyOtpAndGetToken(
+      verificationId: verificationId,
+      code: code,
+    );
+
+    await tokenResult.fold(
+      (error) async {
+        _viewModel = _viewModel.copyWith(isLoading: false);
+        emit(AuthState.loadingFailure(error.message));
+      },
+      (firebaseIdToken) async {
+        if (isLogin) {
+          await _firebasePhoneLogin(firebaseIdToken, emit);
+        } else {
+          _viewModel = _viewModel.copyWith(
+            isLoading: false,
+            firebaseIdToken: firebaseIdToken,
+          );
+          emit(AuthState.goRegister());
+        }
+      },
+    );
+  }
+
+  Future<void> _firebasePhoneLogin(
+    String firebaseIdToken,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: _viewModel));
+
+    final result = await _authRepository.firebasePhoneLogin(
+      firebaseIdToken: firebaseIdToken,
+    );
+
+    _viewModel = _viewModel.copyWith(isLoading: false);
+    result.fold(
+      (error) {
+        // If user not found, redirect to registration
+        if (error.message.toLowerCase().contains('not found') ||
+            error.message.toLowerCase().contains('user does not exist') ||
+            error.message.toLowerCase().contains('no user') ||
+            error.message.toLowerCase().contains('please register') ||
+            error.message.toLowerCase().contains('register first')) {
+          _viewModel = _viewModel.copyWith(
+            firebaseIdToken: firebaseIdToken,
+          );
+          emit(AuthState.goRegister());
+        } else {
+          emit(AuthState.loadingFailure(error.message));
+        }
+      },
+      (loginEntity) {
+        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        emit(AuthState.authenticated(loginEntity: loginEntity));
+      },
+    );
+  }
+
+  Future<void> _firebasePhoneRegister(
+    String firebaseIdToken,
+    String firstName,
+    String lastName,
+    String? dateOfBirth,
+    String? referral,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: _viewModel));
+
+    final result = await _authRepository.firebasePhoneRegister(
+      firebaseIdToken: firebaseIdToken,
+      firstName: firstName,
+      lastName: lastName,
+      dateOfBirth: dateOfBirth,
+      referral: referral,
+    );
+
+    _viewModel = _viewModel.copyWith(isLoading: false);
+    result.fold(
+      (error) {
+        emit(AuthState.loadingFailure(error.message));
+      },
+      (loginEntity) {
+        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
   }

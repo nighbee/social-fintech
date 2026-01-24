@@ -22,17 +22,20 @@ class _InfoPageState extends State<InfoPage> {
   DateTime? _selectedDate;
   String? _email;
   String? _password;
+  String? _phoneNumber;
+  String? _firebaseIdToken;
 
   @override
   void initState() {
     super.initState();
-    // Get email and password from route extra
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
       if (extra != null) {
         setState(() {
           _email = extra['email'] as String?;
           _password = extra['password'] as String?;
+          _phoneNumber = extra['phoneNumber'] as String?;
+          _firebaseIdToken = extra['firebaseIdToken'] as String?;
         });
       }
     });
@@ -107,6 +110,8 @@ class _InfoPageState extends State<InfoPage> {
       extra: {
         'email': _email,
         'password': _password,
+        'phoneNumber': _phoneNumber,
+        'firebaseIdToken': _firebaseIdToken,
         'firstName': _firstNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
         'dateOfBirth': dateStr,
