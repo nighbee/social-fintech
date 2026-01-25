@@ -20,7 +20,10 @@ class AuthRepositoryImpl implements IAuthRepository {
 
   final IAuthRemote _authRemote;
   final IAuthLocal _authLocal;
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    serverClientId: '493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com',
+  );
   final DeviceId _deviceId = DeviceId();
   final FirebaseAuthService _firebaseAuth = FirebaseAuthService();
 
@@ -35,15 +38,15 @@ class AuthRepositoryImpl implements IAuthRepository {
       }
 
       final googleAuth = await googleUser.authentication;
-      if (googleAuth.accessToken == null) {
+      if (googleAuth.idToken == null) {
         return Left(
-          GoogleSignInException(message: 'Failed to get Google access token'),
+          GoogleSignInException(message: 'Failed to get Google ID token'),
         );
       }
 
       final deviceId = await _deviceId.getDeviceId();
       final result = await _authRemote.loginWithGoogle(
-        providerToken: googleAuth.accessToken!,
+        providerToken: googleAuth.idToken!,
         deviceId: deviceId,
       );
 

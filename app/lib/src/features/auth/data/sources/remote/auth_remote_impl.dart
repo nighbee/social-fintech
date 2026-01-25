@@ -43,12 +43,17 @@ class AuthRemoteImpl implements IAuthRemote {
     required String providerToken,
     required String deviceId,
   }) async {
+    final appVersion = await _getAppVersion();
+    final userAgent = _getUserAgent();
+
     final result = await _client.post(
       EndPoints.authLogin,
       data: {
         'provider_type': 'google',
         'provider_token': providerToken,
         'device_id': deviceId,
+        'user_agent': userAgent,
+        'app_version': appVersion,
       },
     );
 
@@ -67,12 +72,17 @@ class AuthRemoteImpl implements IAuthRemote {
     required String providerToken,
     required String deviceId,
   }) async {
+    final appVersion = await _getAppVersion();
+    final userAgent = _getUserAgent();
+
     final result = await _client.post(
       EndPoints.authLogin,
       data: {
         'provider_type': 'apple',
         'provider_token': providerToken,
         'device_id': deviceId,
+        'user_agent': userAgent,
+        'app_version': appVersion,
       },
     );
 

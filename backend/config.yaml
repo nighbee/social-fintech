@@ -62,7 +62,7 @@ oauth:
     client_id: com.your.bundle.id
     issuer: https://appleid.apple.com
   google:
-    client_id: your-google-client-id.apps.googleusercontent.com
+    client_id: 493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com
     issuer: https://accounts.google.com
 
 firebase:
