@@ -6,9 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="f8763c8c-656c-4c6e-ab61-e8e447fcc2f4" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/data/repositories/auth_repository_impl.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/data/repositories/auth_repository_impl.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app/lib/src/features/auth/data/sources/remote/auth_remote_impl.dart" beforeDir="false" afterPath="$PROJECT_DIR$/app/lib/src/features/auth/data/sources/remote/auth_remote_impl.dart" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/config.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/config.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/command.md" beforeDir="false" afterPath="$PROJECT_DIR$/command.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

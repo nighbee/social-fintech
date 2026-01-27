@@ -61,5 +61,6 @@ flutter {
 
 dependencies {
     // Google Play Services Auth API Phone - required for SMS auto-retrieval
+    implementation("com.google.android.gms:play-services-auth:20.7.0") 
     implementation("com.google.android.gms:play-services-auth-api-phone:18.1.0")
 }
