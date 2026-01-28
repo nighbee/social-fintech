@@ -9,9 +9,6 @@ RUN go mod download
 
 COPY . .
 
-# Remove config.local.yaml to force using config.yaml in Docker
-RUN rm -f config.local.yaml
-
 EXPOSE 8080
 
 CMD ["air", "-c", ".air.toml"]

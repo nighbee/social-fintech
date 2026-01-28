@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS wallets (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_wallets_updated_at ON wallets(updated_at);
+CREATE INDEX IF NOT EXISTS idx_wallets_updated_at ON wallets(updated_at);
 
 CREATE TABLE IF NOT EXISTS ledger_entries (
     id UUID PRIMARY KEY,
@@ -22,12 +22,12 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_ledger_entries_transaction_id ON ledger_entries(transaction_id);
-CREATE INDEX idx_ledger_entries_account_id ON ledger_entries(account_id);
-CREATE INDEX idx_ledger_entries_created_at ON ledger_entries(created_at DESC);
-CREATE INDEX idx_ledger_entries_account_created ON ledger_entries(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_transaction_id ON ledger_entries(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_account_id ON ledger_entries(account_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_created_at ON ledger_entries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_account_created ON ledger_entries(account_id, created_at DESC);
 
-CREATE INDEX idx_ledger_entries_tx_account ON ledger_entries(transaction_id, account_id);
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_tx_account ON ledger_entries(transaction_id, account_id);
 
 COMMENT ON TABLE wallets IS 'User wallets storing silver and gold balances';
 COMMENT ON TABLE ledger_entries IS 'Double-entry ledger for all economic transactions';

@@ -1,9 +1,10 @@
 -- Migration: Create Auth Tables
 -- Description: Creates users and sessions tables
+-- Note: Email can be NULL for phone-only registrations
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY,
-    email VARCHAR(255) NOT NULL UNIQUE,
+    email VARCHAR(255) UNIQUE,
     username VARCHAR(50) NOT NULL UNIQUE,
     avatar_url VARCHAR(500),
     is_shadow_banned BOOLEAN NOT NULL DEFAULT false,
@@ -12,9 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
     last_active_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_username ON users(username);
-CREATE INDEX idx_users_last_active ON users(last_active_at DESC);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_last_active ON users(last_active_at DESC);
 
 CREATE TABLE IF NOT EXISTS sessions (
     id UUID PRIMARY KEY,
@@ -25,9 +26,9 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_sessions_user_id ON sessions(user_id);
-CREATE INDEX idx_sessions_device_id ON sessions(device_id);
-CREATE INDEX idx_sessions_last_active ON sessions(last_active_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_device_id ON sessions(device_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_last_active ON sessions(last_active_at DESC);
 
 COMMENT ON TABLE users IS 'User accounts with OAuth authentication';
 COMMENT ON TABLE sessions IS 'User sessions for tracking devices and activity';

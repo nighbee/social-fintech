@@ -1,1 +1,93 @@
 package cache
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/redis/go-redis/v9"
+)
+
+type Config struct {
+	Address      string
+	Password     string
+	DB           int
+	PoolSize     int
+	MinIdleConns int
+}
+
+type Cache struct {
+	client *redis.Client
+}
+
+func New(cfg Config) (*Cache, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:         cfg.Address,
+		Password:     cfg.Password,
+		DB:           cfg.DB,
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolSize:     cfg.PoolSize,
+		MinIdleConns: cfg.MinIdleConns,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to redis: %w", err)
+	}
+
+	return &Cache{client: client}, nil
+}
+
+func (c *Cache) Get(ctx context.Context, key string) (string, error) {
+	return c.client.Get(ctx, key).Result()
+}
+
+func (c *Cache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	return c.client.Set(ctx, key, value, ttl).Err()
+}
+
+func (c *Cache) Delete(ctx context.Context, key string) error {
+	return c.client.Del(ctx, key).Err()
+}
+
+func (c *Cache) Exists(ctx context.Context, key string) (bool, error) {
+	result, err := c.client.Exists(ctx, key).Result()
+	return result > 0, err
+}
+
+// ZSET operations для Leaderboards
+func (c *Cache) ZAdd(ctx context.Context, key string, score float64, member string) error {
+	return c.client.ZAdd(ctx, key, redis.Z{Score: score, Member: member}).Err()
+}
+
+func (c *Cache) ZRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
+	return c.client.ZRange(ctx, key, start, stop).Result()
+}
+
+func (c *Cache) ZRevRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
+	return c.client.ZRevRange(ctx, key, start, stop).Result()
+}
+
+func (c *Cache) ZRank(ctx context.Context, key, member string) (int64, error) {
+	return c.client.ZRank(ctx, key, member).Result()
+}
+
+func (c *Cache) ZRevRank(ctx context.Context, key, member string) (int64, error) {
+	return c.client.ZRevRank(ctx, key, member).Result()
+}
+
+func (c *Cache) ZScore(ctx context.Context, key, member string) (float64, error) {
+	return c.client.ZScore(ctx, key, member).Result()
+}
+
+func (c *Cache) HealthCheck(ctx context.Context) error {
+	return c.client.Ping(ctx).Err()
+}
+
+func (c *Cache) Close() error {
+	return c.client.Close()
+}
