@@ -26,6 +26,8 @@ type Service interface {
 	GetLimits(ctx context.Context, userID string) (*LimitsResponse, error)
 	GetReferralStats(ctx context.Context, userID string) (*ReferralStatsResponse, error)
 
+	GetViolationLogs(ctx context.Context, userID string, limit, offset int) ([]*ViolationLog, int, error)
+
 	ProcessIAPDeposit(ctx context.Context, userID string, amountCentinels int64, currency CurrencyCode, receiptID string) error
 	ChargeForTaskCreation(ctx context.Context, userID, taskID string, cost int64) error
 	RewardForTaskCompletion(ctx context.Context, userID, taskID string, reward int64) error
@@ -102,6 +104,11 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 	}
 
 	if !limit.CanTransfer() {
+		s.logViolation(ctx, senderUserID, ViolationMonthlyLimitExceeded, &amountCents, map[string]interface{}{
+			"recipient_id":  req.RecipientUserID,
+			"current_count": limit.TransfersCount,
+			"limit":         DefaultTransferLimit,
+		})
 		return nil, NewMonthlyLimitError(senderUserID, req.RecipientUserID, currency,
 			int64(DefaultTransferLimit), int64(limit.TransfersCount), amountCents)
 	}
@@ -111,7 +118,24 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		return nil, WrapErrorf(err, "failed to get sender wallet")
 	}
 
+	if senderWallet.LastTransferAt != nil {
+		elapsed := time.Since(*senderWallet.LastTransferAt)
+		if elapsed < time.Duration(TransferCooldownSecs)*time.Second {
+			s.logViolation(ctx, senderUserID, ViolationCooldownBreach, &amountCents, map[string]interface{}{
+				"recipient_id":     req.RecipientUserID,
+				"elapsed_seconds":  int(elapsed.Seconds()),
+				"cooldown_seconds": TransferCooldownSecs,
+			})
+			return nil, NewCooldownError(*senderWallet.LastTransferAt, time.Duration(TransferCooldownSecs)*time.Second)
+		}
+	}
+
 	if !senderWallet.HasSufficientBalance(amountCents) {
+		s.logViolation(ctx, senderUserID, ViolationInsufficientFundsAttempt, &amountCents, map[string]interface{}{
+			"recipient_id": req.RecipientUserID,
+			"available":    senderWallet.Balance,
+			"required":     amountCents,
+		})
 		return nil, NewInsufficientFundsError(senderUserID, currency, amountCents, senderWallet.Balance)
 	}
 
@@ -125,6 +149,8 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		deductFromFree := min(senderWallet.FreeBalance, amountCents)
 		senderWallet.FreeBalance -= deductFromFree
 	}
+	now := time.Now()
+	senderWallet.LastTransferAt = &now
 
 	if err := txRepo.UpdateWalletWithVersion(ctx, senderWallet, senderWallet.Version); err != nil {
 		return nil, WrapErrorf(err, "failed to update sender wallet")
@@ -289,8 +315,16 @@ func (s *service) GetTransactionHistory(ctx context.Context, userID string, req 
 		}, nil
 	}
 
+	currency := CurrencySilverSeal
+	if req.Currency != "" {
+		currency = CurrencyCode(req.Currency)
+		if !currency.IsValid() {
+			currency = CurrencySilverSeal
+		}
+	}
+
 	offset := (req.Page - 1) * req.PageSize
-	entries, total, err := s.repo.GetUserTransactionHistory(ctx, userID, CurrencySilverSeal, req.PageSize, offset)
+	entries, total, err := s.repo.GetUserTransactionHistory(ctx, userID, currency, req.PageSize, offset)
 	if err != nil {
 		return nil, WrapErrorf(err, "failed to get transaction history")
 	}
@@ -346,6 +380,10 @@ func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey 
 	}
 
 	if !wallet.CanReceiveFreeAccrual() {
+		s.logViolation(ctx, userID, ViolationFreeSilverCap, nil, map[string]interface{}{
+			"current_free_balance": wallet.FreeBalance,
+			"max_free_balance":     MaxFreeSilverCents,
+		})
 		return nil, NewFreeSilverCapError()
 	}
 
@@ -520,6 +558,15 @@ func (s *service) GetReferralStats(ctx context.Context, userID string) (*Referra
 		TotalEarned:     totalEarned,
 		Referrals:       referralList,
 	}, nil
+}
+
+func (s *service) GetViolationLogs(ctx context.Context, userID string, limit, offset int) ([]*ViolationLog, int, error) {
+	violations, total, err := s.repo.GetViolationLogs(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, 0, WrapErrorf(err, "failed to get violation logs")
+	}
+
+	return violations, total, nil
 }
 
 func (s *service) ProcessIAPDeposit(ctx context.Context, userID string, amountCentinels int64, currency CurrencyCode, receiptID string) error {
@@ -747,4 +794,17 @@ func mustMarshalJSON(v interface{}) json.RawMessage {
 		panic(fmt.Sprintf("failed to marshal JSON: %v", err))
 	}
 	return b
+}
+
+func (s *service) logViolation(ctx context.Context, userID string, violationType ViolationType, amountAttempted *int64, details map[string]interface{}) {
+	violation := &ViolationLog{
+		ID:              uuid.New().String(),
+		UserID:          userID,
+		ViolationType:   violationType,
+		AmountAttempted: amountAttempted,
+		Details:         mustMarshalJSON(details),
+		CreatedAt:       time.Now(),
+	}
+
+	_ = s.repo.CreateViolationLog(ctx, violation)
 }

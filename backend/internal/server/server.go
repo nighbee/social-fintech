@@ -73,11 +73,13 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	economyGroup.Get("/balance", economyHandler.GetBalance)
 	economyGroup.Post("/transfer", economyHandler.TransferSeals)
 	economyGroup.Get("/transactions", economyHandler.GetTransactionHistory)
+	economyGroup.Post("/accrual/claim", economyHandler.ClaimDailyAccrual)
 	economyGroup.Post("/seal/post/:postID", economyHandler.GiveSealToPost)
 	economyGroup.Post("/seal/user/:userID", economyHandler.GiveSealToUser)
 	economyGroup.Get("/limits", economyHandler.GetLimits)
 	economyGroup.Get("/referral/stats", economyHandler.GetReferralStats)
 	economyGroup.Post("/admin/adjust", economyHandler.AdminAdjustBalance)
+	economyGroup.Get("/admin/violations", economyHandler.GetViolationLogs)
 
 	return app
 }

@@ -28,6 +28,9 @@ type Repository interface {
 
 	GetOrCreateTransferLimit(ctx context.Context, userID, monthYear string) (*TransferLimit, error)
 	UpdateTransferLimit(ctx context.Context, limit *TransferLimit) error
+
+	CreateViolationLog(ctx context.Context, violation *ViolationLog) error
+	GetViolationLogs(ctx context.Context, userID string, limit, offset int) ([]*ViolationLog, int, error)
 }
 
 type repository struct {
@@ -66,7 +69,7 @@ func (r *repository) getExecutor() sqlx.ExtContext {
 func (r *repository) GetWallet(ctx context.Context, userID string, currency CurrencyCode) (*Wallet, error) {
 	query := `
 		SELECT id, user_id, currency, balance, free_balance, 
-		       last_daily_accrual_at, version, created_at, updated_at
+		       last_daily_accrual_at, last_transfer_at, version, created_at, updated_at
 		FROM wallets
 		WHERE user_id = $1 AND currency = $2
 	`
@@ -96,7 +99,7 @@ func (r *repository) GetOrCreateWallet(ctx context.Context, userID string, curre
 		INSERT INTO wallets (user_id, currency, balance, free_balance, version)
 		VALUES ($1, $2, 0, 0, 1)
 		RETURNING id, user_id, currency, balance, free_balance, 
-		          last_daily_accrual_at, version, created_at, updated_at
+		          last_daily_accrual_at, last_transfer_at, version, created_at, updated_at
 	`
 
 	var newWallet Wallet
@@ -114,14 +117,15 @@ func (r *repository) UpdateWallet(ctx context.Context, wallet *Wallet) error {
 		SET balance = $1,
 		    free_balance = $2,
 		    last_daily_accrual_at = $3,
+		    last_transfer_at = $4,
 		    version = version + 1,
 		    updated_at = NOW()
-		WHERE id = $4
+		WHERE id = $5
 		RETURNING version
 	`
 
 	err := sqlx.GetContext(ctx, r.getExecutor(), &wallet.Version, query,
-		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.ID)
+		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update wallet: %w", err)
 	}
@@ -135,15 +139,16 @@ func (r *repository) UpdateWalletWithVersion(ctx context.Context, wallet *Wallet
 		SET balance = $1,
 		    free_balance = $2,
 		    last_daily_accrual_at = $3,
+		    last_transfer_at = $4,
 		    version = version + 1,
 		    updated_at = NOW()
-		WHERE id = $4 AND version = $5
+		WHERE id = $5 AND version = $6
 		RETURNING version
 	`
 
 	var newVersion int64
 	err := sqlx.GetContext(ctx, r.getExecutor(), &newVersion, query,
-		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.ID, expectedVersion)
+		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID, expectedVersion)
 	if err == sql.ErrNoRows {
 		return ErrOptimisticLock
 	}
@@ -331,4 +336,47 @@ func (r *repository) UpdateTransferLimit(ctx context.Context, limit *TransferLim
 	}
 
 	return nil
+}
+
+func (r *repository) CreateViolationLog(ctx context.Context, violation *ViolationLog) error {
+	query := `
+		INSERT INTO economy_violations (
+			id, user_id, violation_type, amount_attempted, details, ip_address, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`
+
+	_, err := r.getExecutor().ExecContext(ctx, query,
+		violation.ID, violation.UserID, violation.ViolationType,
+		violation.AmountAttempted, violation.Details, violation.IPAddress, violation.CreatedAt)
+	if err != nil {
+		return fmt.Errorf("failed to create violation log: %w", err)
+	}
+
+	return nil
+}
+
+func (r *repository) GetViolationLogs(ctx context.Context, userID string, limit, offset int) ([]*ViolationLog, int, error) {
+	countQuery := `SELECT COUNT(*) FROM economy_violations WHERE user_id = $1`
+
+	var total int
+	err := sqlx.GetContext(ctx, r.getExecutor(), &total, countQuery, userID)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count violations: %w", err)
+	}
+
+	query := `
+		SELECT id, user_id, violation_type, amount_attempted, details, ip_address, created_at
+		FROM economy_violations
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	var violations []*ViolationLog
+	err = sqlx.SelectContext(ctx, r.getExecutor(), &violations, query, userID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get violations: %w", err)
+	}
+
+	return violations, total, nil
 }

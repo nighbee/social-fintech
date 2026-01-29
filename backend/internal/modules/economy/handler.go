@@ -264,6 +264,42 @@ func (h *Handler) GetReferralStats(c *fiber.Ctx) error {
 	return c.JSON(stats)
 }
 
+// ClaimDailyAccrual godoc
+// @Summary Claim daily free Silver accrual
+// @Description Claim 0.50 Silver Seal daily bonus (max 5.00 free balance)
+// @Tags Economy
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ClaimDailyAccrualRequest false "Optional idempotency key"
+// @Success 200 {object} AccrualResponse
+// @Failure 400 {object} ErrorResponse "Already claimed today or cap reached"
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /economy/accrual/claim [post]
+func (h *Handler) ClaimDailyAccrual(c *fiber.Ctx) error {
+	userID, err := getUserIDFromContext(c)
+	if err != nil {
+		return sendError(c, 401, "UNAUTHORIZED", "Unauthorized")
+	}
+
+	var req ClaimDailyAccrualRequest
+	if err := c.BodyParser(&req); err != nil {
+		req.IdempotencyKey = ""
+	}
+
+	if req.IdempotencyKey == "" {
+		req.IdempotencyKey = uuid.New().String()
+	}
+
+	response, err := h.service.ClaimDailyAccrual(c.Context(), userID, req.IdempotencyKey)
+	if err != nil {
+		return handleServiceError(c, err)
+	}
+
+	return c.JSON(response)
+}
+
 // AdminAdjustBalance godoc
 // @Summary Admin: Adjust user balance
 // @Description Manually adjust a user's balance (admin only)
@@ -323,6 +359,52 @@ func (h *Handler) AdminAdjustBalance(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(balance)
+}
+
+// GetViolationLogs godoc
+// @Summary Admin: Get user violation logs
+// @Description Retrieve economy violation audit logs for a specific user (admin only)
+// @Tags Economy Admin
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param user_id query string true "User ID"
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Items per page" default(20)
+// @Success 200 {object} ViolationLogsResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /economy/admin/violations [get]
+func (h *Handler) GetViolationLogs(c *fiber.Ctx) error {
+	userID := c.Query("user_id")
+	if userID == "" {
+		return sendError(c, 400, "INVALID_USER_ID", "User ID is required")
+	}
+
+	page := c.QueryInt("page", 1)
+	pageSize := c.QueryInt("page_size", 20)
+
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+	violations, total, err := h.service.GetViolationLogs(c.Context(), userID, pageSize, offset)
+	if err != nil {
+		return handleServiceError(c, err)
+	}
+
+	return c.JSON(ViolationLogsResponse{
+		Violations: violations,
+		Page:       page,
+		PageSize:   pageSize,
+		Total:      total,
+	})
 }
 
 func getUserIDFromContext(c *fiber.Ctx) (string, error) {

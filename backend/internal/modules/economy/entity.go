@@ -15,6 +15,7 @@ const (
 	ReferralBonusSeals   = 1.0
 	ReferralBonusCents   = 100
 	DefaultTransferLimit = 50
+	TransferCooldownSecs = 60
 )
 
 type CurrencyCode string
@@ -65,6 +66,7 @@ type Wallet struct {
 	Balance            int64        `db:"balance" json:"balance"`
 	FreeBalance        int64        `db:"free_balance" json:"free_balance"`
 	LastDailyAccrualAt *time.Time   `db:"last_daily_accrual_at" json:"last_daily_accrual_at,omitempty"`
+	LastTransferAt     *time.Time   `db:"last_transfer_at" json:"last_transfer_at,omitempty"`
 	Version            int64        `db:"version" json:"version"`
 	CreatedAt          time.Time    `db:"created_at" json:"created_at"`
 	UpdatedAt          time.Time    `db:"updated_at" json:"updated_at"`
@@ -135,6 +137,26 @@ func (t *TransferLimit) IncrementTransfer(amount int64) {
 	t.TotalSentCentinels += amount
 }
 
+type ViolationType string
+
+const (
+	ViolationCooldownBreach           ViolationType = "COOLDOWN_BREACH"
+	ViolationRateLimitExceeded        ViolationType = "RATE_LIMIT_EXCEEDED"
+	ViolationFreeSilverCap            ViolationType = "FREE_SILVER_CAP"
+	ViolationMonthlyLimitExceeded     ViolationType = "MONTHLY_LIMIT_EXCEEDED"
+	ViolationInsufficientFundsAttempt ViolationType = "INSUFFICIENT_FUNDS_ATTEMPT"
+)
+
+type ViolationLog struct {
+	ID              string          `db:"id" json:"id"`
+	UserID          string          `db:"user_id" json:"user_id"`
+	ViolationType   ViolationType   `db:"violation_type" json:"violation_type"`
+	AmountAttempted *int64          `db:"amount_attempted" json:"amount_attempted,omitempty"`
+	Details         json.RawMessage `db:"details" json:"details,omitempty"`
+	IPAddress       *string         `db:"ip_address" json:"ip_address,omitempty"`
+	CreatedAt       time.Time       `db:"created_at" json:"created_at"`
+}
+
 type BalanceResponse struct {
 	SilverBalance     float64    `json:"silver_balance" example:"4.50"`
 	SilverFreeBalance float64    `json:"silver_free_balance" example:"3.00"`
@@ -200,6 +222,7 @@ type TransactionHistoryRequest struct {
 	Page     int    `query:"page" validate:"min=1" example:"1"`
 	PageSize int    `query:"page_size" validate:"min=1,max=100" example:"20"`
 	Category string `query:"category" example:"P2P_TRANSFER"`
+	Currency string `query:"currency" example:"SILVER_SEAL"`
 }
 
 type TransactionHistoryResponse struct {
@@ -254,6 +277,13 @@ type SealGiver struct {
 	AvatarURL string    `json:"avatar_url"`
 	Amount    int64     `json:"amount"`
 	GivenAt   time.Time `json:"given_at"`
+}
+
+type ViolationLogsResponse struct {
+	Violations []*ViolationLog `json:"violations"`
+	Page       int             `json:"page"`
+	PageSize   int             `json:"page_size"`
+	Total      int             `json:"total"`
 }
 
 func CentinelsToSeals(centinels int64) float64 {
