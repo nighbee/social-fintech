@@ -146,10 +146,6 @@ func (r *Repository) TransferTx(ctx context.Context, fromUserID, toUserID string
 		}
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
 	_, err = tx.ExecContext(ctx, `
 	UPDATE wallets SET silver_balance = silver_balance + $1, updated_at = $2 WHERE user_id = $3
 	`, amount, now, toUserID)
