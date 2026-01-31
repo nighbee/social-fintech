@@ -31,9 +31,9 @@ logging:
     - stderr
 
 jwt:
-  secret: your-secret-key-change-in-production
-  expiration: 24h
-  refresh_expiration: 168h
+  secret: your-dev-jwt-secret-key-change-in-production-123456
+  expiration: 15m
+  refresh_expiration: 24h
 
 cors:
   allowed_origins:

@@ -13,7 +13,18 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// логин пост запрос на /auth/login 
+// Login godoc
+// @Summary OAuth Login (Apple/Google)
+// @Description Authenticate or register with Apple or Google OAuth. Auto-creates user if not exists.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "OAuth login request"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/login [post]
 func (h *Handler) Login(c *fiber.Ctx) error {
 	var req LoginRequest
 
@@ -46,7 +57,18 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/register-email post
+// RegisterEmail godoc
+// @Summary Register with Email and Password
+// @Description Create a new account with email, password, and personal details. Password min 8 chars.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body EmailRegisterRequest true "Complete registration information"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/register-email [post]
 func (h *Handler) RegisterEmail(c *fiber.Ctx) error {
 	var req EmailRegisterRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -69,14 +91,29 @@ func (h *Handler) RegisterEmail(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "weak_password"})
 		case ErrInvalidDateOfBirth:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_credentials", "message": "missing required fields"})
 		default:
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_registration"})
+			// Log the actual error for debugging
+			c.Context().Logger().Printf("RegisterEmail error: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error", "message": err.Error()})
 		}
 	}
 	return c.JSON(resp)
 }
 
-// /auth/login-email post
+// LoginEmail godoc
+// @Summary Login with Email and Password
+// @Description Authenticate existing user with email and password credentials
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body EmailLoginRequest true "Email login credentials"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/login-email [post]
 func (h *Handler) LoginEmail(c *fiber.Ctx) error {
 	var req EmailLoginRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -92,12 +129,29 @@ func (h *Handler) LoginEmail(c *fiber.Ctx) error {
 
 	resp, err := h.service.LoginEmail(c.Context(), req, c.IP())
 	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_credentials"})
+		switch err {
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_credentials"})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error", "message": err.Error()})
+		}
 	}
 	return c.JSON(resp)
 }
 
-// /auth/phone/request post 
+// RequestPhoneCode godoc
+// @Summary Request Phone Verification Code
+// @Description Send 6-digit SMS code. Purpose: login (phone must exist) or register (phone must not exist)
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body PhoneCodeRequest true "Phone number and purpose"
+// @Success 200 {object} PhoneCodeResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/phone/request [post]
 func (h *Handler) RequestPhoneCode(c *fiber.Ctx) error {
 	var req PhoneCodeRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -118,7 +172,18 @@ func (h *Handler) RequestPhoneCode(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/phone/verify post
+// VerifyPhoneCode godoc
+// @Summary Verify Phone Code (Step 2)
+// @Description Verify SMS code. Returns tokens for login, or verification_id for register flow
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body PhoneVerifyRequest true "Verification ID and SMS code"
+// @Success 200 {object} PhoneVerifyResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/phone/verify [post]
 func (h *Handler) VerifyPhoneCode(c *fiber.Ctx) error {
 	var req PhoneVerifyRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -146,8 +211,18 @@ func (h *Handler) VerifyPhoneCode(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-
-// /auth/register-phone post
+// RegisterPhone godoc
+// @Summary Complete Phone Registration (Step 3)
+// @Description Complete registration with profile info after phone verification
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body PhoneRegisterRequest true "Profile info and verification ID"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/register-phone [post]
 func (h *Handler) RegisterPhone(c *fiber.Ctx) error {
 	var req PhoneRegisterRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -175,7 +250,18 @@ func (h *Handler) RegisterPhone(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-// /auth/refresh post
+// Refresh godoc
+// @Summary Refresh Access Token
+// @Description Exchange refresh token for new access and refresh tokens (token rotation)
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body RefreshRequest true "Refresh token from login/register"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/refresh [post]
 func (h *Handler) Refresh(c *fiber.Ctx) error {
 	var req RefreshRequest
 	if err := c.BodyParser(&req); err != nil || req.RefreshToken == "" {
@@ -190,8 +276,17 @@ func (h *Handler) Refresh(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
-
-// /auth/logout post
+// Logout godoc
+// @Summary Logout Current Session
+// @Description Revoke current session and invalidate refresh token. Requires auth.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 204
+// @Failure 401 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/logout [post]
 func (h *Handler) Logout(c *fiber.Ctx) error {
 	sessionID, ok := c.Locals("session_id").(string)
 	if !ok || sessionID == "" {
