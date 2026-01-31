@@ -1,13 +1,12 @@
--- паттерны чекает для анти абьюза
 CREATE TABLE IF NOT EXISTS user_interactions (
     sender_id UUID NOT NULL,
     receiver_id UUID NOT NULL,
     total_transfers BIGINT NOT NULL DEFAULT 0,
     total_amount BIGINT NOT NULL DEFAULT 0,
     last_amount BIGINT NOT NULL DEFAULT 0,
-    last_transfer_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    last_transfer_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     PRIMARY KEY (sender_id, receiver_id)
 );
 
