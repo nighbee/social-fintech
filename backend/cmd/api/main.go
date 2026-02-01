@@ -8,6 +8,7 @@ import (
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
+	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -119,7 +120,13 @@ func main() {
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
 
-	// Initialize SMS sender based on configuration
+	// --- Economy Module Initialization (from Eco branch) ---
+	economyRepo := economy.NewRepository(db.DB)
+	economyService := economy.NewService(economyRepo)
+	economyHandler := economy.NewHandler(economyService)
+	logger.Info("economy module initialized")
+
+	// --- Auth SMS Sender Initialization (from Develop branch) ---
 	var smsSender auth.SMSSender
 	if cfg.Firebase.Enabled {
 		firebaseSender, err := auth.NewFirebaseSMSSender(context.Background(), cfg.Firebase.CredentialsPath)
@@ -133,15 +140,23 @@ func main() {
 		logger.Info("Using NoopSMSSender (development mode - OTP codes logged to console)")
 	}
 
+	// --- Auth Service (Consuming both SMS and Economy) ---
 	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
 		auth.ProviderApple:  appleVerifier,
 		auth.ProviderGoogle: googleVerifier,
-	}, smsSender)
+	}, smsSender, economyService)
 	authHandler := auth.NewHandler(authService)
 
 	logger.Info("auth module initialized")
 
-	app := server.New(cfg, authHandler, jwtManager, authRepo, logger.Get())
+	// --- Economy Background Worker ---
+	economyWorker := economy.NewWorker(economyService, economyRepo)
+	economyWorker.Start()
+	defer economyWorker.Stop()
+	logger.Info("economy worker started")
+
+	// --- Server Start ---
+	app := server.New(cfg, authHandler, economyHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
