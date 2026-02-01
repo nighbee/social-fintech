@@ -10,6 +10,8 @@ class RouteNames {
   static const String login = 'login';
   static const String loginWithEmail = 'loginWithEmail';
   static const String loginCode = 'loginCode';
+  static const String emailEntry = 'emailEntry';
+  static const String emailPassword = 'emailPassword';
   static const String register = 'register';
   static const String code = 'code';
   static const String info = 'info';

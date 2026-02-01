@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -13,20 +14,15 @@ import (
 
 // бизнес логика которая связывает jwt, repo, sms и verifiers
 type Service struct {
-	repo           Repository
-	jwt            *JWTManager
-	verifiers      map[ProviderType]OAuthVerifier
-	sms            SMSSender
-	logger         *zap.Logger
-	economyService EconomyService
-}
-
-type EconomyService interface {
-	GetOrCreateWallets(ctx context.Context, userID string) error
+	repo      Repository
+	jwt       *JWTManager
+	verifiers map[ProviderType]OAuthVerifier
+	sms       SMSSender
+	logger    *zap.Logger
 }
 
 // конструктор который принимает все свойства структуры сервиса
-func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAuthVerifier, smsSender SMSSender, economyService EconomyService) *Service {
+func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAuthVerifier, smsSender SMSSender) *Service {
 	if smsSender == nil {
 		smsSender = NewNoopSMSSender()
 	}
@@ -34,12 +30,11 @@ func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAu
 	logger, _ := zap.NewProduction()
 
 	return &Service{
-		repo:           repo,
-		jwt:            jwt,
-		verifiers:      verifiers,
-		sms:            smsSender,
-		logger:         logger,
-		economyService: economyService,
+		repo:      repo,
+		jwt:       jwt,
+		verifiers: verifiers,
+		sms:       smsSender,
+		logger:    logger,
 	}
 }
 
@@ -131,13 +126,6 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 			if err := s.repo.CreateUser(ctx, user); err != nil {
 				s.logger.Error("failed_to_create_user", zap.Error(err))
 				return nil, err
-			}
-
-			if err := s.createUserWallets(ctx, user.ID); err != nil {
-				s.logger.Error("failed_to_create_wallets",
-					zap.String("user_id", user.ID),
-					zap.Error(err),
-				)
 			}
 
 			s.logger.Info("new_user_created",
@@ -272,6 +260,8 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
 		ReferralCode:   req.Referral,
+		PhoneCountry:   nil,
+		PhoneNumber:    nil,
 		AvatarURL:      "",
 		IsShadowBanned: false,
 		CreatedAt:      now,
@@ -281,13 +271,6 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		s.logger.Error("failed_to_create_user_in_registration", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
-	}
-
-	if err := s.createUserWallets(ctx, user.ID); err != nil {
-		s.logger.Error("failed_to_create_wallets",
-			zap.String("user_id", user.ID),
-			zap.Error(err),
-		)
 	}
 
 	identity := &Identity{
@@ -353,10 +336,19 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 		return nil, ErrInvalidCredentials
 	}
 
+	hashPrefix := user.PasswordHash
+	if len(hashPrefix) > 10 {
+		hashPrefix = hashPrefix[:10]
+	}
+	log.Printf("LoginEmail: comparing password for user: %s, hash length: %d, hash prefix: %s",
+		user.Email, len(user.PasswordHash), hashPrefix)
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		s.logger.Warn("email_login_invalid_password", zap.String("email", req.Email))
 		return nil, ErrInvalidCredentials
 	}
+
+	log.Printf("LoginEmail: successful login for user: %s (id: %s)", user.Email, user.ID)
 
 	session := &Session{
 		ID:           uuid.NewString(),
@@ -388,6 +380,24 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 		RefreshToken: refresh,
 		User:         *user,
 	}, nil
+}
+
+// проверка существования имейла
+func (s *Service) CheckEmailExists(ctx context.Context, email string) (bool, error) {
+	s.logger.Info("check_email_attempt", zap.String("email", email))
+
+	if email == "" {
+		return false, ErrInvalidCredentials
+	}
+
+	_, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		// User not found means email doesn't exist
+		return false, nil
+	}
+
+	// User found, email exists
+	return true, nil
 }
 
 // генерит код и отправляет смс
@@ -581,13 +591,6 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		return nil, err
 	}
 
-	if err := s.createUserWallets(ctx, user.ID); err != nil {
-		s.logger.Error("failed_to_create_wallets",
-			zap.String("user_id", user.ID),
-			zap.Error(err),
-		)
-	}
-
 	identity := &Identity{
 		UserID:    user.ID,
 		Provider:  string(ProviderPhone),
@@ -682,24 +685,242 @@ func (s *Service) Logout(ctx context.Context, sessionID string) error {
 	return s.repo.RevokeSession(ctx, sessionID, time.Now())
 }
 
-func (s *Service) createUserWallets(ctx context.Context, userID string) error {
-	if s.economyService == nil {
-		s.logger.Warn("economy_service_not_configured")
-		return nil
+// FirebasePhoneAuth handles phone authentication using Firebase ID token
+// This is used for login when user already exists
+func (s *Service) FirebasePhoneAuth(ctx context.Context, req FirebasePhoneAuthRequest, ip string) (*LoginResponse, error) {
+	if req.FirebaseIDToken == "" || req.DeviceID == "" {
+		return nil, ErrInvalidCredentials
 	}
 
-	if err := s.economyService.GetOrCreateWallets(ctx, userID); err != nil {
-		s.logger.Error("wallet_creation_failed",
-			zap.String("user_id", userID),
-			zap.Error(err),
-		)
-		return err
+	// Type assert to get Firebase sender
+	firebaseSender, ok := s.sms.(*FirebaseSMSSender)
+	if !ok {
+		return nil, fmt.Errorf("firebase authentication not enabled")
 	}
 
-	s.logger.Info("wallets_created",
-		zap.String("user_id", userID),
+	// Verify Firebase ID token
+	token, err := firebaseSender.VerifyIDToken(ctx, req.FirebaseIDToken)
+	if err != nil {
+		s.logger.Warn("firebase_token_verification_failed", zap.Error(err))
+		return nil, ErrInvalidProviderToken
+	}
+
+	// Extract phone number from token
+	phoneNumber, ok := token.Claims["phone_number"].(string)
+	if !ok || phoneNumber == "" {
+		return nil, fmt.Errorf("phone number not found in token")
+	}
+
+	s.logger.Info("firebase_phone_auth_attempt",
+		zap.String("phone", phoneNumber),
+		zap.String("uid", token.UID),
 	)
-	return nil
+
+	// Parse phone number (format: +1234567890)
+	if len(phoneNumber) < 3 || phoneNumber[0] != '+' {
+		return nil, fmt.Errorf("invalid phone number format")
+	}
+
+	// Extract country code and number
+	// Assuming format like +1234567890 where +1 is country code
+	var countryCode, number string
+	if len(phoneNumber) > 2 {
+		// Try common country codes
+		if phoneNumber[1:3] == "1 " || phoneNumber[1:2] == "1" {
+			countryCode = "+1"
+			number = phoneNumber[2:]
+		} else if len(phoneNumber) > 3 {
+			countryCode = phoneNumber[0:3] // +XX format
+			number = phoneNumber[3:]
+		}
+	}
+
+	// Clean the number
+	number = strings.ReplaceAll(number, " ", "")
+	number = strings.ReplaceAll(number, "-", "")
+
+	// Look up user by phone
+	user, err := s.repo.GetUserByPhone(ctx, countryCode, number)
+	if err != nil {
+		if IsNotFound(err) {
+			// User doesn't exist - need to register
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	// Create session
+	now := time.Now()
+	session := &Session{
+		ID:           uuid.NewString(),
+		UserID:       user.ID,
+		DeviceID:     req.DeviceID,
+		IP:           ip,
+		UserAgent:    req.UserAgent,
+		AppVersion:   req.AppVersion,
+		LastActiveAt: now,
+		CreatedAt:    now,
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return nil, err
+	}
+
+	// Issue JWT tokens
+	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), now); err != nil {
+		return nil, err
+	}
+
+	_ = s.repo.TouchUser(ctx, user.ID, now)
+
+	s.logger.Info("firebase_phone_auth_success", zap.String("user_id", user.ID))
+
+	return &LoginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User:         *user,
+	}, nil
+}
+
+// FirebasePhoneRegister handles phone registration using Firebase ID token
+func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRegisterRequest, ip string) (*LoginResponse, error) {
+	if req.FirebaseIDToken == "" || req.FirstName == "" || req.LastName == "" || req.DateOfBirth == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Type assert to get Firebase sender
+	firebaseSender, ok := s.sms.(*FirebaseSMSSender)
+	if !ok {
+		return nil, fmt.Errorf("firebase authentication not enabled")
+	}
+
+	// Verify Firebase ID token
+	token, err := firebaseSender.VerifyIDToken(ctx, req.FirebaseIDToken)
+	if err != nil {
+		s.logger.Warn("firebase_token_verification_failed", zap.Error(err))
+		return nil, ErrInvalidProviderToken
+	}
+
+	// Extract phone number from token
+	phoneNumber, ok := token.Claims["phone_number"].(string)
+	if !ok || phoneNumber == "" {
+		return nil, fmt.Errorf("phone number not found in token")
+	}
+
+	s.logger.Info("firebase_phone_register_attempt",
+		zap.String("phone", phoneNumber),
+		zap.String("uid", token.UID),
+	)
+
+	// Parse phone number
+	if len(phoneNumber) < 3 || phoneNumber[0] != '+' {
+		return nil, fmt.Errorf("invalid phone number format")
+	}
+
+	var countryCode, number string
+	if len(phoneNumber) > 2 {
+		if phoneNumber[1:2] == "1" {
+			countryCode = "+1"
+			number = phoneNumber[2:]
+		} else if len(phoneNumber) > 3 {
+			countryCode = phoneNumber[0:3]
+			number = phoneNumber[3:]
+		}
+	}
+
+	number = strings.ReplaceAll(number, " ", "")
+	number = strings.ReplaceAll(number, "-", "")
+
+	// Check if phone already exists
+	if _, err := s.repo.GetUserByPhone(ctx, countryCode, number); err == nil {
+		return nil, ErrPhoneExists
+	} else if !IsNotFound(err) {
+		return nil, err
+	}
+
+	// Parse date of birth
+	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
+	if err != nil {
+		return nil, ErrInvalidDateOfBirth
+	}
+
+	// Generate username
+	base := "user" + number
+	username, err := s.generateUniqueUsername(ctx, base+"@phone.local")
+	if err != nil {
+		return nil, err
+	}
+
+	// Create user
+	now := time.Now()
+	user := &User{
+		ID:             uuid.NewString(),
+		Email:          "",
+		Username:       username,
+		FirstName:      req.FirstName,
+		LastName:       req.LastName,
+		DateOfBirth:    &dob,
+		ReferralCode:   req.Referral,
+		PhoneCountry:   &countryCode,
+		PhoneNumber:    &number,
+		AvatarURL:      "",
+		IsShadowBanned: false,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		LastActiveAt:   now,
+	}
+	if err := s.repo.CreateUser(ctx, user); err != nil {
+		return nil, err
+	}
+
+	// Create identity
+	identity := &Identity{
+		UserID:    user.ID,
+		Provider:  string(ProviderPhone),
+		Subject:   phoneKey(countryCode, number),
+		Email:     "",
+		CreatedAt: now,
+	}
+	if err := s.repo.CreateIdentity(ctx, identity); err != nil {
+		return nil, err
+	}
+
+	// Create session
+	session := &Session{
+		ID:           uuid.NewString(),
+		UserID:       user.ID,
+		DeviceID:     req.DeviceID,
+		IP:           ip,
+		UserAgent:    req.UserAgent,
+		AppVersion:   req.AppVersion,
+		LastActiveAt: now,
+		CreatedAt:    now,
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return nil, err
+	}
+
+	// Issue tokens
+	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), now); err != nil {
+		return nil, err
+	}
+
+	s.logger.Info("firebase_phone_register_success", zap.String("user_id", user.ID))
+
+	return &LoginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User:         *user,
+	}, nil
 }
 
 // для генерациии юзернейма универсального

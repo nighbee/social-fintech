@@ -55,3 +55,8 @@ cors:
     - Content-Length
   allow_credentials: true
   max_age: 12h
+
+firebase:
+  enabled: true
+  credentials_path: ./firebase-service-account.json
+  project_id: smsbb-6e583

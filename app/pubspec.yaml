@@ -34,7 +34,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-
+  meta: ^1.15.0
   # ========================
   # UI компоненты
   # ========================
@@ -54,6 +54,20 @@ dependencies:
   # ========================
   # Простые настройки и preferences
   shared_preferences: ^2.5.3
+  # Безопасное хранилище для токенов
+  flutter_secure_storage: ^9.2.2
+  # Информация об устройстве
+  device_info_plus: ^12.1.0
+  # OAuth провайдеры
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^6.1.3
+  # UUID генератор
+  uuid: ^4.5.1
+  # Информация о версии приложения
+  package_info_plus: ^8.0.0
+  # Firebase
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
 
   # ========================
   # Управление состоянием
@@ -89,8 +103,10 @@ dependencies:
   get_it: ^8.0.0
   # Аннотации для автогенерации DI
   injectable: ^2.4.2
-  json_annotation: ^4.9.0
-
+  json_annotation: ^4.9.0  # Аннотации для freezed (required at runtime)
+  freezed_annotation: ^2.4.4
+  # Nested provider helper
+  nested: ^1.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -113,11 +129,8 @@ dev_dependencies:
   injectable_generator: ^2.7.0
   # Генератор для freezed (immutable classes)
   freezed: ^2.5.2
-  # Аннотации для freezed
-  freezed_annotation: ^2.4.4
   # JSON сериализация
   json_serializable: ^6.8.0
-  # Аннотации для JSON
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -133,8 +146,6 @@ flutter:
   # Ресурсы приложения
   # ========================
   assets:
-    # Изображения и графические ресурсы
-    - assets/images/
     # Иконки приложения
     - assets/icons/
     # Общие шрифты
