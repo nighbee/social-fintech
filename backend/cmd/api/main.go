@@ -140,11 +140,11 @@ func main() {
 		logger.Info("Using NoopSMSSender (development mode - OTP codes logged to console)")
 	}
 
-	// --- Auth Service (Consuming both SMS and Economy) ---
+	// --- Auth Service ---
 	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
 		auth.ProviderApple:  appleVerifier,
 		auth.ProviderGoogle: googleVerifier,
-	}, smsSender, economyService)
+	}, smsSender)
 	authHandler := auth.NewHandler(authService)
 
 	logger.Info("auth module initialized")
