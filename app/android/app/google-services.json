@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "493875542368",
+    "project_id": "smsbb-6e583",
+    "storage_bucket": "smsbb-6e583.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:493875542368:android:f1f69ed13eff4d4f868605",
+        "android_client_info": {
+          "package_name": "com.brightbund"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "493875542368-jqv3gq9au2boq8i0c68cetmto2nuuk0g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.brightbund",
+            "certificate_hash": "606df76792a722cdc4b40a4347d449250ea6b8cf"
+          }
+        },
+        {
+          "client_id": "493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDYx-_WuDBGl3cIRLM62Cd_4g96m_etXXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "493875542368-bvri7c7dmdkv4ab9n1pcn9f7bf78vn30.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.brightbund"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
