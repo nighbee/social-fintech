@@ -106,16 +106,24 @@ func main() {
 
 	logger.Info("health checks passed")
 
+	// Initialize OAuth verifiers (optional in development)
+	verifiers := make(map[auth.ProviderType]auth.OAuthVerifier)
+
 	appleVerifier, err := auth.NewOIDCVerifier(auth.ProviderApple, cfg.OAuth.Apple.Issuer, cfg.OAuth.Apple.ClientID)
 	if err != nil {
-		logger.Fatal("apple verifier init failed", zap.Error(err))
-	}
-	googleVerifier, err := auth.NewOIDCVerifier(auth.ProviderGoogle, cfg.OAuth.Google.Issuer, cfg.OAuth.Google.ClientID)
-	if err != nil {
-		logger.Fatal("google verifier init failed", zap.Error(err))
+		logger.Warn("apple verifier init failed (OAuth login disabled)", zap.Error(err))
+	} else {
+		verifiers[auth.ProviderApple] = appleVerifier
+		logger.Info("Apple OAuth verifier initialized")
 	}
 
-	logger.Info("OAuth verifiers initialized")
+	googleVerifier, err := auth.NewOIDCVerifier(auth.ProviderGoogle, cfg.OAuth.Google.Issuer, cfg.OAuth.Google.ClientID)
+	if err != nil {
+		logger.Warn("google verifier init failed (OAuth login disabled)", zap.Error(err))
+	} else {
+		verifiers[auth.ProviderGoogle] = googleVerifier
+		logger.Info("Google OAuth verifier initialized")
+	}
 
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
@@ -141,10 +149,7 @@ func main() {
 	}
 
 	// --- Auth Service ---
-	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
-		auth.ProviderApple:  appleVerifier,
-		auth.ProviderGoogle: googleVerifier,
-	}, smsSender)
+	authService := auth.NewService(authRepo, jwtManager, verifiers, smsSender)
 	authHandler := auth.NewHandler(authService)
 
 	logger.Info("auth module initialized")

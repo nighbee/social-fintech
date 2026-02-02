@@ -26,7 +26,7 @@ func RunDailyAccrual(ctx context.Context, db *sqlx.DB) (DailyAccrualResult, erro
 		  AND free_balance < $1
 		  AND (
 		    last_daily_accrual_at IS NULL
-		    OR last_daily_accrual_at < NOW() - INTERVAL '24 hours'
+		    OR last_daily_accrual_at < NOW() - INTERVAL '48 hours'
 		  )
 	`, MaxFreeSilverCents)
 	if err != nil {
@@ -98,5 +98,3 @@ func accrueToWallet(ctx context.Context, db *sqlx.DB, walletID, userID string, a
 
 	return tx.Commit()
 }
-
-

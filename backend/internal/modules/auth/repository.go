@@ -11,6 +11,7 @@ import (
 // первый слой интерфейса
 type Repository interface {
 	GetUserByIdentity(ctx context.Context, provider, subject string) (*User, error)
+	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByPhone(ctx context.Context, countryCode, phoneNumber string) (*User, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
@@ -52,6 +53,15 @@ func (r *PostgresRepository) GetUserByIdentity(ctx context.Context, provider, su
 	WHERE ui.provider = $1 AND ui.subject = $2
 	`
 	if err := r.db.GetContext(ctx, &user, query, provider, subject); err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
+	var user User
+	query := `SELECT * FROM users WHERE id = $1`
+	if err := r.db.GetContext(ctx, &user, query, id); err != nil {
 		return nil, err
 	}
 	return &user, nil

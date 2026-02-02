@@ -101,7 +101,7 @@ func (w *Worker) ProcessDailyAccruals() {
 		  AND free_balance < $1
 		  AND (
 		    last_daily_accrual_at IS NULL 
-		    OR last_daily_accrual_at < NOW() - INTERVAL '24 hours'
+		    OR last_daily_accrual_at < NOW() - INTERVAL '48 hours'
 		  )
 	`
 

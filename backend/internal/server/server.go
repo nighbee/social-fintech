@@ -84,8 +84,12 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	economyGroup.Post("/seal/user/:userID", economyHandler.GiveSealToUser)
 	economyGroup.Get("/limits", economyHandler.GetLimits)
 	economyGroup.Get("/referral/stats", economyHandler.GetReferralStats)
-	economyGroup.Post("/admin/adjust", economyHandler.AdminAdjustBalance)
-	economyGroup.Get("/admin/violations", economyHandler.GetViolationLogs)
+
+	// Admin-only routes
+	adminGroup := economyGroup.Group("/admin")
+	adminGroup.Use(middleware.RequireAdmin(authRepo))
+	adminGroup.Post("/adjust", economyHandler.AdminAdjustBalance)
+	adminGroup.Get("/violations", economyHandler.GetViolationLogs)
 
 	return app
 }

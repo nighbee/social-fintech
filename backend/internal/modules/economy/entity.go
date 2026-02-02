@@ -11,8 +11,9 @@ const (
 	CentinelsPerSeal     = 100
 	MaxFreeSilverSeals   = 5.0
 	MaxFreeSilverCents   = 500
-	DailyAccrualSeals    = 0.5
-	DailyAccrualCents    = 50
+	DailyAccrualSeals    = 1.0 // Changed from 0.5 to 1.0
+	DailyAccrualCents    = 100 // Changed from 50 to 100
+	AccrualIntervalHours = 48  // Every 2 days (48 hours)
 	ReferralBonusSeals   = 1.0
 	ReferralBonusCents   = 100
 	DefaultTransferLimit = 50
@@ -85,9 +86,9 @@ func (w *Wallet) NeedsDailyAccrual(now time.Time) bool {
 	if w.LastDailyAccrualAt == nil {
 		return true
 	}
-	lastDate := w.LastDailyAccrualAt.Format("2006-01-02")
-	todayDate := now.Format("2006-01-02")
-	return lastDate != todayDate
+	// Check if 48 hours (2 days) have passed since last accrual
+	elapsed := now.Sub(*w.LastDailyAccrualAt)
+	return elapsed >= time.Duration(AccrualIntervalHours)*time.Hour
 }
 
 type LedgerEntry struct {
@@ -401,7 +402,6 @@ func NullTimeToPtr(nt sql.NullTime) *time.Time {
 	}
 	return &nt.Time
 }
-
 
 // DailyAccrualResult summarizes a daily accrual run.
 type DailyAccrualResult struct {
