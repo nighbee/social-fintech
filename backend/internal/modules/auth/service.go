@@ -969,3 +969,12 @@ func (s *Service) generateUniqueUsername(ctx context.Context, email string) (str
 
 	return "", fmt.Errorf("unable to generate username")
 }
+
+
+func (s *Service) createUserWallets(ctx context.Context, userID string) error {
+	if s.economyService == nil {
+		// If economy is not wired yet, just skip.
+		return nil
+	}
+	return s.economyService.GetOrCreateWallets(ctx, userID)
+}
