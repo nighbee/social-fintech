@@ -7,6 +7,7 @@ import (
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -19,7 +20,7 @@ import (
 )
 
 // создает Fiber app, cors auth routes limiter и middleware для бэка
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, profileHandler *profiles.Handler, economyHandler *economy.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -86,6 +87,15 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	economyGroup.Get("/referral/stats", economyHandler.GetReferralStats)
 	economyGroup.Post("/admin/adjust", economyHandler.AdminAdjustBalance)
 	economyGroup.Get("/admin/violations", economyHandler.GetViolationLogs)
+
+	profileGroup := api.Group("/profiles")
+	profileGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	profileGroup.Use(middleware.TouchSession(authRepo))
+
+	profileGroup.Get("/me", profileHandler.GetMyProfile)
+	profileGroup.Patch("/me", profileHandler.UpdateMyProfile)
+	profileGroup.Get("/:user_id", profileHandler.GetPublicProfile)
+
 
 	return app
 }
