@@ -58,10 +58,16 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	authGroup.Post("/login", authLim, authHandler.Login)
 	authGroup.Post("/register-email", authLim, authHandler.RegisterEmail)
 	authGroup.Post("/login-email", authLim, authHandler.LoginEmail)
+	authGroup.Post("/check-email", authLim, authHandler.CheckEmail)
 
+	// Legacy phone auth endpoints (custom OTP)
 	authGroup.Post("/phone/request", authLim, authHandler.RequestPhoneCode)
 	authGroup.Post("/phone/verify", authLim, authHandler.VerifyPhoneCode)
 	authGroup.Post("/register-phone", authLim, authHandler.RegisterPhone)
+
+	// Firebase phone auth endpoints (recommended)
+	authGroup.Post("/firebase-phone-login", authLim, authHandler.FirebasePhoneAuth)
+	authGroup.Post("/firebase-phone-register", authLim, authHandler.FirebasePhoneRegister)
 
 	authGroup.Post("/refresh", authLim, authHandler.Refresh)
 	authGroup.Post("/logout", middleware.RequireAuth(jwt, authRepo), middleware.TouchSession(authRepo), authHandler.Logout)

@@ -88,6 +88,16 @@ type EmailLoginRequest struct {
 	AppVersion string `json:"app_version" example:"1.0.0"`
 }
 
+// проверка существования имейла
+type CheckEmailRequest struct {
+	Email string `json:"email" example:"john.doe@example.com"`
+}
+
+// ответ проверки имейла
+type CheckEmailResponse struct {
+	Exists bool `json:"exists" example:"true"`
+}
+
 // запрос для кода верифиакиций нужен
 type PhoneCodeRequest struct {
 	CountryCode string `json:"country_code" example:"+1"`
@@ -139,6 +149,28 @@ type LoginResponse struct {
 //запрос на рефреш токена
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
+}
+
+// Firebase phone authentication request
+// Client sends Firebase ID token after successful OTP verification
+type FirebasePhoneAuthRequest struct {
+	FirebaseIDToken string `json:"firebase_id_token"`
+	DeviceID        string `json:"device_id"`
+	UserAgent       string `json:"user_agent"`
+	AppVersion      string `json:"app_version"`
+}
+
+// Firebase phone registration request
+// Used when Firebase token is verified but user doesn't exist yet
+type FirebasePhoneRegisterRequest struct {
+	FirebaseIDToken string `json:"firebase_id_token"`
+	FirstName       string `json:"first_name"`
+	LastName        string `json:"last_name"`
+	DateOfBirth     string `json:"date_of_birth"` // YYYY-MM-DD
+	Referral        string `json:"referral"`
+	DeviceID        string `json:"device_id"`
+	UserAgent       string `json:"user_agent"`
+	AppVersion      string `json:"app_version"`
 }
 
 // Swagger error response

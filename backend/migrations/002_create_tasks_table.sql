@@ -12,15 +12,15 @@ CREATE TABLE IF NOT EXISTS tasks (
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_tasks_location ON tasks USING GIST (location);
+CREATE INDEX IF NOT EXISTS idx_tasks_location ON tasks USING GIST (location);
 
-CREATE INDEX idx_tasks_creator_id ON tasks(creator_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_creator_id ON tasks(creator_id);
 
-CREATE INDEX idx_tasks_is_active ON tasks(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_tasks_is_active ON tasks(is_active) WHERE is_active = true;
 
-CREATE INDEX idx_tasks_active_location ON tasks USING GIST (location) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_tasks_active_location ON tasks USING GIST (location) WHERE is_active = true;
 
-CREATE INDEX idx_tasks_created_at ON tasks(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_created_at ON tasks(created_at DESC);
 
 COMMENT ON TABLE tasks IS 'Geospatial tasks on the map with PostGIS location support';
 COMMENT ON COLUMN tasks.location IS 'Point geometry in WGS84 (SRID 4326) - stores (longitude, latitude)';

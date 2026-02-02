@@ -93,9 +93,27 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), $11, $12, $13, $14, $15)
 	`
+	// Convert empty strings to NULL for phone fields to avoid unique constraint violations
+	var phoneCountry, phoneNumber interface{}
+	if user.PhoneCountry == nil && user.PhoneNumber == nil {
+		phoneCountry = nil
+		phoneNumber = nil
+	} else {
+		if user.PhoneCountry != nil {
+			phoneCountry = *user.PhoneCountry
+		} else {
+			phoneCountry = nil
+		}
+		if user.PhoneNumber != nil {
+			phoneNumber = *user.PhoneNumber
+		} else {
+			phoneNumber = nil
+		}
+	}
+
 	_, err := r.db.ExecContext(ctx, query,
 		user.ID, user.Email, user.Username, user.PasswordHash, user.FirstName, user.LastName,
-		user.DateOfBirth, user.ReferralCode, user.PhoneCountry, user.PhoneNumber,
+		user.DateOfBirth, user.ReferralCode, phoneCountry, phoneNumber,
 		user.AvatarURL, user.IsShadowBanned, user.CreatedAt, user.UpdatedAt, user.LastActiveAt,
 	)
 	return err
