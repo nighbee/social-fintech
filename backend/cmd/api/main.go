@@ -16,6 +16,7 @@ import (
 	"github.com/brightbund-backend/internal/server"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
+	"github.com/brightbund-backend/internal/platform/storage"
 )
 
 // @title BrightBund API
@@ -153,8 +154,20 @@ func main() {
 	defer economyWorker.Stop()
 	logger.Info("economy worker started")
 
+	var storageClient *storage.Client
+	if cfg.Storage.Endpoint != "" {
+		minioClient, err := storage.NewMinioClient(cfg.Storage)
+		if err != nil {
+			logger.Fatal("minio init failed", zap.Error(err))
+		}
+		storageClient = minioClient
+		logger.Info("minio storage initialized", zap.String("endpoint", cfg.Storage.Endpoint))
+	} else {
+		logger.Warn("minio storage not configured (avatars disabled)")
+	}
+
 	profileRepo := profiles.NewRepository(db.DB)
-	profileService := profiles.NewService(profileRepo)
+	profileService := profiles.NewService(profileRepo, storageClient)
 	profileHandler := profiles.NewHandler(profileService)
 
 	app := server.New(cfg, authHandler, profileHandler, economyHandler, jwtManager, authRepo, logger.Get())
