@@ -9,6 +9,7 @@ import (
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -152,7 +153,11 @@ func main() {
 	defer economyWorker.Stop()
 	logger.Info("economy worker started")
 
-	app := server.New(cfg, authHandler, economyHandler, jwtManager, authRepo, logger.Get())
+	profileRepo := profiles.NewRepository(db.DB)
+	profileService := profiles.NewService(profileRepo)
+	profileHandler := profiles.NewHandler(profileService)
+
+	app := server.New(cfg, authHandler, profileHandler, economyHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
