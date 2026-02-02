@@ -37,3 +37,11 @@ type PublicProfileResponse struct {
 	Region    string `json:"region"`
 	City      string `json:"city"`
 }
+
+type ProfileStats struct {
+	UserID        string `json:"user_id"`
+	SilverBalance int64  `json:"silver_balance"`
+	GoldBalance   int64  `json:"gold_balance"`
+	TotalSent     int64  `json:"total_sent"`
+	TotalReceived int64  `json:"total_received"`
+}
