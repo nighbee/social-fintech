@@ -96,6 +96,14 @@ func New(cfg *config.Config, authHandler *auth.Handler, profileHandler *profiles
 	profileGroup.Patch("/me", profileHandler.UpdateMyProfile)
 	profileGroup.Get("/:user_id", profileHandler.GetPublicProfile)
 
+	profileGroup.Get("/me", profileHandler.GetMyProfile)
+	profileGroup.Patch("/me", profileHandler.UpdateMyProfile)
+	profileGroup.Post("/me/avatar", profileHandler.UploadAvatar)
+	profileGroup.Get("/me/stats", profileHandler.GetMyStats)
+	profileGroup.Get("/:user_id", profileHandler.GetPublicProfile)
+	profileGroup.Get("/:user_id/stats", profileHandler.GetPublicStats)
+	profileGroup.Delete("/me", profileHandler.DeleteMyProfile)
+
 
 	return app
 }
