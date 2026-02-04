@@ -197,26 +197,6 @@ func overrideFromEnv(cfg *Config) {
 	if v := os.Getenv("FIREBASE_PROJECT_ID"); v != "" {
 		cfg.Firebase.ProjectID = v
 	}
-
-	// Storage (MinIO / S3)
-	if v := os.Getenv("MINIO_ENDPOINT"); v != "" {
-		cfg.Storage.Endpoint = v
-	}
-	if v := os.Getenv("MINIO_ACCESS_KEY"); v != "" {
-		cfg.Storage.AccessKey = v
-	}
-	if v := os.Getenv("MINIO_SECRET_KEY"); v != "" {
-		cfg.Storage.SecretKey = v
-	}
-	if v := os.Getenv("MINIO_BUCKET"); v != "" {
-		cfg.Storage.Bucket = v
-	}
-	if v := os.Getenv("MINIO_USE_SSL"); v != "" {
-		cfg.Storage.UseSSL = v == "true"
-	}
-	if v := os.Getenv("MINIO_PUBLIC_URL"); v != "" {
-		cfg.Storage.PublicURL = v
-	}
 }
 
 func (c *Config) Validate() error {

@@ -13,10 +13,10 @@ import (
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
+	"github.com/brightbund-backend/internal/platform/storage"
 	"github.com/brightbund-backend/internal/server"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
-	"github.com/brightbund-backend/internal/platform/storage"
 )
 
 // @title BrightBund API
@@ -108,26 +108,35 @@ func main() {
 
 	logger.Info("health checks passed")
 
+	// Initialize OAuth verifiers (optional in development)
+	verifiers := make(map[auth.ProviderType]auth.OAuthVerifier)
+
 	appleVerifier, err := auth.NewOIDCVerifier(auth.ProviderApple, cfg.OAuth.Apple.Issuer, cfg.OAuth.Apple.ClientID)
 	if err != nil {
-		logger.Fatal("apple verifier init failed", zap.Error(err))
-	}
-	googleVerifier, err := auth.NewOIDCVerifier(auth.ProviderGoogle, cfg.OAuth.Google.Issuer, cfg.OAuth.Google.ClientID)
-	if err != nil {
-		logger.Fatal("google verifier init failed", zap.Error(err))
+		logger.Warn("apple verifier init failed (OAuth login disabled)", zap.Error(err))
+	} else {
+		verifiers[auth.ProviderApple] = appleVerifier
+		logger.Info("Apple OAuth verifier initialized")
 	}
 
-	logger.Info("OAuth verifiers initialized")
+	googleVerifier, err := auth.NewOIDCVerifier(auth.ProviderGoogle, cfg.OAuth.Google.Issuer, cfg.OAuth.Google.ClientID)
+	if err != nil {
+		logger.Warn("google verifier init failed (OAuth login disabled)", zap.Error(err))
+	} else {
+		verifiers[auth.ProviderGoogle] = googleVerifier
+		logger.Info("Google OAuth verifier initialized")
+	}
 
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
 
+	// --- Economy Module Initialization (from Eco branch) ---
 	economyRepo := economy.NewRepository(db.DB)
 	economyService := economy.NewService(economyRepo)
 	economyHandler := economy.NewHandler(economyService)
 	logger.Info("economy module initialized")
 
-	// Initialize SMS sender based on configuration
+	// --- Auth SMS Sender Initialization (from Develop branch) ---
 	var smsSender auth.SMSSender
 	if cfg.Firebase.Enabled {
 		firebaseSender, err := auth.NewFirebaseSMSSender(context.Background(), cfg.Firebase.CredentialsPath)
@@ -141,36 +150,36 @@ func main() {
 		logger.Info("Using NoopSMSSender (development mode - OTP codes logged to console)")
 	}
 
-	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
-		auth.ProviderApple:  appleVerifier,
-		auth.ProviderGoogle: googleVerifier,
-	}, smsSender, economyService)
+	// --- Auth Service ---
+	authService := auth.NewService(authRepo, jwtManager, verifiers, smsSender)
 	authHandler := auth.NewHandler(authService)
 
 	logger.Info("auth module initialized")
 
+	// --- Profiles Module Initialization ---
+	var storageClient profiles.ObjectStorage
+	if cfg.Storage.Endpoint != "" {
+		minioClient, err := storage.NewMinioClient(cfg.Storage)
+		if err != nil {
+			logger.Warn("failed to initialize storage client, avatar uploads will be disabled", zap.Error(err))
+		}
+		storageClient = minioClient
+		logger.Info("storage client initialized", zap.String("endpoint", cfg.Storage.Endpoint))
+	}
+
+	profilesRepo := profiles.NewRepository(db.DB)
+	profilesService := profiles.NewService(profilesRepo, storageClient)
+	profilesHandler := profiles.NewHandler(profilesService)
+	logger.Info("profiles module initialized")
+
+	// --- Economy Background Worker ---
 	economyWorker := economy.NewWorker(economyService, economyRepo)
 	economyWorker.Start()
 	defer economyWorker.Stop()
 	logger.Info("economy worker started")
 
-	var storageClient *storage.Client
-	if cfg.Storage.Endpoint != "" {
-		minioClient, err := storage.NewMinioClient(cfg.Storage)
-		if err != nil {
-			logger.Fatal("minio init failed", zap.Error(err))
-		}
-		storageClient = minioClient
-		logger.Info("minio storage initialized", zap.String("endpoint", cfg.Storage.Endpoint))
-	} else {
-		logger.Warn("minio storage not configured (avatars disabled)")
-	}
-
-	profileRepo := profiles.NewRepository(db.DB)
-	profileService := profiles.NewService(profileRepo, storageClient)
-	profileHandler := profiles.NewHandler(profileService)
-
-	app := server.New(cfg, authHandler, profileHandler, economyHandler, jwtManager, authRepo, logger.Get())
+	// --- Server Start ---
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))

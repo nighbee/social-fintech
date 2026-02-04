@@ -134,9 +134,9 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		if ui.LastAmount == amountCents && ui.TotalTransfers >= 5 {
 			if time.Since(ui.LastTransferAt) < 24*time.Hour {
 				s.logViolation(ctx, senderUserID, ViolationRepeatTransferPattern, "/economy/transfer", &amountCents, map[string]interface{}{
-					"recipient_id":   req.RecipientUserID,
+					"recipient_id":    req.RecipientUserID,
 					"total_transfers": ui.TotalTransfers,
-					"last_amount":    ui.LastAmount,
+					"last_amount":     ui.LastAmount,
 				})
 			}
 		}
@@ -182,8 +182,9 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		return nil, WrapErrorf(err, "failed to update sender wallet")
 	}
 
+	// Use optimistic locking for receiver as well to prevent race conditions
 	receiverWallet.Balance += amountCents
-	if err := txRepo.UpdateWallet(ctx, receiverWallet); err != nil {
+	if err := txRepo.UpdateWalletWithVersion(ctx, receiverWallet, receiverWallet.Version); err != nil {
 		return nil, WrapErrorf(err, "failed to update receiver wallet")
 	}
 
@@ -414,7 +415,8 @@ func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey 
 
 	now := time.Now()
 	if !wallet.NeedsDailyAccrual(now) {
-		nextClaim := wallet.LastDailyAccrualAt.Add(24 * time.Hour)
+		// Next claim is 48 hours after last accrual
+		nextClaim := wallet.LastDailyAccrualAt.Add(time.Duration(AccrualIntervalHours) * time.Hour)
 		return nil, NewDailyAccrualError(nextClaim)
 	}
 
@@ -440,7 +442,8 @@ func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey 
 	}
 
 	if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
-		nextClaim := now.Add(24 * time.Hour)
+		// Next claim is 48 hours from now
+		nextClaim := now.Add(time.Duration(AccrualIntervalHours) * time.Hour)
 		return &AccrualResponse{
 			Success:    true,
 			Amount:     DailyAccrualSeals,
@@ -456,6 +459,7 @@ func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey 
 		ReceiverWalletID: &wallet.ID,
 		Category:         CategoryDailyAccrual,
 		ReferenceID:      referenceID,
+		Metadata:         mustMarshalJSON(map[string]interface{}{}),
 		CreatedAt:        now,
 	}
 
@@ -467,7 +471,8 @@ func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey 
 		return nil, WrapErrorf(err, "failed to commit transaction")
 	}
 
-	nextClaim := now.Add(24 * time.Hour)
+	// Next claim is 48 hours from now
+	nextClaim := now.Add(time.Duration(AccrualIntervalHours) * time.Hour)
 	return &AccrualResponse{
 		Success:    true,
 		Amount:     DailyAccrualSeals,
@@ -509,7 +514,7 @@ func (s *service) ProcessReferralBonus(ctx context.Context, referrerUserID, refe
 
 	wallet.Balance += ReferralBonusCents
 
-	if err := txRepo.UpdateWallet(ctx, wallet); err != nil {
+	if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
 		return WrapErrorf(err, "failed to update wallet")
 	}
 
@@ -646,7 +651,7 @@ func (s *service) ProcessIAPDeposit(ctx context.Context, userID string, amountCe
 
 	wallet.Balance += amountCentinels
 
-	if err := txRepo.UpdateWallet(ctx, wallet); err != nil {
+	if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
 		return WrapErrorf(err, "failed to update wallet")
 	}
 
@@ -756,7 +761,7 @@ func (s *service) RewardForTaskCompletion(ctx context.Context, userID, taskID st
 
 	wallet.Balance += reward
 
-	if err := txRepo.UpdateWallet(ctx, wallet); err != nil {
+	if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
 		return WrapErrorf(err, "failed to update wallet")
 	}
 
@@ -811,7 +816,7 @@ func (s *service) AdminAdjustBalance(ctx context.Context, userID string, amountC
 
 	wallet.Balance += amountCentinels
 
-	if err := txRepo.UpdateWallet(ctx, wallet); err != nil {
+	if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
 		return WrapErrorf(err, "failed to update wallet")
 	}
 

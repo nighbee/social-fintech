@@ -16,6 +16,7 @@ type User struct {
 	PhoneNumber    *string    `db:"phone_number" json:"-"`
 	AvatarURL      string     `db:"avatar_url" json:"avatar_url"`
 	IsShadowBanned bool       `db:"is_shadow_banned" json:"is_shadow_banned"`
+	IsAdmin        bool       `db:"is_admin" json:"is_admin"`
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
 	LastActiveAt   time.Time  `db:"last_active_at" json:"last_active_at"`

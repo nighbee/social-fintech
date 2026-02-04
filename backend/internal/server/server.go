@@ -20,7 +20,7 @@ import (
 )
 
 // создает Fiber app, cors auth routes limiter и middleware для бэка
-func New(cfg *config.Config, authHandler *auth.Handler, profileHandler *profiles.Handler, economyHandler *economy.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -85,25 +85,25 @@ func New(cfg *config.Config, authHandler *auth.Handler, profileHandler *profiles
 	economyGroup.Post("/seal/user/:userID", economyHandler.GiveSealToUser)
 	economyGroup.Get("/limits", economyHandler.GetLimits)
 	economyGroup.Get("/referral/stats", economyHandler.GetReferralStats)
-	economyGroup.Post("/admin/adjust", economyHandler.AdminAdjustBalance)
-	economyGroup.Get("/admin/violations", economyHandler.GetViolationLogs)
 
-	profileGroup := api.Group("/profiles")
-	profileGroup.Use(middleware.RequireAuth(jwt, authRepo))
-	profileGroup.Use(middleware.TouchSession(authRepo))
+	// Admin-only routes
+	adminGroup := economyGroup.Group("/admin")
+	adminGroup.Use(middleware.RequireAdmin(authRepo))
+	adminGroup.Post("/adjust", economyHandler.AdminAdjustBalance)
+	adminGroup.Get("/violations", economyHandler.GetViolationLogs)
 
-	profileGroup.Get("/me", profileHandler.GetMyProfile)
-	profileGroup.Patch("/me", profileHandler.UpdateMyProfile)
-	profileGroup.Get("/:user_id", profileHandler.GetPublicProfile)
+	// Profiles routes
+	profilesGroup := api.Group("/profiles")
+	profilesGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	profilesGroup.Use(middleware.TouchSession(authRepo))
 
-	profileGroup.Get("/me", profileHandler.GetMyProfile)
-	profileGroup.Patch("/me", profileHandler.UpdateMyProfile)
-	profileGroup.Post("/me/avatar", profileHandler.UploadAvatar)
-	profileGroup.Get("/me/stats", profileHandler.GetMyStats)
-	profileGroup.Get("/:user_id", profileHandler.GetPublicProfile)
-	profileGroup.Get("/:user_id/stats", profileHandler.GetPublicStats)
-	profileGroup.Delete("/me", profileHandler.DeleteMyProfile)
-
+	profilesGroup.Get("/me", profilesHandler.GetMyProfile)
+	profilesGroup.Patch("/me", profilesHandler.UpdateMyProfile)
+	profilesGroup.Post("/me/avatar", profilesHandler.UploadAvatar)
+	profilesGroup.Get("/me/stats", profilesHandler.GetMyStats)
+	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
+	profilesGroup.Get("/:user_id", profilesHandler.GetPublicProfile)
+	profilesGroup.Get("/:user_id/stats", profilesHandler.GetPublicStats)
 
 	return app
 }

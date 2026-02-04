@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/google/uuid"
 )
 
@@ -15,14 +16,27 @@ type ObjectStorage interface {
 }
 
 type Service struct {
-	repo    *Repository
-	storage ObjectStorage
+	repo       *Repository
+	storage    ObjectStorage
+	geolocator geolocation.Service
+}
+
+// LocationInput represents optional location override from client
+type LocationInput struct {
+	Country string
+	Region  string
+	City    string
+	IP      string // Client IP for geolocation
 }
 
 const maxAvatarSizeBytes = 5 * 1024 * 1024 // 5MB
 
 func NewService(repo *Repository, storage ObjectStorage) *Service {
-	return &Service{repo: repo, storage: storage}
+	return &Service{
+		repo:       repo,
+		storage:    storage,
+		geolocator: geolocation.NewIPAPIClient(),
+	}
 }
 
 func (s *Service) GetMyProfile(ctx context.Context, userID string) (*Profile, error) {
@@ -40,6 +54,17 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 			return nil, err
 		}
 	}
+
+	// Auto-populate location if not provided and IP is available
+	if req.ClientIP != "" && req.Country == "" && req.Region == "" && req.City == "" {
+		if loc, err := s.geolocator.GetLocationByIP(ctx, req.ClientIP); err == nil {
+			req.Country = loc.Country
+			req.Region = loc.Region
+			req.City = loc.City
+		}
+		// Silently ignore geolocation errors - user can still update other fields
+	}
+
 	return s.repo.UpdateProfile(ctx, userID, req)
 }
 
@@ -51,16 +76,33 @@ func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*P
 	if !p.IsPublic {
 		return nil, ErrProfilePrivate
 	}
+
+	// Split display_name into first/last for backwards compatibility
+	firstName, lastName := splitDisplayName(p.DisplayName)
+
 	return &PublicProfileResponse{
-		UserID:    p.UserID,
-		FirstName: p.FirstName,
-		LastName:  p.LastName,
-		Bio:       p.Bio,
-		AvatarURL: p.AvatarURL,
-		Country:   p.Country,
-		Region:    p.Region,
-		City:      p.City,
+		UserID:      p.UserID,
+		DisplayName: p.DisplayName,
+		FirstName:   firstName,
+		LastName:    lastName,
+		Bio:         p.Bio,
+		AvatarURL:   p.AvatarURL,
+		Country:     p.Country,
+		Region:      p.Region,
+		City:        p.City,
 	}, nil
+}
+
+// splitDisplayName splits a display name into first and last name
+func splitDisplayName(displayName string) (string, string) {
+	parts := strings.Fields(displayName)
+	if len(parts) == 0 {
+		return "", ""
+	}
+	if len(parts) == 1 {
+		return parts[0], ""
+	}
+	return parts[0], strings.Join(parts[1:], " ")
 }
 
 func (s *Service) UploadAvatar(ctx context.Context, userID, filename, contentType string, size int64, reader io.Reader) (*Profile, error) {

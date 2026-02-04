@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: 8080
   environment: development
   read_timeout: 30s
@@ -71,9 +71,9 @@ firebase:
   project_id: smsbb-6e583
 
 storage:
-  endpoint: "localhost:9000"
-  access_key: "minioadmin"
-  secret_key: "minioadmin"
-  bucket: "brightbund-media"
+  endpoint: minio:9000
+  access_key: minioadmin
+  secret_key: minioadmin
+  bucket: avatars
   use_ssl: false
-  public_url: "http://localhost:9000"
+  public_url: http://localhost:9000

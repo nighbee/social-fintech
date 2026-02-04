@@ -1,6 +1,9 @@
 package profiles
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/brightbund-backend/internal/platform/geolocation"
+	"github.com/gofiber/fiber/v2"
+)
 
 type Handler struct {
 	service *Service
@@ -10,6 +13,17 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// GetMyProfile godoc
+// @Summary Get my profile
+// @Description Retrieve the authenticated user's profile. Auto-creates if not exists.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} Profile "User profile"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/me [get]
 func (h *Handler) GetMyProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id")
 	if userID == nil {
@@ -22,6 +36,19 @@ func (h *Handler) GetMyProfile(c *fiber.Ctx) error {
 	return c.JSON(p)
 }
 
+// UpdateMyProfile godoc
+// @Summary Update my profile
+// @Description Update the authenticated user's profile information. Auto-populates location if IP provided.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body UpdateProfileRequest true "Profile update data"
+// @Success 200 {object} Profile "Updated profile"
+// @Failure 400 {object} map[string]string "Invalid request body"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Profile update failed"
+// @Router /profiles/me [patch]
 func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id")
 	if userID == nil {
@@ -33,6 +60,9 @@ func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
 	}
 
+	// Extract client IP for automatic geolocation
+	req.ClientIP = geolocation.ExtractIPFromRequest(c.Request())
+
 	p, err := h.service.UpdateMyProfile(c.Context(), userID.(string), &req)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "profile_update_failed"})
@@ -40,6 +70,20 @@ func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 	return c.JSON(p)
 }
 
+// GetPublicProfile godoc
+// @Summary Get public profile
+// @Description Retrieve another user's public profile. Returns 403 if profile is private.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param user_id path string true "User ID"
+// @Success 200 {object} PublicProfileResponse "Public profile"
+// @Failure 400 {object} map[string]string "Invalid user ID"
+// @Failure 403 {object} map[string]string "Profile is private"
+// @Failure 404 {object} map[string]string "Profile not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/{user_id} [get]
 func (h *Handler) GetPublicProfile(c *fiber.Ctx) error {
 	targetID := c.Params("user_id")
 	if targetID == "" {
@@ -60,6 +104,19 @@ func (h *Handler) GetPublicProfile(c *fiber.Ctx) error {
 	return c.JSON(p)
 }
 
+// UploadAvatar godoc
+// @Summary Upload avatar image
+// @Description Upload an avatar image for the authenticated user. Max 5MB, supports jpg/png/webp.
+// @Tags Profiles
+// @Accept multipart/form-data
+// @Produce json
+// @Security Bearer
+// @Param file formData file true "Avatar image file"
+// @Success 200 {object} Profile "Updated profile with new avatar URL"
+// @Failure 400 {object} map[string]string "File required, too large, or invalid type"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Upload failed or storage not configured"
+// @Router /profiles/me/avatar [post]
 func (h *Handler) UploadAvatar(c *fiber.Ctx) error {
 	userID := c.Locals("user_id")
 	if userID == nil {
@@ -98,6 +155,17 @@ func (h *Handler) UploadAvatar(c *fiber.Ctx) error {
 	return c.JSON(p)
 }
 
+// GetMyStats godoc
+// @Summary Get my profile statistics
+// @Description Retrieve wallet balances and transaction totals for the authenticated user.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} ProfileStats "Profile statistics"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Failed to retrieve stats"
+// @Router /profiles/me/stats [get]
 func (h *Handler) GetMyStats(c *fiber.Ctx) error {
 	userID := c.Locals("user_id")
 	if userID == nil {
@@ -110,6 +178,20 @@ func (h *Handler) GetMyStats(c *fiber.Ctx) error {
 	return c.JSON(stats)
 }
 
+// GetPublicStats godoc
+// @Summary Get public profile statistics
+// @Description Retrieve statistics for another user's public profile. Returns 403 if profile is private.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param user_id path string true "User ID"
+// @Success 200 {object} ProfileStats "Profile statistics"
+// @Failure 400 {object} map[string]string "Invalid user ID"
+// @Failure 403 {object} map[string]string "Profile is private"
+// @Failure 404 {object} map[string]string "Profile not found"
+// @Failure 500 {object} map[string]string "Failed to retrieve stats"
+// @Router /profiles/{user_id}/stats [get]
 func (h *Handler) GetPublicStats(c *fiber.Ctx) error {
 	targetID := c.Params("user_id")
 	if targetID == "" {
@@ -128,6 +210,17 @@ func (h *Handler) GetPublicStats(c *fiber.Ctx) error {
 	return c.JSON(stats)
 }
 
+// DeleteMyProfile godoc
+// @Summary Delete my profile
+// @Description Delete the authenticated user's profile. Profile can be auto-recreated on next access.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 204 "Profile deleted successfully"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Profile deletion failed"
+// @Router /profiles/me [delete]
 func (h *Handler) DeleteMyProfile(c *fiber.Ctx) error {
 	userID := c.Locals("user_id")
 	if userID == nil {
