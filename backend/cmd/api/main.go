@@ -108,7 +108,6 @@ func main() {
 
 	logger.Info("health checks passed")
 
-	// Initialize OAuth verifiers (optional in development)
 	verifiers := make(map[auth.ProviderType]auth.OAuthVerifier)
 
 	appleVerifier, err := auth.NewOIDCVerifier(auth.ProviderApple, cfg.OAuth.Apple.Issuer, cfg.OAuth.Apple.ClientID)
@@ -130,13 +129,11 @@ func main() {
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
 
-	// --- Economy Module Initialization (from Eco branch) ---
 	economyRepo := economy.NewRepository(db.DB)
 	economyService := economy.NewService(economyRepo)
 	economyHandler := economy.NewHandler(economyService)
 	logger.Info("economy module initialized")
 
-	// --- Auth SMS Sender Initialization (from Develop branch) ---
 	var smsSender auth.SMSSender
 	if cfg.Firebase.Enabled {
 		firebaseSender, err := auth.NewFirebaseSMSSender(context.Background(), cfg.Firebase.CredentialsPath)
@@ -150,13 +147,11 @@ func main() {
 		logger.Info("Using NoopSMSSender (development mode - OTP codes logged to console)")
 	}
 
-	// --- Auth Service ---
 	authService := auth.NewService(authRepo, jwtManager, verifiers, smsSender)
 	authHandler := auth.NewHandler(authService)
 
 	logger.Info("auth module initialized")
 
-	// --- Profiles Module Initialization ---
 	var storageClient profiles.ObjectStorage
 	if cfg.Storage.Endpoint != "" {
 		minioClient, err := storage.NewMinioClient(cfg.Storage)
@@ -172,13 +167,11 @@ func main() {
 	profilesHandler := profiles.NewHandler(profilesService)
 	logger.Info("profiles module initialized")
 
-	// --- Economy Background Worker ---
 	economyWorker := economy.NewWorker(economyService, economyRepo)
 	economyWorker.Start()
 	defer economyWorker.Stop()
 	logger.Info("economy worker started")
 
-	// --- Server Start ---
 	app := server.New(cfg, authHandler, economyHandler, profilesHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
