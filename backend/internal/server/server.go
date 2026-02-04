@@ -7,6 +7,7 @@ import (
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -19,7 +20,7 @@ import (
 )
 
 // создает Fiber app, cors auth routes limiter и middleware для бэка
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -90,6 +91,19 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	adminGroup.Use(middleware.RequireAdmin(authRepo))
 	adminGroup.Post("/adjust", economyHandler.AdminAdjustBalance)
 	adminGroup.Get("/violations", economyHandler.GetViolationLogs)
+
+	// Profiles routes
+	profilesGroup := api.Group("/profiles")
+	profilesGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	profilesGroup.Use(middleware.TouchSession(authRepo))
+
+	profilesGroup.Get("/me", profilesHandler.GetMyProfile)
+	profilesGroup.Patch("/me", profilesHandler.UpdateMyProfile)
+	profilesGroup.Post("/me/avatar", profilesHandler.UploadAvatar)
+	profilesGroup.Get("/me/stats", profilesHandler.GetMyStats)
+	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
+	profilesGroup.Get("/:user_id", profilesHandler.GetPublicProfile)
+	profilesGroup.Get("/:user_id/stats", profilesHandler.GetPublicStats)
 
 	return app
 }

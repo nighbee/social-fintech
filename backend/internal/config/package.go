@@ -19,6 +19,7 @@ type Config struct {
 	CORS     CORSConfig     `yaml:"cors"`
 	OAuth    OAuthConfig    `yaml:"oauth"`
 	Firebase FirebaseConfig `yaml:"firebase"`
+	Storage  StorageConfig  `yaml:"storage"`
 }
 
 type OAuthConfig struct {
@@ -35,6 +36,15 @@ type FirebaseConfig struct {
 	Enabled         bool   `yaml:"enabled"`
 	CredentialsPath string `yaml:"credentials_path"`
 	ProjectID       string `yaml:"project_id"`
+}
+
+type StorageConfig struct {
+	Endpoint  string `yaml:"endpoint"`
+	AccessKey string `yaml:"access_key"`
+	SecretKey string `yaml:"secret_key"`
+	Bucket    string `yaml:"bucket"`
+	UseSSL    bool   `yaml:"use_ssl"`
+	PublicURL string `yaml:"public_url"`
 }
 
 type ServerConfig struct {

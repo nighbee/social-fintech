@@ -9,9 +9,11 @@ import (
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
+	"github.com/brightbund-backend/internal/platform/storage"
 	"github.com/brightbund-backend/internal/server"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -154,6 +156,22 @@ func main() {
 
 	logger.Info("auth module initialized")
 
+	// --- Profiles Module Initialization ---
+	var storageClient profiles.ObjectStorage
+	if cfg.Storage.Endpoint != "" {
+		minioClient, err := storage.NewMinioClient(cfg.Storage)
+		if err != nil {
+			logger.Warn("failed to initialize storage client, avatar uploads will be disabled", zap.Error(err))
+		}
+		storageClient = minioClient
+		logger.Info("storage client initialized", zap.String("endpoint", cfg.Storage.Endpoint))
+	}
+
+	profilesRepo := profiles.NewRepository(db.DB)
+	profilesService := profiles.NewService(profilesRepo, storageClient)
+	profilesHandler := profiles.NewHandler(profilesService)
+	logger.Info("profiles module initialized")
+
 	// --- Economy Background Worker ---
 	economyWorker := economy.NewWorker(economyService, economyRepo)
 	economyWorker.Start()
@@ -161,7 +179,7 @@ func main() {
 	logger.Info("economy worker started")
 
 	// --- Server Start ---
-	app := server.New(cfg, authHandler, economyHandler, jwtManager, authRepo, logger.Get())
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))

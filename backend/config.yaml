@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: 8080
   environment: development
   read_timeout: 30s
@@ -69,3 +69,11 @@ firebase:
   enabled: true  # Set to true to enable Firebase SMS
   credentials_path: ./firebase-service-account.json  # Path to Firebase service account JSON
   project_id: smsbb-6e583
+
+storage:
+  endpoint: minio:9000
+  access_key: minioadmin
+  secret_key: minioadmin
+  bucket: avatars
+  use_ssl: false
+  public_url: http://localhost:9000
