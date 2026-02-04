@@ -22,30 +22,26 @@ func (r *Repository) GetProfile(ctx context.Context, userID string) (*Profile, e
 	var p Profile
 	err := r.db.GetContext(ctx, &p, `
 		SELECT 
-			user_id, 
-			COALESCE(display_name, '') as display_name, 
-			COALESCE(bio, '') as bio, 
-			COALESCE(avatar_url, '') as avatar_url, 
-			COALESCE(location_country, '') as location_country, 
-			COALESCE(location_city, '') as location_city, 
-			is_profile_public, 
-			created_at, updated_at 
-		FROM profiles 
-		WHERE user_id = $1`, userID)
+			p.user_id, 
+			COALESCE(p.display_name, '') as display_name, 
+			COALESCE(u.first_name, '') as first_name,
+			COALESCE(u.last_name, '') as last_name,
+			COALESCE(TO_CHAR(u.date_of_birth, 'YYYY-MM-DD'), '') as date_of_birth,
+			COALESCE(p.bio, '') as bio, 
+			COALESCE(p.avatar_url, '') as avatar_url, 
+			COALESCE(p.location_city, '') as location_city, 
+			p.is_profile_public, 
+			COALESCE(w.balance / 100, 0) as reputation_score,
+			p.created_at, p.updated_at 
+		FROM profiles p
+		JOIN users u ON p.user_id = u.id
+		LEFT JOIN wallets w ON p.user_id = w.user_id AND w.currency = 'GOLD_SEAL'
+		WHERE p.user_id = $1`, userID)
 	if err == sql.ErrNoRows {
 		return nil, ErrProfileNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get profile failed: %w", err)
-	}
-
-	// Split display_name into first/last for backwards compatibility
-	parts := strings.Fields(p.DisplayName)
-	if len(parts) > 0 {
-		p.FirstName = parts[0]
-		if len(parts) > 1 {
-			p.LastName = strings.Join(parts[1:], " ")
-		}
 	}
 
 	return &p, nil
@@ -172,4 +168,108 @@ func (r *Repository) GetProfileStats(ctx context.Context, userID string) (*Profi
 		TotalSent:     t.Sent,
 		TotalReceived: t.Received,
 	}, nil
+}
+
+func (r *Repository) AddAlly(ctx context.Context, userID, targetID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO user_relationships (user_id, target_user_id, relationship_type, created_at)
+		VALUES ($1, $2, 'ally', NOW())
+		ON CONFLICT (user_id, target_user_id, relationship_type) DO NOTHING
+	`, userID, targetID)
+	if err != nil {
+		return fmt.Errorf("add ally failed: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) RemoveAlly(ctx context.Context, userID, targetID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM user_relationships 
+		WHERE user_id = $1 AND target_user_id = $2 AND relationship_type = 'ally'
+	`, userID, targetID)
+	if err != nil {
+		return fmt.Errorf("remove ally failed: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) GetAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
+	// Returns users who have 'ally' relationship WITH the target userID independent of direction?
+	// User said "subscribers but named allies".
+	// Subscriber = Someone who follows ME.
+	// So we want: SELECT * FROM users WHERE id IN (SELECT user_id FROM relationships WHERE target_id = ME)
+	var allies []AllyProfile
+	err := r.db.SelectContext(ctx, &allies, `
+		SELECT 
+			p.user_id,
+			COALESCE(p.display_name, '') as display_name,
+			COALESCE(p.avatar_url, '') as avatar_url,
+			COALESCE(w.balance / 100, 0) as reputation_score
+		FROM user_relationships r
+		JOIN profiles p ON r.user_id = p.user_id
+		LEFT JOIN wallets w ON p.user_id = w.user_id AND w.currency = 'GOLD_SEAL'
+		WHERE r.target_user_id = $1 AND r.relationship_type = 'ally'
+		ORDER BY r.created_at DESC
+	`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get allies failed: %w", err)
+	}
+	return allies, nil
+}
+
+func (r *Repository) BlockUser(ctx context.Context, userID, targetID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO user_relationships (user_id, target_user_id, relationship_type, created_at)
+		VALUES ($1, $2, 'block', NOW())
+		ON CONFLICT (user_id, target_user_id, relationship_type) DO NOTHING
+	`, userID, targetID)
+	if err != nil {
+		return fmt.Errorf("block user failed: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) UnblockUser(ctx context.Context, userID, targetID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM user_relationships 
+		WHERE user_id = $1 AND target_user_id = $2 AND relationship_type = 'block'
+	`, userID, targetID)
+	if err != nil {
+		return fmt.Errorf("unblock user failed: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) RestrictUser(ctx context.Context, userID, targetID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO user_relationships (user_id, target_user_id, relationship_type, created_at)
+		VALUES ($1, $2, 'restrict', NOW())
+		ON CONFLICT (user_id, target_user_id, relationship_type) DO NOTHING
+	`, userID, targetID)
+	if err != nil {
+		return fmt.Errorf("restrict user failed: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) UnrestrictUser(ctx context.Context, userID, targetID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM user_relationships 
+		WHERE user_id = $1 AND target_user_id = $2 AND relationship_type = 'restrict'
+	`, userID, targetID)
+	if err != nil {
+		return fmt.Errorf("unrestrict user failed: %w", err)
+	}
+	return nil
+}
+
+func (r *Repository) ReportUser(ctx context.Context, userID, targetID string, req *ReportRequest) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO user_reports (reporter_id, reported_user_id, reason, description, status, created_at)
+		VALUES ($1, $2, $3, $4, 'pending', NOW())
+	`, userID, targetID, req.Reason, req.Description)
+	if err != nil {
+		return fmt.Errorf("report user failed: %w", err)
+	}
+	return nil
 }

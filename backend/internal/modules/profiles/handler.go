@@ -31,6 +31,7 @@ func (h *Handler) GetMyProfile(c *fiber.Ctx) error {
 	}
 	p, err := h.service.GetMyProfile(c.Context(), userID.(string))
 	if err != nil {
+		c.Context().Logger().Printf("GetMyProfile error: %v", err)
 		return c.Status(500).JSON(fiber.Map{"error": "profile_error"})
 	}
 	return c.JSON(p)
@@ -230,4 +231,226 @@ func (h *Handler) DeleteMyProfile(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "profile_delete_failed"})
 	}
 	return c.SendStatus(204)
+}
+
+// AddAlly godoc
+// @Summary Become an ally (subscribe)
+// @Description Subscribe to another user's profile.
+// @Tags Profiles
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Success 204 "Ally added"
+// @Failure 400 "Invalid ID or Self-ally"
+// @Failure 401 "Unauthorized"
+// @Failure 404 "Target not found"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/allies [post]
+func (h *Handler) AddAlly(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+	if targetID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	}
+
+	if err := h.service.AddAlly(c.Context(), userID.(string), targetID); err != nil {
+		if err == ErrProfileNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "profile_not_found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": "add_ally_failed"})
+	}
+	return c.SendStatus(204)
+}
+
+// RemoveAlly godoc
+// @Summary Remove ally (unsubscribe)
+// @Description Unsubscribe from another user's profile.
+// @Tags Profiles
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Success 204 "Ally removed"
+// @Failure 400 "Invalid ID"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/allies [delete]
+func (h *Handler) RemoveAlly(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+	if targetID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	}
+
+	if err := h.service.RemoveAlly(c.Context(), userID.(string), targetID); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "remove_ally_failed"})
+	}
+	return c.SendStatus(204)
+}
+
+// GetAllies godoc
+// @Summary Get allies (subscribers)
+// @Description Get list of users following the target user.
+// @Tags Profiles
+// @Param user_id path string true "Target User ID"
+// @Success 200 {array} AllyProfile
+// @Failure 400 "Invalid ID"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/allies [get]
+func (h *Handler) GetAllies(c *fiber.Ctx) error {
+	targetID := c.Params("user_id")
+	if targetID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	}
+
+	allies, err := h.service.GetAllies(c.Context(), targetID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "get_allies_failed"})
+	}
+	return c.JSON(allies)
+}
+
+// BlockUser godoc
+// @Summary Block a user
+// @Description Block another user.
+// @Tags Profiles
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Success 204 "User blocked"
+// @Failure 400 "Invalid ID or Self-block"
+// @Failure 401 "Unauthorized"
+// @Failure 404 "Target not found"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/block [post]
+func (h *Handler) BlockUser(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+
+	if err := h.service.BlockUser(c.Context(), userID.(string), targetID); err != nil {
+		if err == ErrProfileNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "profile_not_found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": "block_failed"})
+	}
+	return c.SendStatus(204)
+}
+
+// UnblockUser godoc
+// @Summary Unblock a user
+// @Description Unblock a previously blocked user.
+// @Tags Profiles
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Success 204 "User unblocked"
+// @Failure 400 "Invalid ID"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/block [delete]
+func (h *Handler) UnblockUser(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+
+	if err := h.service.UnblockUser(c.Context(), userID.(string), targetID); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "unblock_failed"})
+	}
+	return c.SendStatus(204)
+}
+
+// RestrictUser godoc
+// @Summary Restrict a user
+// @Description Restrict another user.
+// @Tags Profiles
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Success 204 "User restricted"
+// @Failure 400 "Invalid ID or Self-restrict"
+// @Failure 401 "Unauthorized"
+// @Failure 404 "Target not found"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/restrict [post]
+func (h *Handler) RestrictUser(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+
+	if err := h.service.RestrictUser(c.Context(), userID.(string), targetID); err != nil {
+		if err == ErrProfileNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "profile_not_found"})
+		}
+		return c.Status(500).JSON(fiber.Map{"error": "restrict_failed"})
+	}
+	return c.SendStatus(204)
+}
+
+// UnrestrictUser godoc
+// @Summary Unrestrict a user
+// @Description Unrestrict a previously restricted user.
+// @Tags Profiles
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Success 204 "User unrestricted"
+// @Failure 400 "Invalid ID"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/restrict [delete]
+func (h *Handler) UnrestrictUser(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+
+	if err := h.service.UnrestrictUser(c.Context(), userID.(string), targetID); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "unrestrict_failed"})
+	}
+	return c.SendStatus(204)
+}
+
+// ReportUser godoc
+// @Summary Report a user
+// @Description Report a user for spam, harassment, etc.
+// @Tags Profiles
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Param request body ReportRequest true "Report details"
+// @Success 202 "Report received"
+// @Failure 400 "Invalid ID, Self-report or Valid Reason"
+// @Failure 401 "Unauthorized"
+// @Failure 404 "Target not found"
+// @Failure 500 "Internal error"
+// @Router /profiles/{user_id}/report [post]
+func (h *Handler) ReportUser(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+
+	var req ReportRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if err := h.service.ReportUser(c.Context(), userID.(string), targetID, &req); err != nil {
+		if err == ErrProfileNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "profile_not_found"})
+		}
+		if err.Error() == "invalid_reason" {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid_reason"})
+		}
+		c.Context().Logger().Printf("ReportUser error: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "report_failed"})
+	}
+	return c.SendStatus(202)
 }

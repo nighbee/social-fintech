@@ -116,8 +116,14 @@ log_request "TEST 1" "GET" "$PROFILE_URL/me" "" "$HTTP_BODY" "$HTTP_CODE"
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Get profile successful${NC}"
     DISPLAY_NAME=$(get_json_string "$HTTP_BODY" "display_name")
+    FIRST_NAME=$(get_json_string "$HTTP_BODY" "first_name")
+    LAST_NAME=$(get_json_string "$HTTP_BODY" "last_name")
+    DOB=$(get_json_string "$HTTP_BODY" "date_of_birth")
     IS_PUBLIC=$(get_json_bool "$HTTP_BODY" "is_public")
     echo -e "${CYAN}  Display Name: $DISPLAY_NAME${NC}"
+    echo -e "${CYAN}  First Name: $FIRST_NAME${NC}"
+    echo -e "${CYAN}  Last Name: $LAST_NAME${NC}"
+    echo -e "${CYAN}  DOB: $DOB${NC}"
     echo -e "${CYAN}  Is Public: $IS_PUBLIC${NC}"
 else
     echo -e "${RED}✗ Get profile failed: HTTP $HTTP_CODE${NC}"
@@ -291,6 +297,165 @@ else
     echo -e "${RED}✗ Recreation failed: HTTP $HTTP_CODE${NC}"
 fi
 
-echo -e "\n${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${GREEN}✓ All Profile Tests Complete!${NC}"
-echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+
+# TEST 10: Add Ally (User 1 adds User 2)
+echo -e "${GREEN}=== TEST 10: Add Ally (User 1 -> User 2) ===${NC}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PROFILE_URL/$USER2_ID/allies" -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "TEST 10" "POST" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE"
+
+if [[ "$HTTP_CODE" -eq 204 ]]; then
+    echo -e "${GREEN}✓ Ally added successfully${NC}"
+else
+    echo -e "${RED}✗ Add ally failed: HTTP $HTTP_CODE${NC}"
+fi
+
+echo ""
+
+# TEST 11: Get Allies (Check User 2's allies, should find User 1)
+echo -e "${GREEN}=== TEST 11: Get Allies of User 2 ===${NC}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/$USER2_ID/allies" -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "TEST 11" "GET" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE"
+
+if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
+    # Check if array is not empty and contains User 1
+    COUNT=$(echo "$HTTP_BODY" | grep -o "$USER1_ID" | wc -l)
+    if [[ "$COUNT" -gt 0 ]]; then
+        echo -e "${GREEN}✓ Allies list correct (Found User 1)${NC}"
+    else
+        echo -e "${RED}✗ User 1 NOT found in allies list${NC}"
+    fi
+else
+    echo -e "${RED}✗ Get allies failed: HTTP $HTTP_CODE${NC}"
+fi
+
+echo ""
+
+# TEST 12: Remove Ally (User 1 removes User 2)
+echo -e "${GREEN}=== TEST 12: Remove Ally ===${NC}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$PROFILE_URL/$USER2_ID/allies" -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "TEST 12" "DELETE" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE"
+
+if [[ "$HTTP_CODE" -eq 204 ]]; then
+    echo -e "${GREEN}✓ Ally removed successfully${NC}"
+else
+    echo -e "${RED}✗ Remove ally failed: HTTP $HTTP_CODE${NC}"
+fi
+
+	echo ""
+	
+	# TEST 13: Block User (User 1 blocks User 2)
+	echo -e "${GREEN}=== TEST 13: Block User ===${NC}"
+	RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PROFILE_URL/$USER2_ID/block" -H "Authorization: Bearer $USER1_TOKEN")
+	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+	
+	log_request "TEST 13" "POST" "$PROFILE_URL/$USER2_ID/block" "" "$HTTP_BODY" "$HTTP_CODE"
+	
+	if [[ "$HTTP_CODE" -eq 204 ]]; then
+		echo -e "${GREEN}✓ User blocked successfully${NC}"
+	else
+		echo -e "${RED}✗ Block user failed: HTTP $HTTP_CODE${NC}"
+	fi
+	
+	echo ""
+	
+	# TEST 14: Unblock User
+	echo -e "${GREEN}=== TEST 14: Unblock User ===${NC}"
+	RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$PROFILE_URL/$USER2_ID/block" -H "Authorization: Bearer $USER1_TOKEN")
+	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+	
+	log_request "TEST 14" "DELETE" "$PROFILE_URL/$USER2_ID/block" "" "$HTTP_BODY" "$HTTP_CODE"
+	
+	if [[ "$HTTP_CODE" -eq 204 ]]; then
+		echo -e "${GREEN}✓ User unblocked successfully${NC}"
+	else
+		echo -e "${RED}✗ Unblock user failed: HTTP $HTTP_CODE${NC}"
+	fi
+	
+	echo ""
+	
+	# TEST 15: Restrict User
+	echo -e "${GREEN}=== TEST 15: Restrict User ===${NC}"
+	RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PROFILE_URL/$USER2_ID/restrict" -H "Authorization: Bearer $USER1_TOKEN")
+	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+	
+	log_request "TEST 15" "POST" "$PROFILE_URL/$USER2_ID/restrict" "" "$HTTP_BODY" "$HTTP_CODE"
+	
+	if [[ "$HTTP_CODE" -eq 204 ]]; then
+		echo -e "${GREEN}✓ User restricted successfully${NC}"
+	else
+		echo -e "${RED}✗ Restrict user failed: HTTP $HTTP_CODE${NC}"
+	fi
+	
+	echo ""
+	
+	# TEST 16: Unrestrict User
+	echo -e "${GREEN}=== TEST 16: Unrestrict User ===${NC}"
+	RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$PROFILE_URL/$USER2_ID/restrict" -H "Authorization: Bearer $USER1_TOKEN")
+	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+	
+	log_request "TEST 16" "DELETE" "$PROFILE_URL/$USER2_ID/restrict" "" "$HTTP_BODY" "$HTTP_CODE"
+	
+	if [[ "$HTTP_CODE" -eq 204 ]]; then
+		echo -e "${GREEN}✓ User unrestricted successfully${NC}"
+	else
+		echo -e "${RED}✗ Unrestrict user failed: HTTP $HTTP_CODE${NC}"
+	fi
+	
+	echo ""
+	
+	# TEST 17: Report User (Valid)
+	echo -e "${GREEN}=== TEST 17: Report User (Valid) ===${NC}"
+	REPORT_BODY="{\"reason\":\"spam\",\"description\":\"Sending unwanted messages\"}"
+	RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PROFILE_URL/$USER2_ID/report" \
+		-H "Authorization: Bearer $USER1_TOKEN" \
+		-H "Content-Type: application/json" \
+		-d "$REPORT_BODY")
+	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+	
+	log_request "TEST 17" "POST" "$PROFILE_URL/$USER2_ID/report" "$REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE"
+	
+	if [[ "$HTTP_CODE" -eq 202 ]]; then
+		echo -e "${GREEN}✓ Report submitted successfully${NC}"
+	else
+		echo -e "${RED}✗ Report failed: HTTP $HTTP_CODE${NC}"
+	fi
+
+	echo ""
+	
+	# TEST 18: Report User (Invalid Reason)
+	echo -e "${GREEN}=== TEST 18: Report User (Invalid Reason) ===${NC}"
+	REPORT_BODY="{\"reason\":\"invalid_reason\",\"description\":\"Should fail\"}"
+	RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PROFILE_URL/$USER2_ID/report" \
+		-H "Authorization: Bearer $USER1_TOKEN" \
+		-H "Content-Type: application/json" \
+		-d "$REPORT_BODY")
+	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+	
+	log_request "TEST 18" "POST" "$PROFILE_URL/$USER2_ID/report" "$REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE"
+	
+	if [[ "$HTTP_CODE" -eq 400 ]]; then
+		echo -e "${GREEN}✓ Invalid report correctly rejected${NC}"
+	else
+		echo -e "${RED}✗ Expected 400 for invalid report, got $HTTP_CODE${NC}"
+	fi
+
+	echo -e "\n${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+	echo -e "${GREEN}✓ All Profile Tests Complete!${NC}"
+	echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+

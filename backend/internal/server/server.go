@@ -104,6 +104,16 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
 	profilesGroup.Get("/:user_id", profilesHandler.GetPublicProfile)
 	profilesGroup.Get("/:user_id/stats", profilesHandler.GetPublicStats)
+	profilesGroup.Post("/:user_id/allies", profilesHandler.AddAlly)
+	profilesGroup.Delete("/:user_id/allies", profilesHandler.RemoveAlly)
+	profilesGroup.Get("/:user_id/allies", profilesHandler.GetAllies)
+
+	// Moderation
+	profilesGroup.Post("/:user_id/block", profilesHandler.BlockUser)
+	profilesGroup.Delete("/:user_id/block", profilesHandler.UnblockUser)
+	profilesGroup.Post("/:user_id/restrict", profilesHandler.RestrictUser)
+	profilesGroup.Delete("/:user_id/restrict", profilesHandler.UnrestrictUser)
+	profilesGroup.Post("/:user_id/report", profilesHandler.ReportUser)
 
 	return app
 }

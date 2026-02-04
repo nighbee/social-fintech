@@ -99,7 +99,7 @@ type LedgerEntry struct {
 	ReceiverWalletID *string             `db:"receiver_wallet_id" json:"receiver_wallet_id,omitempty"`
 	Category         TransactionCategory `db:"category" json:"category"`
 	ReferenceID      string              `db:"reference_id" json:"reference_id"`
-	Metadata         json.RawMessage     `db:"metadata" json:"metadata,omitempty"`
+	Metadata         json.RawMessage     `db:"metadata" json:"metadata,omitempty" swaggertype:"object"`
 	CreatedAt        time.Time           `db:"created_at" json:"created_at"`
 }
 
@@ -155,7 +155,7 @@ type ViolationLog struct {
 	UserID          string          `db:"user_id" json:"user_id"`
 	ViolationType   ViolationType   `db:"violation_type" json:"violation_type"`
 	AmountAttempted *int64          `db:"amount_attempted" json:"amount_attempted,omitempty"`
-	Details         json.RawMessage `db:"details" json:"details,omitempty"`
+	Details         json.RawMessage `db:"details" json:"details,omitempty" swaggertype:"object"`
 	IPAddress       *string         `db:"ip_address" json:"ip_address,omitempty"`
 	Endpoint        *string         `db:"endpoint" json:"endpoint,omitempty"`
 	CreatedAt       time.Time       `db:"created_at" json:"created_at"`

@@ -4,18 +4,21 @@ import "time"
 
 // Profile represents a user's profile information
 type Profile struct {
-	UserID      string    `db:"user_id" json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	DisplayName string    `db:"display_name" json:"display_name" example:"Alice Wonderland"`
-	FirstName   string    `json:"first_name" example:"Alice"`     // Computed field, not in DB
-	LastName    string    `json:"last_name" example:"Wonderland"` // Computed field, not in DB
-	Bio         string    `db:"bio" json:"bio" example:"Explorer and adventurer"`
-	AvatarURL   string    `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/user123/avatar.jpg"`
-	Country     string    `db:"location_country" json:"country" example:"United States"`
-	Region      string    `json:"region" example:"California"` // Not in current schema
-	City        string    `db:"location_city" json:"city" example:"San Francisco"`
-	IsPublic    bool      `db:"is_profile_public" json:"is_public" example:"true"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt   time.Time `db:"updated_at" json:"updated_at" example:"2024-01-20T14:45:00Z"`
+	UserID          string    `db:"user_id" json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	DisplayName     string    `db:"display_name" json:"display_name" example:"Alice Wonderland"`
+	FirstName       string    `db:"first_name" json:"first_name" example:"Alice"`
+	LastName        string    `db:"last_name" json:"last_name" example:"Wonderland"`
+	DateOfBirth     string    `db:"date_of_birth" json:"date_of_birth" example:"2000-01-01"`
+	Bio             string    `db:"bio" json:"bio" example:"Explorer and adventurer"`
+	AvatarURL       string    `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/user123/avatar.jpg"`
+	Country         string    `db:"location_country" json:"country" example:"United States"`
+	Region          string    `json:"region" example:"California"` // Not in current schema
+	City            string    `db:"location_city" json:"city" example:"San Francisco"`
+	IsPublic        bool      `db:"is_profile_public" json:"is_public" example:"true"`
+	ReputationScore int       `db:"reputation_score" json:"reputation_score" example:"100"`
+	RankTier        string    `db:"current_rank_tier" json:"rank_tier" example:"Quartz"`
+	CreatedAt       time.Time `db:"created_at" json:"created_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt       time.Time `db:"updated_at" json:"updated_at" example:"2024-01-20T14:45:00Z"`
 }
 
 // UpdateProfileRequest represents profile update payload
@@ -34,15 +37,17 @@ type UpdateProfileRequest struct {
 
 // PublicProfileResponse represents limited profile info for other users
 type PublicProfileResponse struct {
-	UserID      string `json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	DisplayName string `json:"display_name" example:"Alice Wonderland"`
-	FirstName   string `json:"first_name" example:"Alice"`
-	LastName    string `json:"last_name" example:"Wonderland"`
-	Bio         string `json:"bio" example:"Explorer and adventurer"`
-	AvatarURL   string `json:"avatar_url" example:"https://storage.example.com/avatar.jpg"`
-	Country     string `json:"country" example:"United States"`
-	Region      string `json:"region" example:"California"`
-	City        string `json:"city" example:"San Francisco"`
+	UserID          string `json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	DisplayName     string `json:"display_name" example:"Alice Wonderland"`
+	FirstName       string `json:"first_name" example:"Alice"`
+	LastName        string `json:"last_name" example:"Wonderland"`
+	Bio             string `json:"bio" example:"Explorer and adventurer"`
+	AvatarURL       string `json:"avatar_url" example:"https://storage.example.com/avatar.jpg"`
+	Country         string `json:"country" example:"United States"`
+	Region          string `json:"region" example:"California"`
+	City            string `json:"city" example:"San Francisco"`
+	ReputationScore int    `json:"reputation_score" example:"100"`
+	RankTier        string `json:"rank_tier" example:"Quartz"`
 }
 
 // ProfileStats represents user's economy statistics
@@ -52,4 +57,18 @@ type ProfileStats struct {
 	GoldBalance   int64  `json:"gold_balance" example:"5000"`    // in centinels (50 Seals)
 	TotalSent     int64  `json:"total_sent" example:"8000"`      // in centinels
 	TotalReceived int64  `json:"total_received" example:"20000"` // in centinels
+}
+
+// AllyProfile represents a user in the Allies list
+type AllyProfile struct {
+	UserID          string `db:"user_id" json:"user_id"`
+	DisplayName     string `db:"display_name" json:"display_name"`
+	AvatarURL       string `db:"avatar_url" json:"avatar_url"`
+	ReputationScore int    `db:"reputation_score" json:"reputation_score"`
+	RankTier        string `json:"rank_tier"` // Computed
+}
+
+type ReportRequest struct {
+	Reason      string `json:"reason" validate:"required,oneof=spam harassment inappropriate fake_account other" example:"spam"`
+	Description string `json:"description" example:"Sent spam messages"`
 }

@@ -44,7 +44,11 @@ func (s *Service) GetMyProfile(ctx context.Context, userID string) (*Profile, er
 	if err == ErrProfileNotFound {
 		return s.repo.CreateDefaultProfile(ctx, userID)
 	}
-	return p, err
+	if err != nil {
+		return nil, err
+	}
+	p.RankTier = calculateRank(p.ReputationScore)
+	return p, nil
 }
 
 func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *UpdateProfileRequest) (*Profile, error) {
@@ -81,15 +85,17 @@ func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*P
 	firstName, lastName := splitDisplayName(p.DisplayName)
 
 	return &PublicProfileResponse{
-		UserID:      p.UserID,
-		DisplayName: p.DisplayName,
-		FirstName:   firstName,
-		LastName:    lastName,
-		Bio:         p.Bio,
-		AvatarURL:   p.AvatarURL,
-		Country:     p.Country,
-		Region:      p.Region,
-		City:        p.City,
+		UserID:          p.UserID,
+		DisplayName:     p.DisplayName,
+		FirstName:       firstName,
+		LastName:        lastName,
+		Bio:             p.Bio,
+		AvatarURL:       p.AvatarURL,
+		Country:         p.Country,
+		Region:          p.Region,
+		City:            p.City,
+		ReputationScore: p.ReputationScore,
+		RankTier:        calculateRank(p.ReputationScore),
 	}, nil
 }
 
@@ -159,6 +165,83 @@ func (s *Service) DeleteMyProfile(ctx context.Context, userID string) error {
 	return s.repo.DeleteProfile(ctx, userID)
 }
 
+func (s *Service) AddAlly(ctx context.Context, userID, targetID string) error {
+	if userID == targetID {
+		return fmt.Errorf("cannot ally self")
+	}
+	// Verify target exists
+	if _, err := s.repo.GetProfile(ctx, targetID); err != nil {
+		return err
+	}
+	return s.repo.AddAlly(ctx, userID, targetID)
+}
+
+func (s *Service) RemoveAlly(ctx context.Context, userID, targetID string) error {
+	return s.repo.RemoveAlly(ctx, userID, targetID)
+}
+
+func (s *Service) GetAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
+	allies, err := s.repo.GetAllies(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	// Compute ranks
+	for i := range allies {
+		allies[i].RankTier = calculateRank(allies[i].ReputationScore)
+	}
+	return allies, nil
+}
+
+func (s *Service) BlockUser(ctx context.Context, userID, targetID string) error {
+	if userID == targetID {
+		return fmt.Errorf("cannot block self")
+	}
+	if _, err := s.repo.GetProfile(ctx, targetID); err != nil {
+		return err
+	}
+	// Logic decision: Should blocking also remove 'ally' relationship? usually yes.
+	// For MVP, valid just to add block record.
+	// Often application level checks "if blocked, don't show posts".
+	return s.repo.BlockUser(ctx, userID, targetID)
+}
+
+func (s *Service) UnblockUser(ctx context.Context, userID, targetID string) error {
+	return s.repo.UnblockUser(ctx, userID, targetID)
+}
+
+func (s *Service) RestrictUser(ctx context.Context, userID, targetID string) error {
+	if userID == targetID {
+		return fmt.Errorf("cannot restrict self")
+	}
+	if _, err := s.repo.GetProfile(ctx, targetID); err != nil {
+		return err
+	}
+	return s.repo.RestrictUser(ctx, userID, targetID)
+}
+
+func (s *Service) UnrestrictUser(ctx context.Context, userID, targetID string) error {
+	return s.repo.UnrestrictUser(ctx, userID, targetID)
+}
+
+func (s *Service) ReportUser(ctx context.Context, userID, targetID string, req *ReportRequest) error {
+	if userID == targetID {
+		return fmt.Errorf("cannot report self")
+	}
+	if _, err := s.repo.GetProfile(ctx, targetID); err != nil {
+		return err
+	}
+
+	// Validate reason
+	validReasons := map[string]bool{
+		"spam": true, "harassment": true, "inappropriate": true, "fake_account": true, "other": true,
+	}
+	if !validReasons[req.Reason] {
+		return fmt.Errorf("invalid_reason")
+	}
+
+	return s.repo.ReportUser(ctx, userID, targetID, req)
+}
+
 func isAllowedImageType(ct string) bool {
 	switch ct {
 	case "image/jpeg", "image/png", "image/webp":
@@ -179,4 +262,34 @@ func extFromContentType(ct string) string {
 	default:
 		return ""
 	}
+}
+
+func calculateRank(score int) string {
+	var rank, quality string
+
+	switch {
+	case score >= 5000:
+		rank = "Sovereign"
+		quality = "Sovereign"
+	case score >= 2500:
+		rank = "Supernova"
+		quality = "Transcendence"
+	case score >= 1000:
+		rank = "Ruby"
+		quality = "Fortitude"
+	case score >= 500:
+		rank = "Sapphire"
+		quality = "Ascendance"
+	case score >= 250:
+		rank = "Emerald"
+		quality = "Integrity"
+	case score >= 100:
+		rank = "Moonstone"
+		quality = "Clarity"
+	default:
+		rank = "Quartz"
+		quality = "Origin"
+	}
+
+	return fmt.Sprintf("%s · %s", rank, quality)
 }
