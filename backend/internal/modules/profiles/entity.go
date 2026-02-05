@@ -12,7 +12,6 @@ type Profile struct {
 	Bio             string    `db:"bio" json:"bio" example:"Explorer and adventurer"`
 	AvatarURL       string    `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/user123/avatar.jpg"`
 	Country         string    `db:"location_country" json:"country" example:"United States"`
-	Region          string    `json:"region" example:"California"` // Not in current schema
 	City            string    `db:"location_city" json:"city" example:"San Francisco"`
 	IsPublic        bool      `db:"is_profile_public" json:"is_public" example:"true"`
 	ReputationScore int       `db:"reputation_score" json:"reputation_score" example:"100"`
@@ -29,7 +28,6 @@ type UpdateProfileRequest struct {
 	Bio         string `json:"bio" example:"Explorer and adventurer"`
 	AvatarURL   string `json:"avatar_url" example:"https://storage.example.com/avatar.jpg"`
 	Country     string `json:"country" example:"United States"`
-	Region      string `json:"region" example:"California"`
 	City        string `json:"city" example:"San Francisco"`
 	IsPublic    *bool  `json:"is_public" example:"true"`
 	ClientIP    string `json:"-"` // Not from JSON, set by handler
@@ -44,7 +42,6 @@ type PublicProfileResponse struct {
 	Bio             string `json:"bio" example:"Explorer and adventurer"`
 	AvatarURL       string `json:"avatar_url" example:"https://storage.example.com/avatar.jpg"`
 	Country         string `json:"country" example:"United States"`
-	Region          string `json:"region" example:"California"`
 	City            string `json:"city" example:"San Francisco"`
 	ReputationScore int    `json:"reputation_score" example:"100"`
 	RankTier        string `json:"rank_tier" example:"Quartz"`

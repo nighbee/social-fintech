@@ -60,16 +60,20 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 	}
 
 	// Auto-populate location if not provided and IP is available
-	if req.ClientIP != "" && req.Country == "" && req.Region == "" && req.City == "" {
+	if req.ClientIP != "" && req.Country == "" && req.City == "" {
 		if loc, err := s.geolocator.GetLocationByIP(ctx, req.ClientIP); err == nil {
 			req.Country = loc.Country
-			req.Region = loc.Region
 			req.City = loc.City
 		}
 		// Silently ignore geolocation errors - user can still update other fields
 	}
 
-	return s.repo.UpdateProfile(ctx, userID, req)
+	p, err := s.repo.UpdateProfile(ctx, userID, req)
+	if err != nil {
+		return nil, err
+	}
+	p.RankTier = calculateRank(p.ReputationScore)
+	return p, nil
 }
 
 func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*PublicProfileResponse, error) {
@@ -92,7 +96,6 @@ func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*P
 		Bio:             p.Bio,
 		AvatarURL:       p.AvatarURL,
 		Country:         p.Country,
-		Region:          p.Region,
 		City:            p.City,
 		ReputationScore: p.ReputationScore,
 		RankTier:        calculateRank(p.ReputationScore),
