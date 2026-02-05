@@ -37,6 +37,12 @@ class $AssetsIconsGen {
   /// File path: assets/icons/atsign.svg
   SvgGenImage get atsign => const SvgGenImage('assets/icons/atsign.svg');
 
+  /// File path: assets/icons/bell.svg
+  SvgGenImage get bell => const SvgGenImage('assets/icons/bell.svg');
+
+  /// File path: assets/icons/bronze.svg
+  SvgGenImage get bronze => const SvgGenImage('assets/icons/bronze.svg');
+
   /// File path: assets/icons/calendar.svg
   SvgGenImage get calendar => const SvgGenImage('assets/icons/calendar.svg');
 
@@ -45,9 +51,6 @@ class $AssetsIconsGen {
 
   /// File path: assets/icons/close.svg
   SvgGenImage get close => const SvgGenImage('assets/icons/close.svg');
-
-  /// File path: assets/icons/coin.svg
-  SvgGenImage get coin => const SvgGenImage('assets/icons/coin.svg');
 
   /// File path: assets/icons/eye_closed.svg
   SvgGenImage get eyeClosed => const SvgGenImage('assets/icons/eye_closed.svg');
@@ -62,12 +65,24 @@ class $AssetsIconsGen {
   SvgGenImage get googleLogo =>
       const SvgGenImage('assets/icons/google_logo.svg');
 
+  /// File path: assets/icons/like.svg
+  SvgGenImage get like => const SvgGenImage('assets/icons/like.svg');
+
   /// File path: assets/icons/map_icon.svg
   SvgGenImage get mapIcon => const SvgGenImage('assets/icons/map_icon.svg');
+
+  /// File path: assets/icons/message.svg
+  SvgGenImage get message => const SvgGenImage('assets/icons/message.svg');
+
+  /// File path: assets/icons/more.svg
+  SvgGenImage get more => const SvgGenImage('assets/icons/more.svg');
 
   /// File path: assets/icons/person_favourites.svg
   SvgGenImage get personFavourites =>
       const SvgGenImage('assets/icons/person_favourites.svg');
+
+  /// File path: assets/icons/plus_icon.svg
+  SvgGenImage get plusIcon => const SvgGenImage('assets/icons/plus_icon.svg');
 
   /// File path: assets/icons/profile_icon.svg
   SvgGenImage get profileIcon =>
@@ -77,32 +92,54 @@ class $AssetsIconsGen {
   SvgGenImage get ratingIcon =>
       const SvgGenImage('assets/icons/rating_icon.svg');
 
+  /// File path: assets/icons/search.svg
+  SvgGenImage get search => const SvgGenImage('assets/icons/search.svg');
+
   /// File path: assets/icons/settings_icon.svg
   SvgGenImage get settingsIcon =>
       const SvgGenImage('assets/icons/settings_icon.svg');
 
+  /// File path: assets/icons/share.svg
+  SvgGenImage get share => const SvgGenImage('assets/icons/share.svg');
+
+  /// File path: assets/icons/silver_coin.svg
+  SvgGenImage get silverCoin =>
+      const SvgGenImage('assets/icons/silver_coin.svg');
+
   /// File path: assets/icons/stats_icon.svg
   SvgGenImage get statsIcon => const SvgGenImage('assets/icons/stats_icon.svg');
+
+  /// File path: assets/icons/timer.svg
+  SvgGenImage get timer => const SvgGenImage('assets/icons/timer.svg');
 
   /// List of all assets
   List<SvgGenImage> get values => [
     appleLogo,
     arrowBack,
     atsign,
+    bell,
+    bronze,
     calendar,
     chatsIcon,
     close,
-    coin,
     eyeClosed,
     eyeOpened,
     feedIcon,
     googleLogo,
+    like,
     mapIcon,
+    message,
+    more,
     personFavourites,
+    plusIcon,
     profileIcon,
     ratingIcon,
+    search,
     settingsIcon,
+    share,
+    silverCoin,
     statsIcon,
+    timer,
   ];
 }
 

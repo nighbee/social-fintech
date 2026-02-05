@@ -20,6 +20,13 @@ class AppColors {
 
   static const yellowText = Color(0xffb39600);
   static const greenText = Color(0xff028a66);
+
+  // Additional colors for feed page
+  static const textPrimary = Color(0xffE5E5E5);
+  static const textSecondary = Color(0xff9CA3AF);
+  static const surface = Color(0xff2A2A2B);
+  static const border = Color(0xff3F3F40);
+  static const error = Color(0xffEF4444);
 }
 
 extension ColorThemeDataExtension on ThemeData {

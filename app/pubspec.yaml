@@ -65,6 +65,8 @@ dependencies:
   uuid: ^4.5.1
   # Информация о версии приложения
   package_info_plus: ^8.0.0
+  # Relative time formatting (e.g., "3 hours ago")
+  timeago: ^3.7.0
   # Firebase
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1

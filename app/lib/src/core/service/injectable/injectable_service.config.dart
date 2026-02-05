@@ -23,6 +23,14 @@ import '../../../features/auth/data/sources/remote/i_auth_remote.dart' as _i387;
 import '../../../features/auth/domain/repositories/i_auth_repository.dart'
     as _i664;
 import '../../../features/auth/presentation/bloc/auth_bloc.dart' as _i748;
+import '../../../features/home/data/repositories/home_repository_impl.dart'
+    as _i955;
+import '../../../features/home/data/sources/remote/home_remote_impl.dart'
+    as _i804;
+import '../../../features/home/data/sources/remote/i_home_remote.dart' as _i482;
+import '../../../features/home/domain/repositories/i_home_repository.dart'
+    as _i529;
+import '../../../features/home/presentation/bloc/home_bloc.dart' as _i84;
 import '../../../features/profile/data/repositories/profile_repository_impl.dart'
     as _i695;
 import '../../../features/profile/data/sources/remote/i_profile_remote.dart'
@@ -53,6 +61,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i134.AuthLocalImpl(),
       instanceName: 'AuthLocalImpl',
     );
+    gh.lazySingleton<_i482.IHomeRemote>(
+      () =>
+          _i804.HomeRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
+      instanceName: 'HomeRemoteImpl',
+    );
     gh.lazySingleton<_i931.EnvironmentManager>(
       () => _i931.EnvironmentManager(gh<_i6.IAppStorage>()),
     );
@@ -79,11 +92,22 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i664.IAuthRepository>(instanceName: 'AuthRepositoryImpl'),
       ),
     );
+    gh.lazySingleton<_i529.IHomeRepository>(
+      () => _i955.HomeRepositoryImpl(
+        gh<_i482.IHomeRemote>(instanceName: 'HomeRemoteImpl'),
+      ),
+      instanceName: 'HomeRepositoryImpl',
+    );
     gh.lazySingleton<_i1037.IProfileRepository>(
       () => _i695.ProfileRepositoryImpl(
         gh<_i964.IProfileRemote>(instanceName: 'ProfileRemoteImpl'),
       ),
       instanceName: 'ProfileRepositoryImpl',
+    );
+    gh.factory<_i84.HomeBloc>(
+      () => _i84.HomeBloc(
+        gh<_i529.IHomeRepository>(instanceName: 'HomeRepositoryImpl'),
+      ),
     );
     gh.factory<_i428.ProfileBloc>(
       () => _i428.ProfileBloc(
