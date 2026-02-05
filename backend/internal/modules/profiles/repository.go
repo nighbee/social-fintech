@@ -29,6 +29,7 @@ func (r *Repository) GetProfile(ctx context.Context, userID string) (*Profile, e
 			COALESCE(TO_CHAR(u.date_of_birth, 'YYYY-MM-DD'), '') as date_of_birth,
 			COALESCE(p.bio, '') as bio, 
 			COALESCE(p.avatar_url, '') as avatar_url, 
+			COALESCE(p.location_country, '') as location_country,
 			COALESCE(p.location_city, '') as location_city, 
 			p.is_profile_public, 
 			COALESCE(w.balance / 100, 0) as reputation_score,

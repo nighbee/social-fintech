@@ -31,8 +31,8 @@ func (h *Handler) GetMyProfile(c *fiber.Ctx) error {
 	}
 	p, err := h.service.GetMyProfile(c.Context(), userID.(string))
 	if err != nil {
-		c.Context().Logger().Printf("GetMyProfile error: %v", err)
-		return c.Status(500).JSON(fiber.Map{"error": "profile_error"})
+		c.Context().Logger().Printf("GetMyProfile error for user %s: %v", userID.(string), err)
+		return c.Status(500).JSON(fiber.Map{"error": "profile_error", "message": err.Error()})
 	}
 	return c.JSON(p)
 }
@@ -66,7 +66,8 @@ func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 
 	p, err := h.service.UpdateMyProfile(c.Context(), userID.(string), &req)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": "profile_update_failed"})
+		c.Context().Logger().Printf("UpdateMyProfile error for user %s: %v", userID.(string), err)
+		return c.Status(500).JSON(fiber.Map{"error": "profile_update_failed", "message": err.Error()})
 	}
 	return c.JSON(p)
 }
