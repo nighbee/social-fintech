@@ -2,7 +2,9 @@ package profiles
 
 import (
 	"github.com/brightbund-backend/internal/platform/geolocation"
+	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
@@ -31,7 +33,11 @@ func (h *Handler) GetMyProfile(c *fiber.Ctx) error {
 	}
 	p, err := h.service.GetMyProfile(c.Context(), userID.(string))
 	if err != nil {
-		c.Context().Logger().Printf("GetMyProfile error for user %s: %v", userID.(string), err)
+		logger.Error("failed to get profile",
+			zap.String("user_id", userID.(string)),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "profile_error", "message": err.Error()})
 	}
 	return c.JSON(p)
@@ -66,7 +72,11 @@ func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 
 	p, err := h.service.UpdateMyProfile(c.Context(), userID.(string), &req)
 	if err != nil {
-		c.Context().Logger().Printf("UpdateMyProfile error for user %s: %v", userID.(string), err)
+		logger.Error("failed to update profile",
+			zap.String("user_id", userID.(string)),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "profile_update_failed", "message": err.Error()})
 	}
 	return c.JSON(p)
@@ -100,6 +110,11 @@ func (h *Handler) GetPublicProfile(c *fiber.Ctx) error {
 		if err == ErrProfileNotFound {
 			return c.Status(404).JSON(fiber.Map{"error": "profile_not_found"})
 		}
+		logger.Error("failed to get public profile",
+			zap.String("target_user_id", targetID),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "profile_error"})
 	}
 
@@ -151,6 +166,13 @@ func (h *Handler) UploadAvatar(c *fiber.Ctx) error {
 		if err == ErrAvatarTooLarge || err == ErrInvalidAvatarMimeType {
 			return c.Status(400).JSON(fiber.Map{"error": "invalid_avatar"})
 		}
+		logger.Error("avatar upload failed",
+			zap.String("user_id", userID.(string)),
+			zap.String("filename", file.Filename),
+			zap.Int64("size", file.Size),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "avatar_upload_failed"})
 	}
 
@@ -175,6 +197,11 @@ func (h *Handler) GetMyStats(c *fiber.Ctx) error {
 	}
 	stats, err := h.service.GetMyStats(c.Context(), userID.(string))
 	if err != nil {
+		logger.Error("failed to get profile stats",
+			zap.String("user_id", userID.(string)),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "profile_stats_failed"})
 	}
 	return c.JSON(stats)
@@ -207,6 +234,11 @@ func (h *Handler) GetPublicStats(c *fiber.Ctx) error {
 		if err == ErrProfileNotFound {
 			return c.Status(404).JSON(fiber.Map{"error": "profile_not_found"})
 		}
+		logger.Error("failed to get public stats",
+			zap.String("target_user_id", targetID),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "profile_stats_failed"})
 	}
 	return c.JSON(stats)
@@ -229,6 +261,11 @@ func (h *Handler) DeleteMyProfile(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 	if err := h.service.DeleteMyProfile(c.Context(), userID.(string)); err != nil {
+		logger.Error("failed to delete profile",
+			zap.String("user_id", userID.(string)),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "profile_delete_failed"})
 	}
 	return c.SendStatus(204)
@@ -450,7 +487,13 @@ func (h *Handler) ReportUser(c *fiber.Ctx) error {
 		if err.Error() == "invalid_reason" {
 			return c.Status(400).JSON(fiber.Map{"error": "invalid_reason"})
 		}
-		c.Context().Logger().Printf("ReportUser error: %v", err)
+		logger.Error("failed to report user",
+			zap.String("reporter_id", userID.(string)),
+			zap.String("reported_id", targetID),
+			zap.String("reason", req.Reason),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "report_failed"})
 	}
 	return c.SendStatus(202)
