@@ -12,10 +12,11 @@ class EndPoints {
   static const String authPhoneRequest = '/auth/phone/request';
   static const String authPhoneVerify = '/auth/phone/verify';
   static const String authFirebasePhoneLogin = '/auth/firebase-phone-login';
-  static const String authFirebasePhoneRegister = '/auth/firebase-phone-register';
+  static const String authFirebasePhoneRegister =
+      '/auth/firebase-phone-register';
   static const String authRefresh = '/auth/refresh';
   static const String authLogout = '/auth/logout';
-  static const String profile = '/auth/profile';
+  static const String profile = '/profiles/me';
 
   //* Economy
   static const String economyWallet = '/economy/wallet';

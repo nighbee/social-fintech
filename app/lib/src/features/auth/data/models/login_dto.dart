@@ -1,3 +1,4 @@
+import 'package:app/src/features/profile/data/models/user_dto.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
 
@@ -20,28 +21,5 @@ class LoginDto with _$LoginDto {
     accessToken: accessToken,
     refreshToken: refreshToken,
     user: user.toEntity(),
-  );
-}
-
-@freezed
-class UserDto with _$UserDto {
-  const UserDto._();
-  const factory UserDto({
-    required String id,
-    String? email,
-    String? username,
-    @JsonKey(name: 'avatar_url') String? avatarUrl,
-    @JsonKey(name: 'created_at') String? createdAt,
-  }) = _UserDto;
-
-  factory UserDto.fromJson(Map<String, dynamic> json) =>
-      _$UserDtoFromJson(json);
-
-  UserEntity toEntity() => UserEntity(
-    id: id,
-    email: email,
-    username: username,
-    avatarUrl: avatarUrl,
-    createdAt: createdAt != null ? DateTime.tryParse(createdAt!) : null,
   );
 }
