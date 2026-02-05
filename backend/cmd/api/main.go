@@ -130,7 +130,7 @@ func main() {
 	authRepo := auth.NewRepository(db.DB)
 
 	economyRepo := economy.NewRepository(db.DB)
-	economyService := economy.NewService(economyRepo)
+	economyService := economy.NewService(economyRepo, cfg.Economy)
 	economyHandler := economy.NewHandler(economyService)
 	logger.Info("economy module initialized")
 
@@ -150,6 +150,10 @@ func main() {
 	authService := auth.NewService(authRepo, jwtManager, verifiers, smsSender)
 	authHandler := auth.NewHandler(authService)
 
+	if err := authService.EnsureAdmins(context.Background(), cfg.Admin.Emails); err != nil {
+		logger.Error("failed to seed admins", zap.Error(err))
+	}
+
 	logger.Info("auth module initialized")
 
 	var storageClient profiles.ObjectStorage
@@ -167,7 +171,7 @@ func main() {
 	profilesHandler := profiles.NewHandler(profilesService)
 	logger.Info("profiles module initialized")
 
-	economyWorker := economy.NewWorker(economyService, economyRepo)
+	economyWorker := economy.NewWorker(economyService, economyRepo, cfg.Economy)
 	economyWorker.Start()
 	defer economyWorker.Stop()
 	logger.Info("economy worker started")

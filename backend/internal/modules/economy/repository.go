@@ -27,13 +27,16 @@ type Repository interface {
 	GetReferralByReferee(ctx context.Context, refereeUserID string) (*Referral, error)
 
 	GetOrCreateTransferLimit(ctx context.Context, userID, monthYear string) (*TransferLimit, error)
-	UpdateTransferLimit(ctx context.Context, limit *TransferLimit) error
+	UpdateTransferLimit(ctx context.Context, limit *TransferLimit, oldTransfersCount int, oldTotalSent int64) error
 
 	CreateViolationLog(ctx context.Context, violation *ViolationLog) error
 	GetViolationLogs(ctx context.Context, userID string, limit, offset int) ([]*ViolationLog, int, error)
 
 	GetUserInteraction(ctx context.Context, senderID, receiverID string) (*UserInteraction, error)
 	UpsertUserInteraction(ctx context.Context, senderID, receiverID string, amount int64) error
+
+	GetPairCooldown(ctx context.Context, senderID, receiverID string) (*PairCooldown, error)
+	UpsertPairCooldown(ctx context.Context, cooldown *PairCooldown) error
 }
 
 type repository struct {
@@ -349,18 +352,29 @@ func (r *repository) GetOrCreateTransferLimit(ctx context.Context, userID, month
 	return &newLimit, nil
 }
 
-func (r *repository) UpdateTransferLimit(ctx context.Context, limit *TransferLimit) error {
+func (r *repository) UpdateTransferLimit(ctx context.Context, limit *TransferLimit, oldTransfersCount int, oldTotalSent int64) error {
 	query := `
 		UPDATE transfer_limits
 		SET transfers_count = $1,
 		    total_sent_centinels = $2,
 		    updated_at = NOW()
-		WHERE id = $3
+		WHERE id = $3 AND transfers_count = $4 AND total_sent_centinels = $5
 	`
 
-	_, err := r.getExecutor().ExecContext(ctx, query, limit.TransfersCount, limit.TotalSentCentinels, limit.ID)
+	res, err := r.getExecutor().ExecContext(ctx, query,
+		limit.TransfersCount, limit.TotalSentCentinels, limit.ID,
+		oldTransfersCount, oldTotalSent)
 	if err != nil {
 		return fmt.Errorf("failed to update transfer limit: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return ErrOptimisticLockFailure
 	}
 
 	return nil
@@ -447,5 +461,47 @@ func (r *repository) UpsertUserInteraction(ctx context.Context, senderID, receiv
 	if err != nil {
 		return fmt.Errorf("failed to upsert user interaction: %w", err)
 	}
+	return nil
+}
+
+func (r *repository) GetPairCooldown(ctx context.Context, senderID, receiverID string) (*PairCooldown, error) {
+	query := `
+		SELECT sender_user_id, receiver_user_id, repeat_level, last_grant_at, next_allowed_at, created_at, updated_at
+		FROM pair_cooldowns
+		WHERE sender_user_id = $1 AND receiver_user_id = $2
+	`
+
+	var pc PairCooldown
+	err := sqlx.GetContext(ctx, r.getExecutor(), &pc, query, senderID, receiverID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pair cooldown: %w", err)
+	}
+
+	return &pc, nil
+}
+
+func (r *repository) UpsertPairCooldown(ctx context.Context, cooldown *PairCooldown) error {
+	query := `
+		INSERT INTO pair_cooldowns (
+			sender_user_id, receiver_user_id, repeat_level, last_grant_at, next_allowed_at, created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+		ON CONFLICT (sender_user_id, receiver_user_id)
+		DO UPDATE SET
+			repeat_level = EXCLUDED.repeat_level,
+			last_grant_at = EXCLUDED.last_grant_at,
+			next_allowed_at = EXCLUDED.next_allowed_at,
+			updated_at = NOW()
+	`
+
+	_, err := r.getExecutor().ExecContext(ctx, query,
+		cooldown.SenderUserID, cooldown.ReceiverUserID, cooldown.RepeatLevel,
+		cooldown.LastGrantAt, cooldown.NextAllowedAt)
+	if err != nil {
+		return fmt.Errorf("failed to upsert pair cooldown: %w", err)
+	}
+
 	return nil
 }

@@ -6,11 +6,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+
+	"github.com/brightbund-backend/internal/config"
 )
 
 // RunDailyAccrual applies daily free silver to eligible wallets.
 // It respects free balance cap and last_daily_accrual_at.
-func RunDailyAccrual(ctx context.Context, db *sqlx.DB) (DailyAccrualResult, error) {
+func RunDailyAccrual(ctx context.Context, db *sqlx.DB, cfg config.EconomyConfig) (DailyAccrualResult, error) {
 	type walletRow struct {
 		ID          string     `db:"id"`
 		UserID      string     `db:"user_id"`
@@ -28,15 +30,15 @@ func RunDailyAccrual(ctx context.Context, db *sqlx.DB) (DailyAccrualResult, erro
 		    last_daily_accrual_at IS NULL
 		    OR last_daily_accrual_at < NOW() - INTERVAL '48 hours'
 		  )
-	`, MaxFreeSilverCents)
+	`, cfg.MaxFreeSilverBalance)
 	if err != nil {
 		return DailyAccrualResult{}, err
 	}
 
 	result := DailyAccrualResult{ProcessedUsers: len(wallets)}
 	for _, w := range wallets {
-		add := int64(DailyAccrualCents)
-		remaining := int64(MaxFreeSilverCents) - w.FreeBalance
+		add := cfg.DailyAccrualCents
+		remaining := cfg.MaxFreeSilverBalance - w.FreeBalance
 		if remaining < add {
 			add = remaining
 		}

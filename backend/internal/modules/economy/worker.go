@@ -4,19 +4,23 @@ import (
 	"context"
 	"log"
 	"time"
+
+	"github.com/brightbund-backend/internal/config"
 )
 
 type Worker struct {
 	service Service
 	repo    Repository
+	cfg     config.EconomyConfig
 	ticker  *time.Ticker
 	done    chan bool
 }
 
-func NewWorker(service Service, repo Repository) *Worker {
+func NewWorker(service Service, repo Repository, cfg config.EconomyConfig) *Worker {
 	return &Worker{
 		service: service,
 		repo:    repo,
+		cfg:     cfg,
 		done:    make(chan bool),
 	}
 }
@@ -106,7 +110,7 @@ func (w *Worker) ProcessDailyAccruals() {
 	`
 
 	var userIDs []string
-	err := w.repo.GetDB().SelectContext(ctx, &userIDs, query, MaxFreeSilverCents)
+	err := w.repo.GetDB().SelectContext(ctx, &userIDs, query, w.cfg.MaxFreeSilverBalance)
 	if err != nil {
 		log.Printf("[Economy Worker] Failed to get eligible users: %v", err)
 		return
