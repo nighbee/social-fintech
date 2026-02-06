@@ -2321,7 +2321,8 @@
             "type": "object",
             "required": [
                 "amount",
-                "currency"
+                "currency",
+                "receiver_user_id"
             ],
             "properties": {
                 "amount": {
@@ -2337,6 +2338,9 @@
                     ]
                 },
                 "idempotency_key": {
+                    "type": "string"
+                },
+                "receiver_user_id": {
                     "type": "string"
                 }
             }
@@ -2709,11 +2713,6 @@
                     "type": "string",
                     "example": "Quartz"
                 },
-                "region": {
-                    "description": "Not in current schema",
-                    "type": "string",
-                    "example": "California"
-                },
                 "reputation_score": {
                     "type": "integer",
                     "example": 100
@@ -2792,10 +2791,6 @@
                     "type": "string",
                     "example": "Quartz"
                 },
-                "region": {
-                    "type": "string",
-                    "example": "California"
-                },
                 "reputation_score": {
                     "type": "integer",
                     "example": 100
@@ -2864,10 +2859,6 @@
                 "last_name": {
                     "type": "string",
                     "example": "Wonderland"
-                },
-                "region": {
-                    "type": "string",
-                    "example": "California"
                 }
             }
         }

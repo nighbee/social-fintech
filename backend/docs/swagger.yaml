@@ -315,9 +315,12 @@ definitions:
         type: string
       idempotency_key:
         type: string
+      receiver_user_id:
+        type: string
     required:
     - amount
     - currency
+    - receiver_user_id
     type: object
   economy.GiveSealToUserRequest:
     properties:
@@ -577,10 +580,6 @@ definitions:
       rank_tier:
         example: Quartz
         type: string
-      region:
-        description: Not in current schema
-        example: California
-        type: string
       reputation_score:
         example: 100
         type: integer
@@ -639,9 +638,6 @@ definitions:
       rank_tier:
         example: Quartz
         type: string
-      region:
-        example: California
-        type: string
       reputation_score:
         example: 100
         type: integer
@@ -692,9 +688,6 @@ definitions:
         type: boolean
       last_name:
         example: Wonderland
-        type: string
-      region:
-        example: California
         type: string
     type: object
 host: localhost:8081

@@ -2327,7 +2327,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "currency"
+                "currency",
+                "receiver_user_id"
             ],
             "properties": {
                 "amount": {
@@ -2343,6 +2344,9 @@ const docTemplate = `{
                     ]
                 },
                 "idempotency_key": {
+                    "type": "string"
+                },
+                "receiver_user_id": {
                     "type": "string"
                 }
             }
@@ -2715,11 +2719,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Quartz"
                 },
-                "region": {
-                    "description": "Not in current schema",
-                    "type": "string",
-                    "example": "California"
-                },
                 "reputation_score": {
                     "type": "integer",
                     "example": 100
@@ -2798,10 +2797,6 @@ const docTemplate = `{
                     "type": "string",
                     "example": "Quartz"
                 },
-                "region": {
-                    "type": "string",
-                    "example": "California"
-                },
                 "reputation_score": {
                     "type": "integer",
                     "example": 100
@@ -2870,10 +2865,6 @@ const docTemplate = `{
                 "last_name": {
                     "type": "string",
                     "example": "Wonderland"
-                },
-                "region": {
-                    "type": "string",
-                    "example": "California"
                 }
             }
         }
