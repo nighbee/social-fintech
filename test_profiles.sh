@@ -33,11 +33,15 @@ log_request() {
     local body="$4"
     local response_body="$5"
     local http_code="$6"
+    local auth_header="$7"
     
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}REQUEST:${NC}"
     echo -e "  Method: ${CYAN}$method${NC}"
     echo -e "  URL: ${CYAN}$url${NC}"
+    if [[ -n "$auth_header" ]]; then
+        echo -e "  Auth: ${CYAN}$auth_header${NC}"
+    fi
     if [[ -n "$body" ]]; then
         echo -e "  Body:"
         pretty_json "$body" | sed 's/^/    /'
@@ -111,7 +115,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/me" -H "Authorizatio
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 1" "GET" "$PROFILE_URL/me" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 1" "GET" "$PROFILE_URL/me" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Get profile successful${NC}"
@@ -142,7 +146,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "$PROFILE_URL/me" \
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 2" "PATCH" "$PROFILE_URL/me" "$UPDATE_BODY" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 2" "PATCH" "$PROFILE_URL/me" "$UPDATE_BODY" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Update profile successful${NC}"
@@ -166,7 +170,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/$USER1_ID" -H "Autho
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 3" "GET" "$PROFILE_URL/$USER1_ID" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 3" "GET" "$PROFILE_URL/$USER1_ID" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER2_TOKEN"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Public profile view successful${NC}"
@@ -187,7 +191,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/me/stats" -H "Author
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 4" "GET" "$PROFILE_URL/me/stats" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 4" "GET" "$PROFILE_URL/me/stats" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Stats retrieval successful${NC}"
@@ -215,7 +219,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH "$PROFILE_URL/me" \
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 5" "PATCH" "$PROFILE_URL/me" "$UPDATE_BODY" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 5" "PATCH" "$PROFILE_URL/me" "$UPDATE_BODY" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Set private successful${NC}"
@@ -233,7 +237,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/$USER1_ID" -H "Autho
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 6" "GET" "$PROFILE_URL/$USER1_ID" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 6" "GET" "$PROFILE_URL/$USER1_ID" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER2_TOKEN"
 
 if [[ "$HTTP_CODE" -eq 403 ]]; then
     echo -e "${GREEN}✓ CORRECT: Access denied (HTTP 403)${NC}"
@@ -251,7 +255,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$PROFILE_URL/me" -H "Authoriza
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 7" "DELETE" "$PROFILE_URL/me" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 7" "DELETE" "$PROFILE_URL/me" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -eq 204 ]]; then
     echo -e "${GREEN}✓ Profile deleted successfully${NC}"
@@ -267,7 +271,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/$USER1_ID" -H "Autho
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 8" "GET" "$PROFILE_URL/$USER1_ID" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 8" "GET" "$PROFILE_URL/$USER1_ID" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER2_TOKEN"
 
 if [[ "$HTTP_CODE" -eq 404 ]]; then
     echo -e "${GREEN}✓ CORRECT: Profile not found (HTTP 404)${NC}"
@@ -285,7 +289,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/me" -H "Authorizatio
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 9" "GET" "$PROFILE_URL/me" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 9" "GET" "$PROFILE_URL/me" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Profile recreated successfully${NC}"
@@ -305,7 +309,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$PROFILE_URL/$USER2_ID/allies" -
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 10" "POST" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 10" "POST" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -eq 204 ]]; then
     echo -e "${GREEN}✓ Ally added successfully${NC}"
@@ -321,7 +325,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$PROFILE_URL/$USER2_ID/allies" -H
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 11" "GET" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 11" "GET" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     # Check if array is not empty and contains User 1
@@ -343,7 +347,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$PROFILE_URL/$USER2_ID/allies"
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 12" "DELETE" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 12" "DELETE" "$PROFILE_URL/$USER2_ID/allies" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 
 if [[ "$HTTP_CODE" -eq 204 ]]; then
     echo -e "${GREEN}✓ Ally removed successfully${NC}"
@@ -359,7 +363,7 @@ fi
 	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 	
-	log_request "TEST 13" "POST" "$PROFILE_URL/$USER2_ID/block" "" "$HTTP_BODY" "$HTTP_CODE"
+	log_request "TEST 13" "POST" "$PROFILE_URL/$USER2_ID/block" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 	
 	if [[ "$HTTP_CODE" -eq 204 ]]; then
 		echo -e "${GREEN}✓ User blocked successfully${NC}"
@@ -375,7 +379,7 @@ fi
 	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 	
-	log_request "TEST 14" "DELETE" "$PROFILE_URL/$USER2_ID/block" "" "$HTTP_BODY" "$HTTP_CODE"
+	log_request "TEST 14" "DELETE" "$PROFILE_URL/$USER2_ID/block" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 	
 	if [[ "$HTTP_CODE" -eq 204 ]]; then
 		echo -e "${GREEN}✓ User unblocked successfully${NC}"
@@ -391,7 +395,7 @@ fi
 	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 	
-	log_request "TEST 15" "POST" "$PROFILE_URL/$USER2_ID/restrict" "" "$HTTP_BODY" "$HTTP_CODE"
+	log_request "TEST 15" "POST" "$PROFILE_URL/$USER2_ID/restrict" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 	
 	if [[ "$HTTP_CODE" -eq 204 ]]; then
 		echo -e "${GREEN}✓ User restricted successfully${NC}"
@@ -407,7 +411,7 @@ fi
 	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 	
-	log_request "TEST 16" "DELETE" "$PROFILE_URL/$USER2_ID/restrict" "" "$HTTP_BODY" "$HTTP_CODE"
+	log_request "TEST 16" "DELETE" "$PROFILE_URL/$USER2_ID/restrict" "" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 	
 	if [[ "$HTTP_CODE" -eq 204 ]]; then
 		echo -e "${GREEN}✓ User unrestricted successfully${NC}"
@@ -427,7 +431,7 @@ fi
 	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 	
-	log_request "TEST 17" "POST" "$PROFILE_URL/$USER2_ID/report" "$REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE"
+	log_request "TEST 17" "POST" "$PROFILE_URL/$USER2_ID/report" "$REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 	
 	if [[ "$HTTP_CODE" -eq 202 ]]; then
 		echo -e "${GREEN}✓ Report submitted successfully${NC}"
@@ -447,7 +451,7 @@ fi
 	HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 	HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 	
-	log_request "TEST 18" "POST" "$PROFILE_URL/$USER2_ID/report" "$REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE"
+	log_request "TEST 18" "POST" "$PROFILE_URL/$USER2_ID/report" "$REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE" "Bearer $USER1_TOKEN"
 	
 	if [[ "$HTTP_CODE" -eq 400 ]]; then
 		echo -e "${GREEN}✓ Invalid report correctly rejected${NC}"

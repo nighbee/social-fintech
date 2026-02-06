@@ -36,7 +36,7 @@ import (
 // @securityDefinitions.apikey Bearer
 // @in header
 // @name Authorization
-// @description Type "Bearer" followed by a space and JWT token
+// @description Type "Bearer" followed by a space and your JWT Access Token (not UUID). Example: "Bearer eyJhbGci..."
 
 func main() {
 	// загружает конфиг, подключает бд и инит OAuth jwt
