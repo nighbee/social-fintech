@@ -53,7 +53,9 @@ func (m *MockAuthRepository) GetSessionByID(ctx context.Context, id string) (*au
 // To keep file short, I will add dummy implementations for likely methods in auth.Repository.
 // Real implementation would be in mocks package but creating here for self-containment.
 
-func (m *MockAuthRepository) CreateSession(ctx interface{}, session *auth.Session) error { return nil }
+func (m *MockAuthRepository) CreateSession(ctx context.Context, session *auth.Session) error {
+	return nil
+}
 func (m *MockAuthRepository) GetLastSessionByUser(ctx context.Context, userID string) (*auth.Session, error) {
 	return nil, nil
 }
