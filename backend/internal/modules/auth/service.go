@@ -942,3 +942,38 @@ func (s *Service) generateUniqueUsername(ctx context.Context, email string) (str
 
 	return "", fmt.Errorf("unable to generate username")
 }
+
+// EnsureAdmins promotes the given emails to admin status
+func (s *Service) EnsureAdmins(ctx context.Context, emails []string) error {
+	if len(emails) == 0 {
+		return nil
+	}
+
+	s.logger.Info("ensuring_admins", zap.Strings("emails", emails))
+
+	for _, email := range emails {
+		if email == "" {
+			continue
+		}
+
+		user, err := s.repo.GetUserByEmail(ctx, email)
+		if err != nil {
+			if IsNotFound(err) {
+				s.logger.Warn("admin_seeding_user_not_found", zap.String("email", email))
+				continue
+			}
+			return err
+		}
+
+		if !user.IsAdmin {
+			if err := s.repo.SetAdminStatus(ctx, user.ID, true); err != nil {
+				s.logger.Error("failed_to_promote_admin", zap.String("email", email), zap.Error(err))
+				return err
+			}
+			s.logger.Info("promoted_user_to_admin", zap.String("email", email))
+		} else {
+			s.logger.Debug("user_already_admin", zap.String("email", email))
+		}
+	}
+	return nil
+}

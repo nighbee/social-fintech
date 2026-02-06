@@ -20,6 +20,22 @@ type Config struct {
 	OAuth    OAuthConfig    `yaml:"oauth"`
 	Firebase FirebaseConfig `yaml:"firebase"`
 	Storage  StorageConfig  `yaml:"storage"`
+	Economy  EconomyConfig  `yaml:"economy"`
+	Admin    AdminConfig    `yaml:"admin"`
+}
+
+type AdminConfig struct {
+	Emails []string `yaml:"emails"`
+}
+
+type EconomyConfig struct {
+	MaxDailyTransfers       int     `yaml:"max_daily_transfers"`
+	MaxFreeSilverBalance    int64   `yaml:"max_free_silver_balance"`
+	DailyAccrualSeals       float64 `yaml:"daily_accrual_seals"`
+	DailyAccrualCents       int64   `yaml:"daily_accrual_cents"`
+	TransferCooldownSeconds int     `yaml:"transfer_cooldown_seconds"`
+	ReferralBonusSeals      float64 `yaml:"referral_bonus_seals"`
+	ReferralBonusCents      int64   `yaml:"referral_bonus_cents"`
 }
 
 type OAuthConfig struct {
@@ -196,6 +212,55 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("FIREBASE_PROJECT_ID"); v != "" {
 		cfg.Firebase.ProjectID = v
+	}
+
+	// Economy Defaults and Overrides
+	// Set defaults if not present in yaml
+	if cfg.Economy.MaxDailyTransfers == 0 {
+		cfg.Economy.MaxDailyTransfers = 50
+	}
+	if cfg.Economy.MaxFreeSilverBalance == 0 {
+		cfg.Economy.MaxFreeSilverBalance = 500 // 5.00 seals
+	}
+	if cfg.Economy.DailyAccrualSeals == 0 {
+		cfg.Economy.DailyAccrualSeals = 1.0
+	}
+	if cfg.Economy.DailyAccrualCents == 0 {
+		cfg.Economy.DailyAccrualCents = 100
+	}
+	if cfg.Economy.TransferCooldownSeconds == 0 {
+		cfg.Economy.TransferCooldownSeconds = 60
+	}
+	if cfg.Economy.ReferralBonusSeals == 0 {
+		cfg.Economy.ReferralBonusSeals = 1.0
+	}
+	if cfg.Economy.ReferralBonusCents == 0 {
+		cfg.Economy.ReferralBonusCents = 100
+	}
+
+	// Overrides
+	if v := os.Getenv("ECONOMY_MAX_DAILY_TRANSFERS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.MaxDailyTransfers = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_MAX_FREE_SILVER_BALANCE"); v != "" {
+		if val, err := strconv.ParseInt(v, 10, 64); err == nil {
+			cfg.Economy.MaxFreeSilverBalance = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_TRANSFER_COOLDOWN_SECONDS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.TransferCooldownSeconds = val
+		}
+	}
+
+	// Admin
+	if v := os.Getenv("ADMIN_EMAILS"); v != "" {
+		cfg.Admin.Emails = strings.Split(v, ",")
+		for i := range cfg.Admin.Emails {
+			cfg.Admin.Emails[i] = strings.TrimSpace(cfg.Admin.Emails[i])
+		}
 	}
 }
 

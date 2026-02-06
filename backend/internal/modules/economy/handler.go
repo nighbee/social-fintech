@@ -1,6 +1,9 @@
 package economy
 
 import (
+	"errors"
+	"time"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -426,6 +429,10 @@ func handleServiceError(c *fiber.Ctx, err error) error {
 		return sendError(c, economyErr.Status, economyErr.Code, economyErr.Message)
 	}
 
+	if IsValidationError(err) {
+		return sendError(c, 400, "INVALID_REQUEST", err.Error())
+	}
+
 	if IsInsufficientFunds(err) {
 		if insuffErr, ok := err.(*InsufficientFundsErr); ok {
 			return c.Status(402).JSON(ErrorResponse{
@@ -450,10 +457,18 @@ func handleServiceError(c *fiber.Ctx, err error) error {
 
 	if IsCooldownActive(err) {
 		if cooldownErr, ok := err.(*CooldownErr); ok {
-			return c.Status(429).JSON(ErrorResponse{
-				Error:   "COOLDOWN_ACTIVE",
-				Message: cooldownErr.Error(),
-				Code:    "COOLDOWN_ACTIVE",
+			now := time.Now()
+			remaining := cooldownErr.RetryAfter.Sub(now)
+			if remaining < 0 {
+				remaining = 0
+			}
+			return c.Status(429).JSON(map[string]interface{}{
+				"error":             "COOLDOWN_ACTIVE",
+				"message":           cooldownErr.Error(),
+				"code":              "COOLDOWN_ACTIVE",
+				"next_allowed_at":   cooldownErr.RetryAfter,
+				"remaining_seconds": int(remaining.Seconds()),
+				"repeat_level":      cooldownErr.RepeatLevel,
 			})
 		}
 		return sendError(c, 429, "COOLDOWN_ACTIVE", "Transfer cooldown active")
@@ -476,6 +491,14 @@ func handleServiceError(c *fiber.Ctx, err error) error {
 
 	if IsDuplicateError(err) {
 		return sendError(c, 409, "DUPLICATE", err.Error())
+	}
+
+	if IsFreeSilverCapError(err) {
+		return sendError(c, 400, "FREE_SILVER_CAP", "Free silver cap reached")
+	}
+
+	if errors.Is(err, ErrOptimisticLockFailure) {
+		return sendError(c, 409, "OPTIMISTIC_LOCK", "Concurrent update conflict, please retry")
 	}
 
 	return sendError(c, 500, "INTERNAL_ERROR", "Internal server error")

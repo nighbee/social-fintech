@@ -8,16 +8,16 @@ import (
 )
 
 const (
-	CentinelsPerSeal     = 100
-	MaxFreeSilverSeals   = 5.0
-	MaxFreeSilverCents   = 500
-	DailyAccrualSeals    = 1.0 // Changed from 0.5 to 1.0
-	DailyAccrualCents    = 100 // Changed from 50 to 100
-	AccrualIntervalHours = 48  // Every 2 days (48 hours)
-	ReferralBonusSeals   = 1.0
-	ReferralBonusCents   = 100
-	DefaultTransferLimit = 50
-	TransferCooldownSecs = 60
+	CentinelsPerSeal = 100
+	// MaxFreeSilverSeals   = 5.0  -> Moved to config
+	// MaxFreeSilverCents   = 500  -> Moved to config
+	// DailyAccrualSeals    = 1.0  -> Moved to config
+	// DailyAccrualCents    = 100  -> Moved to config
+	AccrualIntervalHours = 48 // Every 2 days (48 hours)
+	// ReferralBonusSeals   = 1.0  -> Moved to config
+	// ReferralBonusCents   = 100  -> Moved to config
+	// DefaultTransferLimit = 50   -> Moved to config
+	// TransferCooldownSecs = 60   -> Moved to config
 )
 
 type CurrencyCode string
@@ -78,8 +78,8 @@ func (w *Wallet) HasSufficientBalance(amount int64) bool {
 	return w.Balance >= amount
 }
 
-func (w *Wallet) CanReceiveFreeAccrual() bool {
-	return w.FreeBalance < MaxFreeSilverCents
+func (w *Wallet) CanReceiveFreeAccrual(maxFreeCents int64) bool {
+	return w.FreeBalance < maxFreeCents
 }
 
 func (w *Wallet) NeedsDailyAccrual(now time.Time) bool {
@@ -130,8 +130,8 @@ type TransferLimit struct {
 	UpdatedAt          time.Time `db:"updated_at" json:"updated_at"`
 }
 
-func (t *TransferLimit) CanTransfer() bool {
-	return t.TransfersCount < DefaultTransferLimit
+func (t *TransferLimit) CanTransfer(limit int) bool {
+	return t.TransfersCount < limit
 }
 
 func (t *TransferLimit) IncrementTransfer(amount int64) {
@@ -172,6 +172,16 @@ type UserInteraction struct {
 	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
 }
 
+type PairCooldown struct {
+	SenderUserID   string    `db:"sender_user_id" json:"sender_user_id"`
+	ReceiverUserID string    `db:"receiver_user_id" json:"receiver_user_id"`
+	RepeatLevel    int       `db:"repeat_level" json:"repeat_level"`
+	LastGrantAt    time.Time `db:"last_grant_at" json:"last_grant_at"`
+	NextAllowedAt  time.Time `db:"next_allowed_at" json:"next_allowed_at"`
+	CreatedAt      time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
+}
+
 type BalanceResponse struct {
 	SilverBalance     float64    `json:"silver_balance" example:"4.50"`
 	SilverFreeBalance float64    `json:"silver_free_balance" example:"3.00"`
@@ -203,6 +213,7 @@ type TransferResponse struct {
 }
 
 type GiveSealToPostRequest struct {
+	ReceiverUserID string `json:"receiver_user_id" validate:"required,uuid"`
 	Amount         int64  `json:"amount" validate:"required,min=1,max=10"`
 	Currency       string `json:"currency" validate:"required,oneof=SILVER_SEAL GOLD_SEAL"`
 	IdempotencyKey string `json:"idempotency_key,omitempty" validate:"omitempty,uuid"`

@@ -31,6 +31,7 @@ type Repository interface {
 	GetPhoneVerificationByID(ctx context.Context, id string) (*PhoneVerification, error)
 	ConsumePhoneVerification(ctx context.Context, id string, consumedAt time.Time) error
 	UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error
+	SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error
 }
 
 // структурирование бд в первый слой репозитория
@@ -239,5 +240,11 @@ func (r *PostgresRepository) ConsumePhoneVerification(ctx context.Context, id st
 func (r *PostgresRepository) UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error {
 	query := `UPDATE phone_verifications SET used_at = $1 WHERE id = $2`
 	_, err := r.db.ExecContext(ctx, query, usedAt, id)
+	return err
+}
+
+func (r *PostgresRepository) SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error {
+	query := `UPDATE users SET is_admin = $1 WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, query, isAdmin, userID)
 	return err
 }

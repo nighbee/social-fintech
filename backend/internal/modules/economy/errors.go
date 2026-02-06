@@ -134,17 +134,19 @@ type CooldownErr struct {
 	LastTransfer     time.Time
 	CooldownDuration time.Duration
 	RetryAfter       time.Time
+	RepeatLevel      int
 }
 
 func (e *CooldownErr) Error() string {
 	return fmt.Sprintf("transfer cooldown active, retry after %s", e.RetryAfter.Format(time.RFC3339))
 }
 
-func NewCooldownError(lastTransfer time.Time, cooldownDuration time.Duration) *CooldownErr {
+func NewCooldownError(lastTransfer time.Time, cooldownDuration time.Duration, repeatLevel int) *CooldownErr {
 	return &CooldownErr{
 		LastTransfer:     lastTransfer,
 		CooldownDuration: cooldownDuration,
 		RetryAfter:       lastTransfer.Add(cooldownDuration),
+		RepeatLevel:      repeatLevel,
 	}
 }
 
