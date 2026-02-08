@@ -54,7 +54,7 @@ definitions:
       password:
         example: SecurePass123!
         type: string
-      referral:
+      referrer_user_id:
         example: FRIEND123
         type: string
       user_agent:
@@ -96,7 +96,7 @@ definitions:
         type: string
       last_name:
         type: string
-      referral:
+      referrer_user_id:
         type: string
       user_agent:
         type: string
@@ -156,7 +156,7 @@ definitions:
         type: string
       last_name:
         type: string
-      referral:
+      referrer_user_id:
         type: string
       user_agent:
         type: string
@@ -688,6 +688,24 @@ definitions:
         type: boolean
       last_name:
         example: Wonderland
+        type: string
+    type: object
+  profiles.UserSearchResult:
+    properties:
+      avatar_url:
+        example: https://storage.example.com/avatars/u1.jpg
+        type: string
+      display_name:
+        example: John Doe
+        type: string
+      first_name:
+        example: John
+        type: string
+      last_name:
+        example: Doe
+        type: string
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
 host: localhost:8081
@@ -1908,6 +1926,38 @@ paths:
       summary: Get my profile statistics
       tags:
       - Profiles
+  /users/search:
+    get:
+      consumes:
+      - application/json
+      description: Public search for referrer user selection
+      parameters:
+      - description: First name
+        in: query
+        name: first_name
+        required: true
+        type: string
+      - description: Last name
+        in: query
+        name: last_name
+        required: true
+        type: string
+      - description: Limit (max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/profiles.UserSearchResult'
+            type: array
+      summary: Search users by first/last name
+      tags:
+      - Users
 securityDefinitions:
   Bearer:
     description: 'Type "Bearer" followed by a space and your JWT Access Token (not

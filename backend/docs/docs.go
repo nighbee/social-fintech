@@ -1878,6 +1878,54 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/users/search": {
+            "get": {
+                "description": "Public search for referrer user selection",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Search users by first/last name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "First name",
+                        "name": "first_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last name",
+                        "name": "last_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (max 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/profiles.UserSearchResult"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1956,7 +2004,7 @@ const docTemplate = `{
                     "type": "string",
                     "example": "SecurePass123!"
                 },
-                "referral": {
+                "referrer_user_id": {
                     "type": "string",
                     "example": "FRIEND123"
                 },
@@ -2018,7 +2066,7 @@ const docTemplate = `{
                 "last_name": {
                     "type": "string"
                 },
-                "referral": {
+                "referrer_user_id": {
                     "type": "string"
                 },
                 "user_agent": {
@@ -2108,7 +2156,7 @@ const docTemplate = `{
                 "last_name": {
                     "type": "string"
                 },
-                "referral": {
+                "referrer_user_id": {
                     "type": "string"
                 },
                 "user_agent": {
@@ -2865,6 +2913,31 @@ const docTemplate = `{
                 "last_name": {
                     "type": "string",
                     "example": "Wonderland"
+                }
+            }
+        },
+        "profiles.UserSearchResult": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://storage.example.com/avatars/u1.jpg"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         }
