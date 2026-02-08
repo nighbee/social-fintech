@@ -11,6 +11,7 @@ import (
 // первый слой интерфейса
 type Repository interface {
 	GetUserByIdentity(ctx context.Context, provider, subject string) (*User, error)
+	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByPhone(ctx context.Context, countryCode, phoneNumber string) (*User, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
@@ -30,10 +31,10 @@ type Repository interface {
 	GetPhoneVerificationByID(ctx context.Context, id string) (*PhoneVerification, error)
 	ConsumePhoneVerification(ctx context.Context, id string, consumedAt time.Time) error
 	UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error
+	SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error
 }
 
-
-//структурирование бд в первый слой репозитория
+// структурирование бд в первый слой репозитория
 type PostgresRepository struct {
 	db *sqlx.DB
 }
@@ -43,7 +44,7 @@ func NewRepository(db *sqlx.DB) *PostgresRepository {
 	return &PostgresRepository{db: db}
 }
 
-//найти провайдера + и subject с бд
+// найти провайдера + и subject с бд
 func (r *PostgresRepository) GetUserByIdentity(ctx context.Context, provider, subject string) (*User, error) {
 	var user User
 	query := `
@@ -53,6 +54,15 @@ func (r *PostgresRepository) GetUserByIdentity(ctx context.Context, provider, su
 	WHERE ui.provider = $1 AND ui.subject = $2
 	`
 	if err := r.db.GetContext(ctx, &user, query, provider, subject); err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User, error) {
+	var user User
+	query := `SELECT * FROM users WHERE id = $1`
+	if err := r.db.GetContext(ctx, &user, query, id); err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -92,11 +102,29 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 			phone_country_code, phone_number,
 			avatar_url, is_shadow_banned, created_at, updated_at, last_active_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), $11, $12, $13, $14, $15)
 	`
+	// Convert empty strings to NULL for phone fields to avoid unique constraint violations
+	var phoneCountry, phoneNumber interface{}
+	if user.PhoneCountry == nil && user.PhoneNumber == nil {
+		phoneCountry = nil
+		phoneNumber = nil
+	} else {
+		if user.PhoneCountry != nil {
+			phoneCountry = *user.PhoneCountry
+		} else {
+			phoneCountry = nil
+		}
+		if user.PhoneNumber != nil {
+			phoneNumber = *user.PhoneNumber
+		} else {
+			phoneNumber = nil
+		}
+	}
+
 	_, err := r.db.ExecContext(ctx, query,
 		user.ID, user.Email, user.Username, user.PasswordHash, user.FirstName, user.LastName,
-		user.DateOfBirth, user.ReferralCode, user.PhoneCountry, user.PhoneNumber,
+		user.DateOfBirth, user.ReferralCode, phoneCountry, phoneNumber,
 		user.AvatarURL, user.IsShadowBanned, user.CreatedAt, user.UpdatedAt, user.LastActiveAt,
 	)
 	return err
@@ -202,7 +230,6 @@ func (r *PostgresRepository) GetPhoneVerificationByID(ctx context.Context, id st
 	return &v, nil
 }
 
-
 // для подтверждения принятия кода
 func (r *PostgresRepository) ConsumePhoneVerification(ctx context.Context, id string, consumedAt time.Time) error {
 	query := `UPDATE phone_verifications SET consumed_at = $1 WHERE id = $2`
@@ -213,5 +240,11 @@ func (r *PostgresRepository) ConsumePhoneVerification(ctx context.Context, id st
 func (r *PostgresRepository) UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error {
 	query := `UPDATE phone_verifications SET used_at = $1 WHERE id = $2`
 	_, err := r.db.ExecContext(ctx, query, usedAt, id)
+	return err
+}
+
+func (r *PostgresRepository) SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error {
+	query := `UPDATE users SET is_admin = $1 WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, query, isAdmin, userID)
 	return err
 }

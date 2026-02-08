@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,32 +18,54 @@ type Service struct {
 	jwt       *JWTManager
 	verifiers map[ProviderType]OAuthVerifier
 	sms       SMSSender
+	logger    *zap.Logger
 }
 
-//конструктор который принимает все свойства структуры сервиса
+// конструктор который принимает все свойства структуры сервиса
 func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAuthVerifier, smsSender SMSSender) *Service {
 	if smsSender == nil {
 		smsSender = NewNoopSMSSender()
 	}
+
+	logger, _ := zap.NewProduction()
+
 	return &Service{
 		repo:      repo,
 		jwt:       jwt,
 		verifiers: verifiers,
 		sms:       smsSender,
+		logger:    logger,
 	}
 }
 
-//OAuth логин или регистриация, сразу создается новая сесси яи выдача токенов
+// OAuth логин или регистриация, сразу создается новая сесси яи выдача токенов
 func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*LoginResponse, error) {
+	s.logger.Info("oauth_login_attempt",
+		zap.String("provider", string(req.ProviderType)),
+		zap.String("device_id", req.DeviceID),
+		zap.String("ip", ip),
+	)
+
 	verifier := s.verifiers[req.ProviderType]
 	if verifier == nil {
+		s.logger.Error("unsupported_oauth_provider", zap.String("provider", string(req.ProviderType)))
 		return nil, fmt.Errorf("unsupported provider")
 	}
 
 	providerUser, err := verifier.Verify(ctx, req.ProviderToken)
 	if err != nil {
+		s.logger.Warn("oauth_token_verification_failed",
+			zap.String("provider", string(req.ProviderType)),
+			zap.Error(err),
+		)
 		return nil, ErrInvalidProviderToken
 	}
+
+	s.logger.Debug("oauth_token_verified",
+		zap.String("provider", string(req.ProviderType)),
+		zap.String("subject", providerUser.Subject),
+		zap.String("email", providerUser.Email),
+	)
 
 	user, err := s.repo.GetUserByIdentity(ctx, string(providerUser.Provider), providerUser.Subject)
 	if err != nil && !IsNotFound(err) {
@@ -67,6 +90,10 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 
 		if existing != nil {
 			user = existing
+			s.logger.Info("linking_oauth_to_existing_user",
+				zap.String("user_id", user.ID),
+				zap.String("provider", string(providerUser.Provider)),
+			)
 			identity := &Identity{
 				UserID:    user.ID,
 				Provider:  string(providerUser.Provider),
@@ -75,11 +102,13 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				CreatedAt: time.Now(),
 			}
 			if err := s.repo.CreateIdentity(ctx, identity); err != nil {
+				s.logger.Error("failed_to_create_identity", zap.Error(err))
 				return nil, err
 			}
 		} else {
 			username, err := s.generateUniqueUsername(ctx, providerUser.Email)
 			if err != nil {
+				s.logger.Error("failed_to_generate_username", zap.Error(err))
 				return nil, err
 			}
 
@@ -95,8 +124,16 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				LastActiveAt:   now,
 			}
 			if err := s.repo.CreateUser(ctx, user); err != nil {
+				s.logger.Error("failed_to_create_user", zap.Error(err))
 				return nil, err
 			}
+
+			s.logger.Info("new_user_created",
+				zap.String("user_id", user.ID),
+				zap.String("username", user.Username),
+				zap.String("provider", string(providerUser.Provider)),
+			)
+
 			identity := &Identity{
 				UserID:    user.ID,
 				Provider:  string(providerUser.Provider),
@@ -105,6 +142,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				CreatedAt: time.Now(),
 			}
 			if err := s.repo.CreateIdentity(ctx, identity); err != nil {
+				s.logger.Error("failed_to_create_identity", zap.Error(err))
 				return nil, err
 			}
 		}
@@ -113,10 +151,18 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 	last, err := s.repo.GetLastSessionByUser(ctx, user.ID)
 	if err == nil && last != nil {
 		if last.DeviceID != "" && last.DeviceID != req.DeviceID {
-			log.Printf("suspicious_login: user=%s new_device=%s old_device=%s", user.ID, req.DeviceID, last.DeviceID)
+			s.logger.Warn("suspicious_login_new_device",
+				zap.String("user_id", user.ID),
+				zap.String("new_device", req.DeviceID),
+				zap.String("old_device", last.DeviceID),
+			)
 		}
 		if last.IP != "" && last.IP != ip {
-			log.Printf("suspicious_login: user=%s new_ip=%s old_ip=%s", user.ID, ip, last.IP)
+			s.logger.Warn("suspicious_login_new_ip",
+				zap.String("user_id", user.ID),
+				zap.String("new_ip", ip),
+				zap.String("old_ip", last.IP),
+			)
 		}
 	}
 
@@ -131,19 +177,28 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 		CreatedAt:    time.Now(),
 	}
 	if err := s.repo.CreateSession(ctx, session); err != nil {
+		s.logger.Error("failed_to_create_session", zap.Error(err))
 		return nil, err
 	}
 
 	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
 	if err != nil {
+		s.logger.Error("failed_to_issue_tokens", zap.Error(err))
 		return nil, err
 	}
 
 	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), time.Now()); err != nil {
+		s.logger.Error("failed_to_save_refresh_token", zap.Error(err))
 		return nil, err
 	}
 
 	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+
+	s.logger.Info("oauth_login_success",
+		zap.String("user_id", user.ID),
+		zap.String("session_id", session.ID),
+		zap.String("provider", string(req.ProviderType)),
+	)
 
 	return &LoginResponse{
 		AccessToken:  access,
@@ -152,34 +207,46 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 	}, nil
 }
 
-
 // регистрация с имелйлом и паролем + запрос данных. Хэш пароля + токены + сессия
 func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, ip string) (*LoginResponse, error) {
+	s.logger.Info("email_registration_attempt",
+		zap.String("email", req.Email),
+		zap.String("device_id", req.DeviceID),
+		zap.String("ip", ip),
+	)
+
 	if req.Email == "" || req.Password == "" || req.FirstName == "" || req.LastName == "" || req.DateOfBirth == "" {
+		s.logger.Warn("email_registration_missing_fields")
 		return nil, ErrInvalidCredentials
 	}
 	if len(req.Password) < 8 {
+		s.logger.Warn("email_registration_weak_password", zap.Int("length", len(req.Password)))
 		return nil, ErrWeakPassword
 	}
 
 	if _, err := s.repo.GetUserByEmail(ctx, req.Email); err == nil {
+		s.logger.Warn("email_registration_email_exists", zap.String("email", req.Email))
 		return nil, ErrEmailExists
 	} else if !IsNotFound(err) {
+		s.logger.Error("email_registration_db_error", zap.Error(err))
 		return nil, err
 	}
 
 	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
 	if err != nil {
+		s.logger.Warn("email_registration_invalid_dob", zap.String("dob", req.DateOfBirth), zap.Error(err))
 		return nil, ErrInvalidDateOfBirth
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
+		s.logger.Error("failed_to_hash_password", zap.Error(err))
 		return nil, err
 	}
 
 	username, err := s.generateUniqueUsername(ctx, req.Email)
 	if err != nil {
+		s.logger.Error("failed_to_generate_username", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
 	}
 
@@ -193,6 +260,8 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
 		ReferralCode:   req.Referral,
+		PhoneCountry:   nil,
+		PhoneNumber:    nil,
 		AvatarURL:      "",
 		IsShadowBanned: false,
 		CreatedAt:      now,
@@ -200,6 +269,7 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		LastActiveAt:   now,
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
+		s.logger.Error("failed_to_create_user_in_registration", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
 	}
 
@@ -211,6 +281,7 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		CreatedAt: time.Now(),
 	}
 	if err := s.repo.CreateIdentity(ctx, identity); err != nil {
+		s.logger.Error("failed_to_create_identity", zap.String("user_id", user.ID), zap.Error(err))
 		return nil, err
 	}
 
@@ -246,24 +317,38 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 	}, nil
 }
 
-
 // логин по имейлу+паролю
 func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip string) (*LoginResponse, error) {
+	s.logger.Info("email_login_attempt", zap.String("email", req.Email), zap.String("ip", ip))
+
 	if req.Email == "" || req.Password == "" {
+		s.logger.Warn("email_login_missing_fields")
 		return nil, ErrInvalidCredentials
 	}
 
 	user, err := s.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
+		s.logger.Warn("email_login_user_not_found", zap.String("email", req.Email), zap.Error(err))
 		return nil, ErrInvalidCredentials
 	}
 	if user.PasswordHash == "" {
+		s.logger.Warn("email_login_no_password_hash", zap.String("email", req.Email))
 		return nil, ErrInvalidCredentials
 	}
 
+	hashPrefix := user.PasswordHash
+	if len(hashPrefix) > 10 {
+		hashPrefix = hashPrefix[:10]
+	}
+	log.Printf("LoginEmail: comparing password for user: %s, hash length: %d, hash prefix: %s",
+		user.Email, len(user.PasswordHash), hashPrefix)
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		s.logger.Warn("email_login_invalid_password", zap.String("email", req.Email))
 		return nil, ErrInvalidCredentials
 	}
+
+	log.Printf("LoginEmail: successful login for user: %s (id: %s)", user.Email, user.ID)
 
 	session := &Session{
 		ID:           uuid.NewString(),
@@ -297,7 +382,25 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 	}, nil
 }
 
-//генерит код и отправляет смс
+// проверка существования имейла
+func (s *Service) CheckEmailExists(ctx context.Context, email string) (bool, error) {
+	s.logger.Info("check_email_attempt", zap.String("email", email))
+
+	if email == "" {
+		return false, ErrInvalidCredentials
+	}
+
+	_, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		// User not found means email doesn't exist
+		return false, nil
+	}
+
+	// User found, email exists
+	return true, nil
+}
+
+// генерит код и отправляет смс
 func (s *Service) RequestPhoneCode(ctx context.Context, req PhoneCodeRequest) (*PhoneCodeResponse, error) {
 	cc, pn := normalizePhone(req.CountryCode, req.PhoneNumber)
 	if cc == "" || pn == "" {
@@ -352,8 +455,7 @@ func (s *Service) RequestPhoneCode(ctx context.Context, req PhoneCodeRequest) (*
 	}, nil
 }
 
-
-//проверка кода ждя логина выдает токены
+// проверка кода ждя логина выдает токены
 func (s *Service) VerifyPhoneCode(ctx context.Context, req PhoneVerifyRequest, ip string) (*PhoneVerifyResponse, error) {
 	if req.VerificationID == "" || req.Code == "" {
 		return nil, ErrInvalidCode
@@ -425,8 +527,7 @@ func (s *Service) VerifyPhoneCode(ctx context.Context, req PhoneVerifyRequest, i
 	}, nil
 }
 
-
-//завершает регистрацию по телефону
+// завершает регистрацию по телефону
 func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, ip string) (*LoginResponse, error) {
 	if req.VerificationID == "" || req.FirstName == "" || req.LastName == "" || req.DateOfBirth == "" {
 		return nil, ErrInvalidCredentials
@@ -468,6 +569,8 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 	}
 
 	now := time.Now()
+	phoneCountry := v.PhoneCountry
+	phoneNumber := v.PhoneNumber
 	user := &User{
 		ID:             uuid.NewString(),
 		Email:          "",
@@ -476,8 +579,8 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
 		ReferralCode:   req.Referral,
-		PhoneCountry:   v.PhoneCountry,
-		PhoneNumber:    v.PhoneNumber,
+		PhoneCountry:   &phoneCountry,
+		PhoneNumber:    &phoneNumber,
 		AvatarURL:      "",
 		IsShadowBanned: false,
 		CreatedAt:      now,
@@ -535,8 +638,7 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 	}, nil
 }
 
-
-//обновление рефреш флоу с ротейшн и проверить поменялся ли
+// обновление рефреш флоу с ротейшн и проверить поменялся ли
 func (s *Service) Refresh(ctx context.Context, refreshToken string) (*LoginResponse, error) {
 	claims, err := s.jwt.VerifyRefresh(refreshToken)
 	if err != nil {
@@ -578,12 +680,250 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (*LoginRespo
 	}, nil
 }
 
-//ревоукнуть сессии
+// ревоукнуть сессии
 func (s *Service) Logout(ctx context.Context, sessionID string) error {
 	return s.repo.RevokeSession(ctx, sessionID, time.Now())
 }
 
-//для генерациии юзернейма универсального
+// FirebasePhoneAuth handles phone authentication using Firebase ID token
+// This is used for login when user already exists
+func (s *Service) FirebasePhoneAuth(ctx context.Context, req FirebasePhoneAuthRequest, ip string) (*LoginResponse, error) {
+	if req.FirebaseIDToken == "" || req.DeviceID == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Type assert to get Firebase sender
+	firebaseSender, ok := s.sms.(*FirebaseSMSSender)
+	if !ok {
+		return nil, fmt.Errorf("firebase authentication not enabled")
+	}
+
+	// Verify Firebase ID token
+	token, err := firebaseSender.VerifyIDToken(ctx, req.FirebaseIDToken)
+	if err != nil {
+		s.logger.Warn("firebase_token_verification_failed", zap.Error(err))
+		return nil, ErrInvalidProviderToken
+	}
+
+	// Extract phone number from token
+	phoneNumber, ok := token.Claims["phone_number"].(string)
+	if !ok || phoneNumber == "" {
+		return nil, fmt.Errorf("phone number not found in token")
+	}
+
+	s.logger.Info("firebase_phone_auth_attempt",
+		zap.String("phone", phoneNumber),
+		zap.String("uid", token.UID),
+	)
+
+	// Parse phone number (format: +1234567890)
+	if len(phoneNumber) < 3 || phoneNumber[0] != '+' {
+		return nil, fmt.Errorf("invalid phone number format")
+	}
+
+	// Extract country code and number
+	// Assuming format like +1234567890 where +1 is country code
+	var countryCode, number string
+	if len(phoneNumber) > 2 {
+		// Try common country codes
+		if phoneNumber[1:3] == "1 " || phoneNumber[1:2] == "1" {
+			countryCode = "+1"
+			number = phoneNumber[2:]
+		} else if len(phoneNumber) > 3 {
+			countryCode = phoneNumber[0:3] // +XX format
+			number = phoneNumber[3:]
+		}
+	}
+
+	// Clean the number
+	number = strings.ReplaceAll(number, " ", "")
+	number = strings.ReplaceAll(number, "-", "")
+
+	// Look up user by phone
+	user, err := s.repo.GetUserByPhone(ctx, countryCode, number)
+	if err != nil {
+		if IsNotFound(err) {
+			// User doesn't exist - need to register
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	// Create session
+	now := time.Now()
+	session := &Session{
+		ID:           uuid.NewString(),
+		UserID:       user.ID,
+		DeviceID:     req.DeviceID,
+		IP:           ip,
+		UserAgent:    req.UserAgent,
+		AppVersion:   req.AppVersion,
+		LastActiveAt: now,
+		CreatedAt:    now,
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return nil, err
+	}
+
+	// Issue JWT tokens
+	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), now); err != nil {
+		return nil, err
+	}
+
+	_ = s.repo.TouchUser(ctx, user.ID, now)
+
+	s.logger.Info("firebase_phone_auth_success", zap.String("user_id", user.ID))
+
+	return &LoginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User:         *user,
+	}, nil
+}
+
+// FirebasePhoneRegister handles phone registration using Firebase ID token
+func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRegisterRequest, ip string) (*LoginResponse, error) {
+	if req.FirebaseIDToken == "" || req.FirstName == "" || req.LastName == "" || req.DateOfBirth == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	// Type assert to get Firebase sender
+	firebaseSender, ok := s.sms.(*FirebaseSMSSender)
+	if !ok {
+		return nil, fmt.Errorf("firebase authentication not enabled")
+	}
+
+	// Verify Firebase ID token
+	token, err := firebaseSender.VerifyIDToken(ctx, req.FirebaseIDToken)
+	if err != nil {
+		s.logger.Warn("firebase_token_verification_failed", zap.Error(err))
+		return nil, ErrInvalidProviderToken
+	}
+
+	// Extract phone number from token
+	phoneNumber, ok := token.Claims["phone_number"].(string)
+	if !ok || phoneNumber == "" {
+		return nil, fmt.Errorf("phone number not found in token")
+	}
+
+	s.logger.Info("firebase_phone_register_attempt",
+		zap.String("phone", phoneNumber),
+		zap.String("uid", token.UID),
+	)
+
+	// Parse phone number
+	if len(phoneNumber) < 3 || phoneNumber[0] != '+' {
+		return nil, fmt.Errorf("invalid phone number format")
+	}
+
+	var countryCode, number string
+	if len(phoneNumber) > 2 {
+		if phoneNumber[1:2] == "1" {
+			countryCode = "+1"
+			number = phoneNumber[2:]
+		} else if len(phoneNumber) > 3 {
+			countryCode = phoneNumber[0:3]
+			number = phoneNumber[3:]
+		}
+	}
+
+	number = strings.ReplaceAll(number, " ", "")
+	number = strings.ReplaceAll(number, "-", "")
+
+	// Check if phone already exists
+	if _, err := s.repo.GetUserByPhone(ctx, countryCode, number); err == nil {
+		return nil, ErrPhoneExists
+	} else if !IsNotFound(err) {
+		return nil, err
+	}
+
+	// Parse date of birth
+	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
+	if err != nil {
+		return nil, ErrInvalidDateOfBirth
+	}
+
+	// Generate username
+	base := "user" + number
+	username, err := s.generateUniqueUsername(ctx, base+"@phone.local")
+	if err != nil {
+		return nil, err
+	}
+
+	// Create user
+	now := time.Now()
+	user := &User{
+		ID:             uuid.NewString(),
+		Email:          "",
+		Username:       username,
+		FirstName:      req.FirstName,
+		LastName:       req.LastName,
+		DateOfBirth:    &dob,
+		ReferralCode:   req.Referral,
+		PhoneCountry:   &countryCode,
+		PhoneNumber:    &number,
+		AvatarURL:      "",
+		IsShadowBanned: false,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		LastActiveAt:   now,
+	}
+	if err := s.repo.CreateUser(ctx, user); err != nil {
+		return nil, err
+	}
+
+	// Create identity
+	identity := &Identity{
+		UserID:    user.ID,
+		Provider:  string(ProviderPhone),
+		Subject:   phoneKey(countryCode, number),
+		Email:     "",
+		CreatedAt: now,
+	}
+	if err := s.repo.CreateIdentity(ctx, identity); err != nil {
+		return nil, err
+	}
+
+	// Create session
+	session := &Session{
+		ID:           uuid.NewString(),
+		UserID:       user.ID,
+		DeviceID:     req.DeviceID,
+		IP:           ip,
+		UserAgent:    req.UserAgent,
+		AppVersion:   req.AppVersion,
+		LastActiveAt: now,
+		CreatedAt:    now,
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return nil, err
+	}
+
+	// Issue tokens
+	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), now); err != nil {
+		return nil, err
+	}
+
+	s.logger.Info("firebase_phone_register_success", zap.String("user_id", user.ID))
+
+	return &LoginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User:         *user,
+	}, nil
+}
+
+// для генерациии юзернейма универсального
 func (s *Service) generateUniqueUsername(ctx context.Context, email string) (string, error) {
 	base := strings.Split(email, "@")[0]
 	base = cleanUsername(base)
@@ -601,4 +941,39 @@ func (s *Service) generateUniqueUsername(ctx context.Context, email string) (str
 	}
 
 	return "", fmt.Errorf("unable to generate username")
+}
+
+// EnsureAdmins promotes the given emails to admin status
+func (s *Service) EnsureAdmins(ctx context.Context, emails []string) error {
+	if len(emails) == 0 {
+		return nil
+	}
+
+	s.logger.Info("ensuring_admins", zap.Strings("emails", emails))
+
+	for _, email := range emails {
+		if email == "" {
+			continue
+		}
+
+		user, err := s.repo.GetUserByEmail(ctx, email)
+		if err != nil {
+			if IsNotFound(err) {
+				s.logger.Warn("admin_seeding_user_not_found", zap.String("email", email))
+				continue
+			}
+			return err
+		}
+
+		if !user.IsAdmin {
+			if err := s.repo.SetAdminStatus(ctx, user.ID, true); err != nil {
+				s.logger.Error("failed_to_promote_admin", zap.String("email", email), zap.Error(err))
+				return err
+			}
+			s.logger.Info("promoted_user_to_admin", zap.String("email", email))
+		} else {
+			s.logger.Debug("user_already_admin", zap.String("email", email))
+		}
+	}
+	return nil
 }

@@ -1,4 +1,4 @@
-server:
+﻿server:
   port: 8080
   environment: development
   read_timeout: 30s
@@ -55,3 +55,16 @@ cors:
     - Content-Length
   allow_credentials: true
   max_age: 12h
+
+firebase:
+  enabled: true
+  credentials_path: ./firebase-service-account.json
+  project_id: smsbb-6e583
+
+storage:
+  endpoint: localhost:9001
+  access_key: minioadmin
+  secret_key: minioadmin
+  bucket: avatars
+  use_ssl: false
+  public_url: http://localhost:9001

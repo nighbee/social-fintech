@@ -66,7 +66,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
               GoRoute(
                 path: RoutePaths.code,
                 name: RouteNames.code,
-                builder: (context, state) => const CodePage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return CodePage(
+                    verificationId: extra?['verificationId'] ?? '',
+                    phoneNumber: extra?['phoneNumber'] ?? '',
+                    isLogin: extra?['isLogin'] ?? true,
+                  );
+                },
               ),
               GoRoute(
                 path: RoutePaths.info,
@@ -95,9 +102,32 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 builder: (context, state) => const LoginWithEmailPage(),
               ),
               GoRoute(
+                path: RoutePaths.emailEntry,
+                name: RouteNames.emailEntry,
+                builder: (context, state) => const EmailEntryPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.emailPassword,
+                name: RouteNames.emailPassword,
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return EmailPasswordPage(
+                    email: extra?['email'] ?? '',
+                    isNewUser: extra?['isNewUser'] ?? false,
+                  );
+                },
+              ),
+              GoRoute(
                 path: RoutePaths.loginCode,
                 name: RouteNames.loginCode,
-                builder: (context, state) => const LoginCodePage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return LoginCodePage(
+                    verificationId: extra?['verificationId'] ?? '',
+                    phoneNumber: extra?['phoneNumber'] ?? '',
+                    isLogin: extra?['isLogin'] ?? true,
+                  );
+                },
               ),
               GoRoute(
                 path: RoutePaths.changePassword,
@@ -105,37 +135,41 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 builder: (context, state) => const ChangePasswordPage(),
               ),
 
-              // Home route
+              // Home route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.home,
                 name: RouteNames.home,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: HomePage());
                 },
               ),
 
-              // Map route
+              // Map route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.map,
                 name: RouteNames.map,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: MapPage());
                 },
               ),
 
-              // Rating route
+              // Rating route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.rating,
                 name: RouteNames.rating,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: RatingPage());
                 },
               ),
 
-              // Chats route
+              // Chats route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.chats,
                 name: RouteNames.chats,
+                redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: ChatsPage());
                 },

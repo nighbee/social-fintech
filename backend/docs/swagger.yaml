@@ -1,159 +1,218 @@
 basePath: /api/v1
 definitions:
-  fiber.Map:
-    additionalProperties: true
-    type: object
-  gamification.Rank:
-    enum:
-      - Quartz
-      - Amber
-      - Jade
-      - Sapphire
-      - Ruby
-      - Diamond
-      - Platinum
-      - Sovereign
-    type: string
-    x-enum-varnames:
-      - RankQuartz
-      - RankAmber
-      - RankJade
-      - RankSapphire
-      - RankRuby
-      - RankDiamond
-      - RankPlatinum
-      - RankSovereign
-  gamification.RankInfo:
-    properties:
-      current_rank:
-        $ref: "#/definitions/gamification.Rank"
-      gold_balance:
-        type: integer
-      next_rank:
-        $ref: "#/definitions/gamification.RankThreshold"
-      progress_percent:
-        type: number
-      rank_threshold:
-        $ref: "#/definitions/gamification.RankThreshold"
-      user_id:
-        type: string
-    type: object
-  gamification.RankThreshold:
-    properties:
-      color:
-        description: Hex color for UI
-        type: string
-      icon:
-        description: Icon identifier
-        type: string
-      maxGold:
-        format: int64
-        type: integer
-      minGold:
-        format: int64
-        type: integer
-      rank:
-        $ref: "#/definitions/gamification.Rank"
-    type: object
-  internal_modules_auth.LoginRequest:
-    properties:
-      device_id:
-        type: string
-      provider_token:
-        type: string
-      provider_type:
-        allOf:
-          - $ref: "#/definitions/internal_modules_auth.ProviderType"
-        enum:
-          - apple
-          - google
-      user_agent:
-        type: string
-      app_version:
-        type: string
-    required:
-      - device_id
-      - provider_token
-      - provider_type
-    type: object
-  internal_modules_auth.EmailRegisterRequest:
+  auth.CheckEmailRequest:
     properties:
       email:
+        example: john.doe@example.com
+        type: string
+    type: object
+  auth.CheckEmailResponse:
+    properties:
+      exists:
+        example: true
+        type: boolean
+    type: object
+  auth.EmailLoginRequest:
+    properties:
+      app_version:
+        example: 1.0.0
+        type: string
+      device_id:
+        example: device-uuid-12345
+        type: string
+      email:
+        example: john.doe@example.com
         type: string
       password:
+        example: SecurePass123!
+        type: string
+      user_agent:
+        example: BrightBund-iOS/1.0
+        type: string
+    type: object
+  auth.EmailRegisterRequest:
+    properties:
+      app_version:
+        example: 1.0.0
+        type: string
+      date_of_birth:
+        description: YYYY-MM-DD
+        example: "2000-01-01"
+        type: string
+      device_id:
+        example: device-uuid-12345
+        type: string
+      email:
+        example: john.doe@example.com
+        type: string
+      first_name:
+        example: John
+        type: string
+      last_name:
+        example: Doe
+        type: string
+      password:
+        example: SecurePass123!
+        type: string
+      referral:
+        example: FRIEND123
+        type: string
+      user_agent:
+        example: BrightBund-iOS/1.0
+        type: string
+    type: object
+  auth.ErrorResponse:
+    properties:
+      error:
+        example: invalid_credentials
+        type: string
+      message:
+        example: Invalid email or password
+        type: string
+    type: object
+  auth.FirebasePhoneAuthRequest:
+    properties:
+      app_version:
+        type: string
+      device_id:
+        type: string
+      firebase_id_token:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  auth.FirebasePhoneRegisterRequest:
+    properties:
+      app_version:
+        type: string
+      date_of_birth:
+        description: YYYY-MM-DD
+        type: string
+      device_id:
+        type: string
+      firebase_id_token:
         type: string
       first_name:
         type: string
       last_name:
         type: string
-      date_of_birth:
-        format: date
-        type: string
       referral:
         type: string
-      device_id:
-        type: string
       user_agent:
         type: string
-      app_version:
-        type: string
-    required:
-      - email
-      - password
-      - first_name
-      - last_name
-      - date_of_birth
-      - device_id
     type: object
-  internal_modules_auth.EmailLoginRequest:
+  auth.LoginRequest:
     properties:
-      email:
-        type: string
-      password:
+      app_version:
         type: string
       device_id:
         type: string
+      provider_token:
+        type: string
+      provider_type:
+        $ref: '#/definitions/auth.ProviderType'
       user_agent:
         type: string
-      app_version:
-        type: string
-    required:
-      - email
-      - password
-      - device_id
     type: object
-  internal_modules_auth.RefreshRequest:
-    properties:
-      refresh_token:
-        type: string
-    required:
-      - refresh_token
-    type: object
-  internal_modules_auth.LoginResponse:
+  auth.LoginResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
       user:
-        $ref: "#/definitions/internal_modules_auth.User"
+        $ref: '#/definitions/auth.User'
     type: object
-  internal_modules_auth.ProviderType:
+  auth.PhoneCodeRequest:
+    properties:
+      country_code:
+        example: "+1"
+        type: string
+      phone_number:
+        example: "5551234567"
+        type: string
+      purpose:
+        description: login|register
+        example: register
+        type: string
+    type: object
+  auth.PhoneCodeResponse:
+    properties:
+      expires_at:
+        type: string
+      verification_id:
+        type: string
+    type: object
+  auth.PhoneRegisterRequest:
+    properties:
+      app_version:
+        type: string
+      date_of_birth:
+        description: YYYY-MM-DD
+        type: string
+      device_id:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      referral:
+        type: string
+      user_agent:
+        type: string
+      verification_id:
+        type: string
+    type: object
+  auth.PhoneVerifyRequest:
+    properties:
+      app_version:
+        type: string
+      code:
+        type: string
+      device_id:
+        type: string
+      user_agent:
+        type: string
+      verification_id:
+        type: string
+    type: object
+  auth.PhoneVerifyResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+      user:
+        $ref: '#/definitions/auth.User'
+      verification_id:
+        type: string
+      verified:
+        type: boolean
+    type: object
+  auth.ProviderType:
     enum:
-      - apple
-      - google
+    - apple
+    - google
+    - email
+    - phone
     type: string
     x-enum-varnames:
-      - ProviderApple
-      - ProviderGoogle
-  internal_modules_auth.User:
+    - ProviderApple
+    - ProviderGoogle
+    - ProviderEmail
+    - ProviderPhone
+  auth.RefreshRequest:
+    properties:
+      refresh_token:
+        type: string
+    type: object
+  auth.User:
     properties:
       avatar_url:
         type: string
       created_at:
         type: string
       date_of_birth:
-        format: date
         type: string
       email:
         type: string
@@ -161,6 +220,8 @@ definitions:
         type: string
       id:
         type: string
+      is_admin:
+        type: boolean
       is_shadow_banned:
         type: boolean
       last_active_at:
@@ -174,296 +235,467 @@ definitions:
       username:
         type: string
     type: object
-  internal_modules_auth.PhoneCodeRequest:
+  economy.AccrualResponse:
     properties:
-      country_code:
+      amount:
+        type: number
+      new_balance:
+        type: number
+      next_claim:
         type: string
-      phone_number:
-        type: string
-      purpose:
-        type: string
-        enum:
-          - login
-          - register
-    required:
-      - country_code
-      - phone_number
-      - purpose
-    type: object
-
-  internal_modules_auth.PhoneCodeResponse:
-    properties:
-      verification_id:
-        type: string
-      expires_at:
-        type: string
-    type: object
-  internal_modules_auth.PhoneVerifyRequest:
-    properties:
-      verification_id:
-        type: string
-      code:
-        type: string
-      device_id:
-        type: string
-      user_agent:
-        type: string
-      app_version:
-        type: string
-    required:
-      - verification_id
-      - code
-      - device_id
-    type: object
-  internal_modules_auth.PhoneVerifyResponse:
-    properties:
-      verified:
+      success:
         type: boolean
-      verification_id:
-        type: string
-      access_token:
-        type: string
-      refresh_token:
-        type: string
-      user:
-        $ref: "#/definitions/internal_modules_auth.User"
     type: object
-  internal_modules_auth.PhoneRegisterRequest:
-    properties:
-      verification_id:
-        type: string
-      first_name:
-        type: string
-      last_name:
-        type: string
-      date_of_birth:
-        format: date
-        type: string
-      referral:
-        type: string
-      device_id:
-        type: string
-      user_agent:
-        type: string
-      app_version:
-        type: string
-    required:
-      - verification_id
-      - first_name
-      - last_name
-      - date_of_birth
-      - device_id
-    type: object
-  internal_modules_economy.Currency:
-    enum:
-      - SILVER
-      - GOLD
-    type: string
-    x-enum-varnames:
-      - CurrencySilver
-      - CurrencyGold
-  internal_modules_economy.EntryType:
-    enum:
-      - DEBIT
-      - CREDIT
-    type: string
-    x-enum-varnames:
-      - EntryTypeDebit
-      - EntryTypeCredit
-  internal_modules_economy.LedgerEntry:
-    properties:
-      account_id:
-        type: string
-      amount:
-        type: integer
-      created_at:
-        type: string
-      currency:
-        $ref: "#/definitions/internal_modules_economy.Currency"
-      id:
-        type: string
-      reason:
-        type: string
-      transaction_id:
-        type: string
-      type:
-        $ref: "#/definitions/internal_modules_economy.EntryType"
-    type: object
-  internal_modules_economy.TransferRequest:
+  economy.AdjustBalanceRequest:
     properties:
       amount:
         type: integer
       currency:
-        allOf:
-          - $ref: "#/definitions/internal_modules_economy.Currency"
-        enum:
-          - SILVER
-          - GOLD
+        $ref: '#/definitions/economy.CurrencyCode'
       reason:
         maxLength: 255
         type: string
-      to_user_id:
+      user_id:
         type: string
     required:
-      - amount
-      - currency
-      - reason
-      - to_user_id
+    - amount
+    - currency
+    - reason
+    - user_id
     type: object
-  internal_modules_economy.TransferResponse:
-    properties:
-      amount:
-        type: integer
-      created_at:
-        type: string
-      currency:
-        $ref: "#/definitions/internal_modules_economy.Currency"
-      from_user_id:
-        type: string
-      reason:
-        type: string
-      to_user_id:
-        type: string
-      transaction_id:
-        type: string
-    type: object
-  internal_modules_economy.WalletResponse:
+  economy.BalanceResponse:
     properties:
       gold_balance:
-        type: integer
+        example: 10
+        type: number
+      last_accrual_at:
+        type: string
       silver_balance:
-        type: integer
-      updated_at:
-        type: string
-      user_id:
+        example: 4.5
+        type: number
+      silver_free_balance:
+        example: 3
+        type: number
+    type: object
+  economy.ClaimDailyAccrualRequest:
+    properties:
+      idempotency_key:
         type: string
     type: object
-  internal_modules_feed.FeedMeta:
+  economy.CurrencyCode:
+    enum:
+    - SILVER_SEAL
+    - GOLD_SEAL
+    type: string
+    x-enum-varnames:
+    - CurrencySilverSeal
+    - CurrencyGoldSeal
+  economy.ErrorResponse:
     properties:
-      count:
+      code:
+        example: INSUFFICIENT_FUNDS
+        type: string
+      error:
+        example: INSUFFICIENT_FUNDS
+        type: string
+      message:
+        example: You don't have enough Seals
+        type: string
+    type: object
+  economy.GiveSealToPostRequest:
+    properties:
+      amount:
+        maximum: 10
+        minimum: 1
         type: integer
-      degraded:
+      currency:
+        enum:
+        - SILVER_SEAL
+        - GOLD_SEAL
+        type: string
+      idempotency_key:
+        type: string
+      receiver_user_id:
+        type: string
+    required:
+    - amount
+    - currency
+    - receiver_user_id
+    type: object
+  economy.GiveSealToUserRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        enum:
+        - SILVER_SEAL
+        - GOLD_SEAL
+        type: string
+      idempotency_key:
+        type: string
+      message:
+        maxLength: 200
+        type: string
+    required:
+    - amount
+    - currency
+    type: object
+  economy.LimitsResponse:
+    properties:
+      daily_accrual_claimed:
         type: boolean
-      session_duration:
-        $ref: "#/definitions/time.Duration"
-    type: object
-  internal_modules_feed.FeedResponse:
-    properties:
-      data:
-        items:
-          $ref: "#/definitions/internal_modules_feed.Post"
-        type: array
-      meta:
-        $ref: "#/definitions/internal_modules_feed.FeedMeta"
-    type: object
-  internal_modules_feed.Post:
-    properties:
-      author_id:
+      monthly_transfer_limit:
+        type: integer
+      monthly_transferred:
+        type: integer
+      next_accrual:
         type: string
-      content:
+      next_reset:
+        type: string
+      remaining:
+        type: integer
+    type: object
+  economy.Referral:
+    properties:
+      bonus_ledger_entry_id:
         type: string
       created_at:
-        type: string
-      id:
-        type: string
-    type: object
-  internal_modules_leaderboard.LeaderboardEntry:
-    properties:
-      avatar_url:
-        type: string
-      rank:
-        type: integer
-      score:
-        type: integer
-      user_id:
-        type: string
-      username:
-        type: string
-    type: object
-  internal_modules_map.CreateTaskRequest:
-    properties:
-      location:
-        $ref: "#/definitions/internal_modules_map.Location"
-      reward:
-        type: integer
-      title:
-        maxLength: 100
-        minLength: 3
-        type: string
-    required:
-      - location
-      - reward
-      - title
-    type: object
-  internal_modules_map.Location:
-    properties:
-      lat:
-        type: number
-      lng:
-        type: number
-    required:
-      - lat
-      - lng
-    type: object
-  internal_modules_map.TaskResponse:
-    properties:
-      created_at:
-        type: string
-      creator_id:
         type: string
       id:
         type: string
       is_active:
         type: boolean
-      location:
-        $ref: "#/definitions/internal_modules_map.Location"
-      reward:
-        type: integer
-      title:
+      referee_user_id:
+        type: string
+      referrer_user_id:
         type: string
     type: object
-  payment.RevenueCatEvent:
+  economy.ReferralStatsResponse:
     properties:
-      app_user_id:
-        type: string
-      data:
-        additionalProperties: true
-        type: object
-      environment:
-        type: string
+      active_referrals:
+        type: integer
+      referrals:
+        items:
+          $ref: '#/definitions/economy.Referral'
+        type: array
+      total_earned:
+        type: number
+      total_referrals:
+        type: integer
+    type: object
+  economy.TransactionCategory:
+    enum:
+    - DAILY_ACCRUAL
+    - REFERRAL_BONUS
+    - P2P_TRANSFER
+    - TASK_CREATION
+    - IAP_DEPOSIT
+    - SYSTEM_CORRECTION
+    - TASK_REWARD
+    - POST_SEAL
+    type: string
+    x-enum-varnames:
+    - CategoryDailyAccrual
+    - CategoryReferralBonus
+    - CategoryP2PTransfer
+    - CategoryTaskCreation
+    - CategoryIAPDeposit
+    - CategorySystemCorrection
+    - CategoryTaskReward
+    - CategoryPostSeal
+  economy.TransactionHistoryResponse:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      transactions:
+        items:
+          $ref: '#/definitions/economy.TransactionItem'
+        type: array
+    type: object
+  economy.TransactionItem:
+    properties:
+      amount:
+        type: number
+      category:
+        $ref: '#/definitions/economy.TransactionCategory'
+      currency:
+        $ref: '#/definitions/economy.CurrencyCode'
       id:
         type: string
-      product_id:
+      other_user:
+        $ref: '#/definitions/economy.UserInfo'
+      reference:
         type: string
-      purchase_date:
+      timestamp:
         type: string
       type:
         type: string
     type: object
-  time.Duration:
+  economy.TransferRequest:
+    properties:
+      amount:
+        example: 1.5
+        type: number
+      currency:
+        enum:
+        - SILVER_SEAL
+        - GOLD_SEAL
+        example: SILVER_SEAL
+        type: string
+      idempotency_key:
+        type: string
+      reason:
+        example: Payment for task
+        maxLength: 255
+        type: string
+      recipient_user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    required:
+    - amount
+    - currency
+    - recipient_user_id
+    type: object
+  economy.TransferResponse:
+    properties:
+      ledger_entry_id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        type: string
+      receiver_balance:
+        example: 6.5
+        type: number
+      sender_balance:
+        example: 3.5
+        type: number
+      timestamp:
+        type: string
+    type: object
+  economy.UserInfo:
+    properties:
+      avatar:
+        type: string
+      id:
+        type: string
+      username:
+        type: string
+    type: object
+  economy.ViolationLog:
+    properties:
+      amount_attempted:
+        type: integer
+      created_at:
+        type: string
+      details:
+        type: object
+      endpoint:
+        type: string
+      id:
+        type: string
+      ip_address:
+        type: string
+      user_id:
+        type: string
+      violation_type:
+        $ref: '#/definitions/economy.ViolationType'
+    type: object
+  economy.ViolationLogsResponse:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+      violations:
+        items:
+          $ref: '#/definitions/economy.ViolationLog'
+        type: array
+    type: object
+  economy.ViolationType:
     enum:
-      - 1
-      - 1000
-      - 1000000
-      - 1000000000
-      - 60000000000
-      - 3600000000000
-    format: int64
-    type: integer
+    - COOLDOWN_BREACH
+    - RATE_LIMIT_EXCEEDED
+    - FREE_SILVER_CAP
+    - MONTHLY_LIMIT_EXCEEDED
+    - INSUFFICIENT_FUNDS_ATTEMPT
+    - REPEAT_TRANSFER_PATTERN
+    type: string
     x-enum-varnames:
-      - Nanosecond
-      - Microsecond
-      - Millisecond
-      - Second
-      - Minute
-      - Hour
-host: localhost:8080
+    - ViolationCooldownBreach
+    - ViolationRateLimitExceeded
+    - ViolationFreeSilverCap
+    - ViolationMonthlyLimitExceeded
+    - ViolationInsufficientFundsAttempt
+    - ViolationRepeatTransferPattern
+  profiles.AllyProfile:
+    properties:
+      avatar_url:
+        type: string
+      display_name:
+        type: string
+      rank_tier:
+        description: Computed
+        type: string
+      reputation_score:
+        type: integer
+      user_id:
+        type: string
+    type: object
+  profiles.Profile:
+    properties:
+      avatar_url:
+        example: https://storage.example.com/avatars/user123/avatar.jpg
+        type: string
+      bio:
+        example: Explorer and adventurer
+        type: string
+      city:
+        example: San Francisco
+        type: string
+      country:
+        example: United States
+        type: string
+      created_at:
+        example: "2024-01-15T10:30:00Z"
+        type: string
+      date_of_birth:
+        example: "2000-01-01"
+        type: string
+      display_name:
+        example: Alice Wonderland
+        type: string
+      first_name:
+        example: Alice
+        type: string
+      is_public:
+        example: true
+        type: boolean
+      last_name:
+        example: Wonderland
+        type: string
+      rank_tier:
+        example: Quartz
+        type: string
+      reputation_score:
+        example: 100
+        type: integer
+      updated_at:
+        example: "2024-01-20T14:45:00Z"
+        type: string
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  profiles.ProfileStats:
+    properties:
+      gold_balance:
+        description: in centinels (50 Seals)
+        example: 5000
+        type: integer
+      silver_balance:
+        description: in centinels (125 Seals)
+        example: 12500
+        type: integer
+      total_received:
+        description: in centinels
+        example: 20000
+        type: integer
+      total_sent:
+        description: in centinels
+        example: 8000
+        type: integer
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  profiles.PublicProfileResponse:
+    properties:
+      avatar_url:
+        example: https://storage.example.com/avatar.jpg
+        type: string
+      bio:
+        example: Explorer and adventurer
+        type: string
+      city:
+        example: San Francisco
+        type: string
+      country:
+        example: United States
+        type: string
+      display_name:
+        example: Alice Wonderland
+        type: string
+      first_name:
+        example: Alice
+        type: string
+      last_name:
+        example: Wonderland
+        type: string
+      rank_tier:
+        example: Quartz
+        type: string
+      reputation_score:
+        example: 100
+        type: integer
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  profiles.ReportRequest:
+    properties:
+      description:
+        example: Sent spam messages
+        type: string
+      reason:
+        enum:
+        - spam
+        - harassment
+        - inappropriate
+        - fake_account
+        - other
+        example: spam
+        type: string
+    required:
+    - reason
+    type: object
+  profiles.UpdateProfileRequest:
+    properties:
+      avatar_url:
+        example: https://storage.example.com/avatar.jpg
+        type: string
+      bio:
+        example: Explorer and adventurer
+        type: string
+      city:
+        example: San Francisco
+        type: string
+      country:
+        example: United States
+        type: string
+      display_name:
+        description: Combined name or custom display name
+        example: Alice Wonderland
+        type: string
+      first_name:
+        example: Alice
+        type: string
+      is_public:
+        example: true
+        type: boolean
+      last_name:
+        example: Wonderland
+        type: string
+    type: object
+host: localhost:8081
 info:
   contact:
     email: support@brightbund.com
     name: API Support
-  description:
-    API for the BrightBund social platform with economy, maps, chat, and
+  description: API for the BrightBund social platform with economy, maps, chat, and
     gamification
   license:
     name: Proprietary
@@ -472,566 +704,1214 @@ info:
   title: BrightBund API
   version: "1.0"
 paths:
-  /auth/login:
+  /auth/check-email:
     post:
       consumes:
-        - application/json
+      - application/json
+      description: Check if an email is already registered in the system
       parameters:
-        - description: OAuth login request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_auth.LoginRequest"
+      - description: Email to check
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.CheckEmailRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+            $ref: '#/definitions/auth.CheckEmailResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Check if Email Exists
+      tags:
+      - Auth
+  /auth/firebase-phone-login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user with Firebase ID token from phone verification.
+        For existing users.
+      parameters:
+      - description: Firebase ID token and device info
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.FirebasePhoneAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: OAuth login or register
+            $ref: '#/definitions/auth.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Firebase Phone Authentication
       tags:
-        - Auth
-
-  /auth/register-email:
+      - Auth
+  /auth/firebase-phone-register:
     post:
       consumes:
-        - application/json
+      - application/json
+      description: Register new user with Firebase ID token and profile information
       parameters:
-        - description: Email registration request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_auth.EmailRegisterRequest"
+      - description: Firebase ID token and user profile
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.FirebasePhoneRegisterRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Register with email and password
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Firebase Phone Registration
       tags:
-        - Auth
-
+      - Auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate or register with Apple or Google OAuth. Auto-creates
+        user if not exists.
+      parameters:
+      - description: OAuth login request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: OAuth Login (Apple/Google)
+      tags:
+      - Auth
   /auth/login-email:
     post:
       consumes:
-        - application/json
+      - application/json
+      description: Authenticate existing user with email and password credentials
       parameters:
-        - description: Email login request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_auth.EmailLoginRequest"
+      - description: Email login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.EmailLoginRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Login with email and password
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Login with Email and Password
       tags:
-        - Auth
-
-  /auth/refresh:
-    post:
-      consumes:
-        - application/json
-      parameters:
-        - description: Refresh token
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_auth.RefreshRequest"
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: "#/definitions/internal_modules_auth.LoginResponse"
-        "400":
-          description: Bad Request
-          schema:
-            $ref: "#/definitions/fiber.Map"
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Refresh tokens
-      tags:
-        - Auth
-
+      - Auth
   /auth/logout:
     post:
+      consumes:
+      - application/json
+      description: Revoke current session and invalidate refresh token. Requires auth.
       produces:
-        - application/json
+      - application/json
       responses:
         "204":
           description: No Content
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Logout (revoke session)
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Logout Current Session
       tags:
-        - Auth
+      - Auth
   /auth/phone/request:
     post:
       consumes:
-        - application/json
+      - application/json
+      description: 'Send 4-digit SMS code. Purpose: login (phone must exist) or register
+        (phone must not exist)'
       parameters:
-        - description: Request SMS code
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_auth.PhoneCodeRequest"
+      - description: Phone number and purpose
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.PhoneCodeRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/internal_modules_auth.PhoneCodeResponse"
+            $ref: '#/definitions/auth.PhoneCodeResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Request SMS verification code
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Request Phone Verification Code
       tags:
-        - Auth
-
+      - Auth
   /auth/phone/verify:
     post:
       consumes:
-        - application/json
+      - application/json
+      description: Verify SMS code. Returns tokens for login, or verification_id for
+        register flow
       parameters:
-        - description: Verify SMS code
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_auth.PhoneVerifyRequest"
+      - description: Verification ID and SMS code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.PhoneVerifyRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/internal_modules_auth.PhoneVerifyResponse"
+            $ref: '#/definitions/auth.PhoneVerifyResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Verify SMS code
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Verify Phone Code (Step 2)
       tags:
-        - Auth
-
-  /auth/register-phone:
+      - Auth
+  /auth/refresh:
     post:
       consumes:
-        - application/json
+      - application/json
+      description: Exchange refresh token for new access and refresh tokens (token
+        rotation)
       parameters:
-        - description: Complete phone registration
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+      - description: Refresh token from login/register
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/internal_modules_auth.LoginResponse"
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Refresh Access Token
+      tags:
+      - Auth
+  /auth/register-email:
+    post:
+      consumes:
+      - application/json
+      description: Create a new account with email, password, and personal details.
+        Password min 8 chars.
+      parameters:
+      - description: Complete registration information
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.EmailRegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Register with phone number
-      tags:
-        - Auth
-  /economy/ledger:
-    get:
-      consumes:
-        - application/json
-      parameters:
-        - default: 50
-          description: Limit
-          in: query
-          name: limit
-          type: integer
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: "#/definitions/internal_modules_economy.LedgerEntry"
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Get ledger history
-      tags:
-        - Economy
-  /economy/transfer:
-    post:
-      consumes:
-        - application/json
-      parameters:
-        - description: Transfer request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_economy.TransferRequest"
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: "#/definitions/internal_modules_economy.TransferResponse"
-        "400":
-          description: Bad Request
-          schema:
-            $ref: "#/definitions/fiber.Map"
-        "402":
-          description: Insufficient funds - triggers frontend animation
-          schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Transfer currency between users
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Register with Email and Password
       tags:
-        - Economy
-  /economy/wallet:
-    get:
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: "#/definitions/internal_modules_economy.WalletResponse"
-        "404":
-          description: Not Found
-          schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Get user wallet
-      tags:
-        - Economy
+      - Auth
+  /auth/register-phone:
     post:
       consumes:
-        - application/json
-      produces:
-        - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: "#/definitions/internal_modules_economy.WalletResponse"
-        "400":
-          description: Bad Request
-          schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Create user wallet
-      tags:
-        - Economy
-  /feed:
-    get:
-      consumes:
-        - application/json
+      - application/json
+      description: Complete registration with profile info after phone verification
       parameters:
-        - default: 20
-          description: Limit
-          in: query
-          name: limit
-          type: integer
+      - description: Profile info and verification ID
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.PhoneRegisterRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/internal_modules_feed.FeedResponse"
+            $ref: '#/definitions/auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Get user feed
+            $ref: '#/definitions/auth.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Complete Phone Registration (Step 3)
       tags:
-        - Feed
-  /gamification/rank:
-    get:
+      - Auth
+  /economy/accrual/claim:
+    post:
       consumes:
-        - application/json
+      - application/json
+      description: Claim 0.50 Silver Seal daily bonus (max 5.00 free balance)
+      parameters:
+      - description: Optional idempotency key
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/economy.ClaimDailyAccrualRequest'
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: "#/definitions/gamification.RankInfo"
+            $ref: '#/definitions/economy.AccrualResponse'
+        "400":
+          description: Already claimed today or cap reached
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Get my rank information
-      tags:
-        - Gamification
-  /gamification/ranks:
-    get:
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: "#/definitions/gamification.RankThreshold"
-            type: array
-      summary: Get all rank thresholds
-      tags:
-        - Gamification
-  /leaderboards/global:
-    get:
-      consumes:
-        - application/json
-      parameters:
-        - default: 50
-          description: Limit
-          in: query
-          name: limit
-          type: integer
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-            type: array
+            $ref: '#/definitions/economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Get global leaderboard
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Claim daily free Silver accrual
       tags:
-        - Leaderboard
-  /leaderboards/local/{region_id}:
-    get:
-      consumes:
-        - application/json
-      parameters:
-        - description: Region ID
-          in: path
-          name: region_id
-          required: true
-          type: string
-        - default: 50
-          description: Limit
-          in: query
-          name: limit
-          type: integer
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Get regional leaderboard
-      tags:
-        - Leaderboard
-  /leaderboards/me:
-    get:
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: "#/definitions/internal_modules_leaderboard.LeaderboardEntry"
-        "400":
-          description: Bad Request
-          schema:
-            $ref: "#/definitions/fiber.Map"
-        "404":
-          description: Not Found
-          schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Get my rank and score
-      tags:
-        - Leaderboard
-  /map/tasks:
+      - Economy
+  /economy/admin/adjust:
     post:
       consumes:
-        - application/json
+      - application/json
+      description: Manually adjust a user's balance (admin only)
       parameters:
-        - description: Task creation request
-          in: body
-          name: request
-          required: true
-          schema:
-            $ref: "#/definitions/internal_modules_map.CreateTaskRequest"
+      - description: Adjustment details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/economy.AdjustBalanceRequest'
       produces:
-        - application/json
+      - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
-            $ref: "#/definitions/internal_modules_map.TaskResponse"
+            $ref: '#/definitions/economy.BalanceResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/economy.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: 'Admin: Adjust user balance'
+      tags:
+      - Economy Admin
+  /economy/admin/violations:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve economy violation audit logs for a specific user (admin
+        only)
+      parameters:
+      - description: User ID
+        in: query
+        name: user_id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.ViolationLogsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: 'Admin: Get user violation logs'
+      tags:
+      - Economy Admin
+  /economy/balance:
+    get:
+      consumes:
+      - application/json
+      description: Returns the current balance for Silver and Gold Seals
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.BalanceResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get user wallet balance
+      tags:
+      - Economy
+  /economy/history:
+    get:
+      consumes:
+      - application/json
+      description: Returns paginated transaction history for the authenticated user
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      - description: Filter by category
+        in: query
+        name: category
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.TransactionHistoryResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get transaction history
+      tags:
+      - Economy
+  /economy/limits:
+    get:
+      consumes:
+      - application/json
+      description: Returns monthly transfer limits and daily accrual status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.LimitsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get transfer limits and accrual status
+      tags:
+      - Economy
+  /economy/posts/{post_id}/seals:
+    post:
+      consumes:
+      - application/json
+      description: Give 1-10 Seals to a post in the feed
+      parameters:
+      - description: Post ID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: Seal amount and currency
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/economy.GiveSealToPostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.TransferResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
         "402":
           description: Insufficient funds
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Create a new task
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Give Seals to a post
       tags:
-        - Map
-  /map/tasks/nearby:
+      - Economy
+  /economy/referrals/stats:
     get:
       consumes:
-        - application/json
-      parameters:
-        - description: Latitude
-          in: query
-          name: lat
-          required: true
-          type: number
-        - description: Longitude
-          in: query
-          name: lng
-          required: true
-          type: number
-        - description: Radius in meters
-          in: query
-          name: radius
-          required: true
-          type: integer
+      - application/json
+      description: Returns referral statistics for the authenticated user
       produces:
-        - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.ReferralStatsResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Get referral statistics
+      tags:
+      - Economy
+  /economy/transfer:
+    post:
+      consumes:
+      - application/json
+      description: Send Silver or Gold Seals to another user
+      parameters:
+      - description: Transfer details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/economy.TransferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.TransferResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "402":
+          description: Insufficient funds
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "429":
+          description: Transfer limit exceeded
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Transfer Seals to another user (P2P)
+      tags:
+      - Economy
+  /economy/users/{user_id}/gift:
+    post:
+      consumes:
+      - application/json
+      description: Send Seals as a gift to another user
+      parameters:
+      - description: Recipient User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Gift details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/economy.GiveSealToUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/economy.TransferResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "402":
+          description: Insufficient funds
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/economy.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: Gift Seals to another user
+      tags:
+      - Economy
+  /profiles/{user_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve another user's public profile. Returns 403 if profile
+        is private.
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Public profile
+          schema:
+            $ref: '#/definitions/profiles.PublicProfileResponse'
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Profile is private
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Profile not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get public profile
+      tags:
+      - Profiles
+  /profiles/{user_id}/allies:
+    delete:
+      description: Unsubscribe from another user's profile.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Ally removed
+        "400":
+          description: Invalid ID
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal error
+      security:
+      - Bearer: []
+      summary: Remove ally (unsubscribe)
+      tags:
+      - Profiles
+    get:
+      description: Get list of users following the target user.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
       responses:
         "200":
           description: OK
           schema:
             items:
-              $ref: "#/definitions/internal_modules_map.TaskResponse"
+              $ref: '#/definitions/profiles.AllyProfile'
             type: array
         "400":
-          description: Bad Request
-          schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Find nearby tasks
+          description: Invalid ID
+        "500":
+          description: Internal error
+      summary: Get allies (subscribers)
       tags:
-        - Map
-  /payment/webhook/revenuecat:
+      - Profiles
     post:
-      consumes:
-        - application/json
+      description: Subscribe to another user's profile.
       parameters:
-        - description: Webhook secret
-          in: header
-          name: Authorization
-          required: true
-          type: string
-        - description: RevenueCat event
-          in: body
-          name: event
-          required: true
-          schema:
-            $ref: "#/definitions/payment.RevenueCatEvent"
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: Ally added
+        "400":
+          description: Invalid ID or Self-ally
+        "401":
+          description: Unauthorized
+        "404":
+          description: Target not found
+        "500":
+          description: Internal error
+      security:
+      - Bearer: []
+      summary: Become an ally (subscribe)
+      tags:
+      - Profiles
+  /profiles/{user_id}/block:
+    delete:
+      description: Unblock a previously blocked user.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: User unblocked
+        "400":
+          description: Invalid ID
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal error
+      security:
+      - Bearer: []
+      summary: Unblock a user
+      tags:
+      - Profiles
+    post:
+      description: Block another user.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: User blocked
+        "400":
+          description: Invalid ID or Self-block
+        "401":
+          description: Unauthorized
+        "404":
+          description: Target not found
+        "500":
+          description: Internal error
+      security:
+      - Bearer: []
+      summary: Block a user
+      tags:
+      - Profiles
+  /profiles/{user_id}/report:
+    post:
+      description: Report a user for spam, harassment, etc.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Report details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/profiles.ReportRequest'
+      responses:
+        "202":
+          description: Report received
+        "400":
+          description: Invalid ID, Self-report or Valid Reason
+        "401":
+          description: Unauthorized
+        "404":
+          description: Target not found
+        "500":
+          description: Internal error
+      security:
+      - Bearer: []
+      summary: Report a user
+      tags:
+      - Profiles
+  /profiles/{user_id}/restrict:
+    delete:
+      description: Unrestrict a previously restricted user.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: User unrestricted
+        "400":
+          description: Invalid ID
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal error
+      security:
+      - Bearer: []
+      summary: Unrestrict a user
+      tags:
+      - Profiles
+    post:
+      description: Restrict another user.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: User restricted
+        "400":
+          description: Invalid ID or Self-restrict
+        "401":
+          description: Unauthorized
+        "404":
+          description: Target not found
+        "500":
+          description: Internal error
+      security:
+      - Bearer: []
+      summary: Restrict a user
+      tags:
+      - Profiles
+  /profiles/{user_id}/stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve statistics for another user's public profile. Returns
+        403 if profile is private.
+      parameters:
+      - description: User ID
+        in: path
+        name: user_id
+        required: true
+        type: string
       produces:
-        - application/json
+      - application/json
       responses:
         "200":
-          description: OK
+          description: Profile statistics
           schema:
-            $ref: "#/definitions/fiber.Map"
+            $ref: '#/definitions/profiles.ProfileStats'
         "400":
-          description: Bad Request
+          description: Invalid user ID
           schema:
-            $ref: "#/definitions/fiber.Map"
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Profile is private
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Profile not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to retrieve stats
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get public profile statistics
+      tags:
+      - Profiles
+  /profiles/me:
+    delete:
+      consumes:
+      - application/json
+      description: Delete the authenticated user's profile. Profile can be auto-recreated
+        on next access.
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Profile deleted successfully
         "401":
           description: Unauthorized
           schema:
-            $ref: "#/definitions/fiber.Map"
-      summary: Handle RevenueCat webhook
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Profile deletion failed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Delete my profile
       tags:
-        - Payment
+      - Profiles
+    get:
+      consumes:
+      - application/json
+      description: Retrieve the authenticated user's profile. Auto-creates if not
+        exists.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User profile
+          schema:
+            $ref: '#/definitions/profiles.Profile'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get my profile
+      tags:
+      - Profiles
+    patch:
+      consumes:
+      - application/json
+      description: Update the authenticated user's profile information. Auto-populates
+        location if IP provided.
+      parameters:
+      - description: Profile update data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/profiles.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated profile
+          schema:
+            $ref: '#/definitions/profiles.Profile'
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Profile update failed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Update my profile
+      tags:
+      - Profiles
+  /profiles/me/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload an avatar image for the authenticated user. Max 5MB, supports
+        jpg/png/webp.
+      parameters:
+      - description: Avatar image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated profile with new avatar URL
+          schema:
+            $ref: '#/definitions/profiles.Profile'
+        "400":
+          description: File required, too large, or invalid type
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Upload failed or storage not configured
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Upload avatar image
+      tags:
+      - Profiles
+  /profiles/me/stats:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve wallet balances and transaction totals for the authenticated
+        user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Profile statistics
+          schema:
+            $ref: '#/definitions/profiles.ProfileStats'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to retrieve stats
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get my profile statistics
+      tags:
+      - Profiles
 securityDefinitions:
   Bearer:
-    description: Type "Bearer" followed by a space and JWT token
+    description: 'Type "Bearer" followed by a space and your JWT Access Token (not
+      UUID). Example: "Bearer eyJhbGci..."'
     in: header
     name: Authorization
     type: apiKey

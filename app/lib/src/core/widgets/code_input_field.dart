@@ -57,10 +57,10 @@ class _CodeInputFieldState extends State<CodeInputField> {
       children: List.generate(
         widget.length,
         (index) => Padding(
-          padding: EdgeInsets.only(right: index < widget.length - 1 ? 12 : 0),
+          padding: EdgeInsets.only(right: index < widget.length - 1 ? 8 : 0),
           child: SizedBox(
-            width: 60,
-            height: 60,
+            width: 48,
+            height: 48,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
@@ -72,9 +72,9 @@ class _CodeInputFieldState extends State<CodeInputField> {
                   if (_controllers[index].text.isEmpty &&
                       !_focusNodes[index].hasFocus)
                     Positioned(
-                      bottom: 18,
+                      bottom: 14,
                       child: Container(
-                        width: 20,
+                        width: 16,
                         height: 1.5,
                         color: AppColors.textGray2,
                       ),
@@ -89,7 +89,7 @@ class _CodeInputFieldState extends State<CodeInputField> {
                       LengthLimitingTextInputFormatter(1),
                     ],
                     style: context.theme.textStyles.bodyLarge.copyWith(
-                      fontSize: 24,
+                      fontSize: 20,
                       color: AppColors.textGray1,
                     ),
                     decoration: InputDecoration(

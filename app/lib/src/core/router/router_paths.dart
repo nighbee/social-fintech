@@ -10,6 +10,8 @@ class RoutePaths {
   static const String login = '/login';
   static const String loginWithEmail = '/login/email';
   static const String loginCode = '/login/code';
+  static const String emailEntry = '/email-entry';
+  static const String emailPassword = '/email-password';
   static const String register = '/register';
   static const String code = '/code';
   static const String info = '/info';
