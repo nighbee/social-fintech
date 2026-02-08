@@ -498,3 +498,32 @@ func (h *Handler) ReportUser(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(202)
 }
+
+// SearchUsers godoc
+// @Summary Search users by first/last name
+// @Description Public search for referrer user selection
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param first_name query string true "First name"
+// @Param last_name query string true "Last name"
+// @Param limit query int false "Limit (max 50)"
+// @Success 200 {array} UserSearchResult
+// @Router /users/search [get]
+func (h *Handler) SearchUsers(c *fiber.Ctx) error {
+	firstName := c.Query("first_name")
+	lastName := c.Query("last_name")
+	limit := c.QueryInt("limit", 20)
+
+	results, err := h.service.SearchUsers(c.Context(), firstName, lastName, limit)
+	if err != nil {
+		logger.Error("failed to search users",
+			zap.String("first_name", firstName),
+			zap.String("last_name", lastName),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "search_failed"})
+	}
+
+	return c.JSON(results)
+}
