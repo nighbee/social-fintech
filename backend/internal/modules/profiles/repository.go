@@ -274,3 +274,44 @@ func (r *Repository) ReportUser(ctx context.Context, userID, targetID string, re
 	}
 	return nil
 }
+
+
+// SearchUsersByName ищет пользователей по имени/фамилии (LIKE)
+func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName string, limit int) ([]UserSearchResult, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	firstPattern := "%"
+	lastPattern := "%"
+	if firstName != "" {
+		firstPattern = "%" + strings.ToLower(firstName) + "%"
+	}
+	if lastName != "" {
+		lastPattern = "%" + strings.ToLower(lastName) + "%"
+	}
+
+	var rows []UserSearchResult
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT
+			u.id as user_id,
+			COALESCE(u.first_name, '') as first_name,
+			COALESCE(u.last_name, '') as last_name,
+			COALESCE(p.display_name, '') as display_name,
+			COALESCE(p.avatar_url, '') as avatar_url
+		FROM users u
+		LEFT JOIN profiles p ON p.user_id = u.id
+		WHERE u.is_shadow_banned = false
+		  AND LOWER(COALESCE(u.first_name, '')) LIKE $1
+		  AND LOWER(COALESCE(u.last_name, '')) LIKE $2
+		ORDER BY u.first_name, u.last_name
+		LIMIT $3
+	`, firstPattern, lastPattern, limit)
+	if err != nil {
+		return nil, fmt.Errorf("search users failed: %w", err)
+	}
+	return rows, nil
+}
