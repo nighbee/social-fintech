@@ -147,7 +147,11 @@ func main() {
 		logger.Info("Using NoopSMSSender (development mode - OTP codes logged to console)")
 	}
 
-	authService := auth.NewService(authRepo, jwtManager, verifiers, smsSender)
+	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
+	auth.ProviderApple:  appleVerifier,
+	auth.ProviderGoogle: googleVerifier,
+}, smsSender, economyService)
+
 	authHandler := auth.NewHandler(authService)
 
 	if err := authService.EnsureAdmins(context.Background(), cfg.Admin.Emails); err != nil {
