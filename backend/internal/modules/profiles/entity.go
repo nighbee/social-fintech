@@ -69,3 +69,12 @@ type ReportRequest struct {
 	Reason      string `json:"reason" validate:"required,oneof=spam harassment inappropriate fake_account other" example:"spam"`
 	Description string `json:"description" example:"Sent spam messages"`
 }
+
+// UserSearchResult — результат поиска реферера по имен/фамилии
+type UserSearchResult struct {
+	UserID      string `db:"user_id" json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	FirstName   string `db:"first_name" json:"first_name" example:"John"`
+	LastName    string `db:"last_name" json:"last_name" example:"Doe"`
+	DisplayName string `db:"display_name" json:"display_name" example:"John Doe"`
+	AvatarURL   string `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/u1.jpg"`
+}
