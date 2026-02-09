@@ -296,3 +296,15 @@ func calculateRank(score int) string {
 
 	return fmt.Sprintf("%s · %s", rank, quality)
 }
+
+// SearchUsers — публичный поиск пользователей по имени/фамилии
+func (s *Service) SearchUsers(ctx context.Context, firstName, lastName string, limit int) ([]UserSearchResult, error) {
+	firstName = strings.TrimSpace(firstName)
+	lastName = strings.TrimSpace(lastName)
+
+	if firstName == "" && lastName == "" {
+		return []UserSearchResult{}, nil
+	}
+
+	return s.repo.SearchUsersByName(ctx, firstName, lastName, limit)
+}

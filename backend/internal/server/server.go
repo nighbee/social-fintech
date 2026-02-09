@@ -56,6 +56,8 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 		Expiration: 1 * time.Minute,
 	})
 
+	api.Get("/users/search", profilesHandler.SearchUsers)
+
 	authGroup.Post("/login", authLim, authHandler.Login)
 	authGroup.Post("/register-email", authLim, authHandler.RegisterEmail)
 	authGroup.Post("/login-email", authLim, authHandler.LoginEmail)

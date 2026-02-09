@@ -1872,6 +1872,54 @@
                     }
                 }
             }
+        },
+        "/users/search": {
+            "get": {
+                "description": "Public search for referrer user selection",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Search users by first/last name",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "First name",
+                        "name": "first_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last name",
+                        "name": "last_name",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (max 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/profiles.UserSearchResult"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -1950,7 +1998,7 @@
                     "type": "string",
                     "example": "SecurePass123!"
                 },
-                "referral": {
+                "referrer_user_id": {
                     "type": "string",
                     "example": "FRIEND123"
                 },
@@ -2012,7 +2060,7 @@
                 "last_name": {
                     "type": "string"
                 },
-                "referral": {
+                "referrer_user_id": {
                     "type": "string"
                 },
                 "user_agent": {
@@ -2102,7 +2150,7 @@
                 "last_name": {
                     "type": "string"
                 },
-                "referral": {
+                "referrer_user_id": {
                     "type": "string"
                 },
                 "user_agent": {
@@ -2321,7 +2369,8 @@
             "type": "object",
             "required": [
                 "amount",
-                "currency"
+                "currency",
+                "receiver_user_id"
             ],
             "properties": {
                 "amount": {
@@ -2337,6 +2386,9 @@
                     ]
                 },
                 "idempotency_key": {
+                    "type": "string"
+                },
+                "receiver_user_id": {
                     "type": "string"
                 }
             }
@@ -2709,11 +2761,6 @@
                     "type": "string",
                     "example": "Quartz"
                 },
-                "region": {
-                    "description": "Not in current schema",
-                    "type": "string",
-                    "example": "California"
-                },
                 "reputation_score": {
                     "type": "integer",
                     "example": 100
@@ -2792,10 +2839,6 @@
                     "type": "string",
                     "example": "Quartz"
                 },
-                "region": {
-                    "type": "string",
-                    "example": "California"
-                },
                 "reputation_score": {
                     "type": "integer",
                     "example": 100
@@ -2864,17 +2907,38 @@
                 "last_name": {
                     "type": "string",
                     "example": "Wonderland"
-                },
-                "region": {
+                }
+            }
+        },
+        "profiles.UserSearchResult": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
                     "type": "string",
-                    "example": "California"
+                    "example": "https://storage.example.com/avatars/u1.jpg"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         }
     },
     "securityDefinitions": {
         "Bearer": {
-            "description": "Type \"Bearer\" followed by a space and JWT token",
+            "description": "Type \"Bearer\" followed by a space and your JWT Access Token (not UUID). Example: \"Bearer eyJhbGci...\"",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"
