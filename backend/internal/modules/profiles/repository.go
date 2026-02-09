@@ -108,7 +108,7 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID string, req *Upda
 		if err != nil {
 			return nil, fmt.Errorf("failed to get updated user names: %w", err)
 		}
-		
+
 		// Auto-generate display_name from the updated names
 		displayName = strings.TrimSpace(firstName + " " + lastName)
 	} else if req.DisplayName != "" {
@@ -320,7 +320,6 @@ func (r *Repository) ReportUser(ctx context.Context, userID, targetID string, re
 	return nil
 }
 
-
 // SearchUsersByName ищет пользователей по имени/фамилии (LIKE)
 func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName string, limit int) ([]UserSearchResult, error) {
 	if limit <= 0 {
@@ -357,6 +356,58 @@ func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName 
 	`, firstPattern, lastPattern, limit)
 	if err != nil {
 		return nil, fmt.Errorf("search users failed: %w", err)
+	}
+	return rows, nil
+}
+
+// SearchProfilesForFeed ищет профили с учетом приватности и блокировок
+func (r *Repository) SearchProfilesForFeed(ctx context.Context, currentUserID, query string, limit, offset int) ([]ProfileSearchResult, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	pattern := "%" + strings.ToLower(query) + "%"
+
+	var rows []ProfileSearchResult
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT
+			u.id as user_id,
+			COALESCE(p.display_name, '') as display_name,
+			COALESCE(p.avatar_url, '') as avatar_url,
+			COALESCE(w.balance / 100, 0) as reputation_score
+		FROM users u
+		JOIN profiles p ON p.user_id = u.id
+		LEFT JOIN wallets w ON u.id = w.user_id AND w.currency = 'GOLD_SEAL'
+		LEFT JOIN user_relationships blocked ON blocked.user_id = $1 
+			AND blocked.target_user_id = u.id 
+			AND blocked.relationship_type = 'block'
+		LEFT JOIN user_relationships blocked_by ON blocked_by.user_id = u.id 
+			AND blocked_by.target_user_id = $1 
+			AND blocked_by.relationship_type = 'block'
+		LEFT JOIN user_relationships ally ON ally.user_id = $1 
+			AND ally.target_user_id = u.id 
+			AND ally.relationship_type = 'ally'
+		WHERE u.id != $1
+		  AND u.is_shadow_banned = false
+		  AND blocked.id IS NULL
+		  AND blocked_by.id IS NULL
+		  AND (p.is_profile_public = true OR ally.id IS NOT NULL)
+		  AND (
+			  LOWER(COALESCE(u.first_name, '')) LIKE $2
+			  OR LOWER(COALESCE(u.last_name, '')) LIKE $2
+			  OR LOWER(COALESCE(p.display_name, '')) LIKE $2
+		  )
+		ORDER BY w.balance DESC NULLS LAST, u.first_name, u.last_name
+		LIMIT $3 OFFSET $4
+	`, currentUserID, pattern, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("search profiles for feed failed: %w", err)
 	}
 	return rows, nil
 }

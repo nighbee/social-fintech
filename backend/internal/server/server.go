@@ -104,6 +104,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Post("/me/avatar", profilesHandler.UploadAvatar)
 	profilesGroup.Get("/me/stats", profilesHandler.GetMyStats)
 	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
+	profilesGroup.Get("/search", profilesHandler.SearchProfilesForFeed)
 	profilesGroup.Get("/:user_id", profilesHandler.GetPublicProfile)
 	profilesGroup.Get("/:user_id/stats", profilesHandler.GetPublicStats)
 	profilesGroup.Post("/:user_id/allies", profilesHandler.AddAlly)

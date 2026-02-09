@@ -79,3 +79,12 @@ type UserSearchResult struct {
 	DisplayName string `db:"display_name" json:"display_name" example:"John Doe"`
 	AvatarURL   string `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/u1.jpg"`
 }
+
+// ProfileSearchResult — результат поиска профилей для домашней ленты
+type ProfileSearchResult struct {
+	UserID          string `db:"user_id" json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	DisplayName     string `db:"display_name" json:"display_name" example:"John Doe"`
+	AvatarURL       string `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/u1.jpg"`
+	ReputationScore int    `db:"reputation_score" json:"reputation_score" example:"100"`
+	RankTier        string `json:"rank_tier" example:"Quartz"`
+}

@@ -527,3 +527,40 @@ func (h *Handler) SearchUsers(c *fiber.Ctx) error {
 
 	return c.JSON(results)
 }
+
+// SearchProfilesForFeed godoc
+// @Summary Search user profiles for home/feed page
+// @Description Search profiles by name with privacy and block filters. Returns profiles with avatar, reputation, and rank.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param query query string true "Search query (matches first name, last name, or display name)" example:"john"
+// @Param limit query int false "Results limit (max 50)" default(20)
+// @Param offset query int false "Pagination offset" default(0)
+// @Success 200 {array} ProfileSearchResult "List of matching profiles"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/search [get]
+func (h *Handler) SearchProfilesForFeed(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	query := c.Query("query")
+	limit := c.QueryInt("limit", 20)
+	offset := c.QueryInt("offset", 0)
+
+	results, err := h.service.SearchProfilesForFeed(c.Context(), userID, query, limit, offset)
+	if err != nil {
+		logger.Error("failed to search profiles for feed",
+			zap.String("user_id", userID),
+			zap.String("query", query),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "search_failed"})
+	}
+
+	return c.JSON(results)
+}
