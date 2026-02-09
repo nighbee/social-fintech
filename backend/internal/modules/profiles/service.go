@@ -85,8 +85,13 @@ func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*P
 		return nil, ErrProfilePrivate
 	}
 
-	// Split display_name into first/last for backwards compatibility
-	firstName, lastName := splitDisplayName(p.DisplayName)
+	// Use actual first_name/last_name from database
+	// Fall back to splitting display_name only if names are empty
+	firstName := p.FirstName
+	lastName := p.LastName
+	if firstName == "" && lastName == "" && p.DisplayName != "" {
+		firstName, lastName = splitDisplayName(p.DisplayName)
+	}
 
 	return &PublicProfileResponse{
 		UserID:          p.UserID,
@@ -307,4 +312,25 @@ func (s *Service) SearchUsers(ctx context.Context, firstName, lastName string, l
 	}
 
 	return s.repo.SearchUsersByName(ctx, firstName, lastName, limit)
+}
+
+// SearchProfilesForFeed — поиск профилей для домашней страницы с учетом приватности
+func (s *Service) SearchProfilesForFeed(ctx context.Context, currentUserID, query string, limit, offset int) ([]ProfileSearchResult, error) {
+	query = strings.TrimSpace(query)
+
+	if query == "" {
+		return []ProfileSearchResult{}, nil
+	}
+
+	results, err := s.repo.SearchProfilesForFeed(ctx, currentUserID, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate rank tier for each result
+	for i := range results {
+		results[i].RankTier = calculateRank(results[i].ReputationScore)
+	}
+
+	return results, nil
 }
