@@ -28,6 +28,7 @@ type UpdateProfileRequest struct {
 	Bio         string `json:"bio" example:"Explorer and adventurer"`
 	AvatarURL   string `json:"avatar_url" example:"https://storage.example.com/avatar.jpg"`
 	Country     string `json:"country" example:"United States"`
+	Region      string `json:"region" example:"California"`
 	City        string `json:"city" example:"San Francisco"`
 	IsPublic    *bool  `json:"is_public" example:"true"`
 	ClientIP    string `json:"-"` // Not from JSON, set by handler

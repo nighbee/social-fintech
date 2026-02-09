@@ -72,13 +72,52 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID string, req *Upda
 		return nil, err
 	}
 
-	// Construct display_name from FirstName + LastName if provided
-	displayName := req.DisplayName
-	if displayName == "" && (req.FirstName != "" || req.LastName != "") {
-		displayName = strings.TrimSpace(req.FirstName + " " + req.LastName)
+	// Start transaction for atomic updates
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("begin transaction failed: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Update users table (first_name, last_name)
+	if req.FirstName != "" || req.LastName != "" {
+		userQuery := `
+			UPDATE users
+			SET first_name = COALESCE(NULLIF($1, ''), first_name),
+			    last_name = COALESCE(NULLIF($2, ''), last_name),
+			    updated_at = NOW()
+			WHERE id = $3
+		`
+		_, err = tx.ExecContext(ctx, userQuery, req.FirstName, req.LastName, userID)
+		if err != nil {
+			return nil, fmt.Errorf("update user info failed: %w", err)
+		}
 	}
 
-	query := `
+	// Auto-sync display_name with first_name + last_name
+	// If first_name or last_name are being updated, fetch current values and construct display_name
+	var displayName string
+	if req.FirstName != "" || req.LastName != "" {
+		// Get the updated first_name and last_name from users table
+		var firstName, lastName string
+		err = tx.QueryRowContext(ctx, `
+			SELECT COALESCE(first_name, ''), COALESCE(last_name, '')
+			FROM users
+			WHERE id = $1
+		`, userID).Scan(&firstName, &lastName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get updated user names: %w", err)
+		}
+		
+		// Auto-generate display_name from the updated names
+		displayName = strings.TrimSpace(firstName + " " + lastName)
+	} else if req.DisplayName != "" {
+		// Only use provided display_name if first_name/last_name are not being updated
+		displayName = req.DisplayName
+	}
+
+	// Update profiles table (bio, avatar, location, etc.)
+	profileQuery := `
 		UPDATE profiles
 		SET display_name = COALESCE(NULLIF($1, ''), display_name),
 		    bio = COALESCE(NULLIF($2, ''), bio),
@@ -89,13 +128,19 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID string, req *Upda
 		    updated_at = NOW()
 		WHERE user_id = $7
 	`
-	_, err = r.db.ExecContext(ctx, query,
+	_, err = tx.ExecContext(ctx, profileQuery,
 		displayName, req.Bio, req.AvatarURL,
 		req.Country, req.City, req.IsPublic, userID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("update profile failed: %w", err)
 	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return nil, fmt.Errorf("commit transaction failed: %w", err)
+	}
+
 	return r.GetProfile(ctx, userID)
 }
 
