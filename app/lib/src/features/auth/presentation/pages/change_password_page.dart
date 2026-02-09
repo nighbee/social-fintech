@@ -58,14 +58,11 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Gap(40),
-              Text(
-                "Change password",
-                style: context.theme.textStyles.titleXLarge,
-              ),
+              Text("Change password", style: TextStyles.titleXBig),
               Gap(16),
               Text(
                 "It needs to be at least 8 characters long and contain a number or symbol.",
-                style: context.theme.textStyles.bodyMedium,
+                style: TextStyles.bodyLarge,
               ),
               Gap(40),
               CustomTextField(

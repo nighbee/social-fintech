@@ -67,7 +67,7 @@ class _DeveloperFeaturesPageState extends State<DeveloperFeaturesPage> {
       appBar: AppBar(title: const Text('Фичи разработчика')),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: 7,
+        itemCount: 8,
         separatorBuilder: (_, __) => const Divider(height: 24),
         itemBuilder: (context, index) {
           switch (index) {
@@ -83,23 +83,31 @@ class _DeveloperFeaturesPageState extends State<DeveloperFeaturesPage> {
               );
             case 2:
               return _DeveloperItem(
+                title: 'Публичный профиль',
+                subtitle: 'Тестирование просмотра профиля другого пользователя',
+                onTap: () => context.go(
+                  '/public-profile/5ff12d77-0c81-4b73-b168-855155d5180',
+                ),
+              );
+            case 3:
+              return _DeveloperItem(
                 title: 'Регистрация по Email',
                 subtitle: 'Тестирование регистрации',
                 onTap: () => context.go(RoutePaths.signupWithEmail),
               );
-            case 3:
+            case 4:
               return _DeveloperItem(
                 title: 'Вход по Email',
                 subtitle: 'Тестирование входа',
                 onTap: () => context.go(RoutePaths.loginWithEmail),
               );
-            case 4:
+            case 5:
               return _DeveloperItem(
                 title: 'Регистрация по телефону',
                 subtitle: 'Тестирование регистрации',
                 onTap: () => context.go(RoutePaths.signup),
               );
-            case 5:
+            case 6:
               return _DeveloperItem(
                 title: 'Вход по телефону',
                 subtitle: 'Тестирование входа',

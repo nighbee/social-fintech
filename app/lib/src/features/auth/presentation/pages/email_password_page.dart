@@ -27,7 +27,8 @@ class EmailPasswordPage extends StatefulWidget {
 
 class _EmailPasswordPageState extends State<EmailPasswordPage> {
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
@@ -79,19 +80,24 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
 
             return SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Gap(40),
                     Text(
-                      widget.isNewUser ? "Create your account" : "Welcome back!",
-                      style: context.theme.textStyles.titleXLarge,
+                      widget.isNewUser
+                          ? "Create your account"
+                          : "Welcome back!",
+                      style: TextStyles.titleXBig,
                     ),
                     Gap(16),
                     Text(
                       widget.email,
-                      style: context.theme.textStyles.bodyMedium.copyWith(
+                      style: TextStyles.bodyLarge.copyWith(
                         color: AppColors.blueText1,
                       ),
                     ),
@@ -99,7 +105,9 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                     CustomTextField(
                       controller: _passwordController,
                       labelText: "Password",
-                      hintText: widget.isNewUser ? "At least 8 characters" : "Enter password",
+                      hintText: widget.isNewUser
+                          ? "At least 8 characters"
+                          : "Enter password",
                       obscureText: !_isPasswordVisible,
                       onChanged: (value) => setState(() {}),
                       suffixIcon: GestureDetector(
@@ -112,21 +120,21 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                           padding: const EdgeInsets.only(right: 16),
                           child: _isPasswordVisible
                               ? Assets.icons.eyeOpened.svg(
-                            width: 20,
-                            height: 20,
-                            colorFilter: ColorFilter.mode(
-                              AppColors.blueText1,
-                              BlendMode.srcIn,
-                            ),
-                          )
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: ColorFilter.mode(
+                                    AppColors.blueText1,
+                                    BlendMode.srcIn,
+                                  ),
+                                )
                               : Assets.icons.eyeClosed.svg(
-                            width: 20,
-                            height: 20,
-                            colorFilter: ColorFilter.mode(
-                              AppColors.textGray2,
-                              BlendMode.srcIn,
-                            ),
-                          ),
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: ColorFilter.mode(
+                                    AppColors.textGray2,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
                         ),
                       ),
                     ),
@@ -141,28 +149,29 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                         suffixIcon: GestureDetector(
                           onTap: () {
                             setState(() {
-                              _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                              _isConfirmPasswordVisible =
+                                  !_isConfirmPasswordVisible;
                             });
                           },
                           child: Padding(
                             padding: const EdgeInsets.only(right: 16),
                             child: _isConfirmPasswordVisible
                                 ? Assets.icons.eyeOpened.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: ColorFilter.mode(
-                                AppColors.blueText1,
-                                BlendMode.srcIn,
-                              ),
-                            )
+                                    width: 20,
+                                    height: 20,
+                                    colorFilter: ColorFilter.mode(
+                                      AppColors.blueText1,
+                                      BlendMode.srcIn,
+                                    ),
+                                  )
                                 : Assets.icons.eyeClosed.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                                    width: 20,
+                                    height: 20,
+                                    colorFilter: ColorFilter.mode(
+                                      AppColors.textGray2,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -180,10 +189,10 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                           context.read<AuthBloc>().add(
                             AuthEvent.checkEmail(email: widget.email),
                           );
-                          
+
                           final bloc = context.read<AuthBloc>();
                           bloc.add(AuthEvent.checkEmail(email: widget.email));
-                          
+
                           Future.delayed(const Duration(milliseconds: 100), () {
                             context.pushNamed(
                               RouteNames.info,
@@ -204,7 +213,9 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                       },
                     ),
                     Gap(20),
-                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
+                    SizedBox(
+                      height: MediaQuery.of(context).viewInsets.bottom + 20,
+                    ),
                   ],
                 ),
               ),

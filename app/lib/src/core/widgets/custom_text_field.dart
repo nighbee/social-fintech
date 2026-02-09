@@ -74,11 +74,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (hasText)
-                  Text(
-                    widget.labelText,
-                    style: Theme.of(context).textStyles.caption,
-                  ),
+                if (hasText) Text(widget.labelText, style: TextStyles.bodyMain),
                 TextFormField(
                   controller: widget.controller,
                   onChanged: (value) {
@@ -93,12 +89,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   textAlignVertical: hasText
                       ? TextAlignVertical.top
                       : TextAlignVertical.center,
-                  style: Theme.of(context).textStyles.bodyLarge,
+                  style: TextStyles.titleHeadline,
                   decoration: InputDecoration(
                     hintText: hasText
                         ? null
                         : (widget.hintText ?? widget.labelText),
-                    hintStyle: Theme.of(context).textStyles.bodySmall,
+                    hintStyle: TextStyles.titleTag,
                     contentPadding: hasText
                         ? EdgeInsets.zero
                         : const EdgeInsets.symmetric(vertical: 0),

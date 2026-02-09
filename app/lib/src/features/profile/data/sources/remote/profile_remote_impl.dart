@@ -3,10 +3,11 @@ import 'package:injectable/injectable.dart';
 import 'package:app/src/core/api/client/dio/dio_client.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
-import 'package:app/src/core/base/base_models/item_response.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
-import 'package:app/src/features/profile/data/models/user_dto.dart';
+import 'package:app/src/features/profile/data/models/profile_dto.dart';
+import 'package:app/src/features/profile/data/models/public_profile_dto.dart';
 import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.dart';
+import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 
 @named
 @LazySingleton(as: IProfileRemote)
@@ -16,17 +17,14 @@ class ProfileRemoteImpl implements IProfileRemote {
   final RestClient _restClient;
 
   @override
-  Future<Either<DomainException, UserDto>> getCurrentUser() async {
+  Future<Either<DomainException, ProfileDto>> getCurrentUser() async {
     // TODO: Uncomment when API is ready
     try {
       final response = await _restClient.get(EndPoints.profile);
 
       return response.fold((error) => Left(error), (result) {
-        final dto = ItemResponse<UserDto>.fromJson(
-          result.data,
-          (json) => UserDto.fromJson(json as Map<String, dynamic>),
-        );
-        return Right(dto.data);
+        final dto = ProfileDto.fromJson(result.data as Map<String, dynamic>);
+        return Right(dto);
       });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
@@ -44,5 +42,23 @@ class ProfileRemoteImpl implements IProfileRemote {
     //       .toIso8601String(),
     // );
     // return Right(mockUser);
+  }
+
+  @override
+  Future<Either<DomainException, PublicProfileDto>> getPublicProfile(
+    UserIdRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get('/profiles/${request.userId}');
+
+      return response.fold((error) => Left(error), (result) {
+        final dto = PublicProfileDto.fromJson(
+          result.data as Map<String, dynamic>,
+        );
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
   }
 }

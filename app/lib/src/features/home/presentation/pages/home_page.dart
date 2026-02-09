@@ -40,7 +40,7 @@ class HomePage extends StatelessWidget {
                         const Gap(16),
                         Text(
                           'No posts yet',
-                          style: context.theme.textStyles.bodyLarge?.copyWith(
+                          style: TextStyles.titleHeadline.copyWith(
                             color: AppColors.textSecondary,
                           ),
                         ),
@@ -66,14 +66,14 @@ class HomePage extends StatelessWidget {
                     const Gap(16),
                     Text(
                       'Error loading posts',
-                      style: context.theme.textStyles.bodyLarge?.copyWith(
+                      style: TextStyles.titleHeadline.copyWith(
                         color: AppColors.error,
                       ),
                     ),
                     const Gap(8),
                     Text(
                       message,
-                      style: context.theme.textStyles.bodySmall?.copyWith(
+                      style: TextStyles.bodyMain.copyWith(
                         color: AppColors.textSecondary,
                       ),
                       textAlign: TextAlign.center,

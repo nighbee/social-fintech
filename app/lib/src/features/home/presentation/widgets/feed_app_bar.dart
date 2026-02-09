@@ -30,7 +30,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
                 const Gap(4),
                 Text(
                   '27',
-                  style: context.theme.textStyles.bodySmall?.copyWith(
+                  style: TextStyles.titleTag.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w500,
                     fontSize: 16,
@@ -49,7 +49,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
                 const Gap(4),
                 Text(
                   '20 min',
-                  style: context.theme.textStyles.bodyMedium.copyWith(
+                  style: TextStyles.titleHeadline.copyWith(
                     color: AppColors.textPrimary,
                     fontWeight: FontWeight.w600,
                   ),

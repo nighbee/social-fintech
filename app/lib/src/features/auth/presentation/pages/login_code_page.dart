@@ -49,11 +49,17 @@ class _LoginCodePageState extends State<LoginCodePage> {
                 );
               },
               goRegister: () {
-                final firebaseIdToken = context.read<AuthBloc>().viewModel.firebaseIdToken;
-                context.pushNamed(RouteNames.info, extra: {
-                  'phoneNumber': widget.phoneNumber,
-                  'firebaseIdToken': firebaseIdToken,
-                });
+                final firebaseIdToken = context
+                    .read<AuthBloc>()
+                    .viewModel
+                    .firebaseIdToken;
+                context.pushNamed(
+                  RouteNames.info,
+                  extra: {
+                    'phoneNumber': widget.phoneNumber,
+                    'firebaseIdToken': firebaseIdToken,
+                  },
+                );
               },
               loaded: (viewModel) {},
               authenticated: (loginEntity) {
@@ -72,19 +78,19 @@ class _LoginCodePageState extends State<LoginCodePage> {
 
             return SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Gap(40),
-                    Text(
-                      "Enter the code",
-                      style: context.theme.textStyles.titleXLarge,
-                    ),
+                    Text("Enter the code", style: TextStyles.titleXBig),
                     Gap(16),
                     Text(
                       "Enter the code we've sent by SMS to ${widget.phoneNumber}:",
-                      style: context.theme.textStyles.bodyMedium,
+                      style: TextStyles.bodyLarge,
                     ),
                     Gap(40),
                     Center(
@@ -114,7 +120,9 @@ class _LoginCodePageState extends State<LoginCodePage> {
                       },
                     ),
                     Gap(20),
-                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
+                    SizedBox(
+                      height: MediaQuery.of(context).viewInsets.bottom + 20,
+                    ),
                   ],
                 ),
               ),

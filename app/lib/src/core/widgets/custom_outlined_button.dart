@@ -31,7 +31,7 @@ class CustomOutlinedButton extends StatelessWidget {
       backgroundColor: Colors.transparent,
       textStyle:
           textStyle ??
-          context.theme.textStyles.bodyMediumBold.copyWith(
+          TextStyles.titleMain.copyWith(
             fontSize: 17,
             color: AppColors.whiteBackground,
           ),

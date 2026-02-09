@@ -28,6 +28,12 @@ class $AssetsFontsGen {
 class $AssetsIconsGen {
   const $AssetsIconsGen();
 
+  /// File path: assets/icons/Frame (20).svg
+  SvgGenImage get frame20 => const SvgGenImage('assets/icons/Frame (20).svg');
+
+  /// File path: assets/icons/Frame (21).svg
+  SvgGenImage get frame21 => const SvgGenImage('assets/icons/Frame (21).svg');
+
   /// File path: assets/icons/apple_logo.svg
   SvgGenImage get appleLogo => const SvgGenImage('assets/icons/apple_logo.svg');
 
@@ -64,6 +70,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/google_logo.svg
   SvgGenImage get googleLogo =>
       const SvgGenImage('assets/icons/google_logo.svg');
+
+  /// File path: assets/icons/icon.svg
+  SvgGenImage get icon => const SvgGenImage('assets/icons/icon.svg');
 
   /// File path: assets/icons/like.svg
   SvgGenImage get like => const SvgGenImage('assets/icons/like.svg');
@@ -114,6 +123,8 @@ class $AssetsIconsGen {
 
   /// List of all assets
   List<SvgGenImage> get values => [
+    frame20,
+    frame21,
     appleLogo,
     arrowBack,
     atsign,
@@ -126,6 +137,7 @@ class $AssetsIconsGen {
     eyeOpened,
     feedIcon,
     googleLogo,
+    icon,
     like,
     mapIcon,
     message,

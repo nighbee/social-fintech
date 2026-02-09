@@ -41,14 +41,14 @@ class PostCardWidget extends StatelessWidget {
                   children: [
                     Text(
                       post.username,
-                      style: context.theme.textStyles.bodyMedium.copyWith(
+                      style: TextStyles.titleHeadline.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     Text(
                       timeago.format(post.createdAt),
-                      style: context.theme.textStyles.bodySmall.copyWith(
+                      style: TextStyles.bodySecondary.copyWith(
                         color: AppColors.textSecondary,
                       ),
                     ),
@@ -65,10 +65,7 @@ class PostCardWidget extends StatelessWidget {
           // Content
           Text(
             post.content,
-            style: context.theme.textStyles.caption.copyWith(
-              fontSize: 13,
-              color: AppColors.textPrimary,
-            ),
+            style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
           ),
           if (post.imageUrls.isNotEmpty) ...[
             const Gap(12),
@@ -122,10 +119,7 @@ class PostActionButton extends StatelessWidget {
           const Gap(4),
           Text(
             count.toString(),
-            style: context.theme.textStyles.caption.copyWith(
-              color: AppColors.textPrimary,
-              fontSize: 13,
-            ),
+            style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
           ),
         ],
       ),

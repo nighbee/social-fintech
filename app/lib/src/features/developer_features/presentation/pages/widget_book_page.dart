@@ -75,7 +75,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
                 text: 'Custom Border Color',
                 onTap: () {},
                 borderColor: AppColors.blueText1,
-                textStyle: context.theme.textStyles.bodyMediumBold.copyWith(
+                textStyle: TextStyles.titleMain.copyWith(
                   color: AppColors.blueText1,
                 ),
               ),
@@ -192,30 +192,21 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
           _buildSection(
             title: 'Typography',
             children: [
-              Text('Title Large', style: context.theme.textStyles.titleLarge),
+              Text('Title Large', style: TextStyles.titleBig),
               Gap(8),
-              Text(
-                'Title Headline',
-                style: context.theme.textStyles.titleSmall,
-              ),
+              Text('Title Headline', style: TextStyles.titleHeadline),
               Gap(8),
-              Text(
-                'Code Page Title',
-                style: context.theme.textStyles.titleXLarge,
-              ),
+              Text('Code Page Title', style: TextStyles.titleXBig),
               Gap(8),
-              Text(
-                'Code Page Subtitle',
-                style: context.theme.textStyles.bodyMedium,
-              ),
+              Text('Code Page Subtitle', style: TextStyles.bodyLarge),
               Gap(8),
-              Text('Input Text', style: context.theme.textStyles.bodyLarge),
+              Text('Input Text', style: TextStyles.titleMain),
               Gap(8),
-              Text('Label Text', style: context.theme.textStyles.caption),
+              Text('Label Text', style: TextStyles.bodyMain),
               Gap(8),
-              Text('Button Text', style: context.theme.textStyles.bodyMediumBold),
+              Text('Button Text', style: TextStyles.titleMain),
               Gap(8),
-              Text('Hint Text', style: context.theme.textStyles.bodySmall),
+              Text('Hint Text', style: TextStyles.bodyMain),
             ],
           ),
           Gap(40),
@@ -250,7 +241,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: context.theme.textStyles.titleLarge),
+        Text(title, style: TextStyles.titleBig),
         Gap(20),
         ...children,
       ],
@@ -270,7 +261,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
           ),
         ),
         Gap(12),
-        Text(name, style: context.theme.textStyles.caption),
+        Text(name, style: TextStyles.bodyMain),
       ],
     );
   }

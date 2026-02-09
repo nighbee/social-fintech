@@ -1,4 +1,4 @@
-import 'package:app/src/features/profile/data/models/user_dto.dart';
+import 'package:app/src/features/auth/data/models/user_dto.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
 

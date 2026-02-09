@@ -66,10 +66,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Select Country/Region',
-              style: context.theme.textStyles.titleLarge,
-            ),
+            Text('Select Country/Region', style: TextStyles.titleBig),
             Gap(20),
             ListTile(
               title: const Text('Kazakhstan'),
@@ -156,22 +153,16 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                       children: [
                         TextButton(
                           onPressed: () {},
-                          child: Text(
-                            "Log in",
-                            style: context.theme.textStyles.titleLarge,
-                          ),
+                          child: Text("Log in", style: TextStyles.titleBig),
                         ),
 
-                        Text("or", style: context.theme.textStyles.titleLarge),
+                        Text("or", style: TextStyles.titleBig),
 
                         TextButton(
                           onPressed: () {
                             context.pushReplacementNamed(RouteNames.signup);
                           },
-                          child: Text(
-                            "Sign up",
-                            style: context.theme.textStyles.titleLarge,
-                          ),
+                          child: Text("Sign up", style: TextStyles.titleBig),
                         ),
                       ],
                     ),
@@ -208,15 +199,21 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                       isDisabled: isLoading,
                       onTap: () {
                         final phoneText = _phoneController.text.trim();
-                        final phoneNumber = phoneText.replaceAll(' ', '').replaceAll('-', '');
-                        
+                        final phoneNumber = phoneText
+                            .replaceAll(' ', '')
+                            .replaceAll('-', '');
+
                         if (phoneNumber.length < 10) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter a valid phone number')),
+                            const SnackBar(
+                              content: Text(
+                                'Please enter a valid phone number',
+                              ),
+                            ),
                           );
                           return;
                         }
-                        
+
                         context.read<AuthBloc>().add(
                           AuthEvent.startPhoneVerification(
                             phoneNumber: phoneNumber,
@@ -237,7 +234,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                             color: AppColors.textGray2,
                           ),
                         ),
-                        Text("or", style: context.theme.textStyles.bodyBold),
+                        Text("or", style: TextStyles.titleTag),
                         Expanded(
                           child: Container(
                             width: double.infinity,
@@ -262,8 +259,9 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                           icon: Assets.icons.appleLogo.svg(),
                           onTap: () {},
                           padding: EdgeInsets.symmetric(vertical: 10),
-                          textStyle: context.theme.textStyles.bodyMediumBold
-                              .copyWith(fontSize: 17),
+                          textStyle: TextStyles.titleMain.copyWith(
+                            fontSize: 17,
+                          ),
                         ),
                         CustomButton(
                           text: "Continue with Google",
@@ -275,15 +273,14 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                             );
                           },
                           padding: EdgeInsets.symmetric(vertical: 10),
-                          textStyle: context.theme.textStyles.bodyMediumBold
-                              .copyWith(fontSize: 17),
+                          textStyle: TextStyles.titleMain.copyWith(
+                            fontSize: 17,
+                          ),
                         ),
                         Text(
                           "Continuing, I agree with\nTerms and conditions.",
                           textAlign: TextAlign.center,
-                          style: context.theme.textStyles.caption.copyWith(
-                            fontSize: 14,
-                          ),
+                          style: TextStyles.bodyMain.copyWith(fontSize: 14),
                         ),
                       ],
                     ),

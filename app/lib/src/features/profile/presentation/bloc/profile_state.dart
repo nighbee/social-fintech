@@ -13,6 +13,7 @@ class ProfileState with _$ProfileState {
 @freezed
 class ProfileViewModel with _$ProfileViewModel {
   const ProfileViewModel._();
-  factory ProfileViewModel({@Default(User.empty()) User user}) =
-      _ProfileViewModel;
+  factory ProfileViewModel({
+    @Default(ProfileEntity.empty()) ProfileEntity profile,
+  }) = _ProfileViewModel;
 }
