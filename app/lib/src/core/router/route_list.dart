@@ -34,6 +34,11 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             name: RouteNames.widgetBook,
             builder: (context, state) => const WidgetBookPage(),
           ),
+          GoRoute(
+            path: 'rangs',
+            name: RouteNames.rangs,
+            builder: (context, state) => const RangsPage(),
+          ),
         ],
       ),
 

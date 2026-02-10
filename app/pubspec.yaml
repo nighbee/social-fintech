@@ -150,6 +150,8 @@ flutter:
   assets:
     # Иконки приложения
     - assets/icons/
+    # Изображения (камни для рангов)
+    - assets/images/
     # Общие шрифты
     - assets/fonts/
     # Семейство шрифтов Lora

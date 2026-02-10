@@ -42,4 +42,21 @@ class EndPoints {
 
   //* Payment
   static const String paymentWebhookRevenuecat = '/payment/webhook/revenuecat';
+
+  //* Profile
+  static const String profiles = '/profiles';
+  static const String profileMe = '/profiles/me';
+  static String profileById(String userId) => '/profiles/$userId';
+  static const String profileMeStats = '/profiles/me/stats';
+  static String profileStatsById(String userId) => '/profiles/$userId/stats';
+  static const String profileMeAvatar = '/profiles/me/avatar';
+  static String profileAddAlly(String userId) => '/profiles/$userId/allies';
+  static String profileRemoveAlly(String userId) => '/profiles/$userId/allies';
+  static String profileGetAllies(String userId) => '/profiles/$userId/allies';
+  static String profileBlock(String userId) => '/profiles/$userId/block';
+  static String profileUnblock(String userId) => '/profiles/$userId/block';
+  static String profileRestrict(String userId) => '/profiles/$userId/restrict';
+  static String profileUnrestrict(String userId) =>
+      '/profiles/$userId/restrict';
+  static String profileReport(String userId) => '/profiles/$userId/report';
 }

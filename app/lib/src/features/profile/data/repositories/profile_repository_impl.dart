@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.dart';
 import 'package:app/src/features/profile/data/sources/remote/profile_remote_impl.dart';
+import 'package:app/src/features/profile/domain/entities/ally_profile_entity.dart';
 import 'package:app/src/features/profile/domain/entities/profile_entity.dart';
 import 'package:app/src/features/profile/domain/repositories/i_profile_repository.dart';
 
@@ -41,6 +42,120 @@ class ProfileRepositoryImpl implements IProfileRepository {
         (error) => Left(error),
         (publicProfileDto) => Right(publicProfileDto.toEntity()),
       );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> becomeAlly(
+    UserIdRequest request,
+  ) async {
+    try {
+      return await _profileRemote.becomeAlly(request);
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> removeAlly(
+    UserIdRequest request,
+  ) async {
+    try {
+      return await _profileRemote.removeAlly(request);
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<AllyProfileEntity>>> getAllies(
+    UserIdRequest request,
+  ) async {
+    try {
+      final result = await _profileRemote.getAllies(request);
+
+      return result.fold(
+        (error) => Left(error),
+        (alliesDtoList) {
+          final List<AllyProfileEntity> entities = alliesDtoList
+              .map((dto) => dto.toEntity())
+              .toList();
+          return Right(entities);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> blockUser(
+    UserIdRequest request,
+  ) async {
+    try {
+      return await _profileRemote.blockUser(request);
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> restrictUser(
+    UserIdRequest request,
+  ) async {
+    try {
+      return await _profileRemote.restrictUser(request);
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> reportUser(
+    UserIdRequest request,
+  ) async {
+    try {
+      return await _profileRemote.reportUser(request);
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> unblockUser(
+    UserIdRequest request,
+  ) async {
+    try {
+      return await _profileRemote.unblockUser(request);
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> unrestrictUser(
+    UserIdRequest request,
+  ) async {
+    try {
+      return await _profileRemote.unrestrictUser(request);
     } catch (e) {
       return Left(
         e is DomainException ? e : UnknownException(message: e.toString()),

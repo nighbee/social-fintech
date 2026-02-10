@@ -28,12 +28,6 @@ class $AssetsFontsGen {
 class $AssetsIconsGen {
   const $AssetsIconsGen();
 
-  /// File path: assets/icons/Frame (20).svg
-  SvgGenImage get frame20 => const SvgGenImage('assets/icons/Frame (20).svg');
-
-  /// File path: assets/icons/Frame (21).svg
-  SvgGenImage get frame21 => const SvgGenImage('assets/icons/Frame (21).svg');
-
   /// File path: assets/icons/apple_logo.svg
   SvgGenImage get appleLogo => const SvgGenImage('assets/icons/apple_logo.svg');
 
@@ -70,9 +64,6 @@ class $AssetsIconsGen {
   /// File path: assets/icons/google_logo.svg
   SvgGenImage get googleLogo =>
       const SvgGenImage('assets/icons/google_logo.svg');
-
-  /// File path: assets/icons/icon.svg
-  SvgGenImage get icon => const SvgGenImage('assets/icons/icon.svg');
 
   /// File path: assets/icons/like.svg
   SvgGenImage get like => const SvgGenImage('assets/icons/like.svg');
@@ -123,8 +114,6 @@ class $AssetsIconsGen {
 
   /// List of all assets
   List<SvgGenImage> get values => [
-    frame20,
-    frame21,
     appleLogo,
     arrowBack,
     atsign,
@@ -137,7 +126,6 @@ class $AssetsIconsGen {
     eyeOpened,
     feedIcon,
     googleLogo,
-    icon,
     like,
     mapIcon,
     message,
@@ -152,6 +140,46 @@ class $AssetsIconsGen {
     silverCoin,
     statsIcon,
     timer,
+  ];
+}
+
+class $AssetsImagesGen {
+  const $AssetsImagesGen();
+
+  /// File path: assets/images/ammolite.png
+  AssetGenImage get ammolite =>
+      const AssetGenImage('assets/images/ammolite.png');
+
+  /// File path: assets/images/jade.png
+  AssetGenImage get jade => const AssetGenImage('assets/images/jade.png');
+
+  /// File path: assets/images/lapislazuli.png
+  AssetGenImage get lapislazuli =>
+      const AssetGenImage('assets/images/lapislazuli.png');
+
+  /// File path: assets/images/moonstone.png
+  AssetGenImage get moonstone =>
+      const AssetGenImage('assets/images/moonstone.png');
+
+  /// File path: assets/images/onyx.png
+  AssetGenImage get onyx => const AssetGenImage('assets/images/onyx.png');
+
+  /// File path: assets/images/pearl.png
+  AssetGenImage get pearl => const AssetGenImage('assets/images/pearl.png');
+
+  /// File path: assets/images/supernova.png
+  AssetGenImage get supernova =>
+      const AssetGenImage('assets/images/supernova.png');
+
+  /// List of all assets
+  List<AssetGenImage> get values => [
+    ammolite,
+    jade,
+    lapislazuli,
+    moonstone,
+    onyx,
+    pearl,
+    supernova,
   ];
 }
 
@@ -268,6 +296,95 @@ class Assets {
 
   static const $AssetsFontsGen fonts = $AssetsFontsGen();
   static const $AssetsIconsGen icons = $AssetsIconsGen();
+  static const $AssetsImagesGen images = $AssetsImagesGen();
+}
+
+class AssetGenImage {
+  const AssetGenImage(
+    this._assetName, {
+    this.size,
+    this.flavors = const {},
+    this.animation,
+  });
+
+  final String _assetName;
+
+  final Size? size;
+  final Set<String> flavors;
+  final AssetGenImageAnimation? animation;
+
+  Image image({
+    Key? key,
+    AssetBundle? bundle,
+    ImageFrameBuilder? frameBuilder,
+    ImageErrorWidgetBuilder? errorBuilder,
+    String? semanticLabel,
+    bool excludeFromSemantics = false,
+    double? scale,
+    double? width,
+    double? height,
+    Color? color,
+    Animation<double>? opacity,
+    BlendMode? colorBlendMode,
+    BoxFit? fit,
+    AlignmentGeometry alignment = Alignment.center,
+    ImageRepeat repeat = ImageRepeat.noRepeat,
+    Rect? centerSlice,
+    bool matchTextDirection = false,
+    bool gaplessPlayback = true,
+    bool isAntiAlias = false,
+    String? package,
+    FilterQuality filterQuality = FilterQuality.medium,
+    int? cacheWidth,
+    int? cacheHeight,
+  }) {
+    return Image.asset(
+      _assetName,
+      key: key,
+      bundle: bundle,
+      frameBuilder: frameBuilder,
+      errorBuilder: errorBuilder,
+      semanticLabel: semanticLabel,
+      excludeFromSemantics: excludeFromSemantics,
+      scale: scale,
+      width: width,
+      height: height,
+      color: color,
+      opacity: opacity,
+      colorBlendMode: colorBlendMode,
+      fit: fit,
+      alignment: alignment,
+      repeat: repeat,
+      centerSlice: centerSlice,
+      matchTextDirection: matchTextDirection,
+      gaplessPlayback: gaplessPlayback,
+      isAntiAlias: isAntiAlias,
+      package: package,
+      filterQuality: filterQuality,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
+    );
+  }
+
+  ImageProvider provider({AssetBundle? bundle, String? package}) {
+    return AssetImage(_assetName, bundle: bundle, package: package);
+  }
+
+  String get path => _assetName;
+
+  String get keyName => _assetName;
+}
+
+class AssetGenImageAnimation {
+  const AssetGenImageAnimation({
+    required this.isAnimation,
+    required this.duration,
+    required this.frames,
+  });
+
+  final bool isAnimation;
+  final Duration duration;
+  final int frames;
 }
 
 class SvgGenImage {

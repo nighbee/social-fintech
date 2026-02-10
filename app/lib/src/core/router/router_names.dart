@@ -41,6 +41,7 @@ class RouteNames {
   static const String developerFeatures = 'developer_features';
   static const String log = 'log';
   static const String widgetBook = 'widget_book';
+  static const String rangs = 'rangs';
 
   // Add more route names as needed
 }

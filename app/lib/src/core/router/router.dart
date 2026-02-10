@@ -25,6 +25,7 @@ import 'package:app/src/features/rating/presentation/pages/rating_page.dart';
 import 'package:app/src/features/chats/presentation/pages/chats_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/developer_features_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/widget_book_page.dart';
+import 'package:app/src/features/profile/presentation/pages/ranks_page.dart';
 import 'package:app/src/core/service/storage/secure_storage/secure_storage_service_impl.dart';
 import 'package:app/src/core/utils/loggers/log.dart';
 

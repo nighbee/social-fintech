@@ -1,4 +1,8 @@
+import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/features/profile/domain/entities/ally_profile_entity.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -11,13 +15,18 @@ class AlliesPage extends StatefulWidget {
 }
 
 class _AlliesPageState extends State<AlliesPage> {
-  String _selectedSort = 'Default: Earliest';
+  String _selectedSort = 'По умолчанию';
   final TextEditingController _searchController = TextEditingController();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  int _getAlliesCount(ProfileState state) {
+    return state.whenOrNull(loaded: (viewModel) => viewModel.allies.length) ??
+        0;
   }
 
   @override
@@ -31,7 +40,7 @@ class _AlliesPageState extends State<AlliesPage> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'Allies',
+          'Союзники',
           style: TextStyles.titleMain.copyWith(color: Colors.white),
         ),
         centerTitle: true,
@@ -48,7 +57,7 @@ class _AlliesPageState extends State<AlliesPage> {
                 const Icon(Icons.people, color: Colors.white, size: 16),
                 const Gap(6),
                 Text(
-                  '5',
+                  '0',
                   style: TextStyles.bodyMain.copyWith(color: Colors.white),
                 ),
               ],
@@ -56,90 +65,164 @@ class _AlliesPageState extends State<AlliesPage> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              style: TextStyles.bodyMain.copyWith(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Search',
-                hintStyle: TextStyles.bodyMain.copyWith(
-                  color: const Color(0xFF6D6D6D),
-                ),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF6D6D6D)),
-                filled: true,
-                fillColor: const Color(0xFF1A1A1A),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ),
+      body: BaseBlocWidget<ProfileBloc, ProfileEvent, ProfileState>(
+        bloc: getIt<ProfileBloc>(),
+        starterEvent: const ProfileEvent.loadCurrentUserAllies(),
+        builder: (context, state, bloc) {
+          final alliesCount = _getAlliesCount(state);
 
-          // Sort dropdown
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Text(
-                  'Sort by',
-                  style: TextStyles.bodyMain.copyWith(
-                    color: const Color(0xFF6D6D6D),
+          return Column(
+            children: [
+              _SearchBar(controller: _searchController),
+              _SortDropdown(
+                selectedSort: _selectedSort,
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedSort = value;
+                    });
+                  }
+                },
+              ),
+              const Gap(16),
+              Expanded(
+                child: state.when(
+                  initial: () => const SizedBox(),
+                  loading: (viewModel) => const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
                   ),
-                ),
-                const Gap(8),
-                DropdownButton<String>(
-                  value: _selectedSort,
-                  dropdownColor: const Color(0xFF1A1A1A),
-                  underline: const SizedBox(),
-                  icon: const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Color(0xFF6D6D6D),
-                  ),
-                  style: TextStyles.bodyMain.copyWith(
-                    color: const Color(0xFF6D6D6D),
-                  ),
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'Default: Earliest',
-                      child: Text('Default: Earliest'),
+                  loadingError: (message) => Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 48,
+                        ),
+                        const Gap(16),
+                        Text(
+                          message,
+                          style: TextStyles.bodyMain.copyWith(
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
-                    DropdownMenuItem(value: 'Latest', child: Text('Latest')),
-                    DropdownMenuItem(
-                      value: 'Name A-Z',
-                      child: Text('Name A-Z'),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _selectedSort = value;
-                      });
+                  ),
+                  loaded: (viewModel) {
+                    if (viewModel.allies.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              color: Color(0xFF6D6D6D),
+                              size: 64,
+                            ),
+                            Gap(16),
+                            Text(
+                              'У вас пока нет союзников',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: Color(0xFF6D6D6D),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
                     }
+
+                    return ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: viewModel.allies.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(color: Color(0xFF333333), height: 1),
+                      itemBuilder: (context, index) {
+                        final ally = viewModel.allies[index];
+                        return AllyCard(ally: ally);
+                      },
+                    );
                   },
                 ),
-              ],
-            ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _SearchBar extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _SearchBar({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: TextField(
+        controller: controller,
+        style: TextStyles.bodyMain.copyWith(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: 'Поиск',
+          hintStyle: TextStyles.bodyMain.copyWith(
+            color: const Color(0xFF6D6D6D),
           ),
+          prefixIcon: const Icon(Icons.search, color: Color(0xFF6D6D6D)),
+          filled: true,
+          fillColor: const Color(0xFF1A1A1A),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
-          const Gap(16),
+class _SortDropdown extends StatelessWidget {
+  final String selectedSort;
+  final void Function(String?) onChanged;
 
-          // Allies list
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _mockAllies.length,
-              separatorBuilder: (context, index) =>
-                  const Divider(color: Color(0xFF333333), height: 1),
-              itemBuilder: (context, index) {
-                final ally = _mockAllies[index];
-                return _AllyCard(ally: ally);
-              },
+  const _SortDropdown({required this.selectedSort, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Text(
+            'Сортировать по',
+            style: TextStyles.bodyMain.copyWith(color: const Color(0xFF6D6D6D)),
+          ),
+          const Gap(8),
+          DropdownButton<String>(
+            value: selectedSort,
+            dropdownColor: const Color(0xFF1A1A1A),
+            underline: const SizedBox(),
+            icon: const Icon(
+              Icons.keyboard_arrow_down,
+              color: Color(0xFF6D6D6D),
             ),
+            style: TextStyles.bodyMain.copyWith(color: const Color(0xFF6D6D6D)),
+            items: const [
+              DropdownMenuItem(
+                value: 'По умолчанию',
+                child: Text('По умолчанию'),
+              ),
+              DropdownMenuItem(value: 'Новые', child: Text('Новые')),
+              DropdownMenuItem(
+                value: 'По имени А-Я',
+                child: Text('По имени А-Я'),
+              ),
+            ],
+            onChanged: onChanged,
           ),
         ],
       ),
@@ -147,10 +230,10 @@ class _AlliesPageState extends State<AlliesPage> {
   }
 }
 
-class _AllyCard extends StatelessWidget {
-  final AllyModel ally;
+class AllyCard extends StatelessWidget {
+  final AllyProfileEntity ally;
 
-  const _AllyCard({required this.ally});
+  const AllyCard({super.key, required this.ally});
 
   @override
   Widget build(BuildContext context) {
@@ -158,133 +241,85 @@ class _AllyCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          // Profile image
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              image: DecorationImage(
-                image: NetworkImage(ally.imageUrl),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
+          _Avatar(imageUrl: ally.avatarUrl),
           const Gap(12),
-          // Name and info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  ally.name,
-                  style: TextStyles.bodyMain.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Gap(4),
-                Row(
-                  children: [
-                    Text(
-                      ally.role,
-                      style: TextStyles.bodySecondary.copyWith(
-                        color: _getRoleColor(ally.role),
-                      ),
-                    ),
-                    Text(
-                      ' · ',
-                      style: TextStyles.bodySecondary.copyWith(
-                        color: const Color(0xFF6D6D6D),
-                      ),
-                    ),
-                    Text(
-                      ally.status,
-                      style: TextStyles.bodySecondary.copyWith(
-                        color: _getStatusColor(ally.status),
-                      ),
-                    ),
-                    const Gap(4),
-                    Icon(
-                      _getStatusIcon(ally.status),
-                      size: 14,
-                      color: _getStatusColor(ally.status),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          Expanded(child: _AllyInfo(ally: ally)),
         ],
       ),
     );
   }
-
-  Color _getRoleColor(String role) {
-    // Parse role color from text (e.g., "Lapir Lazuli" might have different colors)
-    return const Color(0xFF5E8DFF);
-  }
-
-  Color _getStatusColor(String status) {
-    if (status.contains('Acceptance')) return const Color(0xFF5E8DFF);
-    if (status.contains('Clarity')) return const Color(0xFF5E8DFF);
-    if (status.contains('Fortitude')) return const Color(0xFFFFA500);
-    if (status.contains('Integrity')) return const Color(0xFF00FF00);
-    return const Color(0xFF6D6D6D);
-  }
-
-  IconData _getStatusIcon(String status) {
-    if (status.contains('A')) return Icons.circle;
-    if (status.contains('S')) return Icons.star;
-    return Icons.circle;
-  }
 }
 
-// Mock data model
-class AllyModel {
-  final String name;
+class _Avatar extends StatelessWidget {
   final String imageUrl;
-  final String role;
-  final String status;
 
-  AllyModel({
-    required this.name,
-    required this.imageUrl,
-    required this.role,
-    required this.status,
-  });
+  const _Avatar({required this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        imageUrl,
+        width: 48,
+        height: 48,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: 48,
+            height: 48,
+            color: const Color(0xFF333333),
+            child: const Icon(Icons.person, color: Color(0xFF6D6D6D), size: 24),
+          );
+        },
+      ),
+    );
+  }
 }
 
-// Mock data
-final List<AllyModel> _mockAllies = [
-  AllyModel(
-    name: 'Zhanar Yesmoldayeva',
-    imageUrl: 'https://i.pravatar.cc/150?img=1',
-    role: 'Lapir Lazuli',
-    status: 'Acceptance : A',
-  ),
-  AllyModel(
-    name: 'Kundyz Akzhan',
-    imageUrl: 'https://i.pravatar.cc/150?img=2',
-    role: 'Moonstone',
-    status: 'Clarity : A',
-  ),
-  AllyModel(
-    name: 'Merey Zhumagul',
-    imageUrl: 'https://i.pravatar.cc/150?img=3',
-    role: 'Moonstone',
-    status: 'Clarity : A',
-  ),
-  AllyModel(
-    name: 'Malika Ahmetovna',
-    imageUrl: 'https://i.pravatar.cc/150?img=4',
-    role: 'Ammolite',
-    status: 'Fortitude : S',
-  ),
-  AllyModel(
-    name: 'Kanat Yerzhan',
-    imageUrl: 'https://i.pravatar.cc/150?img=5',
-    role: 'Jade',
-    status: 'Integrity : S',
-  ),
-];
+class _AllyInfo extends StatelessWidget {
+  final AllyProfileEntity ally;
+
+  const _AllyInfo({required this.ally});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          ally.displayName,
+          style: TextStyles.bodyMain.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const Gap(4),
+        Row(
+          children: [
+            Text(
+              ally.rankTier,
+              style: TextStyles.bodySecondary.copyWith(
+                color: const Color(0xFF5E8DFF),
+              ),
+            ),
+            Text(
+              ' · ',
+              style: TextStyles.bodySecondary.copyWith(
+                color: const Color(0xFF6D6D6D),
+              ),
+            ),
+            Text(
+              '${ally.reputationScore}',
+              style: TextStyles.bodySecondary.copyWith(
+                color: const Color(0xFFFFA500),
+              ),
+            ),
+            const Gap(4),
+            const Icon(Icons.star, size: 14, color: Color(0xFFFFA500)),
+          ],
+        ),
+      ],
+    );
+  }
+}

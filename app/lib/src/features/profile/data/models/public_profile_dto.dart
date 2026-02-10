@@ -17,7 +17,7 @@ class PublicProfileDto extends BaseDto with _$PublicProfileDto {
     @JsonKey(name: 'avatar_url') required String avatarUrl,
     @JsonKey(name: 'country') required String country,
     @JsonKey(name: 'city') required String city,
-    @JsonKey(name: 'region') required String region,
+    @JsonKey(name: 'region', defaultValue: '') required String region,
     @JsonKey(name: 'reputation_score') required int reputationScore,
     @JsonKey(name: 'rank_tier') required String rankTier,
   }) = _PublicProfileDto;
