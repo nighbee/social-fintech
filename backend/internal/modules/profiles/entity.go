@@ -21,17 +21,19 @@ type Profile struct {
 }
 
 // UpdateProfileRequest represents profile update payload
+// Uses pointers for optional fields to support partial updates (PATCH semantics)
+// nil = don't update, empty string = clear field, value = update field
 type UpdateProfileRequest struct {
-	FirstName   string `json:"first_name" example:"Alice"`
-	LastName    string `json:"last_name" example:"Wonderland"`
-	DisplayName string `json:"display_name" example:"Alice Wonderland"` // Combined name or custom display name
-	Bio         string `json:"bio" example:"Explorer and adventurer"`
-	AvatarURL   string `json:"avatar_url" example:"https://storage.example.com/avatar.jpg"`
-	Country     string `json:"country" example:"United States"`
-	Region      string `json:"region" example:"California"`
-	City        string `json:"city" example:"San Francisco"`
-	IsPublic    *bool  `json:"is_public" example:"true"`
-	ClientIP    string `json:"-"` // Not from JSON, set by handler
+	FirstName   *string `json:"first_name" example:"Alice"`
+	LastName    *string `json:"last_name" example:"Wonderland"`
+	DisplayName *string `json:"display_name" example:"Alice Wonderland"` // Combined name or custom display name
+	Bio         *string `json:"bio" example:"Explorer and adventurer"`
+	AvatarURL   *string `json:"avatar_url" example:"https://storage.example.com/avatar.jpg"`
+	Country     *string `json:"country" example:"United States"`
+	Region      *string `json:"region" example:"California"`
+	City        *string `json:"city" example:"San Francisco"`
+	IsPublic    *bool   `json:"is_public" example:"true"`
+	ClientIP    string  `json:"-"` // Not from JSON, set by handler
 }
 
 // PublicProfileResponse represents limited profile info for other users
@@ -69,6 +71,16 @@ type AllyProfile struct {
 type ReportRequest struct {
 	Reason      string `json:"reason" validate:"required,oneof=spam harassment inappropriate fake_account other" example:"spam"`
 	Description string `json:"description" example:"Sent spam messages"`
+}
+
+// RelationshipStatus represents the relationship status between two users
+type RelationshipStatus struct {
+	UserID          string `json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	IFollowThem     bool   `json:"i_follow_them" example:"true"`
+	TheyFollowMe    bool   `json:"they_follow_me" example:"false"`
+	IBlockedThem    bool   `json:"i_blocked_them" example:"false"`
+	TheyBlockedMe   bool   `json:"they_blocked_me" example:"false"`
+	IRestrictedThem bool   `json:"i_restricted_them" example:"false"`
 }
 
 // UserSearchResult — результат поиска реферера по имен/фамилии

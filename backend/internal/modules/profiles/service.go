@@ -60,10 +60,10 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 	}
 
 	// Auto-populate location if not provided and IP is available
-	if req.ClientIP != "" && req.Country == "" && req.City == "" {
+	if req.ClientIP != "" && req.Country == nil && req.City == nil {
 		if loc, err := s.geolocator.GetLocationByIP(ctx, req.ClientIP); err == nil {
-			req.Country = loc.Country
-			req.City = loc.City
+			req.Country = &loc.Country
+			req.City = &loc.City
 		}
 		// Silently ignore geolocation errors - user can still update other fields
 	}
@@ -188,6 +188,10 @@ func (s *Service) RemoveAlly(ctx context.Context, userID, targetID string) error
 	return s.repo.RemoveAlly(ctx, userID, targetID)
 }
 
+func (s *Service) GetMyAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
+	return s.GetAllies(ctx, userID)
+}
+
 func (s *Service) GetAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
 	allies, err := s.repo.GetAllies(ctx, userID)
 	if err != nil {
@@ -200,6 +204,18 @@ func (s *Service) GetAllies(ctx context.Context, userID string) ([]AllyProfile, 
 	return allies, nil
 }
 
+func (s *Service) GetPublicAllies(ctx context.Context, targetUserID string) ([]AllyProfile, error) {
+	// Check if target profile exists and is public
+	p, err := s.repo.GetProfile(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if !p.IsPublic {
+		return nil, ErrProfilePrivate
+	}
+	return s.GetAllies(ctx, targetUserID)
+}
+
 func (s *Service) BlockUser(ctx context.Context, userID, targetID string) error {
 	if userID == targetID {
 		return fmt.Errorf("cannot block self")
@@ -207,9 +223,6 @@ func (s *Service) BlockUser(ctx context.Context, userID, targetID string) error 
 	if _, err := s.repo.GetProfile(ctx, targetID); err != nil {
 		return err
 	}
-	// Logic decision: Should blocking also remove 'ally' relationship? usually yes.
-	// For MVP, valid just to add block record.
-	// Often application level checks "if blocked, don't show posts".
 	return s.repo.BlockUser(ctx, userID, targetID)
 }
 
@@ -229,6 +242,13 @@ func (s *Service) RestrictUser(ctx context.Context, userID, targetID string) err
 
 func (s *Service) UnrestrictUser(ctx context.Context, userID, targetID string) error {
 	return s.repo.UnrestrictUser(ctx, userID, targetID)
+}
+
+func (s *Service) GetRelationshipStatus(ctx context.Context, currentUserID, targetUserID string) (*RelationshipStatus, error) {
+	if currentUserID == targetUserID {
+		return nil, fmt.Errorf("cannot check relationship with self")
+	}
+	return s.repo.GetRelationshipStatus(ctx, currentUserID, targetUserID)
 }
 
 func (s *Service) ReportUser(ctx context.Context, userID, targetID string, req *ReportRequest) error {
