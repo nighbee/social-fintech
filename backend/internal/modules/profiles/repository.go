@@ -79,25 +79,45 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID string, req *Upda
 	}
 	defer tx.Rollback()
 
-	// Update users table (first_name, last_name)
-	if req.FirstName != "" || req.LastName != "" {
-		userQuery := `
-			UPDATE users
-			SET first_name = COALESCE(NULLIF($1, ''), first_name),
-			    last_name = COALESCE(NULLIF($2, ''), last_name),
-			    updated_at = NOW()
-			WHERE id = $3
-		`
-		_, err = tx.ExecContext(ctx, userQuery, req.FirstName, req.LastName, userID)
-		if err != nil {
-			return nil, fmt.Errorf("update user info failed: %w", err)
+	// Update users table (first_name, last_name) if provided
+	if req.FirstName != nil || req.LastName != nil {
+		userUpdates := []string{}
+		userArgs := []interface{}{}
+		argPos := 1
+
+		if req.FirstName != nil {
+			userUpdates = append(userUpdates, fmt.Sprintf("first_name = $%d", argPos))
+			userArgs = append(userArgs, *req.FirstName)
+			argPos++
+		}
+		if req.LastName != nil {
+			userUpdates = append(userUpdates, fmt.Sprintf("last_name = $%d", argPos))
+			userArgs = append(userArgs, *req.LastName)
+			argPos++
+		}
+
+		if len(userUpdates) > 0 {
+			userUpdates = append(userUpdates, "updated_at = NOW()")
+			userArgs = append(userArgs, userID)
+			userQuery := fmt.Sprintf("UPDATE users SET %s WHERE id = $%d",
+				strings.Join(userUpdates, ", "), argPos)
+
+			_, err = tx.ExecContext(ctx, userQuery, userArgs...)
+			if err != nil {
+				return nil, fmt.Errorf("update user info failed: %w", err)
+			}
 		}
 	}
 
-	// Auto-sync display_name with first_name + last_name
-	// If first_name or last_name are being updated, fetch current values and construct display_name
-	var displayName string
-	if req.FirstName != "" || req.LastName != "" {
+	// Build profile updates dynamically based on provided fields
+	profileUpdates := []string{}
+	profileArgs := []interface{}{}
+	argPos := 1
+
+	// Handle display_name logic:
+	// If first_name or last_name updated, auto-sync display_name
+	// Otherwise, use provided display_name if present
+	if req.FirstName != nil || req.LastName != nil {
 		// Get the updated first_name and last_name from users table
 		var firstName, lastName string
 		err = tx.QueryRowContext(ctx, `
@@ -110,30 +130,55 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID string, req *Upda
 		}
 
 		// Auto-generate display_name from the updated names
-		displayName = strings.TrimSpace(firstName + " " + lastName)
-	} else if req.DisplayName != "" {
+		displayName := strings.TrimSpace(firstName + " " + lastName)
+		profileUpdates = append(profileUpdates, fmt.Sprintf("display_name = $%d", argPos))
+		profileArgs = append(profileArgs, displayName)
+		argPos++
+	} else if req.DisplayName != nil {
 		// Only use provided display_name if first_name/last_name are not being updated
-		displayName = req.DisplayName
+		profileUpdates = append(profileUpdates, fmt.Sprintf("display_name = $%d", argPos))
+		profileArgs = append(profileArgs, *req.DisplayName)
+		argPos++
 	}
 
-	// Update profiles table (bio, avatar, location, etc.)
-	profileQuery := `
-		UPDATE profiles
-		SET display_name = COALESCE(NULLIF($1, ''), display_name),
-		    bio = COALESCE(NULLIF($2, ''), bio),
-		    avatar_url = COALESCE(NULLIF($3, ''), avatar_url),
-		    location_country = COALESCE(NULLIF($4, ''), location_country),
-		    location_city = COALESCE(NULLIF($5, ''), location_city),
-		    is_profile_public = COALESCE($6, is_profile_public),
-		    updated_at = NOW()
-		WHERE user_id = $7
-	`
-	_, err = tx.ExecContext(ctx, profileQuery,
-		displayName, req.Bio, req.AvatarURL,
-		req.Country, req.City, req.IsPublic, userID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("update profile failed: %w", err)
+	// Update other profile fields if provided
+	if req.Bio != nil {
+		profileUpdates = append(profileUpdates, fmt.Sprintf("bio = $%d", argPos))
+		profileArgs = append(profileArgs, *req.Bio)
+		argPos++
+	}
+	if req.AvatarURL != nil {
+		profileUpdates = append(profileUpdates, fmt.Sprintf("avatar_url = $%d", argPos))
+		profileArgs = append(profileArgs, *req.AvatarURL)
+		argPos++
+	}
+	if req.Country != nil {
+		profileUpdates = append(profileUpdates, fmt.Sprintf("location_country = $%d", argPos))
+		profileArgs = append(profileArgs, *req.Country)
+		argPos++
+	}
+	if req.City != nil {
+		profileUpdates = append(profileUpdates, fmt.Sprintf("location_city = $%d", argPos))
+		profileArgs = append(profileArgs, *req.City)
+		argPos++
+	}
+	if req.IsPublic != nil {
+		profileUpdates = append(profileUpdates, fmt.Sprintf("is_profile_public = $%d", argPos))
+		profileArgs = append(profileArgs, *req.IsPublic)
+		argPos++
+	}
+
+	// Execute profile update if there are fields to update
+	if len(profileUpdates) > 0 {
+		profileUpdates = append(profileUpdates, "updated_at = NOW()")
+		profileArgs = append(profileArgs, userID)
+		profileQuery := fmt.Sprintf("UPDATE profiles SET %s WHERE user_id = $%d",
+			strings.Join(profileUpdates, ", "), argPos)
+
+		_, err = tx.ExecContext(ctx, profileQuery, profileArgs...)
+		if err != nil {
+			return nil, fmt.Errorf("update profile failed: %w", err)
+		}
 	}
 
 	// Commit transaction
@@ -240,11 +285,8 @@ func (r *Repository) RemoveAlly(ctx context.Context, userID, targetID string) er
 }
 
 func (r *Repository) GetAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
-	// Returns users who have 'ally' relationship WITH the target userID independent of direction?
-	// User said "subscribers but named allies".
-	// Subscriber = Someone who follows ME.
-	// So we want: SELECT * FROM users WHERE id IN (SELECT user_id FROM relationships WHERE target_id = ME)
-	var allies []AllyProfile
+	// Initialize as empty slice so JSON returns [] instead of null when empty
+	allies := []AllyProfile{}
 	err := r.db.SelectContext(ctx, &allies, `
 		SELECT 
 			p.user_id,
@@ -309,6 +351,59 @@ func (r *Repository) UnrestrictUser(ctx context.Context, userID, targetID string
 	return nil
 }
 
+func (r *Repository) GetRelationshipStatus(ctx context.Context, currentUserID, targetUserID string) (*RelationshipStatus, error) {
+	type relationshipRow struct {
+		UserID           string `db:"user_id"`
+		TargetUserID     string `db:"target_user_id"`
+		RelationshipType string `db:"relationship_type"`
+	}
+
+	var rows []relationshipRow
+	err := r.db.SelectContext(ctx, &rows, `
+		SELECT user_id, target_user_id, relationship_type
+		FROM user_relationships
+		WHERE (user_id = $1 AND target_user_id = $2)
+		   OR (user_id = $2 AND target_user_id = $1)
+	`, currentUserID, targetUserID)
+	if err != nil {
+		return nil, fmt.Errorf("get relationship status failed: %w", err)
+	}
+
+	status := &RelationshipStatus{
+		UserID:          targetUserID,
+		IFollowThem:     false,
+		TheyFollowMe:    false,
+		IBlockedThem:    false,
+		TheyBlockedMe:   false,
+		IRestrictedThem: false,
+	}
+
+	// Process all matching relationships
+	for _, row := range rows {
+		if row.UserID == currentUserID && row.TargetUserID == targetUserID {
+			// Current user -> Target user relationships
+			switch row.RelationshipType {
+			case "ally":
+				status.IFollowThem = true
+			case "block":
+				status.IBlockedThem = true
+			case "restrict":
+				status.IRestrictedThem = true
+			}
+		} else if row.UserID == targetUserID && row.TargetUserID == currentUserID {
+			// Target user -> Current user relationships
+			switch row.RelationshipType {
+			case "ally":
+				status.TheyFollowMe = true
+			case "block":
+				status.TheyBlockedMe = true
+			}
+		}
+	}
+
+	return status, nil
+}
+
 func (r *Repository) ReportUser(ctx context.Context, userID, targetID string, req *ReportRequest) error {
 	_, err := r.db.ExecContext(ctx, `
 		INSERT INTO user_reports (reporter_id, reported_user_id, reason, description, status, created_at)
@@ -338,7 +433,8 @@ func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName 
 		lastPattern = "%" + strings.ToLower(lastName) + "%"
 	}
 
-	var rows []UserSearchResult
+	// Initialize as empty slice so JSON returns [] instead of null when empty
+	rows := []UserSearchResult{}
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT
 			u.id as user_id,
@@ -374,7 +470,8 @@ func (r *Repository) SearchProfilesForFeed(ctx context.Context, currentUserID, q
 
 	pattern := "%" + strings.ToLower(query) + "%"
 
-	var rows []ProfileSearchResult
+	// Initialize as empty slice so JSON returns [] instead of null when empty
+	rows := []ProfileSearchResult{}
 	err := r.db.SelectContext(ctx, &rows, `
 		SELECT
 			u.id as user_id,
