@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/google/uuid"
 )
@@ -47,7 +48,7 @@ func (s *Service) GetMyProfile(ctx context.Context, userID string) (*Profile, er
 	if err != nil {
 		return nil, err
 	}
-	p.RankTier = calculateRank(p.ReputationScore)
+	p.RankTier = ranks.GetRankTierString(p.ReputationScore)
 	return p, nil
 }
 
@@ -72,7 +73,7 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 	if err != nil {
 		return nil, err
 	}
-	p.RankTier = calculateRank(p.ReputationScore)
+	p.RankTier = ranks.GetRankTierString(p.ReputationScore)
 	return p, nil
 }
 
@@ -103,7 +104,7 @@ func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*P
 		Country:         p.Country,
 		City:            p.City,
 		ReputationScore: p.ReputationScore,
-		RankTier:        calculateRank(p.ReputationScore),
+		RankTier:        ranks.GetRankTierString(p.ReputationScore),
 	}, nil
 }
 
@@ -197,9 +198,8 @@ func (s *Service) GetAllies(ctx context.Context, userID string) ([]AllyProfile, 
 	if err != nil {
 		return nil, err
 	}
-	// Compute ranks
 	for i := range allies {
-		allies[i].RankTier = calculateRank(allies[i].ReputationScore)
+		allies[i].RankTier = ranks.GetRankTierString(allies[i].ReputationScore)
 	}
 	return allies, nil
 }
@@ -292,36 +292,6 @@ func extFromContentType(ct string) string {
 	}
 }
 
-func calculateRank(score int) string {
-	var rank, quality string
-
-	switch {
-	case score >= 5000:
-		rank = "Sovereign"
-		quality = "Sovereign"
-	case score >= 2500:
-		rank = "Supernova"
-		quality = "Transcendence"
-	case score >= 1000:
-		rank = "Ruby"
-		quality = "Fortitude"
-	case score >= 500:
-		rank = "Sapphire"
-		quality = "Ascendance"
-	case score >= 250:
-		rank = "Emerald"
-		quality = "Integrity"
-	case score >= 100:
-		rank = "Moonstone"
-		quality = "Clarity"
-	default:
-		rank = "Quartz"
-		quality = "Origin"
-	}
-
-	return fmt.Sprintf("%s · %s", rank, quality)
-}
-
 // SearchUsers — публичный поиск пользователей по имени/фамилии
 func (s *Service) SearchUsers(ctx context.Context, firstName, lastName string, limit int) ([]UserSearchResult, error) {
 	firstName = strings.TrimSpace(firstName)
@@ -347,9 +317,8 @@ func (s *Service) SearchProfilesForFeed(ctx context.Context, currentUserID, quer
 		return nil, err
 	}
 
-	// Calculate rank tier for each result
 	for i := range results {
-		results[i].RankTier = calculateRank(results[i].ReputationScore)
+		results[i].RankTier = ranks.GetRankTierString(results[i].ReputationScore)
 	}
 
 	return results, nil

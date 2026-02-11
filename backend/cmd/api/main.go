@@ -10,6 +10,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/profiles"
+	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -148,9 +149,9 @@ func main() {
 	}
 
 	authService := auth.NewService(authRepo, jwtManager, map[auth.ProviderType]auth.OAuthVerifier{
-	auth.ProviderApple:  appleVerifier,
-	auth.ProviderGoogle: googleVerifier,
-}, smsSender, economyService)
+		auth.ProviderApple:  appleVerifier,
+		auth.ProviderGoogle: googleVerifier,
+	}, smsSender, economyService)
 
 	authHandler := auth.NewHandler(authService)
 
@@ -172,7 +173,12 @@ func main() {
 
 	profilesRepo := profiles.NewRepository(db.DB)
 	profilesService := profiles.NewService(profilesRepo, storageClient)
-	profilesHandler := profiles.NewHandler(profilesService)
+
+	ranksRepo := ranks.NewRepository(db.DB)
+	ranksService := ranks.NewService(ranksRepo)
+	logger.Info("ranks module initialized")
+
+	profilesHandler := profiles.NewHandler(profilesService, ranksService)
 	logger.Info("profiles module initialized")
 
 	economyWorker := economy.NewWorker(economyService, economyRepo, cfg.Economy)
