@@ -7,6 +7,7 @@ import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/code_input_field.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
@@ -63,6 +64,7 @@ class _LoginCodePageState extends State<LoginCodePage> {
               },
               loaded: (viewModel) {},
               authenticated: (loginEntity) {
+                getIt<ProfileBloc>().add(const ProfileEvent.loadProfile());
                 context.go(RoutePaths.home);
               },
               phoneVerificationStarted: (verificationId, phoneNumber) {},

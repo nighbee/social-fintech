@@ -1,5 +1,8 @@
 import 'package:app/gen/assets.gen.dart';
-import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:app/src/core/widgets/list_item/custom_list_item.dart';
+import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -35,14 +38,58 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       backgroundColor: AppColors.mainBackground,
       appBar: CustomAppBar(
         showLeading: false,
-        actions: [Assets.icons.settingsIcon.svg(), Gap(16)],
+        actions: [
+          GestureDetector(
+            onTap: () {
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (context) => Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 20,
+                    horizontal: 16,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      CustomListItem(
+                        title: 'Log out',
+                        iconRight: true,
+                        color: Colors.red,
+                        onTap: () {
+                          context.pop(); // Close bottom sheet
+                          getIt<AuthBloc>().add(const AuthEvent.logout());
+                          context.go(RoutePaths.loginWithEmail);
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              );
+            },
+            child: Assets.icons.settingsIcon.svg(),
+          ),
+          const Gap(16),
+        ],
       ),
       bottomNavigationBar: const CustomNavBar(currentTab: RoutePaths.profile),
       body: SafeArea(
-        child: BaseBlocWidget<ProfileBloc, ProfileEvent, ProfileState>(
+        child: BlocBuilder<ProfileBloc, ProfileState>(
           bloc: getIt<ProfileBloc>(),
-          starterEvent: const ProfileEvent.loadProfile(),
-          builder: (context, state, bloc) {
+          builder: (context, state) {
             return state.when(
               initial: () => const Center(child: CircularProgressIndicator()),
               loading: (_) => const Center(child: CircularProgressIndicator()),

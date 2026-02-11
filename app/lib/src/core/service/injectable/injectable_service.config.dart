@@ -39,7 +39,6 @@ import '../../../features/profile/data/sources/remote/profile_remote_impl.dart'
     as _i236;
 import '../../../features/profile/domain/repositories/i_profile_repository.dart'
     as _i1037;
-import '../../../features/profile/presentation/bloc/profile_bloc.dart' as _i428;
 import '../../api/client/dio/dio_client.dart' as _i1019;
 import '../../api/client/dio/rest_client.dart' as _i877;
 import '../../config/environment_manager.dart' as _i931;
@@ -107,11 +106,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i84.HomeBloc>(
       () => _i84.HomeBloc(
         gh<_i529.IHomeRepository>(instanceName: 'HomeRepositoryImpl'),
-      ),
-    );
-    gh.factory<_i428.ProfileBloc>(
-      () => _i428.ProfileBloc(
-        gh<_i1037.IProfileRepository>(instanceName: 'ProfileRepositoryImpl'),
       ),
     );
     return this;

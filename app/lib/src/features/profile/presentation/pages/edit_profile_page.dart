@@ -1,4 +1,4 @@
-import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
@@ -25,10 +25,9 @@ class EditProfilePage extends StatelessWidget {
         ),
         centerTitle: true,
       ),
-      body: BaseBlocWidget<ProfileBloc, ProfileEvent, ProfileState>(
+      body: BlocBuilder<ProfileBloc, ProfileState>(
         bloc: getIt<ProfileBloc>(),
-        starterEvent: const ProfileEvent.loadProfile(),
-        builder: (context, state, bloc) {
+        builder: (context, state) {
           return state.maybeWhen(
             loaded: (viewModel) {
               return SingleChildScrollView(

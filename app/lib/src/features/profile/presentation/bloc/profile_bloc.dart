@@ -1,3 +1,5 @@
+import 'package:app/src/core/service/injectable/service_register_proxy.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -15,7 +17,6 @@ part 'profile_bloc.freezed.dart';
 part 'profile_event.dart';
 part 'profile_state.dart';
 
-@injectable
 class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
   ProfileBloc(@Named.from(ProfileRepositoryImpl) this._repository)
     : super(_Initial());
@@ -43,6 +44,7 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
       loadRelationship: (userId) =>
           _loadRelationship(event as _LoadRelationship, emit),
       updateProfile: (request) => _updateProfile(event as _UpdateProfile, emit),
+      logout: () => _logout(emit),
     );
   }
 
@@ -320,5 +322,16 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
     } catch (e) {
       emit(ProfileState.loadingError(e.toString()));
     }
+  }
+
+  Future<void> _logout(Emitter emit) async {
+    _viewModel = ProfileViewModel();
+    emit(ProfileState.initial());
+  }
+
+  @override
+  Future<void> close() {
+    getIt.resetBloc(this);
+    return super.close();
   }
 }

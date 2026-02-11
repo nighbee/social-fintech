@@ -4,6 +4,9 @@ import 'package:injectable/injectable.dart';
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
+import 'package:app/src/core/utils/loggers/log.dart';
 
 part 'auth_bloc.freezed.dart';
 
@@ -75,9 +78,7 @@ class AuthEvent with _$AuthEvent {
   const factory AuthEvent.startPhoneVerification({
     required String phoneNumber,
   }) = _StartPhoneVerification;
-  const factory AuthEvent.checkEmail({
-    required String email,
-  }) = _CheckEmail;
+  const factory AuthEvent.checkEmail({required String email}) = _CheckEmail;
   const factory AuthEvent.verifyOtpCode({
     required String verificationId,
     required String code,
@@ -106,7 +107,7 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
 
   final IAuthRepository _authRepository;
   AuthViewModel _viewModel = AuthViewModel();
-  
+
   AuthViewModel get viewModel => _viewModel;
 
   @override
@@ -148,8 +149,16 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
           _verifyOtpCode(verificationId, code, isLogin, emit),
       firebasePhoneLogin: (firebaseIdToken) =>
           _firebasePhoneLogin(firebaseIdToken, emit),
-      firebasePhoneRegister: (firebaseIdToken, firstName, lastName, dateOfBirth, referral) =>
-          _firebasePhoneRegister(firebaseIdToken, firstName, lastName, dateOfBirth, referral, emit),
+      firebasePhoneRegister:
+          (firebaseIdToken, firstName, lastName, dateOfBirth, referral) =>
+              _firebasePhoneRegister(
+                firebaseIdToken,
+                firstName,
+                lastName,
+                dateOfBirth,
+                referral,
+                emit,
+              ),
       logout: () => _logout(emit),
     );
   }
@@ -360,16 +369,14 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
         emit(AuthState.loadingFailure(error.message));
       },
       (_) {
+        getIt<ProfileBloc>().add(const ProfileEvent.logout());
         _viewModel = _viewModel.copyWith(isLoggedIn: false);
         emit(AuthState.loaded(viewModel: _viewModel));
       },
     );
   }
 
-  Future<void> _startPhoneVerification(
-    String phoneNumber,
-    Emitter emit,
-  ) async {
+  Future<void> _startPhoneVerification(String phoneNumber, Emitter emit) async {
     _viewModel = _viewModel.copyWith(isLoading: true);
     emit(AuthState.loaded(viewModel: _viewModel));
 
@@ -383,10 +390,12 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
         emit(AuthState.loadingFailure(error.message));
       },
       (verificationId) {
-        emit(AuthState.phoneVerificationStarted(
-          verificationId: verificationId,
-          phoneNumber: phoneNumber,
-        ));
+        emit(
+          AuthState.phoneVerificationStarted(
+            verificationId: verificationId,
+            phoneNumber: phoneNumber,
+          ),
+        );
       },
     );
   }
@@ -424,10 +433,7 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     );
   }
 
-  Future<void> _firebasePhoneLogin(
-    String firebaseIdToken,
-    Emitter emit,
-  ) async {
+  Future<void> _firebasePhoneLogin(String firebaseIdToken, Emitter emit) async {
     _viewModel = _viewModel.copyWith(isLoading: true);
     emit(AuthState.loaded(viewModel: _viewModel));
 
@@ -444,9 +450,7 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
             error.message.toLowerCase().contains('no user') ||
             error.message.toLowerCase().contains('please register') ||
             error.message.toLowerCase().contains('register first')) {
-          _viewModel = _viewModel.copyWith(
-            firebaseIdToken: firebaseIdToken,
-          );
+          _viewModel = _viewModel.copyWith(firebaseIdToken: firebaseIdToken);
           emit(AuthState.goRegister());
         } else {
           emit(AuthState.loadingFailure(error.message));

@@ -6,6 +6,7 @@ import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
@@ -49,6 +50,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
               goRegister: () {},
               loaded: (viewModel) {},
               authenticated: (loginEntity) {
+                getIt<ProfileBloc>().add(const ProfileEvent.loadProfile());
                 context.go(RoutePaths.home);
               },
               phoneVerificationStarted: (verificationId, phoneNumber) {},

@@ -1,5 +1,5 @@
 import 'package:app/gen/assets.gen.dart';
-import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
@@ -22,11 +22,17 @@ class PublicProfilePage extends StatefulWidget {
 class _PublicProfilePageState extends State<PublicProfilePage>
     with ShowProfileActionsBottomSheet {
   @override
+  void initState() {
+    super.initState();
+    getIt<ProfileBloc>().add(ProfileEvent.loadPublicProfile(widget.userId));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return BaseBlocWidget<ProfileBloc, ProfileEvent, ProfileState>(
+    return BlocBuilder<ProfileBloc, ProfileState>(
       bloc: getIt<ProfileBloc>(),
-      starterEvent: ProfileEvent.loadPublicProfile(widget.userId),
-      builder: (context, state, bloc) {
+      builder: (context, state) {
+        final bloc = getIt<ProfileBloc>();
         return Scaffold(
           backgroundColor: AppColors.mainBackground,
           appBar: AppBar(
