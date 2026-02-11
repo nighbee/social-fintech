@@ -1,5 +1,5 @@
 import 'package:app/src/core/base/base_models/base_dto.dart';
-import 'package:app/src/features/profile/domain/entities/profile_entity.dart';
+import 'package:app/src/features/profile/domain/entities/public_profile_entity.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'public_profile_dto.freezed.dart';
@@ -25,17 +25,16 @@ class PublicProfileDto extends BaseDto with _$PublicProfileDto {
   factory PublicProfileDto.fromJson(Map<String, dynamic> json) =>
       _$PublicProfileDtoFromJson(json);
 
-  ProfileEntity toEntity() => ProfileEntity(
+  PublicProfileEntity toEntity() => PublicProfileEntity(
     userId: userId,
     displayName: displayName,
     firstName: firstName,
     lastName: lastName,
-    dateOfBirth: '', // Not available in public profile
     bio: bio,
     avatarUrl: avatarUrl,
     country: country,
     city: city,
-    isPublic: true, // Public profile is always public
+    region: region,
     reputationScore: reputationScore,
     rankTier: rankTier,
   );

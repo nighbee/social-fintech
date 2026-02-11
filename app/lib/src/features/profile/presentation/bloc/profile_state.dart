@@ -15,6 +15,9 @@ class ProfileViewModel with _$ProfileViewModel {
   const ProfileViewModel._();
   factory ProfileViewModel({
     @Default(ProfileEntity.empty()) ProfileEntity profile,
+    @Default(PublicProfileEntity.empty()) PublicProfileEntity publicProfile,
     @Default([]) List<AllyProfileEntity> allies,
+    @Default(RelationshipStatusEntity.empty())
+    RelationshipStatusEntity relationshipStatus,
   }) = _ProfileViewModel;
 }

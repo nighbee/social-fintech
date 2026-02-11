@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:app/src/features/profile/presentation/pages/profile_page.dart';
 import 'package:app/src/features/profile/presentation/pages/allies_page.dart';
+import 'package:app/src/features/profile/presentation/pages/edit_profile_page.dart';
 import 'package:app/src/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';

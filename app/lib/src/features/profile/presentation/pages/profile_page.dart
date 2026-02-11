@@ -56,7 +56,16 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: ProfileHeaderCard(profile: profile),
+                        child: ProfileHeaderCard(
+                          displayName: profile.displayName,
+                          userId: profile.userId,
+                          avatarUrl: profile.avatarUrl,
+                          city: profile.city,
+                          country: profile.country,
+                          region: profile.region,
+                          rankTier: profile.rankTier,
+                          reputationScore: profile.reputationScore,
+                        ),
                       ),
                     ),
                     // Posts Grid

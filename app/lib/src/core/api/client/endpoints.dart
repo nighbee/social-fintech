@@ -46,6 +46,7 @@ class EndPoints {
   //* Profile
   static const String profiles = '/profiles';
   static const String profileMe = '/profiles/me';
+  static const String profileUpdate = '/profiles/me';
   static String profileById(String userId) => '/profiles/$userId';
   static const String profileMeStats = '/profiles/me/stats';
   static String profileStatsById(String userId) => '/profiles/$userId/stats';
@@ -59,4 +60,6 @@ class EndPoints {
   static String profileUnrestrict(String userId) =>
       '/profiles/$userId/restrict';
   static String profileReport(String userId) => '/profiles/$userId/report';
+  static String profileRelationship(String userId) =>
+      '/profiles/$userId/relationship';
 }

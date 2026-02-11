@@ -36,6 +36,7 @@ class RouteNames {
   static const String settings = 'settings';
   static const String allies = 'allies';
   static const String publicProfile = 'publicProfile';
+  static const String editProfile = 'editProfile';
 
   // Developer features
   static const String developerFeatures = 'developer_features';

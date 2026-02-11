@@ -4,7 +4,8 @@
       "Bash(dir:*)",
       "Bash(flutter pub:*)",
       "Bash(flutter run:*)",
-      "Bash(flutter analyze:*)"
+      "Bash(flutter analyze:*)",
+      "Bash(git restore:*)"
     ]
   }
 }

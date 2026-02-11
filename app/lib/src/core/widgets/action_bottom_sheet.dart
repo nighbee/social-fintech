@@ -9,19 +9,25 @@ class ActionBottomSheet extends StatelessWidget {
     required this.child,
     this.backgroundColor = Colors.white,
     this.isExpanded = false,
+    this.enableGlassEffect = true,
+    this.enableDropShadow = true,
+    this.showDivider = true,
   });
 
   final PreferredSizeWidget? appBar;
   final Widget child;
   final Color backgroundColor;
   final bool isExpanded;
+  final bool enableGlassEffect;
+  final bool enableDropShadow;
+  final bool showDivider;
 
   @override
   Widget build(BuildContext context) {
     final content = Column(
       mainAxisSize: isExpanded ? MainAxisSize.max : MainAxisSize.min,
       children: [
-        const ActionBottomSheetDivider(),
+        if (showDivider) const ActionBottomSheetDivider(),
         if (appBar != null) appBar!,
         Flexible(child: child),
       ],
@@ -30,12 +36,38 @@ class ActionBottomSheet extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        filter: ImageFilter.blur(
+          sigmaX: enableGlassEffect ? 20 : 15,
+          sigmaY: enableGlassEffect ? 20 : 15,
+        ),
         child: Container(
           decoration: BoxDecoration(
-            color: backgroundColor.withOpacity(0.3),
+            color: backgroundColor.withOpacity(enableGlassEffect ? 0.4 : 0.3),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+            border: Border(
+              top: BorderSide(
+                color: Colors.white.withOpacity(enableGlassEffect ? 0.25 : 0.1),
+                width: enableGlassEffect ? 1.5 : 1,
+              ),
+            ),
+            boxShadow: enableDropShadow
+                ? [
+                    // Верхняя белая тень (glass glow effect)
+                    BoxShadow(
+                      color: Colors.white.withOpacity(0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, -3),
+                      spreadRadius: 0,
+                    ),
+                    // Основная drop shadow
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.4),
+                      blurRadius: 25,
+                      offset: const Offset(0, -8),
+                      spreadRadius: 0,
+                    ),
+                  ]
+                : null,
           ),
           child: isExpanded ? Expanded(child: content) : content,
         ),

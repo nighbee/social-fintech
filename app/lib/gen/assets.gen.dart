@@ -40,6 +40,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/bell.svg
   SvgGenImage get bell => const SvgGenImage('assets/icons/bell.svg');
 
+  /// File path: assets/icons/blocked.svg
+  SvgGenImage get blocked => const SvgGenImage('assets/icons/blocked.svg');
+
   /// File path: assets/icons/bronze.svg
   SvgGenImage get bronze => const SvgGenImage('assets/icons/bronze.svg');
 
@@ -64,6 +67,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/google_logo.svg
   SvgGenImage get googleLogo =>
       const SvgGenImage('assets/icons/google_logo.svg');
+
+  /// File path: assets/icons/images.svg
+  SvgGenImage get images => const SvgGenImage('assets/icons/images.svg');
 
   /// File path: assets/icons/like.svg
   SvgGenImage get like => const SvgGenImage('assets/icons/like.svg');
@@ -118,6 +124,7 @@ class $AssetsIconsGen {
     arrowBack,
     atsign,
     bell,
+    blocked,
     bronze,
     calendar,
     chatsIcon,
@@ -126,6 +133,7 @@ class $AssetsIconsGen {
     eyeOpened,
     feedIcon,
     googleLogo,
+    images,
     like,
     mapIcon,
     message,

@@ -36,6 +36,7 @@ class RoutePaths {
   static const String settings = '/settings';
   static const String allies = '/allies';
   static const String publicProfile = '/public-profile/:userId';
+  static const String editProfile = 'edit-profile';
 
   // Developer features
   static const String developerFeatures = '/developer_features';

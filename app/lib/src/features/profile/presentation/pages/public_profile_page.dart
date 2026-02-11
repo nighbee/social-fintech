@@ -1,3 +1,4 @@
+import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -22,32 +23,53 @@ class _PublicProfilePageState extends State<PublicProfilePage>
     with ShowProfileActionsBottomSheet {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.mainBackground,
-      appBar: AppBar(
-        backgroundColor: AppColors.mainBackground,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => context.pop(),
-        ),
-        title: Text(
-          'Profile',
-          style: TextStyles.titleMain.copyWith(color: Colors.white),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert, color: Colors.white),
-            onPressed: () => _showActions(context),
+    return BaseBlocWidget<ProfileBloc, ProfileEvent, ProfileState>(
+      bloc: getIt<ProfileBloc>(),
+      starterEvent: ProfileEvent.loadPublicProfile(widget.userId),
+      builder: (context, state, bloc) {
+        return Scaffold(
+          backgroundColor: AppColors.mainBackground,
+          appBar: AppBar(
+            backgroundColor: AppColors.mainBackground,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => context.pop(),
+            ),
+            title: Text(
+              'Profile',
+              style: TextStyles.titleMain.copyWith(color: Colors.white),
+            ),
+            centerTitle: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                onPressed: () {
+                  showProfileActionsBottomSheet(
+                    context,
+                    userName: state.maybeMap(
+                      loaded: (state) =>
+                          state.viewModel.publicProfile.displayName,
+                      orElse: () => 'Пользователь',
+                    ),
+                    onBlock: () {
+                      bloc.add(ProfileEvent.blockUser(widget.userId));
+                    },
+                    onReport: () {
+                      bloc.add(ProfileEvent.reportUser(widget.userId));
+                    },
+                    onRestrict: () {
+                      bloc.add(ProfileEvent.restrictUser(widget.userId));
+                    },
+                    onCopyUrl: () {},
+                    onAbout: () {},
+                    onShare: () {},
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: BaseBlocWidget<ProfileBloc, ProfileEvent, ProfileState>(
-          bloc: getIt<ProfileBloc>(),
-          starterEvent: ProfileEvent.loadPublicProfile(widget.userId),
-          builder: (context, state, bloc) {
-            return state.when(
+          body: SafeArea(
+            child: state.when(
               initial: () => const Center(child: CircularProgressIndicator()),
               loading: (_) => const Center(child: CircularProgressIndicator()),
               loadingError: (message) => Center(
@@ -65,7 +87,8 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                 ),
               ),
               loaded: (viewModel) {
-                final profile = viewModel.profile;
+                final profile = viewModel.publicProfile;
+
                 return CustomScrollView(
                   slivers: [
                     // Profile Header Card
@@ -73,33 +96,72 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                       child: Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: ProfileHeaderCard(
-                          profile: profile,
+                          displayName: profile.displayName,
+                          userId: profile.userId,
+                          avatarUrl: profile.avatarUrl,
+                          city: profile.city,
+                          country: profile.country,
+                          region: profile.region,
+                          rankTier: profile.rankTier,
+                          reputationScore: profile.reputationScore,
                           isPublicProfile: true,
+                          relationshipStatus: viewModel.relationshipStatus,
+                          onFollow: () =>
+                              bloc.add(ProfileEvent.becomeAlly(widget.userId)),
+                          onUnfollow: () =>
+                              bloc.add(ProfileEvent.removeAlly(widget.userId)),
+                          onUnblock: () =>
+                              bloc.add(ProfileEvent.unblockUser(widget.userId)),
                         ),
                       ),
                     ),
-                    // Posts Grid
-                    ProfilePostGrid(posts: mockPosts),
+                    if (viewModel.relationshipStatus.iBlockedThem)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Assets.icons.blocked.svg(
+                              width: 64,
+                              height: 64,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'You\'ve blocked this account',
+                              style: TextStyles.titleMain.copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 48,
+                              ),
+                              child: Text(
+                                'Unblock this account to see their photos and videos. When you unblock them, they\'ll also be able to find your profile, see your content and message you again.',
+                                style: TextStyles.bodyMain.copyWith(
+                                  color: const Color(0xFF6D6D6D),
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      // Posts Grid
+                      ProfilePostGrid(posts: []),
                   ],
                 );
               },
-            );
-          },
-        ),
-      ),
-    );
-  }
-
-  void _showActions(BuildContext context) {
-    showProfileActionsBottomSheet(
-      context,
-      userName: 'Пользователь',
-      onBlock: () {},
-      onReport: () {},
-      onRestrict: () {},
-      onCopyUrl: () {},
-      onAbout: () {},
-      onShare: () {},
+            ),
+          ),
+        );
+      },
     );
   }
 }

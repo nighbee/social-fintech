@@ -85,10 +85,10 @@ class _DeveloperFeaturesPageState extends State<DeveloperFeaturesPage> {
               return _DeveloperItem(
                 title: 'Публичный профиль',
                 subtitle: 'Тестирование просмотра профиля другого пользователя',
-                onTap: () => context.goNamed(
+                onTap: () => context.pushNamed(
                   RouteNames.publicProfile,
                   pathParameters: {
-                    'userId': '5ff12d77-0c81-4b73-b168-85515b5d5180',
+                    'userId': 'a5284eb9-78e1-4bcc-8e9d-ec31aab607d9',
                   },
                 ),
               );

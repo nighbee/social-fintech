@@ -14,4 +14,7 @@ class ProfileEvent with _$ProfileEvent {
   const factory ProfileEvent.restrictUser(String userId) = _RestrictUser;
   const factory ProfileEvent.unrestrictUser(String userId) = _UnrestrictUser;
   const factory ProfileEvent.reportUser(String userId) = _ReportUser;
+  const factory ProfileEvent.loadRelationship(String userId) = _LoadRelationship;
+  const factory ProfileEvent.updateProfile(UpdateProfileRequest request) =
+      _UpdateProfile;
 }

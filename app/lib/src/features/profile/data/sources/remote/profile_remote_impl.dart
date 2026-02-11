@@ -7,7 +7,9 @@ import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/models/ally_profile_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_dto.dart';
 import 'package:app/src/features/profile/data/models/public_profile_dto.dart';
+import 'package:app/src/features/profile/data/models/relationship_status_dto.dart';
 import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.dart';
+import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 
 @named
@@ -75,10 +77,7 @@ class ProfileRemoteImpl implements IProfileRemote {
         data: {},
       );
 
-      return response.fold(
-        (error) => Left(error),
-        (_) => const Right(null),
-      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }
@@ -93,10 +92,7 @@ class ProfileRemoteImpl implements IProfileRemote {
         EndPoints.profileRemoveAlly(request.userId),
       );
 
-      return response.fold(
-        (error) => Left(error),
-        (_) => const Right(null),
-      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }
@@ -116,7 +112,9 @@ class ProfileRemoteImpl implements IProfileRemote {
       return response.fold((error) => Left(error), (result) {
         final List<dynamic> dataList = result.data as List<dynamic>;
         final List<AllyProfileDto> allies = dataList
-            .map((json) => AllyProfileDto.fromJson(json as Map<String, dynamic>))
+            .map(
+              (json) => AllyProfileDto.fromJson(json as Map<String, dynamic>),
+            )
             .toList();
 
         return Right(allies);
@@ -127,19 +125,14 @@ class ProfileRemoteImpl implements IProfileRemote {
   }
 
   @override
-  Future<Either<DomainException, void>> blockUser(
-    UserIdRequest request,
-  ) async {
+  Future<Either<DomainException, void>> blockUser(UserIdRequest request) async {
     try {
       final response = await _restClient.post(
         EndPoints.profileBlock(request.userId),
         data: {},
       );
 
-      return response.fold(
-        (error) => Left(error),
-        (_) => const Right(null),
-      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }
@@ -155,10 +148,7 @@ class ProfileRemoteImpl implements IProfileRemote {
         data: {},
       );
 
-      return response.fold(
-        (error) => Left(error),
-        (_) => const Right(null),
-      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }
@@ -174,10 +164,7 @@ class ProfileRemoteImpl implements IProfileRemote {
         data: {},
       );
 
-      return response.fold(
-        (error) => Left(error),
-        (_) => const Right(null),
-      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }
@@ -192,10 +179,7 @@ class ProfileRemoteImpl implements IProfileRemote {
         EndPoints.profileUnblock(request.userId),
       );
 
-      return response.fold(
-        (error) => Left(error),
-        (_) => const Right(null),
-      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }
@@ -210,10 +194,63 @@ class ProfileRemoteImpl implements IProfileRemote {
         EndPoints.profileUnrestrict(request.userId),
       );
 
-      return response.fold(
-        (error) => Left(error),
-        (_) => const Right(null),
+      return response.fold((error) => Left(error), (_) => const Right(null));
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, RelationshipStatusDto>> getRelationship(
+    UserIdRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.profileRelationship(request.userId),
       );
+
+      return response.fold((error) => Left(error), (result) {
+        final dto = RelationshipStatusDto.fromJson(
+          result.data as Map<String, dynamic>,
+        );
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ProfileDto>> updateProfile(
+    UpdateProfileRequest request,
+  ) async {
+    try {
+      final data = <String, dynamic>{
+        'display_name': request.displayName,
+        'first_name': request.firstName,
+        'last_name': request.lastName,
+        'date_of_birth': request.dateOfBirth,
+        'bio': request.bio,
+        'avatar_url': request.avatarUrl,
+        'country': request.country,
+        'city': request.city,
+        'is_public': request.isPublic,
+      };
+
+      // Remove null values for PATCH request
+      data.removeWhere((key, value) => value == null);
+
+      final response = await _restClient.patch(
+        EndPoints.profileUpdate,
+        data: data,
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final updatedDto = ProfileDto.fromJson(
+          result.data as Map<String, dynamic>,
+        );
+        return Right(updatedDto);
+      });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }

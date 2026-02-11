@@ -1,6 +1,7 @@
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
-import 'package:app/src/features/profile/domain/entities/profile_entity.dart';
+
+import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_action_buttons.dart';
 import 'package:app/src/features/profile/presentation/widgets/public_user_action_buttons.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_stats_row.dart';
@@ -9,13 +10,39 @@ import 'package:gap/gap.dart';
 
 class ProfileHeaderCard extends StatelessWidget {
   const ProfileHeaderCard({
-    required this.profile,
+    required this.displayName,
+    required this.userId,
+    required this.avatarUrl,
+    required this.city,
+    required this.country,
+    required this.rankTier,
+    required this.reputationScore,
+    this.region = '',
     this.isPublicProfile = false,
+    this.relationshipStatus,
+    this.onToggleFavorite,
+    this.onMessage,
+    this.onFollow,
+    this.onUnfollow,
+    this.onUnblock,
     super.key,
   });
 
-  final ProfileEntity profile;
+  final String displayName;
+  final String userId;
+  final String avatarUrl;
+  final String city;
+  final String country;
+  final String rankTier;
+  final int reputationScore;
+  final String region;
   final bool isPublicProfile;
+  final RelationshipStatusEntity? relationshipStatus;
+  final VoidCallback? onToggleFavorite;
+  final VoidCallback? onMessage;
+  final VoidCallback? onFollow;
+  final VoidCallback? onUnfollow;
+  final VoidCallback? onUnblock;
 
   @override
   Widget build(BuildContext context) {
@@ -33,8 +60,8 @@ class ProfileHeaderCard extends StatelessWidget {
             children: [
               // Avatar
               CustomNetworkImage(
-                imageUrl: profile.avatarUrl.isNotEmpty
-                    ? profile.avatarUrl
+                imageUrl: avatarUrl.isNotEmpty
+                    ? avatarUrl
                     : 'https://i.pravatar.cc/150',
                 width: 126,
                 height: 126,
@@ -47,24 +74,24 @@ class ProfileHeaderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      profile.displayName.isNotEmpty
-                          ? profile.displayName
-                          : '@${profile.userId}', // Fallback to ID/Username
+                      displayName.isNotEmpty
+                          ? displayName
+                          : '@$userId', // Fallback to ID/Username
                       style: TextStyles.titleHeadline.copyWith(
                         color: Colors.white,
                       ),
                     ),
                     const Gap(10),
                     Text(
-                      '${profile.city} | ${profile.country}',
+                      region.isNotEmpty
+                          ? '$city, $region | $country'
+                          : '$city | $country',
                       style: TextStyles.bodyMain.copyWith(color: Colors.grey),
                     ),
                     const Gap(10),
                     // Tags/Bio placeholder
                     Text(
-                      profile.rankTier.isNotEmpty
-                          ? profile.rankTier
-                          : 'No rank tier yet.',
+                      rankTier.isNotEmpty ? rankTier : 'No rank tier yet.',
                       style: TextStyles.bodySecondary.copyWith(
                         color: const Color(
                           0xFF6C9EFF,
@@ -75,7 +102,7 @@ class ProfileHeaderCard extends StatelessWidget {
                     ),
                     const Gap(10),
 
-                    ProfileStatsRow(reputationScore: profile.reputationScore),
+                    ProfileStatsRow(reputationScore: reputationScore),
                   ],
                 ),
               ),
@@ -84,7 +111,14 @@ class ProfileHeaderCard extends StatelessWidget {
           const Gap(16),
           // Action Buttons
           isPublicProfile
-              ? const PublicUserActionButtons()
+              ? PublicUserActionButtons(
+                  userId: userId,
+                  relationshipStatus: relationshipStatus,
+                  onFollow: onFollow,
+                  onUnfollow: onUnfollow,
+                  onUnblock: onUnblock,
+                  onMessage: () {}, // TODO: Implement message callback
+                )
               : const ProfileActionButtons(),
         ],
       ),
