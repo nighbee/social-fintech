@@ -194,12 +194,13 @@ func (r *Repository) RemoveAlly(ctx context.Context, userID, targetID string) er
 	return nil
 }
 
-func (r *Repository) GetAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
-	// Returns users who have 'ally' relationship WITH the target userID independent of direction?
-	// User said "subscribers but named allies".
-	// Subscriber = Someone who follows ME.
-	// So we want: SELECT * FROM users WHERE id IN (SELECT user_id FROM relationships WHERE target_id = ME)
+func (r *Repository) GetAllies(ctx context.Context, userID, searchQuery string, limit, offset int) ([]AllyProfile, error) {
 	var allies []AllyProfile
+	searchPattern := "%"
+	if searchQuery != "" {
+		searchPattern = "%" + strings.ToLower(strings.TrimSpace(searchQuery)) + "%"
+	}
+
 	err := r.db.SelectContext(ctx, &allies, `
 		SELECT 
 			p.user_id,
@@ -208,10 +209,17 @@ func (r *Repository) GetAllies(ctx context.Context, userID string) ([]AllyProfil
 			COALESCE(w.balance / 100, 0) as reputation_score
 		FROM user_relationships r
 		JOIN profiles p ON r.user_id = p.user_id
+		JOIN users u ON u.id = p.user_id
 		LEFT JOIN wallets w ON p.user_id = w.user_id AND w.currency = 'GOLD_SEAL'
 		WHERE r.target_user_id = $1 AND r.relationship_type = 'ally'
+		  AND (
+		  	LOWER(COALESCE(p.display_name, '')) LIKE $2
+		  	OR LOWER(COALESCE(u.first_name, '')) LIKE $2
+		  	OR LOWER(COALESCE(u.last_name, '')) LIKE $2
+		  )
 		ORDER BY r.created_at DESC
-	`, userID)
+		LIMIT $3 OFFSET $4
+	`, userID, searchPattern, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("get allies failed: %w", err)
 	}
