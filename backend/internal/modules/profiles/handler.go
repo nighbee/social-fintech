@@ -331,9 +331,12 @@ func (h *Handler) RemoveAlly(c *fiber.Ctx) error {
 
 // GetAllies godoc
 // @Summary Get allies (subscribers)
-// @Description Get list of users following the target user.
+// @Description Get list of users following the target user. Optional search with q by display/first/last name.
 // @Tags Profiles
 // @Param user_id path string true "Target User ID"
+// @Param q query string false "Search by display_name / first_name / last_name"
+// @Param limit query int false "Page size (default 20, max 50)"
+// @Param offset query int false "Pagination offset (default 0)"
 // @Success 200 {array} AllyProfile
 // @Failure 400 "Invalid ID"
 // @Failure 500 "Internal error"
@@ -343,8 +346,11 @@ func (h *Handler) GetAllies(c *fiber.Ctx) error {
 	if targetID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
 	}
+	searchQuery := c.Query("q")
+	limit := c.QueryInt("limit", 20)
+	offset := c.QueryInt("offset", 0)
 
-	allies, err := h.service.GetAllies(c.Context(), targetID)
+	allies, err := h.service.GetAllies(c.Context(), targetID, searchQuery, limit, offset)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "get_allies_failed"})
 	}
