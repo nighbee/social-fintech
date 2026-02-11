@@ -183,8 +183,18 @@ func (s *Service) RemoveAlly(ctx context.Context, userID, targetID string) error
 	return s.repo.RemoveAlly(ctx, userID, targetID)
 }
 
-func (s *Service) GetAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
-	allies, err := s.repo.GetAllies(ctx, userID)
+func (s *Service) GetAllies(ctx context.Context, userID, searchQuery string, limit, offset int) ([]AllyProfile, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	allies, err := s.repo.GetAllies(ctx, userID, searchQuery, limit, offset)
 	if err != nil {
 		return nil, err
 	}
