@@ -143,7 +143,8 @@ func (s *Service) UploadAvatar(ctx context.Context, userID, filename, contentTyp
 		}
 	}
 
-	objectName := fmt.Sprintf("avatars/%s/%s%s", userID, uuid.NewString(), ext)
+	// Keep object key bucket-relative; bucket name is added by storage client.
+	objectName := fmt.Sprintf("%s/%s%s", userID, uuid.NewString(), ext)
 	url, err := s.storage.Upload(ctx, objectName, reader, size, contentType)
 	if err != nil {
 		return nil, err
