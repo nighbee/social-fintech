@@ -1,6 +1,7 @@
 package profiles
 
 import (
+	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/gofiber/fiber/v2"
@@ -8,11 +9,15 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service      *Service
+	ranksService *ranks.Service
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, ranksService *ranks.Service) *Handler {
+	return &Handler{
+		service:      service,
+		ranksService: ranksService,
+	}
 }
 
 // GetMyProfile godoc
@@ -387,8 +392,11 @@ func (h *Handler) GetAllies(c *fiber.Ctx) error {
 	if targetID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
 	}
+	searchQuery := c.Query("q")
+	limit := c.QueryInt("limit", 20)
+	offset := c.QueryInt("offset", 0)
 
-	allies, err := h.service.GetPublicAllies(c.Context(), targetID)
+	allies, err := h.service.GetPublicAllies(c.Context(), targetID, searchQuery, limit, offset)
 	if err != nil {
 		if err == ErrProfilePrivate {
 			return c.Status(403).JSON(fiber.Map{"error": "profile_private", "message": "Cannot view allies of private profile"})
@@ -657,4 +665,55 @@ func (h *Handler) SearchProfilesForFeed(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(results)
+}
+
+// GetMyRank godoc
+// @Summary Get my rank
+// @Description Retrieve the authenticated user's current rank with C/B/A/S level, seal count, and progress
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} ranks.CurrentRankResponse "User's current rank"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/me/rank [get]
+func (h *Handler) GetMyRank(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	rank, err := h.ranksService.GetMyRank(c.Context(), userID.(string))
+	if err != nil {
+		logger.Error("failed to get user rank",
+			zap.String("user_id", userID.(string)),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "failed to retrieve rank"})
+	}
+
+	return c.JSON(rank)
+}
+
+// GetAllRanks godoc
+// @Summary Get all ranks
+// @Description Retrieve a list of all available ranks with their properties, levels, and seal requirements
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Success 200 {object} ranks.RankListResponse "List of all ranks"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/ranks [get]
+func (h *Handler) GetAllRanks(c *fiber.Ctx) error {
+	ranksData, err := h.ranksService.GetAllRanks(c.Context())
+	if err != nil {
+		logger.Error("failed to get all ranks",
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "failed to retrieve ranks"})
+	}
+	return c.JSON(ranksData)
 }

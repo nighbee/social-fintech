@@ -4,8 +4,8 @@ import "testing"
 
 func TestSplitDisplayName(t *testing.T) {
 	tests := []struct {
-		name       string
-		input      string
+		name        string
+		input       string
 		first, last string
 	}{
 		{name: "empty", input: "", first: "", last: ""},
@@ -60,31 +60,6 @@ func TestExtFromContentType(t *testing.T) {
 	for _, tt := range tests {
 		if got := extFromContentType(tt.ct); got != tt.want {
 			t.Fatalf("extFromContentType(%q) = %q, want %q", tt.ct, got, tt.want)
-		}
-	}
-}
-
-func TestCalculateRank(t *testing.T) {
-	tests := []struct {
-		score int
-		want  string
-	}{
-		{score: 0, want: "Quartz"},
-		{score: 100, want: "Moonstone"},
-		{score: 250, want: "Emerald"},
-		{score: 500, want: "Sapphire"},
-		{score: 1000, want: "Ruby"},
-		{score: 2500, want: "Supernova"},
-		{score: 5000, want: "Sovereign"},
-	}
-
-	for _, tt := range tests {
-		got := calculateRank(tt.score)
-		if len(got) == 0 {
-			t.Fatalf("calculateRank(%d) returned empty string", tt.score)
-		}
-		if got[:len(tt.want)] != tt.want {
-			t.Fatalf("calculateRank(%d) = %q, want prefix %q", tt.score, got, tt.want)
 		}
 	}
 }

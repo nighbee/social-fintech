@@ -19,7 +19,6 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-// создает Fiber app, cors auth routes limiter и middleware для бэка
 func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
@@ -119,6 +118,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Post("/:user_id/restrict", profilesHandler.RestrictUser)
 	profilesGroup.Delete("/:user_id/restrict", profilesHandler.UnrestrictUser)
 	profilesGroup.Post("/:user_id/report", profilesHandler.ReportUser)
+
+	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank)
+	api.Get("/profiles/ranks", profilesHandler.GetAllRanks)
 
 	return app
 }

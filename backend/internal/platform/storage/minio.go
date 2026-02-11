@@ -41,6 +41,22 @@ func NewMinioClient(cfg config.StorageConfig) (*Client, error) {
 			return nil, err
 		}
 	}
+	// Make avatar objects publicly readable for direct URL access from mobile/web.
+	// This is required because profile.avatar_url is stored as a static URL.
+	policy := fmt.Sprintf(`{
+		"Version":"2012-10-17",
+		"Statement":[
+			{
+				"Effect":"Allow",
+				"Principal":{"AWS":["*"]},
+				"Action":["s3:GetObject"],
+				"Resource":["arn:aws:s3:::%s/*"]
+			}
+		]
+	}`, cfg.Bucket)
+	if err := cli.SetBucketPolicy(context.Background(), cfg.Bucket, policy); err != nil {
+		return nil, err
+	}
 
 	return &Client{
 		minio:     cli,
