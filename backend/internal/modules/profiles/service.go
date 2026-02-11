@@ -7,6 +7,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/google/uuid"
 )
@@ -47,7 +48,7 @@ func (s *Service) GetMyProfile(ctx context.Context, userID string) (*Profile, er
 	if err != nil {
 		return nil, err
 	}
-	p.RankTier = calculateRank(p.ReputationScore)
+	p.RankTier = ranks.GetRankTierString(p.ReputationScore)
 	return p, nil
 }
 
@@ -60,10 +61,10 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 	}
 
 	// Auto-populate location if not provided and IP is available
-	if req.ClientIP != "" && req.Country == "" && req.City == "" {
+	if req.ClientIP != "" && req.Country == nil && req.City == nil {
 		if loc, err := s.geolocator.GetLocationByIP(ctx, req.ClientIP); err == nil {
-			req.Country = loc.Country
-			req.City = loc.City
+			req.Country = &loc.Country
+			req.City = &loc.City
 		}
 		// Silently ignore geolocation errors - user can still update other fields
 	}
@@ -72,7 +73,7 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 	if err != nil {
 		return nil, err
 	}
-	p.RankTier = calculateRank(p.ReputationScore)
+	p.RankTier = ranks.GetRankTierString(p.ReputationScore)
 	return p, nil
 }
 
@@ -85,8 +86,13 @@ func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*P
 		return nil, ErrProfilePrivate
 	}
 
-	// Split display_name into first/last for backwards compatibility
-	firstName, lastName := splitDisplayName(p.DisplayName)
+	// Use actual first_name/last_name from database
+	// Fall back to splitting display_name only if names are empty
+	firstName := p.FirstName
+	lastName := p.LastName
+	if firstName == "" && lastName == "" && p.DisplayName != "" {
+		firstName, lastName = splitDisplayName(p.DisplayName)
+	}
 
 	return &PublicProfileResponse{
 		UserID:          p.UserID,
@@ -98,7 +104,7 @@ func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*P
 		Country:         p.Country,
 		City:            p.City,
 		ReputationScore: p.ReputationScore,
-		RankTier:        calculateRank(p.ReputationScore),
+		RankTier:        ranks.GetRankTierString(p.ReputationScore),
 	}, nil
 }
 
@@ -183,6 +189,10 @@ func (s *Service) RemoveAlly(ctx context.Context, userID, targetID string) error
 	return s.repo.RemoveAlly(ctx, userID, targetID)
 }
 
+func (s *Service) GetMyAllies(ctx context.Context, userID string) ([]AllyProfile, error) {
+	return s.GetAllies(ctx, userID, "", 20, 0)
+}
+
 func (s *Service) GetAllies(ctx context.Context, userID, searchQuery string, limit, offset int) ([]AllyProfile, error) {
 	if limit <= 0 {
 		limit = 20
@@ -198,11 +208,22 @@ func (s *Service) GetAllies(ctx context.Context, userID, searchQuery string, lim
 	if err != nil {
 		return nil, err
 	}
-	// Compute ranks
 	for i := range allies {
-		allies[i].RankTier = calculateRank(allies[i].ReputationScore)
+		allies[i].RankTier = ranks.GetRankTierString(allies[i].ReputationScore)
 	}
 	return allies, nil
+}
+
+func (s *Service) GetPublicAllies(ctx context.Context, targetUserID, searchQuery string, limit, offset int) ([]AllyProfile, error) {
+	// Check if target profile exists and is public
+	p, err := s.repo.GetProfile(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+	if !p.IsPublic {
+		return nil, ErrProfilePrivate
+	}
+	return s.GetAllies(ctx, targetUserID, searchQuery, limit, offset)
 }
 
 func (s *Service) BlockUser(ctx context.Context, userID, targetID string) error {
@@ -212,9 +233,6 @@ func (s *Service) BlockUser(ctx context.Context, userID, targetID string) error 
 	if _, err := s.repo.GetProfile(ctx, targetID); err != nil {
 		return err
 	}
-	// Logic decision: Should blocking also remove 'ally' relationship? usually yes.
-	// For MVP, valid just to add block record.
-	// Often application level checks "if blocked, don't show posts".
 	return s.repo.BlockUser(ctx, userID, targetID)
 }
 
@@ -234,6 +252,13 @@ func (s *Service) RestrictUser(ctx context.Context, userID, targetID string) err
 
 func (s *Service) UnrestrictUser(ctx context.Context, userID, targetID string) error {
 	return s.repo.UnrestrictUser(ctx, userID, targetID)
+}
+
+func (s *Service) GetRelationshipStatus(ctx context.Context, currentUserID, targetUserID string) (*RelationshipStatus, error) {
+	if currentUserID == targetUserID {
+		return nil, fmt.Errorf("cannot check relationship with self")
+	}
+	return s.repo.GetRelationshipStatus(ctx, currentUserID, targetUserID)
 }
 
 func (s *Service) ReportUser(ctx context.Context, userID, targetID string, req *ReportRequest) error {
@@ -277,36 +302,6 @@ func extFromContentType(ct string) string {
 	}
 }
 
-func calculateRank(score int) string {
-	var rank, quality string
-
-	switch {
-	case score >= 5000:
-		rank = "Sovereign"
-		quality = "Sovereign"
-	case score >= 2500:
-		rank = "Supernova"
-		quality = "Transcendence"
-	case score >= 1000:
-		rank = "Ruby"
-		quality = "Fortitude"
-	case score >= 500:
-		rank = "Sapphire"
-		quality = "Ascendance"
-	case score >= 250:
-		rank = "Emerald"
-		quality = "Integrity"
-	case score >= 100:
-		rank = "Moonstone"
-		quality = "Clarity"
-	default:
-		rank = "Quartz"
-		quality = "Origin"
-	}
-
-	return fmt.Sprintf("%s · %s", rank, quality)
-}
-
 // SearchUsers — публичный поиск пользователей по имени/фамилии
 func (s *Service) SearchUsers(ctx context.Context, firstName, lastName string, limit int) ([]UserSearchResult, error) {
 	firstName = strings.TrimSpace(firstName)
@@ -317,4 +312,24 @@ func (s *Service) SearchUsers(ctx context.Context, firstName, lastName string, l
 	}
 
 	return s.repo.SearchUsersByName(ctx, firstName, lastName, limit)
+}
+
+// SearchProfilesForFeed — поиск профилей для домашней страницы с учетом приватности
+func (s *Service) SearchProfilesForFeed(ctx context.Context, currentUserID, query string, limit, offset int) ([]ProfileSearchResult, error) {
+	query = strings.TrimSpace(query)
+
+	if query == "" {
+		return []ProfileSearchResult{}, nil
+	}
+
+	results, err := s.repo.SearchProfilesForFeed(ctx, currentUserID, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range results {
+		results[i].RankTier = ranks.GetRankTierString(results[i].ReputationScore)
+	}
+
+	return results, nil
 }

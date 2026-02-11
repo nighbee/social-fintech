@@ -1,6 +1,7 @@
 package profiles
 
 import (
+	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/gofiber/fiber/v2"
@@ -8,11 +9,15 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service      *Service
+	ranksService *ranks.Service
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+func NewHandler(service *Service, ranksService *ranks.Service) *Handler {
+	return &Handler{
+		service:      service,
+		ranksService: ranksService,
+	}
 }
 
 // GetMyProfile godoc
@@ -45,7 +50,7 @@ func (h *Handler) GetMyProfile(c *fiber.Ctx) error {
 
 // UpdateMyProfile godoc
 // @Summary Update my profile
-// @Description Update the authenticated user's profile information. Auto-populates location if IP provided.
+// @Description Update the authenticated user's profile information. Supports partial updates (PATCH semantics) - only send fields you want to update. Auto-populates location if IP provided.
 // @Tags Profiles
 // @Accept json
 // @Produce json
@@ -64,7 +69,21 @@ func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 
 	var req UpdateProfileRequest
 	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body", "message": "Request body must be valid JSON"})
+	}
+
+	// Validate field lengths if provided
+	if req.DisplayName != nil && len(*req.DisplayName) > 100 {
+		return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": "display_name too long (max 100 characters)"})
+	}
+	if req.FirstName != nil && len(*req.FirstName) > 50 {
+		return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": "first_name too long (max 50 characters)"})
+	}
+	if req.LastName != nil && len(*req.LastName) > 50 {
+		return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": "last_name too long (max 50 characters)"})
+	}
+	if req.Bio != nil && len(*req.Bio) > 500 {
+		return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": "bio too long (max 500 characters)"})
 	}
 
 	// Extract client IP for automatic geolocation
@@ -329,16 +348,43 @@ func (h *Handler) RemoveAlly(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
-// GetAllies godoc
-// @Summary Get allies (subscribers)
-// @Description Get list of users following the target user. Optional search with q by display/first/last name.
+// GetMyAllies godoc
+// @Summary Get my allies (my subscribers)
+// @Description Get list of users following the authenticated user.
 // @Tags Profiles
+// @Security Bearer
+// @Success 200 {array} AllyProfile "List of allies"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal error"
+// @Router /profiles/me/allies [get]
+func (h *Handler) GetMyAllies(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	allies, err := h.service.GetMyAllies(c.Context(), userID.(string))
+	if err != nil {
+		logger.Error("failed to get my allies",
+			zap.String("user_id", userID.(string)),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "get_allies_failed"})
+	}
+	return c.JSON(allies)
+}
+
+// GetAllies godoc
+// @Summary Get user's allies (subscribers)
+// @Description Get list of users following the target user. Returns 403 if profile is private.
+// @Tags Profiles
+// @Security Bearer
 // @Param user_id path string true "Target User ID"
-// @Param q query string false "Search by display_name / first_name / last_name"
-// @Param limit query int false "Page size (default 20, max 50)"
-// @Param offset query int false "Pagination offset (default 0)"
-// @Success 200 {array} AllyProfile
+// @Success 200 {array} AllyProfile "List of allies"
 // @Failure 400 "Invalid ID"
+// @Failure 403 "Profile is private"
+// @Failure 404 "Profile not found"
 // @Failure 500 "Internal error"
 // @Router /profiles/{user_id}/allies [get]
 func (h *Handler) GetAllies(c *fiber.Ctx) error {
@@ -350,8 +396,19 @@ func (h *Handler) GetAllies(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 20)
 	offset := c.QueryInt("offset", 0)
 
-	allies, err := h.service.GetAllies(c.Context(), targetID, searchQuery, limit, offset)
+	allies, err := h.service.GetPublicAllies(c.Context(), targetID, searchQuery, limit, offset)
 	if err != nil {
+		if err == ErrProfilePrivate {
+			return c.Status(403).JSON(fiber.Map{"error": "profile_private", "message": "Cannot view allies of private profile"})
+		}
+		if err == ErrProfileNotFound {
+			return c.Status(404).JSON(fiber.Map{"error": "profile_not_found"})
+		}
+		logger.Error("failed to get allies",
+			zap.String("target_user_id", targetID),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
 		return c.Status(500).JSON(fiber.Map{"error": "get_allies_failed"})
 	}
 	return c.JSON(allies)
@@ -461,6 +518,45 @@ func (h *Handler) UnrestrictUser(c *fiber.Ctx) error {
 	return c.SendStatus(204)
 }
 
+// GetRelationshipStatus godoc
+// @Summary Get relationship status with a user
+// @Description Get the relationship status between the authenticated user and target user (follow, block, restrict status)
+// @Tags Profiles
+// @Produce json
+// @Security Bearer
+// @Param user_id path string true "Target User ID"
+// @Success 200 {object} RelationshipStatus "Relationship status"
+// @Failure 400 {object} map[string]string "Invalid user ID or self-check"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /profiles/{user_id}/relationship [get]
+func (h *Handler) GetRelationshipStatus(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	targetID := c.Params("user_id")
+	if targetID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	}
+
+	if targetID == userID.(string) {
+		return c.Status(400).JSON(fiber.Map{"error": "cannot_check_self", "message": "Cannot check relationship with yourself"})
+	}
+
+	status, err := h.service.GetRelationshipStatus(c.Context(), userID.(string), targetID)
+	if err != nil {
+		logger.Error("failed to get relationship status",
+			zap.String("user_id", userID.(string)),
+			zap.String("target_user_id", targetID),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "get_relationship_failed"})
+	}
+	return c.JSON(status)
+}
+
 // ReportUser godoc
 // @Summary Report a user
 // @Description Report a user for spam, harassment, etc.
@@ -532,4 +628,92 @@ func (h *Handler) SearchUsers(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(results)
+}
+
+// SearchProfilesForFeed godoc
+// @Summary Search user profiles for home/feed page
+// @Description Search profiles by name with privacy and block filters. Returns profiles with avatar, reputation, and rank.
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param query query string true "Search query (matches first name, last name, or display name)" example:"john"
+// @Param limit query int false "Results limit (max 50)" default(20)
+// @Param offset query int false "Pagination offset" default(0)
+// @Success 200 {array} ProfileSearchResult "List of matching profiles"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/search [get]
+func (h *Handler) SearchProfilesForFeed(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	query := c.Query("query")
+	limit := c.QueryInt("limit", 20)
+	offset := c.QueryInt("offset", 0)
+
+	results, err := h.service.SearchProfilesForFeed(c.Context(), userID, query, limit, offset)
+	if err != nil {
+		logger.Error("failed to search profiles for feed",
+			zap.String("user_id", userID),
+			zap.String("query", query),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "search_failed"})
+	}
+
+	return c.JSON(results)
+}
+
+// GetMyRank godoc
+// @Summary Get my rank
+// @Description Retrieve the authenticated user's current rank with C/B/A/S level, seal count, and progress
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} ranks.CurrentRankResponse "User's current rank"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/me/rank [get]
+func (h *Handler) GetMyRank(c *fiber.Ctx) error {
+	userID := c.Locals("user_id")
+	if userID == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	rank, err := h.ranksService.GetMyRank(c.Context(), userID.(string))
+	if err != nil {
+		logger.Error("failed to get user rank",
+			zap.String("user_id", userID.(string)),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "failed to retrieve rank"})
+	}
+
+	return c.JSON(rank)
+}
+
+// GetAllRanks godoc
+// @Summary Get all ranks
+// @Description Retrieve a list of all available ranks with their properties, levels, and seal requirements
+// @Tags Profiles
+// @Accept json
+// @Produce json
+// @Success 200 {object} ranks.RankListResponse "List of all ranks"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /profiles/ranks [get]
+func (h *Handler) GetAllRanks(c *fiber.Ctx) error {
+	ranksData, err := h.ranksService.GetAllRanks(c.Context())
+	if err != nil {
+		logger.Error("failed to get all ranks",
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "failed to retrieve ranks"})
+	}
+	return c.JSON(ranksData)
 }

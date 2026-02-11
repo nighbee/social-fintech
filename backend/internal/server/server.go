@@ -19,7 +19,6 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-// создает Fiber app, cors auth routes limiter и middleware для бэка
 func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
@@ -103,9 +102,12 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Patch("/me", profilesHandler.UpdateMyProfile)
 	profilesGroup.Post("/me/avatar", profilesHandler.UploadAvatar)
 	profilesGroup.Get("/me/stats", profilesHandler.GetMyStats)
+	profilesGroup.Get("/me/allies", profilesHandler.GetMyAllies)
 	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
+	profilesGroup.Get("/search", profilesHandler.SearchProfilesForFeed)
 	profilesGroup.Get("/:user_id", profilesHandler.GetPublicProfile)
 	profilesGroup.Get("/:user_id/stats", profilesHandler.GetPublicStats)
+	profilesGroup.Get("/:user_id/relationship", profilesHandler.GetRelationshipStatus)
 	profilesGroup.Post("/:user_id/allies", profilesHandler.AddAlly)
 	profilesGroup.Delete("/:user_id/allies", profilesHandler.RemoveAlly)
 	profilesGroup.Get("/:user_id/allies", profilesHandler.GetAllies)
@@ -116,6 +118,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Post("/:user_id/restrict", profilesHandler.RestrictUser)
 	profilesGroup.Delete("/:user_id/restrict", profilesHandler.UnrestrictUser)
 	profilesGroup.Post("/:user_id/report", profilesHandler.ReportUser)
+
+	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank)
+	api.Get("/profiles/ranks", profilesHandler.GetAllRanks)
 
 	return app
 }
