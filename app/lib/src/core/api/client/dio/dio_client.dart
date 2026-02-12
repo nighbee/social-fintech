@@ -13,48 +13,32 @@ import 'package:app/src/core/utils/loggers/log.dart';
 @named
 @LazySingleton(as: RestClient)
 class DioClient extends DioRestClient implements RestClient {
-  DioClient(this._environmentManager) {
+  DioClient() {
+    final environmentManager = getIt<EnvironmentManager>();
     final appStorage = AppStorageImpl();
     final BaseOptions options = BaseOptions(
-      baseUrl: _environmentManager.baseUrl,
+      baseUrl: environmentManager.baseUrl,
       contentType: Headers.jsonContentType,
       connectTimeout: DioConfigurations.connectTimeout,
       receiveTimeout: DioConfigurations.receiveTimeout,
       sendTimeout: DioConfigurations.sendTimeout,
       headers: {'Accept-Language': appStorage.getLocale()},
     );
-    Log.debug('DioClient', 'baseUrl: ${_environmentManager.baseUrl}');
+    Log.debug('DioClient', 'baseUrl: ${environmentManager.baseUrl}');
     dio = Dio(options);
 
     // Add token interceptor BEFORE other interceptors
     dio.interceptors.add(TokenInterceptor(dio: dio));
 
-    // Add standard Dio LogInterceptor for console logging
-    dio.interceptors.add(
-      LogInterceptor(
-        request: true,
-        requestHeader: true,
-        requestBody: true,
-        responseHeader: true,
-        responseBody: true,
-        error: true,
-        logPrint: (obj) {
-          Log.debug('Dio', obj.toString());
-        },
-      ),
-    );
-
     _addTalkerInterceptor();
   }
 
-  final EnvironmentManager _environmentManager;
-
   void _addTalkerInterceptor() {
     try {
-      if (getIt.isRegistered<TalkerDioLogger>()) {
-        dio.interceptors.add(getIt<TalkerDioLogger>());
-      }
+      dio.interceptors.add(getIt<TalkerDioLogger>());
+      Log.debug('DioClient', 'TalkerDioLogger added successfully');
     } catch (e) {
+      // TalkerDioLogger not available yet, will be added later
       Log.debug('DioClient', 'TalkerDioLogger not available: $e');
     }
   }

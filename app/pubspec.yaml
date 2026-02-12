@@ -65,6 +65,8 @@ dependencies:
   uuid: ^4.5.1
   # Информация о версии приложения
   package_info_plus: ^8.0.0
+  # Relative time formatting (e.g., "3 hours ago")
+  timeago: ^3.7.0
   # Firebase
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
@@ -107,6 +109,8 @@ dependencies:
   freezed_annotation: ^2.4.4
   # Nested provider helper
   nested: ^1.0.0
+  image_picker: ^1.2.1
+  permission_handler: ^12.0.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -148,6 +152,8 @@ flutter:
   assets:
     # Иконки приложения
     - assets/icons/
+    # Изображения (камни для рангов)
+    - assets/images/
     # Общие шрифты
     - assets/fonts/
     # Семейство шрифтов Lora

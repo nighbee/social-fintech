@@ -56,10 +56,7 @@ class CustomButton extends StatelessWidget {
                     spacing: 10,
                     children: [
                       if (icon != null) icon!,
-                      Text(
-                        text,
-                        style: textStyle ?? Theme.of(context).textStyles.bodyMediumBold,
-                      ),
+                      Text(text, style: textStyle ?? TextStyles.titleMain),
                     ],
                   ),
                 ),

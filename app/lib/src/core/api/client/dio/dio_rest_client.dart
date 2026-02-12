@@ -15,10 +15,7 @@ abstract class DioRestClient implements RestClient {
   late final Dio dio;
 
   @override
-  void setBaseUrl({
-    required String ipAddress,
-    int? port,
-  }) {
+  void setBaseUrl({required String ipAddress, int? port}) {
     try {
       if (port != null) {
         dio.options = dio.options.copyWith(baseUrl: '$ipAddress:$port');
@@ -159,10 +156,7 @@ abstract class DioRestClient implements RestClient {
     return UnknownException();
   }
 
-  DomainException _handleDioException(
-    DioException e,
-    StackTrace st,
-  ) {
+  DomainException _handleDioException(DioException e, StackTrace st) {
     final String errorMessage = DioExceptions.fromDioError(e).toString();
     return NetworkException(message: errorMessage, stackTrace: st);
   }

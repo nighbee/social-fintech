@@ -23,13 +23,22 @@ import '../../../features/auth/data/sources/remote/i_auth_remote.dart' as _i387;
 import '../../../features/auth/domain/repositories/i_auth_repository.dart'
     as _i664;
 import '../../../features/auth/presentation/bloc/auth_bloc.dart' as _i748;
-import '../../../features/profile/data/datasources/i_profile_remote.dart'
-    as _i132;
-import '../../../features/profile/data/datasources/profile_remote_impl.dart'
-    as _i169;
-import '../../../features/profile/data/repos/profile_repo_impl.dart' as _i715;
-import '../../../features/profile/domain/repos/i_profile_repo.dart' as _i418;
-import '../../../features/profile/presentation/bloc/profile_bloc.dart' as _i428;
+import '../../../features/home/data/repositories/home_repository_impl.dart'
+    as _i955;
+import '../../../features/home/data/sources/remote/home_remote_impl.dart'
+    as _i804;
+import '../../../features/home/data/sources/remote/i_home_remote.dart' as _i482;
+import '../../../features/home/domain/repositories/i_home_repository.dart'
+    as _i529;
+import '../../../features/home/presentation/bloc/home_bloc.dart' as _i84;
+import '../../../features/profile/data/repositories/profile_repository_impl.dart'
+    as _i695;
+import '../../../features/profile/data/sources/remote/i_profile_remote.dart'
+    as _i964;
+import '../../../features/profile/data/sources/remote/profile_remote_impl.dart'
+    as _i236;
+import '../../../features/profile/domain/repositories/i_profile_repository.dart'
+    as _i1037;
 import '../../api/client/dio/dio_client.dart' as _i1019;
 import '../../api/client/dio/rest_client.dart' as _i877;
 import '../../config/environment_manager.dart' as _i931;
@@ -43,38 +52,32 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     gh.lazySingleton<_i6.IAppStorage>(() => _i6.AppStorageImpl());
+    gh.lazySingleton<_i877.RestClient>(
+      () => _i1019.DioClient(),
+      instanceName: 'DioClient',
+    );
     gh.lazySingleton<_i964.IAuthLocal>(
       () => _i134.AuthLocalImpl(),
       instanceName: 'AuthLocalImpl',
     );
+    gh.lazySingleton<_i482.IHomeRemote>(
+      () =>
+          _i804.HomeRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
+      instanceName: 'HomeRemoteImpl',
+    );
     gh.lazySingleton<_i931.EnvironmentManager>(
       () => _i931.EnvironmentManager(gh<_i6.IAppStorage>()),
-    );
-    gh.lazySingleton<_i877.RestClient>(
-      () => _i1019.DioClient(gh<_i931.EnvironmentManager>()),
-      instanceName: 'DioClient',
     );
     gh.lazySingleton<_i387.IAuthRemote>(
       () =>
           _i974.AuthRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
       instanceName: 'AuthRemoteImpl',
     );
-    gh.lazySingleton<_i132.IProfileRemote>(
-      () => _i169.ProfileRemoteImpl(
+    gh.lazySingleton<_i964.IProfileRemote>(
+      () => _i236.ProfileRemoteImpl(
         gh<_i877.RestClient>(instanceName: 'DioClient'),
       ),
       instanceName: 'ProfileRemoteImpl',
-    );
-    gh.lazySingleton<_i418.IProfileRepo>(
-      () => _i715.ProfileRepositoryImpl(
-        gh<_i132.IProfileRemote>(instanceName: 'ProfileRemoteImpl'),
-      ),
-      instanceName: 'ProfileRepositoryImpl',
-    );
-    gh.factory<_i428.ProfileBloc>(
-      () => _i428.ProfileBloc(
-        gh<_i418.IProfileRepo>(instanceName: 'ProfileRepositoryImpl'),
-      ),
     );
     gh.lazySingleton<_i664.IAuthRepository>(
       () => _i365.AuthRepositoryImpl(
@@ -86,6 +89,23 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i748.AuthBloc>(
       () => _i748.AuthBloc(
         gh<_i664.IAuthRepository>(instanceName: 'AuthRepositoryImpl'),
+      ),
+    );
+    gh.lazySingleton<_i529.IHomeRepository>(
+      () => _i955.HomeRepositoryImpl(
+        gh<_i482.IHomeRemote>(instanceName: 'HomeRemoteImpl'),
+      ),
+      instanceName: 'HomeRepositoryImpl',
+    );
+    gh.lazySingleton<_i1037.IProfileRepository>(
+      () => _i695.ProfileRepositoryImpl(
+        gh<_i964.IProfileRemote>(instanceName: 'ProfileRemoteImpl'),
+      ),
+      instanceName: 'ProfileRepositoryImpl',
+    );
+    gh.factory<_i84.HomeBloc>(
+      () => _i84.HomeBloc(
+        gh<_i529.IHomeRepository>(instanceName: 'HomeRepositoryImpl'),
       ),
     );
     return this;

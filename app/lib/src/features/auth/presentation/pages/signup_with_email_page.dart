@@ -92,20 +92,14 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                               RouteNames.loginWithEmail,
                             );
                           },
-                          child: Text(
-                            "Log in",
-                            style: context.theme.textStyles.titleLarge,
-                          ),
+                          child: Text("Log in", style: TextStyles.titleBig),
                         ),
 
-                        Text("or", style: context.theme.textStyles.titleLarge),
+                        Text("or", style: TextStyles.titleBig),
 
                         TextButton(
                           onPressed: () {},
-                          child: Text(
-                            "Sign up",
-                            style: context.theme.textStyles.titleLarge,
-                          ),
+                          child: Text("Sign up", style: TextStyles.titleBig),
                         ),
                       ],
                     ),
@@ -134,7 +128,7 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                             color: AppColors.textGray2,
                           ),
                         ),
-                        Text("or", style: context.theme.textStyles.bodyBold),
+                        Text("or", style: TextStyles.titleTag),
                         Expanded(
                           child: Container(
                             width: double.infinity,
@@ -159,8 +153,9 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                           icon: Assets.icons.appleLogo.svg(),
                           onTap: () {},
                           padding: EdgeInsets.symmetric(vertical: 10),
-                          textStyle: context.theme.textStyles.bodyMediumBold
-                              .copyWith(fontSize: 17),
+                          textStyle: TextStyles.titleMain.copyWith(
+                            fontSize: 17,
+                          ),
                         ),
                         CustomButton(
                           text: "Continue with Google",
@@ -172,15 +167,14 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                             );
                           },
                           padding: EdgeInsets.symmetric(vertical: 10),
-                          textStyle: context.theme.textStyles.bodyMediumBold
-                              .copyWith(fontSize: 17),
+                          textStyle: TextStyles.titleMain.copyWith(
+                            fontSize: 17,
+                          ),
                         ),
                         Text(
                           "Continuing, I agree with\nTerms and conditions.",
                           textAlign: TextAlign.center,
-                          style: context.theme.textStyles.caption.copyWith(
-                            fontSize: 14,
-                          ),
+                          style: TextStyles.bodyMain.copyWith(fontSize: 14),
                         ),
                       ],
                     ),

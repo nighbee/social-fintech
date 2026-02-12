@@ -18,6 +18,10 @@ class CustomTextField extends StatefulWidget {
     this.onTap,
     this.readOnly = false,
     this.inputFormatters,
+    this.showBorder = true,
+    this.customBorder,
+    this.backgroundColor,
+    this.height,
   });
 
   final TextEditingController controller;
@@ -32,6 +36,10 @@ class CustomTextField extends StatefulWidget {
   final VoidCallback? onTap;
   final bool readOnly;
   final List<TextInputFormatter>? inputFormatters;
+  final bool showBorder;
+  final BoxBorder? customBorder;
+  final Color? backgroundColor;
+  final double? height;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -59,11 +67,14 @@ class _CustomTextFieldState extends State<CustomTextField> {
     final hasText = widget.controller.text.isNotEmpty;
 
     return Container(
-      height: 64,
+      height: widget.height ?? 64,
       padding: const EdgeInsets.fromLTRB(16, 8, 0, 8.5),
       decoration: BoxDecoration(
-        border: Border.all(color: AppColors.whiteBackground, width: 1),
+        border: widget.showBorder
+            ? (widget.customBorder ?? Border.all(color: AppColors.whiteBackground, width: 1))
+            : null,
         borderRadius: BorderRadius.circular(6),
+        color: widget.backgroundColor,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -74,11 +85,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (hasText)
-                  Text(
-                    widget.labelText,
-                    style: Theme.of(context).textStyles.caption,
-                  ),
+                if (hasText) Text(widget.labelText, style: TextStyles.bodyMain),
                 TextFormField(
                   controller: widget.controller,
                   onChanged: (value) {
@@ -89,16 +96,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   obscureText: widget.obscureText,
                   readOnly: widget.readOnly,
                   onTap: widget.onTap,
+
                   inputFormatters: widget.inputFormatters,
                   textAlignVertical: hasText
                       ? TextAlignVertical.top
                       : TextAlignVertical.center,
-                  style: Theme.of(context).textStyles.bodyLarge,
+                  style: TextStyles.titleHeadline,
                   decoration: InputDecoration(
                     hintText: hasText
                         ? null
                         : (widget.hintText ?? widget.labelText),
-                    hintStyle: Theme.of(context).textStyles.bodySmall,
+                    hintStyle: TextStyles.titleTag,
                     contentPadding: hasText
                         ? EdgeInsets.zero
                         : const EdgeInsets.symmetric(vertical: 0),

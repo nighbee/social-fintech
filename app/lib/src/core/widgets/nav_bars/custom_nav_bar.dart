@@ -42,10 +42,10 @@ class CustomNavBar extends StatelessWidget {
             unselectedItemColor: AppColors.textGray2,
             selectedItemColor: AppColors.blueText1,
             type: BottomNavigationBarType.fixed,
-            selectedLabelStyle: context.theme.textStyles.titleSmall.copyWith(
+            selectedLabelStyle: TextStyles.titleTag.copyWith(
               color: AppColors.blueText1,
             ),
-            unselectedLabelStyle: context.theme.textStyles.titleSmall
+            unselectedLabelStyle: TextStyles.titleTag
                 .copyWith(color: AppColors.textGray2),
             onTap: (int index) {
               context.go(paths[index]);

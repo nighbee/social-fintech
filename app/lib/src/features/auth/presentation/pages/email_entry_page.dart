@@ -54,10 +54,7 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
               emailChecked: (exists, email) {
                 context.pushNamed(
                   RouteNames.emailPassword,
-                  extra: {
-                    'email': email,
-                    'isNewUser': !exists,
-                  },
+                  extra: {'email': email, 'isNewUser': !exists},
                 );
               },
             );
@@ -71,19 +68,19 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
 
             return SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-                    Text(
-                      "Enter your email",
-                      style: context.theme.textStyles.titleXLarge,
-                    ),
+                    Text("Enter your email", style: TextStyles.titleXBig),
                     Gap(16),
                     Text(
                       "We'll check if you have an account",
-                      style: context.theme.textStyles.bodyMedium,
+                      style: TextStyles.bodyLarge,
                     ),
                     Gap(40),
                     CustomTextField(
@@ -96,17 +93,22 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                     Gap(40),
                     CustomButton(
                       text: isLoading ? "Checking..." : "Continue",
-                      isDisabled: isLoading || !_isValidEmail(_emailController.text),
+                      isDisabled:
+                          isLoading || !_isValidEmail(_emailController.text),
                       onTap: () {
                         if (_isValidEmail(_emailController.text)) {
                           context.read<AuthBloc>().add(
-                            AuthEvent.checkEmail(email: _emailController.text.trim()),
+                            AuthEvent.checkEmail(
+                              email: _emailController.text.trim(),
+                            ),
                           );
                         }
                       },
                     ),
                     Gap(20),
-                    SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
+                    SizedBox(
+                      height: MediaQuery.of(context).viewInsets.bottom + 20,
+                    ),
                   ],
                 ),
               ),

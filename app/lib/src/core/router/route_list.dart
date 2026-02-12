@@ -34,6 +34,21 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             name: RouteNames.widgetBook,
             builder: (context, state) => const WidgetBookPage(),
           ),
+          GoRoute(
+            path: 'rangs',
+            name: RouteNames.rangs,
+            builder: (context, state) => const RangsPage(),
+          ),
+          // Public Profile route (protected by auth guard)
+          GoRoute(
+            path: RoutePaths.publicProfile,
+            name: RouteNames.publicProfile,
+            redirect: AuthGuard,
+            builder: (context, state) {
+              final userId = state.pathParameters['userId'] ?? '';
+              return PublicProfilePage(userId: userId);
+            },
+          ),
         ],
       ),
 
@@ -185,7 +200,7 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 },
                 routes: [
                   GoRoute(
-                    path: RoutePaths.settings,
+                    path: 'settings',
                     name: RouteNames.settings,
                     redirect: AuthGuard,
                     builder: (context, state) {
@@ -194,6 +209,17 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                         body: const Center(child: Text('Settings Page')),
                       );
                     },
+                  ),
+                  GoRoute(
+                    path: RoutePaths.editProfile,
+                    name: RouteNames.editProfile,
+                    builder: (context, state) => const EditProfilePage(),
+                  ),
+                  GoRoute(
+                    path: 'allies',
+                    name: RouteNames.allies,
+                    redirect: AuthGuard,
+                    builder: (context, state) => const AlliesPage(),
                   ),
                 ],
               ),

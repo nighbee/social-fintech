@@ -81,21 +81,16 @@ class _InfoPageState extends State<InfoPage> {
   }
 
   void _continueToReferral() {
-    if (_firstNameController.text.isEmpty ||
-        _lastNameController.text.isEmpty) {
+    if (_firstNameController.text.isEmpty || _lastNameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill all required fields'),
-        ),
+        const SnackBar(content: Text('Please fill all required fields')),
       );
       return;
     }
 
     if (_selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select date of birth'),
-        ),
+        const SnackBar(content: Text('Please select date of birth')),
       );
       return;
     }
@@ -130,8 +125,8 @@ class _InfoPageState extends State<InfoPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-                Gap(40),
-              Text("Legal Name", style: context.theme.textStyles.titleMedium),
+              Gap(40),
+              Text("Legal Name", style: TextStyles.titleBig),
               Gap(16),
               CustomTextField(
                 controller: _firstNameController,
@@ -145,7 +140,7 @@ class _InfoPageState extends State<InfoPage> {
                 hintText: "Last name",
               ),
               Gap(40),
-              Text("Date of birth", style: context.theme.textStyles.titleMedium),
+              Text("Date of birth", style: TextStyles.titleBig),
               Gap(16),
               CustomTextField(
                 controller: _dateOfBirthController,
@@ -166,14 +161,9 @@ class _InfoPageState extends State<InfoPage> {
                 ),
               ),
               Gap(40),
-              CustomButton(
-                text: "Next",
-                onTap: _continueToReferral,
-              ),
+              CustomButton(text: "Next", onTap: _continueToReferral),
               Gap(20),
-              SizedBox(
-                height: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
+              SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
             ],
           ),
         ),
