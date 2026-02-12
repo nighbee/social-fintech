@@ -1,4 +1,5 @@
 import 'package:app/src/core/theme/theme.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 class CustomNetworkImage extends StatelessWidget {
@@ -22,7 +23,7 @@ class CustomNetworkImage extends StatelessWidget {
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
       child: Image.network(
-        imageUrl,
+        _sanitizeUrl(imageUrl),
         width: width,
         height: height,
         fit: fit,
@@ -58,5 +59,14 @@ class CustomNetworkImage extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _sanitizeUrl(String url) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      if (url.contains('localhost')) {
+        return url.replaceAll('localhost', '10.0.2.2');
+      }
+    }
+    return url;
   }
 }

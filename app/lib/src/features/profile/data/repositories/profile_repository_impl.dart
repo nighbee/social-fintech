@@ -1,4 +1,5 @@
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
+import 'package:dio/dio.dart';
 import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:fpdart/fpdart.dart';
@@ -190,6 +191,24 @@ class ProfileRepositoryImpl implements IProfileRepository {
       return result.fold(
         (error) => Left(error),
         (relationshipDto) => Right(relationshipDto.toEntity()),
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ProfileEntity>> uploadAvatar(
+    FormData formData,
+  ) async {
+    try {
+      final result = await _profileRemote.uploadAvatar(formData);
+
+      return result.fold(
+        (error) => Left(error),
+        (profileDto) => Right(profileDto.toEntity()),
       );
     } catch (e) {
       return Left(

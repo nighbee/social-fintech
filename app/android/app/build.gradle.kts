@@ -63,4 +63,13 @@ dependencies {
     // Google Play Services Auth API Phone - required for SMS auto-retrieval
     implementation("com.google.android.gms:play-services-auth:20.7.0") 
     implementation("com.google.android.gms:play-services-auth-api-phone:18.1.0")
+
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.core:core-ktx:1.15.0")
+            force("androidx.core:core:1.15.0")
+            force("androidx.activity:activity-ktx:1.9.3")
+            force("androidx.activity:activity:1.9.3")
+        }
+    }
 }

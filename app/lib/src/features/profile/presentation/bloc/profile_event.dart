@@ -19,4 +19,8 @@ class ProfileEvent with _$ProfileEvent {
   const factory ProfileEvent.updateProfile(UpdateProfileRequest request) =
       _UpdateProfile;
   const factory ProfileEvent.logout() = _Logout;
+  const factory ProfileEvent.updateProfilePhoto(
+    Uint8List fileAsBytes,
+    String fileName,
+  ) = _UpdateProfilePhoto;
 }

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:app/src/core/api/client/dio/dio_client.dart';
@@ -250,6 +251,25 @@ class ProfileRemoteImpl implements IProfileRemote {
           result.data as Map<String, dynamic>,
         );
         return Right(updatedDto);
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ProfileDto>> uploadAvatar(
+    FormData formData,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.profileMeAvatar,
+        data: formData,
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dto = ProfileDto.fromJson(result.data as Map<String, dynamic>);
+        return Right(dto);
       });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));

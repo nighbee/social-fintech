@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
@@ -44,8 +46,37 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
       loadRelationship: (userId) =>
           _loadRelationship(event as _LoadRelationship, emit),
       updateProfile: (request) => _updateProfile(event as _UpdateProfile, emit),
+      updateProfilePhoto: (bytes, name) =>
+          _updateProfilePhoto(event as _UpdateProfilePhoto, emit),
       logout: () => _logout(emit),
     );
+  }
+
+  Future<void> _updateProfilePhoto(
+    _UpdateProfilePhoto event,
+    Emitter emit,
+  ) async {
+    try {
+      emit(ProfileState.loading(viewModel: _viewModel));
+
+      final FormData formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          event.fileAsBytes,
+          filename: event.fileName,
+        ),
+      });
+
+      final result = await _repository.uploadAvatar(formData);
+
+      result.fold((error) => emit(ProfileState.loadingError(error.message)), (
+        profile,
+      ) {
+        _viewModel = _viewModel.copyWith(profile: profile);
+        emit(ProfileState.loaded(viewModel: _viewModel));
+      });
+    } catch (e) {
+      emit(ProfileState.loadingError(e.toString()));
+    }
   }
 
   Future<void> _loadProfile(_LoadProfile event, Emitter emit) async {

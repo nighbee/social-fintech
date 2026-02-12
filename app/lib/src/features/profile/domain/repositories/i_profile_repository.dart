@@ -6,6 +6,7 @@ import 'package:app/src/features/profile/domain/entities/public_profile_entity.d
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
 import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
+import 'package:dio/dio.dart';
 
 abstract interface class IProfileRepository {
   /// Get current user profile data
@@ -14,6 +15,11 @@ abstract interface class IProfileRepository {
   /// Update current user profile data
   Future<Either<DomainException, ProfileEntity>> updateProfile(
     UpdateProfileRequest request,
+  );
+
+  /// Upload user avatar
+  Future<Either<DomainException, ProfileEntity>> uploadAvatar(
+    FormData formData,
   );
 
   /// Get public profile of another user by userId

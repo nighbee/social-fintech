@@ -59,12 +59,7 @@ class _EditProfileFormState extends State<EditProfileForm> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        ProfileAvatarPicker(
-          imageUrl: widget.profile.avatarUrl,
-          onPickImage: () {
-            // TODO: Implement image picker
-          },
-        ),
+        ProfileAvatarPicker(imageUrl: widget.profile.avatarUrl),
         const Gap(24),
         ProfileTextField(
           label: 'Display Name',

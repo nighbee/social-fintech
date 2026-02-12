@@ -1,15 +1,13 @@
+import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 
 class ProfileAvatarPicker extends StatelessWidget {
-  const ProfileAvatarPicker({
-    super.key,
-    required this.imageUrl,
-    required this.onPickImage,
-  });
+  const ProfileAvatarPicker({super.key, required this.imageUrl});
 
   final String imageUrl;
-  final VoidCallback onPickImage;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +26,16 @@ class ProfileAvatarPicker extends StatelessWidget {
             right: 0,
             bottom: 0,
             child: GestureDetector(
-              onTap: onPickImage,
+              onTap: () {
+                ImagePickerHelper.showImagePicker(
+                  context: context,
+                  onImageSelected: (bytes, fileName) {
+                    getIt<ProfileBloc>().add(
+                      ProfileEvent.updateProfilePhoto(bytes, fileName),
+                    );
+                  },
+                );
+              },
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: const BoxDecoration(

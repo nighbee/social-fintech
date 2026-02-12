@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/models/ally_profile_dto.dart';
@@ -38,4 +39,6 @@ abstract interface class IProfileRemote {
   Future<Either<DomainException, ProfileDto>> updateProfile(
     UpdateProfileRequest request,
   );
+
+  Future<Either<DomainException, ProfileDto>> uploadAvatar(FormData formData);
 }
