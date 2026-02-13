@@ -5,22 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/brightbund-backend/internal/config"
-)
-
-const (
-	SealCooldownLevel1 = 30 * 24 * time.Hour
-	SealCooldownLevel2 = 45 * 24 * time.Hour
-	SealCooldownLevel3 = 60 * 24 * time.Hour
-	SealCooldownLevel4 = 90 * 24 * time.Hour
-	SealCooldownLevel5 = 120 * 24 * time.Hour
-
-	SealDecayThreshold1 = 120 * 24 * time.Hour
-	SealDecayThreshold2 = 240 * 24 * time.Hour
 )
 
 type Service interface {
@@ -50,14 +40,20 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
-	cfg  config.EconomyConfig
+	repo             Repository
+	cfg              config.EconomyConfig
+	cacheInvalidator StatsCacheInvalidator // Optional cache invalidator for profile stats
 }
 
-func NewService(repo Repository, cfg config.EconomyConfig) Service {
+func NewService(repo Repository, cfg config.EconomyConfig, cacheInvalidator StatsCacheInvalidator) Service {
+	// Use no-op invalidator if none provided
+	if cacheInvalidator == nil {
+		cacheInvalidator = &NoopCacheInvalidator{}
+	}
 	return &service{
-		repo: repo,
-		cfg:  cfg,
+		repo:             repo,
+		cfg:              cfg,
+		cacheInvalidator: cacheInvalidator,
 	}
 }
 
@@ -68,13 +64,55 @@ func (s *service) executeWithRetry(ctx context.Context, fn func() error) error {
 		if err == nil {
 			return nil
 		}
-		if !errors.Is(err, ErrOptimisticLockFailure) {
+		// Check if error is retryable (optimistic lock or database concurrency error)
+		if !isRetryableError(err) {
 			return err
 		}
 		// Simple backoff: 50ms, 100ms, 150ms
 		time.Sleep(time.Duration((i+1)*50) * time.Millisecond)
 	}
 	return NewEconomyError(ErrOptimisticLockFailure, CodeOptimisticLock, "Failed to complete transaction after retries due to concurrent updates", 409)
+}
+
+// isRetryableError checks if an error is caused by concurrency and should be retried
+func isRetryableError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	// Check for optimistic lock failure
+	if errors.Is(err, ErrOptimisticLockFailure) {
+		return true
+	}
+
+	// Check error message for database concurrency errors
+	errMsg := err.Error()
+
+	// PostgreSQL serialization/concurrency errors
+	retryablePatterns := []string{
+		"could not serialize access",
+		"deadlock detected",
+		"failed to commit transaction",
+		"failed to update transfer limit",
+		"failed to update wallet",
+		"failed to update cooldown",
+		"failed to upsert pair cooldown",
+		"failed to get pair cooldown",
+		"failed to get wallet",
+		"failed to get receiver wallet",
+		"failed to create ledger entry",
+		"pq: could not serialize",
+		"SQLSTATE 40001", // serialization_failure
+		"SQLSTATE 40P01", // deadlock_detected
+	}
+
+	for _, pattern := range retryablePatterns {
+		if strings.Contains(errMsg, pattern) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *service) GetUserBalance(ctx context.Context, userID string) (*BalanceResponse, error) {
@@ -249,6 +287,10 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		if err := tx.Commit(); err != nil {
 			return WrapErrorf(err, "failed to commit transaction")
 		}
+
+		// Invalidate stats cache for both sender and receiver (fire-and-forget)
+		_ = s.cacheInvalidator.InvalidateStats(ctx, senderUserID)
+		_ = s.cacheInvalidator.InvalidateStats(ctx, req.RecipientUserID)
 
 		_ = s.repo.UpsertUserInteraction(ctx, senderUserID, req.RecipientUserID, amountCents)
 
@@ -442,6 +484,9 @@ func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey 
 			return WrapErrorf(err, "failed to commit transaction")
 		}
 
+		// Invalidate stats cache for user (fire-and-forget)
+		_ = s.cacheInvalidator.InvalidateStats(ctx, userID)
+
 		// Next claim is 48 hours from now
 		nextClaim := now.Add(time.Duration(AccrualIntervalHours) * time.Hour)
 		response = &AccrualResponse{
@@ -535,6 +580,10 @@ func (s *service) ProcessReferralBonus(ctx context.Context, referrerUserID, refe
 		if err := tx.Commit(); err != nil {
 			return WrapErrorf(err, "failed to commit transaction")
 		}
+
+		// Invalidate stats cache for referrer (fire-and-forget)
+		_ = s.cacheInvalidator.InvalidateStats(ctx, referrerUserID)
+
 		return nil
 	})
 
@@ -661,6 +710,10 @@ func (s *service) ProcessIAPDeposit(ctx context.Context, userID string, amountCe
 		if err := tx.Commit(); err != nil {
 			return WrapErrorf(err, "failed to commit transaction")
 		}
+
+		// Invalidate stats cache for user (fire-and-forget)
+		_ = s.cacheInvalidator.InvalidateStats(ctx, userID)
+
 		return nil
 	})
 
@@ -723,6 +776,10 @@ func (s *service) ChargeForTaskCreation(ctx context.Context, userID, taskID stri
 		if err := tx.Commit(); err != nil {
 			return WrapErrorf(err, "failed to commit transaction")
 		}
+
+		// Invalidate stats cache for user (fire-and-forget)
+		_ = s.cacheInvalidator.InvalidateStats(ctx, userID)
+
 		return nil
 	})
 
@@ -777,6 +834,10 @@ func (s *service) RewardForTaskCompletion(ctx context.Context, userID, taskID st
 		if err := tx.Commit(); err != nil {
 			return WrapErrorf(err, "failed to commit transaction")
 		}
+
+		// Invalidate stats cache for user (fire-and-forget)
+		_ = s.cacheInvalidator.InvalidateStats(ctx, userID)
+
 		return nil
 	})
 
@@ -843,6 +904,9 @@ func (s *service) AdminAdjustBalance(ctx context.Context, userID string, amountC
 	if err := tx.Commit(); err != nil {
 		return WrapErrorf(err, "failed to commit transaction")
 	}
+
+	// Invalidate stats cache for user (fire-and-forget)
+	_ = s.cacheInvalidator.InvalidateStats(ctx, userID)
 
 	return nil
 }
@@ -912,12 +976,15 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 				return NewCooldownError(cooldown.LastGrantAt, cooldown.NextAllowedAt.Sub(cooldown.LastGrantAt), cooldown.RepeatLevel)
 			}
 
-			// Decay Logic
 			diff := now.Sub(cooldown.LastGrantAt)
 			repeatLevel = cooldown.RepeatLevel
-			if diff >= SealDecayThreshold2 {
+
+			threshold1 := time.Duration(s.cfg.SealDecayThreshold1Days) * 24 * time.Hour
+			threshold2 := time.Duration(s.cfg.SealDecayThreshold2Days) * 24 * time.Hour
+
+			if diff >= threshold2 {
 				repeatLevel = max(repeatLevel-2, 1)
-			} else if diff >= SealDecayThreshold1 {
+			} else if diff >= threshold1 {
 				repeatLevel = max(repeatLevel-1, 1)
 			}
 		}
@@ -982,70 +1049,8 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			CreatedAt:      now,
 		}
 
-		// If P2P, set ReceiverWalletID. If Post, it might be just burning or distinct?
-		// "Seal is a transfer of value to receiver". So Post Seal ALSO transfers to receiver?
-		// Requirement 1: "Seal is a transfer of value to specific receiver... Post is context".
-		// So YES, Post Seal ALSO transfers money to the post author (receiver).
-		// Currently GiveSealToPost does NOT transfer to receiver in the old code?
-		// Old code: "SenderWalletID: &wallet.ID, Category: CategoryPostSeal...". No ReceiverWalletID set?
-		// Wait, if "Seal is a transfer of value", I should probably credit the receiver (post author).
-		// But I need the receiver's ID. In `GiveSealToPost`, I have `userID` (sender) and `postID`.
-		// I DO NOT have `receiverID` (post author) unless passed?
-		// User Req 1: "Seal is a transfer of value to receiver... Post is context".
-		// So `GiveSealToPost` MUST imply a receiver.
-		// The `GiveSealToPost` signature is `GiveSealToPost(ctx, userID, postID, req)`.
-		// It doesn't take ReceiverID. It must be derived or passed.
-		// BUT `processSealTransfer` takes `senderID` and `receiverID`.
-		// If I use `processSealTransfer` for `GiveSealToPost`, I need the receiver ID.
-		// The old `GiveSealToPost` implementation:
-		// `entry := &LedgerEntry{ ... SenderWalletID: &wallet.ID ... }`
-		// It didn't seem to credit anyone! It just burnt(?) or tracked it.
-		// Reviewing old code:
-		/*
-			entry := &LedgerEntry{
-				ID: uuid.New().String(),
-				Amount: amountCents,
-				Currency: currency,
-				SenderWalletID: &wallet.ID,
-				Category: CategoryPostSeal,
-				...
-			}
-		*/
-		// Yes, no receiver wallet.
-		// But User Req 1 says: "Seal is a transfer of value to specific receiver".
-		// This implies I probably need to change `GiveSealToPost` to accept `receiverID` (post author) OR fetch it.
-		// Fetching it would require `PostRepo`. I don't have access to posts here?
-		// `economy` module shouldn't depend on `post` module directly ideally?
-		// OR the `GiveSealToPostRequest` should include `post_author_id`.
-		// Or the frontend calls `GiveSealToUser` with `post_id` in context?
-		// Req 2: "Cooldown key = (sender, receiver). Post_id doesn't participate".
-		// Req 3: "Sender cannot give seal to this receiver via post or profile".
-		// THIS CONFIRMS `GiveSealToPost` -> IS A TRANSFER TO RECEIVER.
-		// Warning: If I don't have receiver ID, I cannot check cooldown!
-		// So `GiveSealToPost` MUST know the receiver.
-
-		// I will assume for now that `GiveSealToPost` is EITHER:
-		// 1. Changed to `GiveSeal(sender, receiver, postID_optional)`
-		// 2. Or we need to look up the post author.
-
-		// Let's look at `GiveSealToPost` signature again.
-		// `GiveSealToPost(ctx, userID, postID, req)`
-
-		// PROPOSAL: Since I cannot change the signature easily without fetching post (which I might not be able to do easily if cross-module),
-		// Does the user intend to pass Generic `GiveSealToUser` for posts too?
-		// Req 1: "Post can be contest/context in UI".
-		// Maybe `GiveSealToPost` is deprecated or needs `ReceiverID` added to request?
-		// Or I should assume the `postID` IS the reference but I need `receiverID` for cooldown.
-
-		// Let's implement `processSealTransfer` first.
-		// I will handle the generic case.
-
-		// Receiver Logic in `processSealTransfer`:
 		if category != CategoryP2PTransfer {
-			// If not P2P, do we credit receiver?
-			// "Seal is a transfer of value to receiver".
-			// So YES, we should credit receiver.
-			// Same logic as P2P really, just different category and metadata.
+
 			receiverWallet, err := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
 			if err != nil {
 				return WrapErrorf(err, "failed to get receiver wallet")
@@ -1061,24 +1066,18 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			}
 			response.ReceiverBalance = CentinelsToSeals(receiverWallet.Balance)
 		} else {
-			// Already handled above? slightly redundant.
-			// I'll unite them.
+
 		}
-
-		// Correct logic: ALWAYS credit receiver for Seals.
-
-		// ... (Update Ledger Entry with ReceiverWalletID) ...
 
 		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
 			return WrapErrorf(err, "failed to create ledger entry")
 		}
 
-		// 6. Update Cooldown
 		newLevel := repeatLevel + 1
 		if newLevel > 5 {
 			newLevel = 5
 		}
-		duration := getCooldownDuration(newLevel)
+		duration := s.getCooldownDuration(newLevel)
 
 		newCooldown := &PairCooldown{
 			SenderUserID:   senderID,
@@ -1096,6 +1095,11 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			return WrapErrorf(err, "failed to commit transaction")
 		}
 
+		_ = s.cacheInvalidator.InvalidateStats(ctx, senderID)
+		if category == CategoryP2PTransfer && receiverID != "" {
+			_ = s.cacheInvalidator.InvalidateStats(ctx, receiverID)
+		}
+
 		if response == nil {
 			response = &TransferResponse{}
 		}
@@ -1109,20 +1113,20 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 	return response, err
 }
 
-func getCooldownDuration(level int) time.Duration {
+func (s *service) getCooldownDuration(level int) time.Duration {
 	switch level {
 	case 1:
-		return SealCooldownLevel1
+		return time.Duration(s.cfg.SealCooldownLevel1Days) * 24 * time.Hour
 	case 2:
-		return SealCooldownLevel2
+		return time.Duration(s.cfg.SealCooldownLevel2Days) * 24 * time.Hour
 	case 3:
-		return SealCooldownLevel3
+		return time.Duration(s.cfg.SealCooldownLevel3Days) * 24 * time.Hour
 	case 4:
-		return SealCooldownLevel4
+		return time.Duration(s.cfg.SealCooldownLevel4Days) * 24 * time.Hour
 	case 5:
-		return SealCooldownLevel5
+		return time.Duration(s.cfg.SealCooldownLevel5Days) * 24 * time.Hour
 	default:
-		return SealCooldownLevel5
+		return time.Duration(s.cfg.SealCooldownLevel5Days) * 24 * time.Hour
 	}
 }
 

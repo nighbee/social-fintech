@@ -45,7 +45,7 @@ func TestProcessReferralBonus_WritesLedgerAndWallet(t *testing.T) {
 	cfg := config.EconomyConfig{
 		ReferralBonusCents: 100,
 	}
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 
 	if err := svc.ProcessReferralBonus(ctx, referrerID, refereeID); err != nil {
 		t.Fatalf("ProcessReferralBonus failed: %v", err)

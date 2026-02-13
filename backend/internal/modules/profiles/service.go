@@ -6,6 +6,7 @@ import (
 	"io"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
@@ -20,6 +21,7 @@ type Service struct {
 	repo       *Repository
 	storage    ObjectStorage
 	geolocator geolocation.Service
+	cache      StatsCache // Optional cache for profile statistics
 }
 
 // LocationInput represents optional location override from client
@@ -32,11 +34,12 @@ type LocationInput struct {
 
 const maxAvatarSizeBytes = 5 * 1024 * 1024 // 5MB
 
-func NewService(repo *Repository, storage ObjectStorage) *Service {
+func NewService(repo *Repository, storage ObjectStorage, cache StatsCache) *Service {
 	return &Service{
 		repo:       repo,
 		storage:    storage,
 		geolocator: geolocation.NewIPAPIClient(),
+		cache:      cache,
 	}
 }
 
@@ -157,10 +160,31 @@ func (s *Service) GetMyStats(ctx context.Context, userID string) (*ProfileStats,
 	if _, err := s.GetMyProfile(ctx, userID); err != nil {
 		return nil, err
 	}
-	return s.repo.GetProfileStats(ctx, userID)
+
+	// Try cache first if available
+	if s.cache != nil {
+		if stats, err := s.cache.GetStats(ctx, userID); err == nil {
+			return stats, nil // Cache HIT
+		}
+		// Cache MISS or error - continue to DB
+	}
+
+	// Query from database
+	stats, err := s.repo.GetProfileStats(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache (fire-and-forget, don't fail on cache errors)
+	if s.cache != nil {
+		_ = s.cache.SetStats(ctx, userID, stats, 5*time.Minute)
+	}
+
+	return stats, nil
 }
 
 func (s *Service) GetPublicStats(ctx context.Context, targetUserID string) (*ProfileStats, error) {
+	// Check privacy first
 	p, err := s.repo.GetProfile(ctx, targetUserID)
 	if err != nil {
 		return nil, err
@@ -168,7 +192,27 @@ func (s *Service) GetPublicStats(ctx context.Context, targetUserID string) (*Pro
 	if !p.IsPublic {
 		return nil, ErrProfilePrivate
 	}
-	return s.repo.GetProfileStats(ctx, targetUserID)
+
+	// Try cache first if available
+	if s.cache != nil {
+		if stats, err := s.cache.GetStats(ctx, targetUserID); err == nil {
+			return stats, nil // Cache HIT
+		}
+		// Cache MISS or error - continue to DB
+	}
+
+	// Query from database
+	stats, err := s.repo.GetProfileStats(ctx, targetUserID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache (fire-and-forget, don't fail on cache errors)
+	if s.cache != nil {
+		_ = s.cache.SetStats(ctx, targetUserID, stats, 5*time.Minute)
+	}
+
+	return stats, nil
 }
 
 func (s *Service) DeleteMyProfile(ctx context.Context, userID string) error {

@@ -130,8 +130,18 @@ func main() {
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
 
+	// Initialize profile stats cache if caching is enabled
+	var profilesCache profiles.StatsCache
+	if cfg.Cache.Enabled {
+		profilesCache = profiles.NewCacheWrapperStatsCache(redisCache)
+		logger.Info("profile stats cache enabled",
+			zap.Duration("ttl", cfg.Cache.ProfileStatsTTL),
+		)
+	}
+
+	// Initialize economy module with cache invalidator
 	economyRepo := economy.NewRepository(db.DB)
-	economyService := economy.NewService(economyRepo, cfg.Economy)
+	economyService := economy.NewService(economyRepo, cfg.Economy, profilesCache)
 	economyHandler := economy.NewHandler(economyService)
 	logger.Info("economy module initialized")
 
@@ -172,7 +182,7 @@ func main() {
 	}
 
 	profilesRepo := profiles.NewRepository(db.DB)
-	profilesService := profiles.NewService(profilesRepo, storageClient)
+	profilesService := profiles.NewService(profilesRepo, storageClient, profilesCache)
 
 	ranksRepo := ranks.NewRepository(db.DB)
 	ranksService := ranks.NewService(ranksRepo)

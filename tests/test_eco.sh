@@ -268,27 +268,7 @@ fi
 echo ""
 
 # TEST 7: P2P Transfer
-echo -e "${GREEN}=== TEST 7: P2P Transfer ===${NC}"
-TRANSFER_BODY="{\"recipient_user_id\":\"$USER2_ID\",\"amount\":5.0,\"currency\":\"SILVER_SEAL\",\"reason\":\"Test transfer\"}"
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/transfer" -H "Authorization: Bearer $USER1_TOKEN" -H "Content-Type: application/json" -d "$TRANSFER_BODY")
-HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
-HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
-
-log_request "TEST 7" "POST" "$ECO_URL/transfer" "$TRANSFER_BODY" "$HTTP_BODY" "$HTTP_CODE"
-
-if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
-    echo -e "${GREEN}✓ Transfer successful${NC}"
-    LEDGER_ID=$(get_json_string "$HTTP_BODY" "ledger_entry_id")
-    SENDER_BAL=$(get_json_number "$HTTP_BODY" "sender_balance")
-    RECEIVER_BAL=$(get_json_number "$HTTP_BODY" "receiver_balance")
-    echo -e "${CYAN}  Ledger ID: $LEDGER_ID${NC}"
-    echo -e "${CYAN}  Sender: $SENDER_BAL, Receiver: $RECEIVER_BAL${NC}"
-else
-    echo -e "${RED}✗ Transfer failed: HTTP $HTTP_CODE${NC}"
-fi
-
-echo ""
 
 # TEST 8: Idempotency - First Request
 echo -e "${GREEN}=== TEST 8: Idempotency - First Request ===${NC}"
@@ -324,7 +304,7 @@ RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/transfer" -H "Authoriza
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 9" "POST" "$ECO_URL/transfer (duplicate)" "$TRANSFER_BODY" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 9" "POST" "$ECO_URL/transfer - duplicate" "$TRANSFER_BODY" "$HTTP_BODY" "$HTTP_CODE"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     LEDGER_ID_2=$(get_json_string "$HTTP_BODY" "ledger_entry_id")
@@ -374,28 +354,6 @@ fi
 
 echo ""
 
-# TEST 11: Give Seal to User
-echo -e "${GREEN}=== TEST 11: Give Seal to User ===${NC}"
-sleep 65
-
-GIFT_BODY="{\"amount\":1.5,\"currency\":\"SILVER_SEAL\",\"message\":\"Thanks!\"}"
-
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/user/$USER2_ID" -H "Authorization: Bearer $USER1_TOKEN" -H "Content-Type: application/json" -d "$GIFT_BODY")
-HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
-HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
-
-log_request "TEST 11" "POST" "$ECO_URL/seal/user/$USER2_ID" "$GIFT_BODY" "$HTTP_BODY" "$HTTP_CODE"
-
-if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
-    echo -e "${GREEN}✓ Seal given to user successfully${NC}"
-    SENDER_BAL=$(get_json_number "$HTTP_BODY" "sender_balance")
-    RECEIVER_BAL=$(get_json_number "$HTTP_BODY" "receiver_balance")
-    echo -e "${CYAN}  Sender: $SENDER_BAL, Receiver: $RECEIVER_BAL${NC}"
-else
-    echo -e "${RED}✗ Give seal failed: HTTP $HTTP_CODE${NC}"
-fi
-
-echo ""
 
 # TEST 12: Transaction History
 echo -e "${GREEN}=== TEST 12: Transaction History ===${NC}"

@@ -14,6 +14,7 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	Redis    RedisConfig    `yaml:"redis"`
+	Cache    CacheConfig    `yaml:"cache"`
 	Logging  LoggingConfig  `yaml:"logging"`
 	JWT      JWTConfig      `yaml:"jwt"`
 	CORS     CORSConfig     `yaml:"cors"`
@@ -36,6 +37,13 @@ type EconomyConfig struct {
 	TransferCooldownSeconds int     `yaml:"transfer_cooldown_seconds"`
 	ReferralBonusSeals      float64 `yaml:"referral_bonus_seals"`
 	ReferralBonusCents      int64   `yaml:"referral_bonus_cents"`
+	SealCooldownLevel1Days  int     `yaml:"seal_cooldown_level1_days"`
+	SealCooldownLevel2Days  int     `yaml:"seal_cooldown_level2_days"`
+	SealCooldownLevel3Days  int     `yaml:"seal_cooldown_level3_days"`
+	SealCooldownLevel4Days  int     `yaml:"seal_cooldown_level4_days"`
+	SealCooldownLevel5Days  int     `yaml:"seal_cooldown_level5_days"`
+	SealDecayThreshold1Days int     `yaml:"seal_decay_threshold1_days"`
+	SealDecayThreshold2Days int     `yaml:"seal_decay_threshold2_days"`
 }
 
 type OAuthConfig struct {
@@ -88,6 +96,11 @@ type RedisConfig struct {
 	DB           int    `yaml:"db"`
 	PoolSize     int    `yaml:"pool_size"`
 	MinIdleConns int    `yaml:"min_idle_conns"`
+}
+
+type CacheConfig struct {
+	ProfileStatsTTL time.Duration `yaml:"profile_stats_ttl"`
+	Enabled         bool          `yaml:"enabled"`
 }
 
 type LoggingConfig struct {
@@ -237,6 +250,27 @@ func overrideFromEnv(cfg *Config) {
 	if cfg.Economy.ReferralBonusCents == 0 {
 		cfg.Economy.ReferralBonusCents = 100
 	}
+	if cfg.Economy.SealCooldownLevel1Days == 0 {
+		cfg.Economy.SealCooldownLevel1Days = 30
+	}
+	if cfg.Economy.SealCooldownLevel2Days == 0 {
+		cfg.Economy.SealCooldownLevel2Days = 45
+	}
+	if cfg.Economy.SealCooldownLevel3Days == 0 {
+		cfg.Economy.SealCooldownLevel3Days = 60
+	}
+	if cfg.Economy.SealCooldownLevel4Days == 0 {
+		cfg.Economy.SealCooldownLevel4Days = 90
+	}
+	if cfg.Economy.SealCooldownLevel5Days == 0 {
+		cfg.Economy.SealCooldownLevel5Days = 120
+	}
+	if cfg.Economy.SealDecayThreshold1Days == 0 {
+		cfg.Economy.SealDecayThreshold1Days = 120
+	}
+	if cfg.Economy.SealDecayThreshold2Days == 0 {
+		cfg.Economy.SealDecayThreshold2Days = 240
+	}
 
 	// Overrides
 	if v := os.Getenv("ECONOMY_MAX_DAILY_TRANSFERS"); v != "" {
@@ -254,12 +288,61 @@ func overrideFromEnv(cfg *Config) {
 			cfg.Economy.TransferCooldownSeconds = val
 		}
 	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL1_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel1Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL2_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel2Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL3_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel3Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL4_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel4Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL5_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel5Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_DECAY_THRESHOLD1_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealDecayThreshold1Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_DECAY_THRESHOLD2_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealDecayThreshold2Days = val
+		}
+	}
 
 	// Admin
 	if v := os.Getenv("ADMIN_EMAILS"); v != "" {
 		cfg.Admin.Emails = strings.Split(v, ",")
 		for i := range cfg.Admin.Emails {
 			cfg.Admin.Emails[i] = strings.TrimSpace(cfg.Admin.Emails[i])
+		}
+	}
+
+	// Cache defaults
+	if cfg.Cache.ProfileStatsTTL == 0 {
+		cfg.Cache.ProfileStatsTTL = 5 * time.Minute
+	}
+	// Cache enabled by default (true by default if not specified)
+	if v := os.Getenv("CACHE_ENABLED"); v != "" {
+		cfg.Cache.Enabled = v == "true"
+	}
+	if v := os.Getenv("CACHE_PROFILE_STATS_TTL"); v != "" {
+		if ttl, err := parseDurationEnv(v); err == nil {
+			cfg.Cache.ProfileStatsTTL = ttl
 		}
 	}
 }
