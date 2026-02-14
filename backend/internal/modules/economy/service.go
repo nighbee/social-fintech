@@ -195,15 +195,21 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 				threshold1 := time.Duration(s.cfg.SealDecayThreshold1Days) * 24 * time.Hour
 				threshold2 := time.Duration(s.cfg.SealDecayThreshold2Days) * 24 * time.Hour
 
+				decayed := false
 				if diff >= threshold2 {
 					repeatLevel = max(repeatLevel-2, 1)
+					decayed = true
 				} else if diff >= threshold1 {
 					repeatLevel = max(repeatLevel-1, 1)
+					decayed = true
+				}
+
+				if !decayed && repeatLevel < 5 {
+					repeatLevel++
 				}
 			}
 
-			// Update levels later after transaction success
-			// But we need to keep track of it
+			// Update values in context to use later when upserting cooldown
 			ctx = context.WithValue(ctx, "seal_repeat_level", repeatLevel)
 		}
 
@@ -326,15 +332,11 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 			if rl, ok := ctx.Value("seal_repeat_level").(int); ok {
 				now := time.Now()
 				duration := s.getCooldownDuration(rl)
-				newLevel := rl + 1
-				if newLevel > 5 {
-					newLevel = 5
-				}
 
 				newCooldown := &PairCooldown{
 					SenderUserID:   senderUserID,
 					ReceiverUserID: req.RecipientUserID,
-					RepeatLevel:    newLevel,
+					RepeatLevel:    rl,
 					LastGrantAt:    now,
 					NextAllowedAt:  now.Add(duration),
 				}
@@ -1043,10 +1045,17 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			threshold1 := time.Duration(s.cfg.SealDecayThreshold1Days) * 24 * time.Hour
 			threshold2 := time.Duration(s.cfg.SealDecayThreshold2Days) * 24 * time.Hour
 
+			decayed := false
 			if diff >= threshold2 {
 				repeatLevel = max(repeatLevel-2, 1)
+				decayed = true
 			} else if diff >= threshold1 {
 				repeatLevel = max(repeatLevel-1, 1)
+				decayed = true
+			}
+
+			if !decayed && repeatLevel < 5 {
+				repeatLevel++
 			}
 		}
 
@@ -1070,18 +1079,12 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 				match = false
 			}
 
-			// Check Receiver Wallet if applicable
-			if receiverID != "" {
-				receiverWallet, _ := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
-				fmt.Printf("[IDEMPOTENCY] Checking Receiver: existing=%v, current=%s\n", existing.ReceiverWalletID, receiverWallet.ID)
-				if existing.ReceiverWalletID == nil || *existing.ReceiverWalletID != receiverWallet.ID {
-					match = false
-				}
-			} else if existing.ReceiverWalletID != nil {
+			// Check Receiver Wallet
+			receiverWallet, _ := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
+			if existing.ReceiverWalletID == nil || *existing.ReceiverWalletID != receiverWallet.ID {
 				match = false
 			}
 
-			fmt.Printf("[IDEMPOTENCY] Final Match Result: %v\n", match)
 			if !match {
 				return ErrIdempotencyConflict
 			}
@@ -1094,80 +1097,53 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			return nil
 		}
 
-		// 4. Update Wallet
+		// 4. Get Receiver Wallet (required for recording ID)
+		receiverWallet, err := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
+		if err != nil {
+			return WrapErrorf(err, "failed to get receiver wallet")
+		}
+
+		// 5. Atomic Updates
+		// Sender
 		wallet.Balance -= amount
 		if currency == CurrencySilverSeal && wallet.FreeBalance > 0 {
 			deductFromFree := min(wallet.FreeBalance, amount)
 			wallet.FreeBalance -= deductFromFree
 		}
-
 		if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
 			return err
 		}
 
-		if category == CategoryP2PTransfer {
-			// For P2P, we also update receiver wallet
-			receiverWallet, err := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
-			if err != nil {
-				return WrapErrorf(err, "failed to get receiver wallet")
-			}
-			receiverWallet.Balance += amount
-			if err := txRepo.UpdateWalletWithVersion(ctx, receiverWallet, receiverWallet.Version); err != nil {
-				return err
-			}
-
-			// For response
-			response = &TransferResponse{
-				ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
-			}
+		// Receiver
+		receiverWallet.Balance += amount
+		if err := txRepo.UpdateWalletWithVersion(ctx, receiverWallet, receiverWallet.Version); err != nil {
+			return err
 		}
 
-		// 5. Create Ledger Entry
+		// 6. Create Ledger Entry
 		entry := &LedgerEntry{
-			ID:             uuid.New().String(),
-			Amount:         amount,
-			Currency:       currency,
-			SenderWalletID: &wallet.ID,
-			Category:       category,
-			ReferenceID:    refID,
-			Metadata:       mustMarshalJSON(metadata),
-			CreatedAt:      now,
-		}
-
-		if category != CategoryP2PTransfer {
-
-			receiverWallet, err := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
-			if err != nil {
-				return WrapErrorf(err, "failed to get receiver wallet")
-			}
-			receiverWallet.Balance += amount
-			if err := txRepo.UpdateWalletWithVersion(ctx, receiverWallet, receiverWallet.Version); err != nil {
-				return err
-			}
-			entry.ReceiverWalletID = &receiverWallet.ID
-
-			if response == nil {
-				response = &TransferResponse{}
-			}
-			response.ReceiverBalance = CentinelsToSeals(receiverWallet.Balance)
-		} else {
-
+			ID:               uuid.New().String(),
+			Amount:           amount,
+			Currency:         currency,
+			SenderWalletID:   &wallet.ID,
+			ReceiverWalletID: &receiverWallet.ID,
+			Category:         category,
+			ReferenceID:      refID,
+			Metadata:         mustMarshalJSON(metadata),
+			CreatedAt:        now,
 		}
 
 		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
 			return WrapErrorf(err, "failed to create ledger entry")
 		}
 
+		// 7. Update Pair Cooldown
 		duration := s.getCooldownDuration(repeatLevel)
-		newLevel := repeatLevel + 1
-		if newLevel > 5 {
-			newLevel = 5
-		}
 
 		newCooldown := &PairCooldown{
 			SenderUserID:   senderID,
 			ReceiverUserID: receiverID,
-			RepeatLevel:    newLevel,
+			RepeatLevel:    repeatLevel,
 			LastGrantAt:    now,
 			NextAllowedAt:  now.Add(duration),
 		}
@@ -1181,16 +1157,14 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		}
 
 		_ = s.cacheInvalidator.InvalidateStats(ctx, senderID)
-		if category == CategoryP2PTransfer && receiverID != "" {
-			_ = s.cacheInvalidator.InvalidateStats(ctx, receiverID)
-		}
+		_ = s.cacheInvalidator.InvalidateStats(ctx, receiverID)
 
-		if response == nil {
-			response = &TransferResponse{}
+		response = &TransferResponse{
+			LedgerEntryID:   entry.ID,
+			SenderBalance:   CentinelsToSeals(wallet.Balance),
+			ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
+			Timestamp:       entry.CreatedAt,
 		}
-		response.SenderBalance = CentinelsToSeals(wallet.Balance)
-		response.LedgerEntryID = entry.ID
-		response.Timestamp = entry.CreatedAt
 
 		return nil
 	})

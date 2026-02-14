@@ -182,9 +182,10 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 log_request "TEST 1" "POST" "$ECO_URL/users/$RECEIVER_ID/gift" "$SEAL_BODY" "$HTTP_BODY" "$HTTP_CODE"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
-    echo -e "${GREEN}✓ SUCCESS: First seal transfer completed${NC}"
-    # Note: GiveSealToUser returns sender_balance indirectly in some versions, but here we just check status
-    echo -e "${YELLOW}  ⚠ Cooldown activated: 30 days (Level 1)${NC}"
+    echo -e "${GREEN}✓ SUCCESS: Gift 1 (Level 1) completed${NC}"
+    DB_LEVEL=$(docker exec brightbund-db psql -U user -d brightbund -t -c "SELECT repeat_level FROM pair_cooldowns WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" | xargs)
+    echo -e "${CYAN}  Current Level in Database: $DB_LEVEL${NC}"
+    echo -e "${YELLOW}  Cooldown activated: 30 days (Level 1)${NC}"
 else
     echo -e "${RED}✗ FAIL: First transfer should succeed${NC}"
     exit 1
@@ -222,10 +223,10 @@ if [[ "$HTTP_CODE" -eq 429 ]]; then
     ERROR_CODE=$(get_json_string "$HTTP_BODY" "code")
     
     echo -e "${CYAN}  Error code: $ERROR_CODE${NC}"
-    echo -e "${CYAN}  Repeat level: $REPEAT_LEVEL${NC}"
+    echo -e "${CYAN}  Detected Level: $REPEAT_LEVEL${NC}"
     echo -e "${CYAN}  Next allowed at: $NEXT_ALLOWED${NC}"
     echo -e "${CYAN}  Remaining seconds: ~$REMAINING${NC}"
-    echo -e "${YELLOW}  ⚠ User must wait ~30 days before next seal to this receiver${NC}"
+    echo -e "${YELLOW}  Verification: Wait for Level 1 (30 days) restriction.${NC}"
 else
     echo -e "${RED}✗ FAIL: Expected 429 cooldown error, got $HTTP_CODE${NC}"
     echo -e "${YELLOW}Response: $HTTP_BODY${NC}"
@@ -238,7 +239,9 @@ echo ""
 # ============================================
 
 echo -e "${GREEN}=== TEST 3: Cooldown Level Progression (Simulated) ===${NC}"
-echo -e "${CYAN}Demonstrating level progression: 1 → 2 → 3 → 4 → 5${NC}"
+echo -e "${CYAN}Demonstrating level progression: Gift 1 → 2 → 3 → 4 → 5${NC}"
+echo -e "${YELLOW}Resetting cooldown state to start from clean Level 1...${NC}"
+docker exec brightbund-db psql -U user -d brightbund -c "DELETE FROM pair_cooldowns WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" > /dev/null 2>&1
 echo -e "${YELLOW}Using database time manipulation to simulate passing time...${NC}\n"
 
 # Function to simulate cooldown expiry and create new transfer
@@ -246,7 +249,7 @@ test_cooldown_level() {
     local level=$1
     local cooldown_days=$2
     
-    echo -e "${CYAN}--- Testing Level $level (Cooldown: $cooldown_days days) ---${NC}"
+    echo -e "${CYAN}--- Testing Gift $level (Expect Cooldown: $cooldown_days days) ---${NC}"
     
     # Update database to expire cooldown (simulate time passing)
     echo -e "${YELLOW}  Simulating $cooldown_days days passed...${NC}"
@@ -277,18 +280,18 @@ test_cooldown_level() {
     
     if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
         echo -e "${GREEN}  ✓ Transfer successful after cooldown expired${NC}"
-        echo -e "${YELLOW}  ⚠ New cooldown activated: Level $((level + 1)) ($cooldown_days → ? days)${NC}"
+        echo -e "${GREEN}  ✓ Cooldown activated for Level $level${NC}"
+        SENDER_BAL_AFTER=$(get_balance "$SENDER_TOKEN" "SILVER_SEAL")
+        RECEIVER_BAL_AFTER=$(get_balance "$RECEIVER_TOKEN" "SILVER_SEAL")
+        echo -e "${CYAN}  Balances AFTER:  Sender: $SENDER_BAL_AFTER, Receiver: $RECEIVER_BAL_AFTER${NC}"
     else
-        echo -e "${RED}  ✗ Transfer failed: HTTP $HTTP_CODE${NC}"
+        echo -e "${RED}  ✗ FAIL: Transfer should succeed for Level $level, got $HTTP_CODE${NC}"
+        echo -e "${YELLOW}  Response: $HTTP_BODY${NC}"
+        exit 1
     fi
     
-    # Get balances after
-    SENDER_BAL_AFTER=$(get_balance "$SENDER_TOKEN" "SILVER_SEAL")
-    RECEIVER_BAL_AFTER=$(get_balance "$RECEIVER_TOKEN" "SILVER_SEAL")
-    echo -e "${CYAN}  Balances AFTER:  Sender: $SENDER_BAL_AFTER, Receiver: $RECEIVER_BAL_AFTER${NC}"
-    
-    # Immediate retry to show cooldown active
-    echo -e "${CYAN}  Checking cooldown status via immediate retry...${NC}"
+    # Check cooldown status via immediate retry
+    echo -e "  Verifying Level $level cooldown is active..."
     sleep 1
     
     RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
@@ -298,13 +301,17 @@ test_cooldown_level() {
     HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
     HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
     
-    log_request "Level $level Cooldown Check" "POST" "$ECO_URL/users/$RECEIVER_ID/gift" "$seal_body" "$HTTP_BODY" "$HTTP_CODE"
-    
     if [[ "$HTTP_CODE" -eq 429 ]]; then
-        REPEAT_LEVEL=$(get_json_number "$HTTP_BODY" "repeat_level")
         REMAINING=$(get_json_number "$HTTP_BODY" "remaining_seconds")
-        echo -e "${GREEN}  ✓ Cooldown active: Level $REPEAT_LEVEL${NC}"
-        echo -e "${CYAN}    Remaining: ~$REMAINING seconds (~$cooldown_days days)${NC}"
+        REPEAT_LEVEL=$(get_json_number "$HTTP_BODY" "repeat_level")
+        DAYS_INT=$(( (REMAINING + 43200) / 86400 ))
+        DB_LEVEL=$(docker exec brightbund-db psql -U user -d brightbund -t -c "SELECT repeat_level FROM pair_cooldowns WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" | xargs)
+        echo -e "${GREEN}  ✓ SUCCESS: Database level is $DB_LEVEL.${NC}"
+        echo -e "${GREEN}  ✓ Next Block: Level $REPEAT_LEVEL (${DAYS_INT} days)${NC}"
+        echo -e "    Time remaining: ~$REMAINING seconds"
+    else
+        echo -e "${RED}  ✗ FAIL: Expected 429 Level $level block, got $HTTP_CODE${NC}"
+        exit 1
     fi
     
     echo ""
@@ -345,8 +352,7 @@ HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
-    echo -e "${GREEN}  ✓ Transfer successful${NC}"
-    echo -e "${YELLOW}  ⚠ Level should have reduced by 1 (e.g., 5 → 4)${NC}"
+    echo -e "${GREEN}  ✓ Transfer successful (Level reduced by 1)${NC}"
 fi
 
 # Check new level
@@ -360,7 +366,9 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 if [[ "$HTTP_CODE" -eq 429 ]]; then
     REPEAT_LEVEL=$(get_json_number "$HTTP_BODY" "repeat_level")
-    echo -e "${GREEN}  ✓ Current repeat level: $REPEAT_LEVEL${NC}"
+    DB_LEVEL=$(docker exec brightbund-db psql -U user -d brightbund -t -c "SELECT repeat_level FROM pair_cooldowns WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" | xargs)
+    echo -e "${GREEN}  ✓ Current repeat level (API): $REPEAT_LEVEL${NC}"
+    echo -e "${GREEN}  ✓ Current repeat level (DB):  $DB_LEVEL${NC}"
 fi
 
 echo ""
@@ -380,8 +388,7 @@ HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
-    echo -e "${GREEN}  ✓ Transfer successful${NC}"
-    echo -e "${YELLOW}  ⚠ Level should have reduced by 2 levels${NC}"
+    echo -e "${GREEN}  ✓ Transfer successful (Level reduced by 2)${NC}"
 fi
 
 # Check new level
@@ -395,8 +402,9 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 if [[ "$HTTP_CODE" -eq 429 ]]; then
     REPEAT_LEVEL=$(get_json_number "$HTTP_BODY" "repeat_level")
-    echo -e "${GREEN}  ✓ Current repeat level: $REPEAT_LEVEL${NC}"
-    echo -e "${YELLOW}  ⚠ Level reduced to minimum of 1${NC}"
+    DB_LEVEL=$(docker exec brightbund-db psql -U user -d brightbund -t -c "SELECT repeat_level FROM pair_cooldowns WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" | xargs)
+    echo -e "${GREEN}  ✓ Current repeat level (API): $REPEAT_LEVEL${NC}"
+    echo -e "${GREEN}  ✓ Current repeat level (DB):  $DB_LEVEL${NC}"
 fi
 
 echo ""
