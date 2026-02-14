@@ -332,7 +332,8 @@ func IsDuplicateError(err error) bool {
 	return errors.Is(err, ErrDuplicateTransaction) ||
 		errors.Is(err, ErrWalletExists) ||
 		errors.Is(err, ErrSealAlreadyGiven) ||
-		errors.Is(err, ErrPurchaseAlreadyCredited)
+		errors.Is(err, ErrPurchaseAlreadyCredited) ||
+		errors.Is(err, ErrIdempotencyConflict)
 }
 
 func IsEconomyError(err error) (*EconomyError, bool) {

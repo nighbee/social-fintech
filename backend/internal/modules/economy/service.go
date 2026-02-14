@@ -158,6 +158,11 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 	}
 
 	amountCents := SealsToCentinels(req.Amount)
+	isSeal := currency == CurrencySilverSeal || currency == CurrencyGoldSeal
+
+	if isSeal && amountCents != CentinelsPerSeal {
+		return nil, NewValidationError("amount", "seal transfer must be exactly 1 seal")
+	}
 
 	var response *TransferResponse
 	err := s.executeWithRetry(ctx, func() error {
@@ -168,6 +173,39 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		defer tx.Rollback()
 
 		txRepo := s.repo.WithTx(tx)
+
+		if isSeal {
+			// 1. Check/Update Cooldown for Seals
+			cooldown, err := txRepo.GetPairCooldown(ctx, senderUserID, req.RecipientUserID)
+			if err != nil {
+				return WrapErrorf(err, "failed to get pair cooldown")
+			}
+
+			now := time.Now()
+			repeatLevel := 1
+
+			if cooldown != nil {
+				if now.Before(cooldown.NextAllowedAt) {
+					return NewCooldownError(cooldown.LastGrantAt, cooldown.NextAllowedAt.Sub(cooldown.LastGrantAt), cooldown.RepeatLevel)
+				}
+
+				diff := now.Sub(cooldown.LastGrantAt)
+				repeatLevel = cooldown.RepeatLevel
+
+				threshold1 := time.Duration(s.cfg.SealDecayThreshold1Days) * 24 * time.Hour
+				threshold2 := time.Duration(s.cfg.SealDecayThreshold2Days) * 24 * time.Hour
+
+				if diff >= threshold2 {
+					repeatLevel = max(repeatLevel-2, 1)
+				} else if diff >= threshold1 {
+					repeatLevel = max(repeatLevel-1, 1)
+				}
+			}
+
+			// Update levels later after transaction success
+			// But we need to keep track of it
+			ctx = context.WithValue(ctx, "seal_repeat_level", repeatLevel)
+		}
 
 		monthYear := FormatMonthYear(time.Now())
 		limit, err := txRepo.GetOrCreateTransferLimit(ctx, senderUserID, monthYear)
@@ -282,6 +320,29 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		limit.IncrementTransfer(amountCents)
 		if err := txRepo.UpdateTransferLimit(ctx, limit, oldTransfersCount, oldTotalSent); err != nil {
 			return WrapErrorf(err, "failed to update transfer limit")
+		}
+
+		if isSeal {
+			if rl, ok := ctx.Value("seal_repeat_level").(int); ok {
+				now := time.Now()
+				duration := s.getCooldownDuration(rl)
+				newLevel := rl + 1
+				if newLevel > 5 {
+					newLevel = 5
+				}
+
+				newCooldown := &PairCooldown{
+					SenderUserID:   senderUserID,
+					ReceiverUserID: req.RecipientUserID,
+					RepeatLevel:    newLevel,
+					LastGrantAt:    now,
+					NextAllowedAt:  now.Add(duration),
+				}
+
+				if err := txRepo.UpsertPairCooldown(ctx, newCooldown); err != nil {
+					return WrapErrorf(err, "failed to update cooldown")
+				}
+			}
 		}
 
 		if err := tx.Commit(); err != nil {
@@ -1001,6 +1062,30 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 
 		// 3. Check Idempotency
 		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, refID); err == nil && existing != nil {
+			// Strict check: parameters must match exactly
+			match := existing.Amount == amount && existing.Currency == currency
+
+			// Check Sender Wallet
+			if existing.SenderWalletID == nil || *existing.SenderWalletID != wallet.ID {
+				match = false
+			}
+
+			// Check Receiver Wallet if applicable
+			if receiverID != "" {
+				receiverWallet, _ := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
+				fmt.Printf("[IDEMPOTENCY] Checking Receiver: existing=%v, current=%s\n", existing.ReceiverWalletID, receiverWallet.ID)
+				if existing.ReceiverWalletID == nil || *existing.ReceiverWalletID != receiverWallet.ID {
+					match = false
+				}
+			} else if existing.ReceiverWalletID != nil {
+				match = false
+			}
+
+			fmt.Printf("[IDEMPOTENCY] Final Match Result: %v\n", match)
+			if !match {
+				return ErrIdempotencyConflict
+			}
+
 			response = &TransferResponse{
 				LedgerEntryID: existing.ID,
 				SenderBalance: CentinelsToSeals(wallet.Balance),
@@ -1073,11 +1158,11 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			return WrapErrorf(err, "failed to create ledger entry")
 		}
 
+		duration := s.getCooldownDuration(repeatLevel)
 		newLevel := repeatLevel + 1
 		if newLevel > 5 {
 			newLevel = 5
 		}
-		duration := s.getCooldownDuration(newLevel)
 
 		newCooldown := &PairCooldown{
 			SenderUserID:   senderID,

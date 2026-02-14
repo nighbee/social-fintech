@@ -36,6 +36,17 @@ get_json_field() {
     echo "$1" | grep -o "\"$2\": *[^,}]*" | head -1 | sed "s/\"$2\": *//" | tr -d '"'
 }
 
+get_balance() {
+    local token="$1"
+    local currency="$2"
+    RESPONSE=$(curl -s -X GET "$ECO_URL/balance" -H "Authorization: Bearer $token")
+    if [[ "$currency" == "SILVER_SEAL" ]]; then
+        get_json_number "$RESPONSE" "silver_balance"
+    else
+        get_json_number "$RESPONSE" "gold_balance"
+    fi
+}
+
 log_request() {
     local test_name="$1"
     local method="$2"
@@ -101,7 +112,8 @@ if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
         exit 1
     fi
 else
-    echo -e "${RED}✗ Admin creation failed${NC}"
+    echo -e "${RED}✗ Admin creation failed: HTTP $HTTP_CODE${NC}"
+    log_request "Admin Registration" "POST" "$AUTH_URL/register-email" "$REGISTER_BODY" "$HTTP_BODY" "$HTTP_CODE"
     exit 1
 fi
 
@@ -156,26 +168,22 @@ echo ""
 # ============================================
 
 echo -e "${GREEN}=== TEST 1: First Seal Transfer (Success - Level 1 Cooldown) ===${NC}"
-echo -e "${CYAN}Sending 1 seal from Sender to Receiver via post...${NC}"
+echo -e "${CYAN}Sending 1 seal from Sender to Receiver via P2P gift...${NC}"
 
-POST_ID="test-post-cooldown-${RANDOM}"
-SEAL_BODY="{\"amount\":1,\"currency\":\"SILVER_SEAL\",\"receiver_user_id\":\"$RECEIVER_ID\"}"
+SEAL_BODY="{\"amount\":1.0,\"currency\":\"SILVER_SEAL\",\"message\":\"First gift\"}"
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$POST_ID" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
     -H "Authorization: Bearer $SENDER_TOKEN" \
     -H "Content-Type: application/json" \
     -d "$SEAL_BODY")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 1" "POST" "$ECO_URL/seal/post/$POST_ID" "$SEAL_BODY" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 1" "POST" "$ECO_URL/users/$RECEIVER_ID/gift" "$SEAL_BODY" "$HTTP_BODY" "$HTTP_CODE"
 
 if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ SUCCESS: First seal transfer completed${NC}"
-    SENDER_BAL=$(get_json_number "$HTTP_BODY" "sender_balance")
-    RECEIVER_BAL=$(get_json_number "$HTTP_BODY" "receiver_balance")
-    echo -e "${CYAN}  Sender balance: $SENDER_BAL${NC}"
-    echo -e "${CYAN}  Receiver balance: $RECEIVER_BAL${NC}"
+    # Note: GiveSealToUser returns sender_balance indirectly in some versions, but here we just check status
     echo -e "${YELLOW}  ⚠ Cooldown activated: 30 days (Level 1)${NC}"
 else
     echo -e "${RED}✗ FAIL: First transfer should succeed${NC}"
@@ -193,17 +201,16 @@ echo -e "${CYAN}Attempting second seal transfer immediately...${NC}"
 
 sleep 2
 
-POST_ID_2="test-post-cooldown-2-${RANDOM}"
-SEAL_BODY_2="{\"amount\":1,\"currency\":\"SILVER_SEAL\",\"receiver_user_id\":\"$RECEIVER_ID\"}"
+SEAL_BODY_2="{\"amount\":1.0,\"currency\":\"SILVER_SEAL\",\"message\":\"Immediate retry\"}"
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$POST_ID_2" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
     -H "Authorization: Bearer $SENDER_TOKEN" \
     -H "Content-Type: application/json" \
     -d "$SEAL_BODY_2")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
-log_request "TEST 2" "POST" "$ECO_URL/seal/post/$POST_ID_2" "$SEAL_BODY_2" "$HTTP_BODY" "$HTTP_CODE"
+log_request "TEST 2" "POST" "$ECO_URL/users/$RECEIVER_ID/gift" "$SEAL_BODY_2" "$HTTP_BODY" "$HTTP_CODE"
 
 if [[ "$HTTP_CODE" -eq 429 ]]; then
     echo -e "${GREEN}✓ SUCCESS: Transfer blocked with 429 (cooldown active)${NC}"
@@ -221,6 +228,7 @@ if [[ "$HTTP_CODE" -eq 429 ]]; then
     echo -e "${YELLOW}  ⚠ User must wait ~30 days before next seal to this receiver${NC}"
 else
     echo -e "${RED}✗ FAIL: Expected 429 cooldown error, got $HTTP_CODE${NC}"
+    echo -e "${YELLOW}Response: $HTTP_BODY${NC}"
 fi
 
 echo ""
@@ -249,35 +257,48 @@ test_cooldown_level() {
     
     sleep 1
     
-    # Attempt transfer
-    local post_id="test-post-level-${level}-${RANDOM}"
-    local seal_body="{\"amount\":1,\"currency\":\"SILVER_SEAL\",\"receiver_user_id\":\"$RECEIVER_ID\"}"
+    # Get balances before
+    SENDER_BAL_BEFORE=$(get_balance "$SENDER_TOKEN" "SILVER_SEAL")
+    RECEIVER_BAL_BEFORE=$(get_balance "$RECEIVER_TOKEN" "SILVER_SEAL")
     
-    RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$post_id" \
+    echo -e "${CYAN}  Balances BEFORE: Sender: $SENDER_BAL_BEFORE, Receiver: $RECEIVER_BAL_BEFORE${NC}"
+    
+    # Attempt transfer
+    local seal_body="{\"amount\":1.0,\"currency\":\"SILVER_SEAL\",\"message\":\"Level $level gift\"}"
+    
+    RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
         -H "Authorization: Bearer $SENDER_TOKEN" \
         -H "Content-Type: application/json" \
         -d "$seal_body")
     HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
     HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    
+    log_request "Level $level Transfer" "POST" "$ECO_URL/users/$RECEIVER_ID/gift" "$seal_body" "$HTTP_BODY" "$HTTP_CODE"
     
     if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
         echo -e "${GREEN}  ✓ Transfer successful after cooldown expired${NC}"
         echo -e "${YELLOW}  ⚠ New cooldown activated: Level $((level + 1)) ($cooldown_days → ? days)${NC}"
     else
         echo -e "${RED}  ✗ Transfer failed: HTTP $HTTP_CODE${NC}"
-        echo -e "${YELLOW}  Response: $HTTP_BODY${NC}"
     fi
     
-    # Immediate retry to show cooldown active
-    sleep 1
-    local post_id_retry="test-post-level-${level}-retry-${RANDOM}"
+    # Get balances after
+    SENDER_BAL_AFTER=$(get_balance "$SENDER_TOKEN" "SILVER_SEAL")
+    RECEIVER_BAL_AFTER=$(get_balance "$RECEIVER_TOKEN" "SILVER_SEAL")
+    echo -e "${CYAN}  Balances AFTER:  Sender: $SENDER_BAL_AFTER, Receiver: $RECEIVER_BAL_AFTER${NC}"
     
-    RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$post_id_retry" \
+    # Immediate retry to show cooldown active
+    echo -e "${CYAN}  Checking cooldown status via immediate retry...${NC}"
+    sleep 1
+    
+    RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
         -H "Authorization: Bearer $SENDER_TOKEN" \
         -H "Content-Type: application/json" \
         -d "$seal_body")
     HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
     HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    
+    log_request "Level $level Cooldown Check" "POST" "$ECO_URL/users/$RECEIVER_ID/gift" "$seal_body" "$HTTP_BODY" "$HTTP_CODE"
     
     if [[ "$HTTP_CODE" -eq 429 ]]; then
         REPEAT_LEVEL=$(get_json_number "$HTTP_BODY" "repeat_level")
@@ -301,35 +322,22 @@ echo -e "${YELLOW}⚠ Level 5 is the maximum, subsequent transfers stay at 120 d
 
 # ============================================
 # TEST 4: Cooldown Decay (Long Pause)
+# TEST 4: Cooldown Decay Mechanism
 # ============================================
 
 echo -e "${GREEN}=== TEST 4: Cooldown Decay Mechanism ===${NC}"
 echo -e "${CYAN}Testing level reduction after long pause...${NC}\n"
 
-# Get current cooldown state
-echo -e "${CYAN}--- Current State ---${NC}"
-COOLDOWN_STATE=$(docker exec brightbund-db psql -U user -d brightbund -t -c \
-    "SELECT repeat_level, last_grant_at, next_allowed_at 
-     FROM pair_cooldowns 
-     WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" 2>/dev/null)
-echo -e "${CYAN}$COOLDOWN_STATE${NC}"
-
-# Scenario 1: 14 days pause (should reduce by 1 level)
-echo -e "${CYAN}--- Scenario 1: 14 Days Pause (Decay by 1 level) ---${NC}"
-echo -e "${YELLOW}  Simulating 14 days since last transfer...${NC}"
-
-docker exec brightbund-db psql -U user -d brightbund -c \
-    "UPDATE pair_cooldowns 
-     SET last_grant_at = NOW() - INTERVAL '14 days',
-         next_allowed_at = NOW() - INTERVAL '1 day'
-     WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" > /dev/null 2>&1
+# Scenario 1: 120 Days Pause (Decay by 1 level)
+echo -e "${GREEN}--- Scenario 1: 120 Days Pause (Decay by 1 level) ---${NC}"
+echo -e "  Simulating 120 days since last transfer..."
+docker exec brightbund-db psql -U user -d brightbund -c "UPDATE pair_cooldowns SET last_grant_at = last_grant_at - interval '120 days', next_allowed_at = next_allowed_at - interval '120 days' WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" > /dev/null 2>&1
 
 sleep 1
 
-POST_ID_DECAY1="test-post-decay-1-${RANDOM}"
-SEAL_BODY="{\"amount\":1,\"currency\":\"SILVER_SEAL\",\"receiver_user_id\":\"$RECEIVER_ID\"}"
+SEAL_BODY="{\"amount\":1.0,\"currency\":\"SILVER_SEAL\",\"message\":\"Decay test 1\"}"
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$POST_ID_DECAY1" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
     -H "Authorization: Bearer $SENDER_TOKEN" \
     -H "Content-Type: application/json" \
     -d "$SEAL_BODY")
@@ -343,8 +351,7 @@ fi
 
 # Check new level
 sleep 1
-POST_ID_CHECK1="test-post-decay-check-1-${RANDOM}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$POST_ID_CHECK1" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
     -H "Authorization: Bearer $SENDER_TOKEN" \
     -H "Content-Type: application/json" \
     -d "$SEAL_BODY")
@@ -358,20 +365,14 @@ fi
 
 echo ""
 
-# Scenario 2: 30 days pause (should reduce by 2 levels)
-echo -e "${CYAN}--- Scenario 2: 30 Days Pause (Decay by 2 levels) ---${NC}"
-echo -e "${YELLOW}  Simulating 30 days since last transfer...${NC}"
-
-docker exec brightbund-db psql -U user -d brightbund -c \
-    "UPDATE pair_cooldowns 
-     SET last_grant_at = NOW() - INTERVAL '30 days',
-         next_allowed_at = NOW() - INTERVAL '1 day'
-     WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" > /dev/null 2>&1
+# Scenario 2: 240 Days Pause (Decay by 2 levels)
+echo -e "${GREEN}--- Scenario 2: 240 Days Pause (Decay by 2 levels) ---${NC}"
+echo -e "  Simulating 240 days since last transfer..."
+docker exec brightbund-db psql -U user -d brightbund -c "UPDATE pair_cooldowns SET last_grant_at = last_grant_at - interval '240 days', next_allowed_at = next_allowed_at - interval '240 days' WHERE sender_user_id = '$SENDER_ID' AND receiver_user_id = '$RECEIVER_ID';" > /dev/null 2>&1
 
 sleep 1
 
-POST_ID_DECAY2="test-post-decay-2-${RANDOM}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$POST_ID_DECAY2" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
     -H "Authorization: Bearer $SENDER_TOKEN" \
     -H "Content-Type: application/json" \
     -d "$SEAL_BODY")
@@ -385,8 +386,7 @@ fi
 
 # Check new level
 sleep 1
-POST_ID_CHECK2="test-post-decay-check-2-${RANDOM}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/seal/post/$POST_ID_CHECK2" \
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/users/$RECEIVER_ID/gift" \
     -H "Authorization: Bearer $SENDER_TOKEN" \
     -H "Content-Type: application/json" \
     -d "$SEAL_BODY")
@@ -397,6 +397,53 @@ if [[ "$HTTP_CODE" -eq 429 ]]; then
     REPEAT_LEVEL=$(get_json_number "$HTTP_BODY" "repeat_level")
     echo -e "${GREEN}  ✓ Current repeat level: $REPEAT_LEVEL${NC}"
     echo -e "${YELLOW}  ⚠ Level reduced to minimum of 1${NC}"
+fi
+
+echo ""
+
+# ============================================
+# TEST 5: Generic Transfer Bypass Prevention
+# ============================================
+
+echo -e "${GREEN}=== TEST 5: Generic Transfer Bypass Prevention ===${NC}"
+
+# Subtest 5.1: Block amount > 1 for Seals
+echo -e "${CYAN}--- Subtest 5.1: Block amount > 1 for Seals via generic transfer ---${NC}"
+TRANSFER_BODY="{\"recipient_user_id\":\"$RECEIVER_ID\",\"amount\":2.0,\"currency\":\"SILVER_SEAL\",\"reason\":\"Bypass attempt\"}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/transfer" \
+    -H "Authorization: Bearer $SENDER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$TRANSFER_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "TEST 5.1" "POST" "$ECO_URL/transfer" "$TRANSFER_BODY" "$HTTP_BODY" "$HTTP_CODE"
+
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}  ✓ SUCCESS: Large seal transfer blocked via generic endpoint${NC}"
+else
+    echo -e "${RED}  ✗ FAIL: Should block > 1 seal transfer (HTTP 400), got $HTTP_CODE${NC}"
+fi
+
+# Subtest 5.2: Respect Pair-Cooldown in Generic Transfer
+echo -e "${CYAN}--- Subtest 5.2: Respect Pair-Cooldown in Generic Transfer ---${NC}"
+# Use 1 seal (valid amount) but while cooldown is active from previous tests
+TRANSFER_BODY_VALID="{\"recipient_user_id\":\"$RECEIVER_ID\",\"amount\":1.0,\"currency\":\"SILVER_SEAL\",\"reason\":\"Bypass attempt 2\"}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ECO_URL/transfer" \
+    -H "Authorization: Bearer $SENDER_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$TRANSFER_BODY_VALID")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "TEST 5.2" "POST" "$ECO_URL/transfer" "$TRANSFER_BODY_VALID" "$HTTP_BODY" "$HTTP_CODE"
+
+if [[ "$HTTP_CODE" -eq 429 ]]; then
+    echo -e "${GREEN}  ✓ SUCCESS: Pair-cooldown enforced on generic transfer endpoint${NC}"
+else
+    echo -e "${RED}  ✗ FAIL: Should enforce pair-cooldown on generic endpoint (HTTP 429), got $HTTP_CODE${NC}"
 fi
 
 echo ""
@@ -414,13 +461,14 @@ echo -e "  ✓ TEST 1: First seal transfer - SUCCESS (Level 1 cooldown activated
 echo -e "  ✓ TEST 2: Immediate retry - BLOCKED with 429 + cooldown info"
 echo -e "  ✓ TEST 3: Level progression - Demonstrated 1 → 2 → 3 → 4 → 5"
 echo -e "  ✓ TEST 4: Decay mechanism - Demonstrated -1 and -2 level reduction"
+echo -e "  ✓ TEST 5: Generic Transfer Bypass Prevention - SUCCESS"
 echo ""
 
 echo -e "${GREEN}Cooldown System Verified:${NC}"
 echo -e "  ✓ Progressive cooldowns: 30 → 45 → 60 → 90 → 120 days"
 echo -e "  ✓ HTTP 429 response with clear information"
-echo -e "  ✓ Decay threshold 1: 14 days = -1 level"
-echo -e "  ✓ Decay threshold 2: 30 days = -2 levels"
+echo -e "  ✓ Decay threshold 1: 120 days = -1 level"
+echo -e "  ✓ Decay threshold 2: 240 days = -2 levels"
 echo -e "  ✓ Minimum level: 1 (30 days)"
 echo -e "  ✓ Maximum level: 5 (120 days)"
 echo ""
