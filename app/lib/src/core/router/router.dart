@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:app/src/features/profile/presentation/pages/profile_page.dart';
+import 'package:app/src/features/profile/presentation/pages/allies_page.dart';
+import 'package:app/src/features/profile/presentation/pages/edit_profile_page.dart';
+import 'package:app/src/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
@@ -23,9 +26,9 @@ import 'package:app/src/features/rating/presentation/pages/rating_page.dart';
 import 'package:app/src/features/chats/presentation/pages/chats_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/developer_features_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/widget_book_page.dart';
+import 'package:app/src/features/profile/presentation/pages/ranks_page.dart';
 import 'package:app/src/core/service/storage/secure_storage/secure_storage_service_impl.dart';
 import 'package:app/src/core/utils/loggers/log.dart';
-
 
 part 'router_paths.dart';
 part 'router_names.dart';

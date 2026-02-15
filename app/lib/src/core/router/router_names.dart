@@ -34,11 +34,15 @@ class RouteNames {
   // Profile routes
   static const String profile = 'profile';
   static const String settings = 'settings';
+  static const String allies = 'allies';
+  static const String publicProfile = 'publicProfile';
+  static const String editProfile = 'editProfile';
 
   // Developer features
   static const String developerFeatures = 'developer_features';
   static const String log = 'log';
   static const String widgetBook = 'widget_book';
+  static const String rangs = 'rangs';
 
   // Add more route names as needed
 }

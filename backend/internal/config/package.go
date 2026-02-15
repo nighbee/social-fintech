@@ -14,11 +14,36 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	Redis    RedisConfig    `yaml:"redis"`
+	Cache    CacheConfig    `yaml:"cache"`
 	Logging  LoggingConfig  `yaml:"logging"`
 	JWT      JWTConfig      `yaml:"jwt"`
 	CORS     CORSConfig     `yaml:"cors"`
 	OAuth    OAuthConfig    `yaml:"oauth"`
 	Firebase FirebaseConfig `yaml:"firebase"`
+	Storage  StorageConfig  `yaml:"storage"`
+	Economy  EconomyConfig  `yaml:"economy"`
+	Admin    AdminConfig    `yaml:"admin"`
+}
+
+type AdminConfig struct {
+	Emails []string `yaml:"emails"`
+}
+
+type EconomyConfig struct {
+	MaxDailyTransfers       int     `yaml:"max_daily_transfers"`
+	MaxFreeSilverBalance    int64   `yaml:"max_free_silver_balance"`
+	DailyAccrualSeals       float64 `yaml:"daily_accrual_seals"`
+	DailyAccrualCents       int64   `yaml:"daily_accrual_cents"`
+	TransferCooldownSeconds int     `yaml:"transfer_cooldown_seconds"`
+	ReferralBonusSeals      float64 `yaml:"referral_bonus_seals"`
+	ReferralBonusCents      int64   `yaml:"referral_bonus_cents"`
+	SealCooldownLevel1Days  int     `yaml:"seal_cooldown_level1_days"`
+	SealCooldownLevel2Days  int     `yaml:"seal_cooldown_level2_days"`
+	SealCooldownLevel3Days  int     `yaml:"seal_cooldown_level3_days"`
+	SealCooldownLevel4Days  int     `yaml:"seal_cooldown_level4_days"`
+	SealCooldownLevel5Days  int     `yaml:"seal_cooldown_level5_days"`
+	SealDecayThreshold1Days int     `yaml:"seal_decay_threshold1_days"`
+	SealDecayThreshold2Days int     `yaml:"seal_decay_threshold2_days"`
 }
 
 type OAuthConfig struct {
@@ -35,6 +60,15 @@ type FirebaseConfig struct {
 	Enabled         bool   `yaml:"enabled"`
 	CredentialsPath string `yaml:"credentials_path"`
 	ProjectID       string `yaml:"project_id"`
+}
+
+type StorageConfig struct {
+	Endpoint  string `yaml:"endpoint"`
+	AccessKey string `yaml:"access_key"`
+	SecretKey string `yaml:"secret_key"`
+	Bucket    string `yaml:"bucket"`
+	UseSSL    bool   `yaml:"use_ssl"`
+	PublicURL string `yaml:"public_url"`
 }
 
 type ServerConfig struct {
@@ -62,6 +96,11 @@ type RedisConfig struct {
 	DB           int    `yaml:"db"`
 	PoolSize     int    `yaml:"pool_size"`
 	MinIdleConns int    `yaml:"min_idle_conns"`
+}
+
+type CacheConfig struct {
+	ProfileStatsTTL time.Duration `yaml:"profile_stats_ttl"`
+	Enabled         bool          `yaml:"enabled"`
 }
 
 type LoggingConfig struct {
@@ -186,6 +225,125 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("FIREBASE_PROJECT_ID"); v != "" {
 		cfg.Firebase.ProjectID = v
+	}
+
+	// Economy Defaults and Overrides
+	// Set defaults if not present in yaml
+	if cfg.Economy.MaxDailyTransfers == 0 {
+		cfg.Economy.MaxDailyTransfers = 50
+	}
+	if cfg.Economy.MaxFreeSilverBalance == 0 {
+		cfg.Economy.MaxFreeSilverBalance = 500 // 5.00 seals
+	}
+	if cfg.Economy.DailyAccrualSeals == 0 {
+		cfg.Economy.DailyAccrualSeals = 1.0
+	}
+	if cfg.Economy.DailyAccrualCents == 0 {
+		cfg.Economy.DailyAccrualCents = 100
+	}
+	if cfg.Economy.TransferCooldownSeconds == 0 {
+		cfg.Economy.TransferCooldownSeconds = 60
+	}
+	if cfg.Economy.ReferralBonusSeals == 0 {
+		cfg.Economy.ReferralBonusSeals = 1.0
+	}
+	if cfg.Economy.ReferralBonusCents == 0 {
+		cfg.Economy.ReferralBonusCents = 100
+	}
+	if cfg.Economy.SealCooldownLevel1Days == 0 {
+		cfg.Economy.SealCooldownLevel1Days = 30
+	}
+	if cfg.Economy.SealCooldownLevel2Days == 0 {
+		cfg.Economy.SealCooldownLevel2Days = 45
+	}
+	if cfg.Economy.SealCooldownLevel3Days == 0 {
+		cfg.Economy.SealCooldownLevel3Days = 60
+	}
+	if cfg.Economy.SealCooldownLevel4Days == 0 {
+		cfg.Economy.SealCooldownLevel4Days = 90
+	}
+	if cfg.Economy.SealCooldownLevel5Days == 0 {
+		cfg.Economy.SealCooldownLevel5Days = 120
+	}
+	if cfg.Economy.SealDecayThreshold1Days == 0 {
+		cfg.Economy.SealDecayThreshold1Days = 120
+	}
+	if cfg.Economy.SealDecayThreshold2Days == 0 {
+		cfg.Economy.SealDecayThreshold2Days = 240
+	}
+
+	// Overrides
+	if v := os.Getenv("ECONOMY_MAX_DAILY_TRANSFERS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.MaxDailyTransfers = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_MAX_FREE_SILVER_BALANCE"); v != "" {
+		if val, err := strconv.ParseInt(v, 10, 64); err == nil {
+			cfg.Economy.MaxFreeSilverBalance = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_TRANSFER_COOLDOWN_SECONDS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.TransferCooldownSeconds = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL1_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel1Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL2_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel2Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL3_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel3Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL4_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel4Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_COOLDOWN_LEVEL5_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealCooldownLevel5Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_DECAY_THRESHOLD1_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealDecayThreshold1Days = val
+		}
+	}
+	if v := os.Getenv("ECONOMY_SEAL_DECAY_THRESHOLD2_DAYS"); v != "" {
+		if val, err := strconv.Atoi(v); err == nil {
+			cfg.Economy.SealDecayThreshold2Days = val
+		}
+	}
+
+	// Admin
+	if v := os.Getenv("ADMIN_EMAILS"); v != "" {
+		cfg.Admin.Emails = strings.Split(v, ",")
+		for i := range cfg.Admin.Emails {
+			cfg.Admin.Emails[i] = strings.TrimSpace(cfg.Admin.Emails[i])
+		}
+	}
+
+	// Cache defaults
+	if cfg.Cache.ProfileStatsTTL == 0 {
+		cfg.Cache.ProfileStatsTTL = 5 * time.Minute
+	}
+	// Cache enabled by default (true by default if not specified)
+	if v := os.Getenv("CACHE_ENABLED"); v != "" {
+		cfg.Cache.Enabled = v == "true"
+	}
+	if v := os.Getenv("CACHE_PROFILE_STATS_TTL"); v != "" {
+		if ttl, err := parseDurationEnv(v); err == nil {
+			cfg.Cache.ProfileStatsTTL = ttl
+		}
 	}
 }
 

@@ -16,6 +16,7 @@ type User struct {
 	PhoneNumber    *string    `db:"phone_number" json:"-"`
 	AvatarURL      string     `db:"avatar_url" json:"avatar_url"`
 	IsShadowBanned bool       `db:"is_shadow_banned" json:"is_shadow_banned"`
+	IsAdmin        bool       `db:"is_admin" json:"is_admin"`
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
 	LastActiveAt   time.Time  `db:"last_active_at" json:"last_active_at"`
@@ -73,7 +74,7 @@ type EmailRegisterRequest struct {
 	FirstName   string `json:"first_name" example:"John"`
 	LastName    string `json:"last_name" example:"Doe"`
 	DateOfBirth string `json:"date_of_birth" example:"2000-01-01"` // YYYY-MM-DD
-	Referral    string `json:"referral" example:"FRIEND123"`
+	ReferrerUserID   string `json:"referrer_user_id" example:"FRIEND123"`
 	DeviceID    string `json:"device_id" example:"device-uuid-12345"`
 	UserAgent   string `json:"user_agent" example:"BrightBund-iOS/1.0"`
 	AppVersion  string `json:"app_version" example:"1.0.0"`
@@ -133,7 +134,7 @@ type PhoneRegisterRequest struct {
 	FirstName      string `json:"first_name"`
 	LastName       string `json:"last_name"`
 	DateOfBirth    string `json:"date_of_birth"` // YYYY-MM-DD
-	Referral       string `json:"referral"`
+	ReferrerUserID      string `json:"referrer_user_id"`
 	DeviceID       string `json:"device_id"`
 	UserAgent      string `json:"user_agent"`
 	AppVersion     string `json:"app_version"`
@@ -167,7 +168,7 @@ type FirebasePhoneRegisterRequest struct {
 	FirstName       string `json:"first_name"`
 	LastName        string `json:"last_name"`
 	DateOfBirth     string `json:"date_of_birth"` // YYYY-MM-DD
-	Referral        string `json:"referral"`
+	ReferrerUserID        string `json:"referrer_user_id"`
 	DeviceID        string `json:"device_id"`
 	UserAgent       string `json:"user_agent"`
 	AppVersion      string `json:"app_version"`

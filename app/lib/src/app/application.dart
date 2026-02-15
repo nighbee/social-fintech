@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 // import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 
 part 'flavor_builds.dart';
 
@@ -28,6 +31,16 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    return _buildApp(flavor: widget.flavor, router: router, languageCode: 'en');
+    return BaseBlocWidget<ProfileBloc, ProfileEvent, ProfileState>(
+      bloc: getIt<ProfileBloc>(),
+      starterEvent: const ProfileEvent.loadProfile(),
+      builder: (context, state, bloc) {
+        return _buildApp(
+          flavor: widget.flavor,
+          router: router,
+          languageCode: 'en',
+        );
+      },
+    );
   }
 }

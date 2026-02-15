@@ -4,7 +4,7 @@ services:
     container_name: brightbund-db
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "5434:5432"
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -57,16 +57,46 @@ services:
       - DB_NAME=brightbund
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - DB_SSLMODE=disable
       - GIN_MODE=debug
       - JWT_SECRET=dev-secret-key-change-in-production-12345
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET=brightbund-media
+      - MINIO_PUBLIC_URL=http://localhost:9000
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+      minio:
+        condition: service_started
     networks:
       - brightbund-network
     command: air -c .air.toml
+
+  minio:
+    image: minio/minio:latest
+    container_name: brightbund-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - brightbund-network
 
   # app:
   #   build:
@@ -94,6 +124,8 @@ volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  minio_data:
     driver: local
 
 networks:

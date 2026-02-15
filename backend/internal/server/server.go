@@ -6,6 +6,8 @@ import (
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
+	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -17,8 +19,7 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-// создает Fiber app, cors auth routes limiter и middleware для бэка
-func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -54,6 +55,8 @@ func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager, au
 		Expiration: 1 * time.Minute,
 	})
 
+	api.Get("/users/search", profilesHandler.SearchUsers)
+
 	authGroup.Post("/login", authLim, authHandler.Login)
 	authGroup.Post("/register-email", authLim, authHandler.RegisterEmail)
 	authGroup.Post("/login-email", authLim, authHandler.LoginEmail)
@@ -70,6 +73,54 @@ func New(cfg *config.Config, authHandler *auth.Handler, jwt *auth.JWTManager, au
 
 	authGroup.Post("/refresh", authLim, authHandler.Refresh)
 	authGroup.Post("/logout", middleware.RequireAuth(jwt, authRepo), middleware.TouchSession(authRepo), authHandler.Logout)
+
+	economyGroup := api.Group("/economy")
+	economyGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	economyGroup.Use(middleware.TouchSession(authRepo))
+
+	economyGroup.Get("/balance", economyHandler.GetBalance)
+	economyGroup.Post("/transfer", economyHandler.TransferSeals)
+	economyGroup.Get("/transactions", economyHandler.GetTransactionHistory)
+	economyGroup.Post("/accrual/claim", economyHandler.ClaimDailyAccrual)
+	economyGroup.Post("/posts/:postID/seals", economyHandler.GiveSealToPost)
+	economyGroup.Post("/users/:userID/gift", economyHandler.GiveSealToUser)
+	economyGroup.Get("/limits", economyHandler.GetLimits)
+	economyGroup.Get("/referral/stats", economyHandler.GetReferralStats)
+
+	// Admin-only routes
+	adminGroup := economyGroup.Group("/admin")
+	adminGroup.Use(middleware.RequireAdmin(authRepo))
+	adminGroup.Post("/adjust", economyHandler.AdminAdjustBalance)
+	adminGroup.Get("/violations", economyHandler.GetViolationLogs)
+
+	// Profiles routes
+	profilesGroup := api.Group("/profiles")
+	profilesGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	profilesGroup.Use(middleware.TouchSession(authRepo))
+
+	profilesGroup.Get("/me", profilesHandler.GetMyProfile)
+	profilesGroup.Patch("/me", profilesHandler.UpdateMyProfile)
+	profilesGroup.Post("/me/avatar", profilesHandler.UploadAvatar)
+	profilesGroup.Get("/me/stats", profilesHandler.GetMyStats)
+	profilesGroup.Get("/me/allies", profilesHandler.GetMyAllies)
+	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
+	profilesGroup.Get("/search", profilesHandler.SearchProfilesForFeed)
+	profilesGroup.Get("/:user_id", profilesHandler.GetPublicProfile)
+	profilesGroup.Get("/:user_id/stats", profilesHandler.GetPublicStats)
+	profilesGroup.Get("/:user_id/relationship", profilesHandler.GetRelationshipStatus)
+	profilesGroup.Post("/:user_id/allies", profilesHandler.AddAlly)
+	profilesGroup.Delete("/:user_id/allies", profilesHandler.RemoveAlly)
+	profilesGroup.Get("/:user_id/allies", profilesHandler.GetAllies)
+
+	// Moderation
+	profilesGroup.Post("/:user_id/block", profilesHandler.BlockUser)
+	profilesGroup.Delete("/:user_id/block", profilesHandler.UnblockUser)
+	profilesGroup.Post("/:user_id/restrict", profilesHandler.RestrictUser)
+	profilesGroup.Delete("/:user_id/restrict", profilesHandler.UnrestrictUser)
+	profilesGroup.Post("/:user_id/report", profilesHandler.ReportUser)
+
+	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank)
+	api.Get("/profiles/ranks", profilesHandler.GetAllRanks)
 
 	return app
 }

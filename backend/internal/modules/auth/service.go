@@ -12,17 +12,23 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type EconomyService interface {
+	GetOrCreateWallets(ctx context.Context, userID string) error
+	ProcessReferralBonus(ctx context.Context, referrerUserID, refereeUserID string) error
+}
+
 // бизнес логика которая связывает jwt, repo, sms и verifiers
 type Service struct {
-	repo      Repository
-	jwt       *JWTManager
-	verifiers map[ProviderType]OAuthVerifier
-	sms       SMSSender
-	logger    *zap.Logger
+	repo           Repository
+	jwt            *JWTManager
+	verifiers      map[ProviderType]OAuthVerifier
+	sms            SMSSender
+	logger         *zap.Logger
+	economyService EconomyService
 }
 
 // конструктор который принимает все свойства структуры сервиса
-func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAuthVerifier, smsSender SMSSender) *Service {
+func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAuthVerifier, smsSender SMSSender, economyService EconomyService) *Service {
 	if smsSender == nil {
 		smsSender = NewNoopSMSSender()
 	}
@@ -30,11 +36,12 @@ func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAu
 	logger, _ := zap.NewProduction()
 
 	return &Service{
-		repo:      repo,
-		jwt:       jwt,
-		verifiers: verifiers,
-		sms:       smsSender,
-		logger:    logger,
+		repo:           repo,
+		jwt:            jwt,
+		verifiers:      verifiers,
+		sms:            smsSender,
+		logger:         logger,
+		economyService: economyService,
 	}
 }
 
@@ -259,7 +266,7 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		FirstName:      req.FirstName,
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
-		ReferralCode:   req.Referral,
+		ReferralCode:   "",
 		PhoneCountry:   nil,
 		PhoneNumber:    nil,
 		AvatarURL:      "",
@@ -271,6 +278,16 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		s.logger.Error("failed_to_create_user_in_registration", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
+	}
+
+	if req.ReferrerUserID != "" {
+		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+			s.logger.Warn("referral_bonus_failed",
+				zap.String("referrer_user_id", req.ReferrerUserID),
+				zap.String("referee_user_id", user.ID),
+				zap.Error(err),
+			)
+		}
 	}
 
 	identity := &Identity{
@@ -578,7 +595,7 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		FirstName:      req.FirstName,
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
-		ReferralCode:   req.Referral,
+		ReferralCode:   "",
 		PhoneCountry:   &phoneCountry,
 		PhoneNumber:    &phoneNumber,
 		AvatarURL:      "",
@@ -589,6 +606,16 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		return nil, err
+	}
+
+	if req.ReferrerUserID != "" {
+		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+			s.logger.Warn("referral_bonus_failed",
+				zap.String("referrer_user_id", req.ReferrerUserID),
+				zap.String("referee_user_id", user.ID),
+				zap.Error(err),
+			)
+		}
 	}
 
 	identity := &Identity{
@@ -864,7 +891,7 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 		FirstName:      req.FirstName,
 		LastName:       req.LastName,
 		DateOfBirth:    &dob,
-		ReferralCode:   req.Referral,
+		ReferralCode:   "",
 		PhoneCountry:   &countryCode,
 		PhoneNumber:    &number,
 		AvatarURL:      "",
@@ -875,6 +902,16 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		return nil, err
+	}
+
+	if req.ReferrerUserID != "" {
+		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+			s.logger.Warn("referral_bonus_failed",
+				zap.String("referrer_user_id", req.ReferrerUserID),
+				zap.String("referee_user_id", user.ID),
+				zap.Error(err),
+			)
+		}
 	}
 
 	// Create identity
@@ -941,4 +978,39 @@ func (s *Service) generateUniqueUsername(ctx context.Context, email string) (str
 	}
 
 	return "", fmt.Errorf("unable to generate username")
+}
+
+// EnsureAdmins promotes the given emails to admin status
+func (s *Service) EnsureAdmins(ctx context.Context, emails []string) error {
+	if len(emails) == 0 {
+		return nil
+	}
+
+	s.logger.Info("ensuring_admins", zap.Strings("emails", emails))
+
+	for _, email := range emails {
+		if email == "" {
+			continue
+		}
+
+		user, err := s.repo.GetUserByEmail(ctx, email)
+		if err != nil {
+			if IsNotFound(err) {
+				s.logger.Warn("admin_seeding_user_not_found", zap.String("email", email))
+				continue
+			}
+			return err
+		}
+
+		if !user.IsAdmin {
+			if err := s.repo.SetAdminStatus(ctx, user.ID, true); err != nil {
+				s.logger.Error("failed_to_promote_admin", zap.String("email", email), zap.Error(err))
+				return err
+			}
+			s.logger.Info("promoted_user_to_admin", zap.String("email", email))
+		} else {
+			s.logger.Debug("user_already_admin", zap.String("email", email))
+		}
+	}
+	return nil
 }

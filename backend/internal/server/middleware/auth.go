@@ -11,8 +11,15 @@ import (
 func RequireAuth(jwt *auth.JWTManager, repo auth.Repository) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		header := c.Get("Authorization")
-		if header == "" || !strings.HasPrefix(header, "Bearer ") {
+		if header == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "missing_token"})
+		}
+		
+		if !strings.HasPrefix(header, "Bearer ") {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+				"error":   "invalid_token_format",
+				"message": "token must be 'Bearer <token>'",
+			})
 		}
 
 		tokenStr := strings.TrimPrefix(header, "Bearer ")
