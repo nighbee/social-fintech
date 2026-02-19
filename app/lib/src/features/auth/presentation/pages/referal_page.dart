@@ -5,6 +5,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -151,6 +152,7 @@ class _ReferalPageState extends State<ReferalPage> {
       backgroundColor: context.theme.mainBackground,
       appBar: CustomAppBar(
         title: 'Code',
+        backgroundColor: Colors.transparent,
         actions: [
           TextButton(
             onPressed: _isLoading ? null : _register,
@@ -163,63 +165,78 @@ class _ReferalPageState extends State<ReferalPage> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Gap(40),
-              Text("Have you been invited?", style: TextStyles.titleXBig),
-              Gap(16),
-              Text(
-                "If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.",
-                style: TextStyles.bodyLarge,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ParticleAnimation(
+                particleCount: 25,
+                particleColors: const [Color(0xFFFFFFFF)],
+                minSize: 4.0,
+                maxSize: 8.0,
+                minDistanceBetweenParticles: 70.0,
               ),
-              Gap(40),
-              CustomTextField(
-                controller: _nicknameController,
-                labelText: "Nickname",
-                hintText: "",
-                prefixIcon: Assets.icons.atsign.svg(
-                  width: 30,
-                  height: 30,
-                  colorFilter: const ColorFilter.mode(
-                    AppColors.whiteBackground,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                suffixIcon: _nicknameController.text.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _nicknameController.clear();
-                          });
-                        },
-                        child: Assets.icons.close.svg(
-                          width: 16,
-                          height: 16,
-                          colorFilter: const ColorFilter.mode(
-                            AppColors.textGray2,
-                            BlendMode.srcIn,
-                          ),
-                        ),
-                      )
-                    : null,
-                onChanged: (value) {
-                  setState(() {});
-                },
-              ),
-              Gap(40),
-              CustomButton(
-                text: _isLoading ? "Loading..." : "Confirm",
-                isDisabled: _isLoading,
-                onTap: _register,
-              ),
-              SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-            ],
+            ),
           ),
-        ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Gap(40),
+                  Text("Have you been invited?", style: TextStyles.titleXBig),
+                  Gap(16),
+                  Text(
+                    "If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.",
+                    style: TextStyles.bodyLarge,
+                  ),
+                  Gap(40),
+                  CustomTextField(
+                    controller: _nicknameController,
+                    labelText: "Nickname",
+                    hintText: "",
+                    prefixIcon: Assets.icons.atsign.svg(
+                      width: 30,
+                      height: 30,
+                      colorFilter: const ColorFilter.mode(
+                        AppColors.whiteBackground,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    suffixIcon: _nicknameController.text.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _nicknameController.clear();
+                              });
+                            },
+                            child: Assets.icons.close.svg(
+                              width: 16,
+                              height: 16,
+                              colorFilter: const ColorFilter.mode(
+                                AppColors.textGray2,
+                                BlendMode.srcIn,
+                              ),
+                            ),
+                          )
+                        : null,
+                    onChanged: (value) {
+                      setState(() {});
+                    },
+                  ),
+                  Gap(40),
+                  CustomButton(
+                    text: _isLoading ? "Loading..." : "Confirm",
+                    isDisabled: _isLoading,
+                    onTap: _register,
+                  ),
+                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

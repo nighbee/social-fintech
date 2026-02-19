@@ -4,6 +4,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -59,9 +60,26 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.theme.mainBackground,
-      appBar: const CustomAppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
+      appBar: const CustomAppBar(
+        backgroundColor: Colors.transparent,
+      ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ParticleAnimation(
+                particleCount: 25,
+                particleColors: const [
+                  Color(0xFFFFFFFF),
+                ],
+                minSize: 4.0,
+                maxSize: 8.0,
+                minDistanceBetweenParticles: 70.0,
+              ),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,6 +204,8 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
             ],
           ),
         ),
+          ),
+        ],
       ),
     );
   }

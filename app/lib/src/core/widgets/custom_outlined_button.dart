@@ -12,6 +12,7 @@ class CustomOutlinedButton extends StatelessWidget {
     this.padding,
     this.borderRadius = 6,
     this.borderColor,
+    this.backgroundColor,
   });
 
   final String text;
@@ -21,6 +22,7 @@ class CustomOutlinedButton extends StatelessWidget {
   final EdgeInsets? padding;
   final double borderRadius;
   final Color? borderColor;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class CustomOutlinedButton extends StatelessWidget {
       text: text,
       onTap: onTap,
       width: width,
-      backgroundColor: Colors.transparent,
+      backgroundColor: backgroundColor ?? context.theme.mainBackground,
       textStyle:
           textStyle ??
           TextStyles.titleMain.copyWith(

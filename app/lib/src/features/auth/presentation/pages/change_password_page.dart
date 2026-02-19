@@ -3,6 +3,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -50,119 +51,142 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.theme.mainBackground,
-      appBar: const CustomAppBar(),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Gap(40),
-              Text("Change password", style: TextStyles.titleXBig),
-              Gap(16),
-              Text(
-                "It needs to be at least 8 characters long and contain a number or symbol.",
-                style: TextStyles.bodyLarge,
+      appBar: const CustomAppBar(
+        backgroundColor: Colors.transparent,
+      ),
+      body: Stack(
+        children: [
+          // Layer 1: Fixed particle background
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ParticleAnimation(
+                particleCount: 25,
+                particleColors: const [
+                  Color(0xFFFFFFFF),
+                ],
+                minSize: 4.0,
+                maxSize: 8.0,
+                minDistanceBetweenParticles: 70.0,
               ),
-              Gap(40),
-              CustomTextField(
-                controller: _passwordController,
-                labelText: "Password",
-                hintText: "Password",
-                obscureText: !_isPasswordVisible,
-                suffixIcon: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: _isPasswordVisible
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeOpened.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          )
-                        : SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeClosed.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-              Gap(16),
-              CustomTextField(
-                controller: _confirmPasswordController,
-                labelText: "Re-enter your password",
-                hintText: "Re-enter your password",
-                obscureText: !_isConfirmPasswordVisible,
-                suffixIcon: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: _isConfirmPasswordVisible
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeOpened.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          )
-                        : SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeClosed.svg(
-                              height: 20,
-                              width: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-              Gap(40),
-              CustomButton(
-                text: "Change",
-                onTap: () {
-                  if (_isFormValid) {
-                    context.pop();
-                  }
-                },
-                isDisabled: !_isFormValid,
-              ),
-              Gap(20),
-              SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-            ],
+            ),
           ),
-        ),
+          // Layer 2: Scrollable content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Gap(40),
+                  Text("Change password", style: TextStyles.titleXBig),
+                  Gap(16),
+                  Text(
+                    "It needs to be at least 8 characters long and contain a number or symbol.",
+                    style: TextStyles.bodyLarge,
+                  ),
+                  Gap(40),
+                  CustomTextField(
+                    controller: _passwordController,
+                    labelText: "Password",
+                    hintText: "Password",
+                    obscureText: !_isPasswordVisible,
+                    suffixIcon: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isPasswordVisible = !_isPasswordVisible;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: _isPasswordVisible
+                            ? SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: Assets.icons.eyeOpened.svg(
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: const ColorFilter.mode(
+                                    AppColors.textGray2,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              )
+                            : SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: Assets.icons.eyeClosed.svg(
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: const ColorFilter.mode(
+                                    AppColors.textGray2,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  Gap(16),
+                  CustomTextField(
+                    controller: _confirmPasswordController,
+                    labelText: "Re-enter your password",
+                    hintText: "Re-enter your password",
+                    obscureText: !_isConfirmPasswordVisible,
+                    suffixIcon: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: _isConfirmPasswordVisible
+                            ? SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: Assets.icons.eyeOpened.svg(
+                                  width: 20,
+                                  height: 20,
+                                  colorFilter: const ColorFilter.mode(
+                                    AppColors.textGray2,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              )
+                            : SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: Assets.icons.eyeClosed.svg(
+                                  height: 20,
+                                  width: 20,
+                                  colorFilter: const ColorFilter.mode(
+                                    AppColors.textGray2,
+                                    BlendMode.srcIn,
+                                  ),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  Gap(40),
+                  CustomButton(
+                    text: "Change",
+                    onTap: () {
+                      if (_isFormValid) {
+                        context.pop();
+                      }
+                    },
+                    isDisabled: !_isFormValid,
+                  ),
+                  Gap(20),
+                  SizedBox(
+                      height:
+                          MediaQuery.of(context).viewInsets.bottom + 20),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

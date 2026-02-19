@@ -4,6 +4,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -118,55 +119,77 @@ class _InfoPageState extends State<InfoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.theme.mainBackground,
-      appBar: const CustomAppBar(title: 'Info'),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Gap(40),
-              Text("Legal Name", style: TextStyles.titleBig),
-              Gap(16),
-              CustomTextField(
-                controller: _firstNameController,
-                labelText: "First name",
-                hintText: "First name",
+      appBar: const CustomAppBar(
+        title: 'Info',
+        backgroundColor: Colors.transparent,
+      ),
+      body: Stack(
+        children: [
+          // Layer 1: Particle animation background
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ParticleAnimation(
+                particleCount: 25,
+                particleColors: const [Color(0xFFFFFFFF)],
+                minSize: 4.0,
+                maxSize: 8.0,
+                minDistanceBetweenParticles: 70.0,
               ),
-              Gap(16),
-              CustomTextField(
-                controller: _lastNameController,
-                labelText: "Last name",
-                hintText: "Last name",
-              ),
-              Gap(40),
-              Text("Date of birth", style: TextStyles.titleBig),
-              Gap(16),
-              CustomTextField(
-                controller: _dateOfBirthController,
-                labelText: "Date of birth",
-                hintText: "MM/DD/YY",
-                readOnly: true,
-                onTap: () => _selectDate(context),
-                suffixIcon: Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: Assets.icons.calendar.svg(
-                    width: 20,
-                    height: 20,
-                    colorFilter: const ColorFilter.mode(
-                      AppColors.whiteBackground,
-                      BlendMode.srcIn,
+            ),
+          ),
+          // Layer 2: Existing content
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Gap(40),
+                  Text("Legal Name", style: TextStyles.titleBig),
+                  Gap(16),
+                  CustomTextField(
+                    controller: _firstNameController,
+                    labelText: "First name",
+                    hintText: "First name",
+                  ),
+                  Gap(16),
+                  CustomTextField(
+                    controller: _lastNameController,
+                    labelText: "Last name",
+                    hintText: "Last name",
+                  ),
+                  Gap(40),
+                  Text("Date of birth", style: TextStyles.titleBig),
+                  Gap(16),
+                  CustomTextField(
+                    controller: _dateOfBirthController,
+                    labelText: "Date of birth",
+                    hintText: "MM/DD/YY",
+                    readOnly: true,
+                    onTap: () => _selectDate(context),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Assets.icons.calendar.svg(
+                        width: 20,
+                        height: 20,
+                        colorFilter: const ColorFilter.mode(
+                          AppColors.whiteBackground,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  Gap(40),
+                  CustomButton(text: "Next", onTap: _continueToReferral),
+                  Gap(20),
+                  SizedBox(
+                    height: MediaQuery.of(context).viewInsets.bottom + 20,
+                  ),
+                ],
               ),
-              Gap(40),
-              CustomButton(text: "Next", onTap: _continueToReferral),
-              Gap(20),
-              SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

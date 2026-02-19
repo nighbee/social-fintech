@@ -5,6 +5,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/core/widgets/phone_number_formatter.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
@@ -104,194 +105,220 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
       create: (context) => getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
-        body: BlocConsumer<AuthBloc, AuthState>(
-          listener: (context, state) {
-            state.when(
-              initial: () {},
-              loading: () {},
-              loadingFailure: (message) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(message), backgroundColor: Colors.red),
-                );
-              },
-              goRegister: () {},
-              loaded: (viewModel) {},
-              authenticated: (loginEntity) {
-                context.go(RoutePaths.home);
-              },
-              phoneVerificationStarted: (verificationId, phoneNumber) {
-                context.pushNamed(
-                  RouteNames.code,
-                  extra: {
-                    'verificationId': verificationId,
-                    'phoneNumber': phoneNumber,
-                    'isLogin': false,
-                  },
-                );
-              },
-              emailChecked: (exists, email) {},
-            );
-          },
-          builder: (context, state) {
-            final isLoading = state.maybeWhen(
-              loading: () => true,
-              loaded: (viewModel) => viewModel.isLoading,
-              orElse: () => false,
-            );
-
-            return SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                child: Column(
-                  children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextButton(
-                          onPressed: () {
-                            context.pushReplacementNamed(RouteNames.login);
-                          },
-                          child: Text("Log in", style: TextStyles.titleBig),
-                        ),
-
-                        Text("or", style: TextStyles.titleBig),
-
-                        TextButton(
-                          onPressed: () {},
-                          child: Text("Sign up", style: TextStyles.titleBig),
-                        ),
-                      ],
-                    ),
-                    Gap(63),
-                    CustomTextField(
-                      controller: _countryController,
-                      labelText: "Country/Region",
-                      hintText: "Country/Region",
-                      readOnly: true,
-                      onTap: _showCountryPicker,
-                      suffixIcon: Padding(
-                        padding: const EdgeInsets.only(right: 16),
-                        child: Icon(
-                          Icons.arrow_drop_down,
-                          color: AppColors.textGray2,
-                        ),
-                      ),
-                    ),
-                    Gap(16),
-                    CustomTextField(
-                      controller: _phoneController,
-                      labelText: "Phone number",
-                      hintText: "Phone number",
-                      keyboardType: TextInputType.phone,
-                      inputFormatters: [
-                        PhoneNumberFormatter(_selectedCountryCode),
-                      ],
-                    ),
-
-                    Gap(28),
-
-                    CustomButton(
-                      text: "Continue",
-                      isDisabled: isLoading,
-                      onTap: () {
-                        final phoneText = _phoneController.text.trim();
-                        final phoneNumber = phoneText
-                            .replaceAll(' ', '')
-                            .replaceAll('-', '');
-
-                        if (phoneNumber.length < 10) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Please enter a valid phone number',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        context.read<AuthBloc>().add(
-                          AuthEvent.startPhoneVerification(
-                            phoneNumber: phoneNumber,
-                          ),
-                        );
-                      },
-                    ),
-
-                    Gap(57),
-
-                    Row(
-                      spacing: 12,
-                      children: [
-                        Expanded(
-                          child: Container(
-                            width: double.infinity,
-                            height: 1,
-                            color: AppColors.textGray2,
-                          ),
-                        ),
-                        Text("or", style: TextStyles.titleTag),
-                        Expanded(
-                          child: Container(
-                            width: double.infinity,
-                            height: 1,
-                            color: AppColors.textGray2,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Gap(57),
-                    Column(
-                      spacing: 16,
-                      children: [
-                        CustomOutlinedButton(
-                          text: "Continue with email",
-                          onTap: () {
-                            context.pushNamed(RouteNames.emailEntry);
-                          },
-                        ),
-                        CustomButton(
-                          text: "Continue with Apple",
-                          icon: Assets.icons.appleLogo.svg(),
-                          onTap: () {},
-                          padding: EdgeInsets.symmetric(vertical: 10),
-                          textStyle: TextStyles.titleMain.copyWith(
-                            fontSize: 17,
-                          ),
-                        ),
-                        CustomButton(
-                          text: "Continue with Google",
-                          icon: Assets.icons.googleLogo.svg(),
-                          isDisabled: isLoading,
-                          onTap: () {
-                            context.read<AuthBloc>().add(
-                              const AuthEvent.loginWithGoogle(),
-                            );
-                          },
-                          padding: EdgeInsets.symmetric(vertical: 10),
-                          textStyle: TextStyles.titleMain.copyWith(
-                            fontSize: 17,
-                          ),
-                        ),
-                        Text(
-                          "Continuing, I agree with\nTerms and conditions.",
-                          textAlign: TextAlign.center,
-                          style: TextStyles.bodyMain.copyWith(fontSize: 14),
-                        ),
-                      ],
-                    ),
-                    SizedBox(
-                      height: MediaQuery.of(context).viewInsets.bottom + 20,
-                    ),
+        body: Stack(
+          children: [
+            // Layer 1: Fixed particle background (doesn't scroll)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ParticleAnimation(
+                  particleCount: 25,
+                  particleColors: const [
+                    Color(0xFFFFFFFF),
                   ],
+                  minSize: 4.0,
+                  maxSize: 8.0,
+                  minDistanceBetweenParticles: 70.0,
                 ),
               ),
-            );
-          },
+            ),
+            // Layer 2: Scrollable content (scrolls independently)
+            BlocListener<AuthBloc, AuthState>(
+              listener: (context, state) {
+                state.when(
+                  initial: () {},
+                  loading: () {},
+                  loadingFailure: (message) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(message),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  },
+                  goRegister: () {},
+                  loaded: (viewModel) {},
+                  authenticated: (loginEntity) {
+                    context.go(RoutePaths.home);
+                  },
+                  phoneVerificationStarted: (verificationId, phoneNumber) {
+                    context.pushNamed(
+                      RouteNames.code,
+                      extra: {
+                        'verificationId': verificationId,
+                        'phoneNumber': phoneNumber,
+                        'isLogin': false,
+                      },
+                    );
+                  },
+                  emailChecked: (exists, email) {},
+                );
+              },
+              child: SafeArea(
+                child: BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    final isLoading = state.maybeWhen(
+                      loading: () => true,
+                      loaded: (viewModel) => viewModel.isLoading,
+                      orElse: () => false,
+                    );
+
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.1,
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  context.pushReplacementNamed(RouteNames.login);
+                                },
+                                child: Text("Log in", style: TextStyles.titleBig),
+                              ),
+
+                              Text("or", style: TextStyles.titleBig),
+
+                              TextButton(
+                                onPressed: () {},
+                                child: Text("Sign up", style: TextStyles.titleBig),
+                              ),
+                            ],
+                          ),
+                          Gap(63),
+                          CustomTextField(
+                            controller: _countryController,
+                            labelText: "Country/Region",
+                            hintText: "Country/Region",
+                            readOnly: true,
+                            onTap: _showCountryPicker,
+                            suffixIcon: Padding(
+                              padding: const EdgeInsets.only(right: 16),
+                              child: Icon(
+                                Icons.arrow_drop_down,
+                                color: AppColors.textGray2,
+                              ),
+                            ),
+                          ),
+                          Gap(16),
+                          CustomTextField(
+                            controller: _phoneController,
+                            labelText: "Phone number",
+                            hintText: "Phone number",
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              PhoneNumberFormatter(_selectedCountryCode),
+                            ],
+                          ),
+
+                          Gap(28),
+
+                          CustomButton(
+                            text: "Continue",
+                            isDisabled: isLoading,
+                            onTap: () {
+                              final phoneText = _phoneController.text.trim();
+                              final phoneNumber = phoneText
+                                  .replaceAll(' ', '')
+                                  .replaceAll('-', '');
+
+                              if (phoneNumber.length < 10) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please enter a valid phone number',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+
+                              context.read<AuthBloc>().add(
+                                AuthEvent.startPhoneVerification(
+                                  phoneNumber: phoneNumber,
+                                ),
+                              );
+                            },
+                          ),
+
+                          Gap(57),
+
+                          Row(
+                            spacing: 12,
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 1,
+                                  color: AppColors.textGray2,
+                                ),
+                              ),
+                              Text("or", style: TextStyles.titleTag),
+                              Expanded(
+                                child: Container(
+                                  width: double.infinity,
+                                  height: 1,
+                                  color: AppColors.textGray2,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Gap(57),
+                          Column(
+                            spacing: 16,
+                            children: [
+                              CustomOutlinedButton(
+                                text: "Continue with email",
+                                onTap: () {
+                                  context.pushNamed(RouteNames.emailEntry);
+                                },
+                              ),
+                              CustomButton(
+                                text: "Continue with Apple",
+                                icon: Assets.icons.appleLogo.svg(),
+                                onTap: () {},
+                                padding: EdgeInsets.symmetric(vertical: 10),
+                                textStyle: TextStyles.titleMain.copyWith(
+                                  fontSize: 17,
+                                ),
+                              ),
+                              CustomButton(
+                                text: "Continue with Google",
+                                icon: Assets.icons.googleLogo.svg(),
+                                isDisabled: isLoading,
+                                onTap: () {
+                                  context.read<AuthBloc>().add(
+                                    const AuthEvent.loginWithGoogle(),
+                                  );
+                                },
+                                padding: EdgeInsets.symmetric(vertical: 10),
+                                textStyle: TextStyles.titleMain.copyWith(
+                                  fontSize: 17,
+                                ),
+                              ),
+                              Text(
+                                "Continuing, I agree with\nTerms and conditions.",
+                                textAlign: TextAlign.center,
+                                style: TextStyles.bodyMain.copyWith(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          SizedBox(
+                            height: MediaQuery.of(context).viewInsets.bottom + 20,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

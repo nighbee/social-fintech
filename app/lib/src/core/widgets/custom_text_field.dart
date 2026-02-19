@@ -74,7 +74,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             ? (widget.customBorder ?? Border.all(color: AppColors.whiteBackground, width: 1))
             : null,
         borderRadius: BorderRadius.circular(6),
-        color: widget.backgroundColor,
+        color: widget.backgroundColor ?? context.theme.mainBackground,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,

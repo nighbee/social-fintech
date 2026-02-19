@@ -30,35 +30,32 @@ class CustomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveBackgroundColor = isDisabled
-        ? AppColors.btnGray2
+        ? const Color.fromARGB(255, 111, 111, 111)
         : (backgroundColor ?? AppColors.btnGray1);
 
-    return Opacity(
-      opacity: isDisabled ? 0.5 : 1.0,
-      child: Container(
-        width: width ?? double.infinity,
-        decoration: BoxDecoration(
-          color: effectiveBackgroundColor,
-          borderRadius: BorderRadius.circular(borderRadius),
-          border: border,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(borderRadius),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: isDisabled ? null : onTap,
-              child: Padding(
-                padding: padding ?? const EdgeInsets.symmetric(vertical: 15),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    spacing: 10,
-                    children: [
-                      if (icon != null) icon!,
-                      Text(text, style: textStyle ?? TextStyles.titleMain),
-                    ],
-                  ),
+    return Container(
+      width: width ?? double.infinity,
+      decoration: BoxDecoration(
+        color: effectiveBackgroundColor,
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: border,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: isDisabled ? null : onTap,
+            child: Padding(
+              padding: padding ?? const EdgeInsets.symmetric(vertical: 15),
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 10,
+                  children: [
+                    if (icon != null) icon!,
+                    Text(text, style: textStyle ?? TextStyles.titleMain),
+                  ],
                 ),
               ),
             ),
