@@ -47,7 +47,7 @@
 
   - **Load Balancer / API Gateway:** Entry point (SSL termination).
   - **Backend Application:** Go (Golang), fiber/net/gorm.
-  - **Primary DB:** PostgreSQL, postgis. (Mapbox for maps)
+  - **Primary DB:** PostgreSQL, postgis. (Map tiles: `flutter_map` + OSM for MVP; Mapbox upgrade path post-MVP — see Geo_Module.md)
   - **Cache / Realtime:** Redis (Leaderboards, Pub/Sub, Rate Limits), zset, websocket .
   - Documentation: Swagger
   - Infra: Docker compose, CI/CD
@@ -614,7 +614,7 @@
   - Performance tuning of SQL queries.
   - Rate limiting configuration.
   Mobile Work:
-  - Google Maps integration and custom markers.
+  - `flutter_map` + OSM tiles integration and custom markers (Mapbox upgrade path documented in Geo_Module.md).
   - Task creation UI.
   - Feed UI with infinite scrolling.
   - "Quiet Shop" logic implementation (UI handling for insufficient funds).
