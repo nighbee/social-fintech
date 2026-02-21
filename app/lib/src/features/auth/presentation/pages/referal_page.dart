@@ -231,7 +231,9 @@ class _ReferalPageState extends State<ReferalPage> {
                     isDisabled: _isLoading,
                     onTap: _register,
                   ),
-                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
+                  SizedBox(
+                    height: MediaQuery.of(context).viewInsets.bottom + 20,
+                  ),
                 ],
               ),
             ),

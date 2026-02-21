@@ -56,9 +56,7 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
               child: IgnorePointer(
                 child: ParticleAnimation(
                   particleCount: 25,
-                  particleColors: const [
-                    Color(0xFFFFFFFF),
-                  ],
+                  particleColors: const [Color(0xFFFFFFFF)],
                   minSize: 4.0,
                   maxSize: 8.0,
                   minDistanceBetweenParticles: 70.0,
@@ -116,14 +114,20 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                                     RouteNames.loginWithEmail,
                                   );
                                 },
-                                child: Text("Log in", style: TextStyles.titleBig),
+                                child: Text(
+                                  "Log in",
+                                  style: TextStyles.titleBig,
+                                ),
                               ),
 
                               Text("or", style: TextStyles.titleBig),
 
                               TextButton(
                                 onPressed: () {},
-                                child: Text("Sign up", style: TextStyles.titleBig),
+                                child: Text(
+                                  "Sign up",
+                                  style: TextStyles.titleBig,
+                                ),
                               ),
                             ],
                           ),
@@ -198,12 +202,15 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                               Text(
                                 "Continuing, I agree with\nTerms and conditions.",
                                 textAlign: TextAlign.center,
-                                style: TextStyles.bodyMain.copyWith(fontSize: 14),
+                                style: TextStyles.bodyMain.copyWith(
+                                  fontSize: 14,
+                                ),
                               ),
                             ],
                           ),
                           SizedBox(
-                            height: MediaQuery.of(context).viewInsets.bottom + 20,
+                            height:
+                                MediaQuery.of(context).viewInsets.bottom + 20,
                           ),
                         ],
                       ),

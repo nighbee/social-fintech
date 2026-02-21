@@ -2,116 +2,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
-import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
+import 'package:app/src/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
+import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
-import 'package:app/src/core/utils/loggers/log.dart';
 
 part 'auth_bloc.freezed.dart';
+part 'auth_event.dart';
+part 'auth_state.dart';
 
-// MARK: - State
-@freezed
-class AuthState with _$AuthState {
-  const factory AuthState.initial() = _Initial;
-  const factory AuthState.loading() = _Loading;
-  const factory AuthState.loadingFailure(String message) = _LoadingFailure;
-  const factory AuthState.goRegister() = _GoRegister;
-  const factory AuthState.loaded({required AuthViewModel viewModel}) = _Loaded;
-  const factory AuthState.authenticated({required LoginEntity loginEntity}) =
-      _Authenticated;
-  const factory AuthState.phoneVerificationStarted({
-    required String verificationId,
-    required String phoneNumber,
-  }) = _PhoneVerificationStarted;
-  const factory AuthState.emailChecked({
-    required bool exists,
-    required String email,
-  }) = _EmailChecked;
-}
-
-// MARK: - ViewModel
-@freezed
-class AuthViewModel with _$AuthViewModel {
-  factory AuthViewModel({
-    @Default(false) bool isLoading,
-    @Default(false) bool isLoggedIn,
-    String? firebaseIdToken,
-    String? email,
-    String? password,
-  }) = _AuthViewModel;
-}
-
-// MARK: - Event
-@freezed
-class AuthEvent with _$AuthEvent {
-  const factory AuthEvent.loginWithEmail({
-    required String email,
-    required String password,
-  }) = _LoginWithEmail;
-  const factory AuthEvent.loginWithGoogle() = _LoginWithGoogle;
-  const factory AuthEvent.loginWithApple() = _LoginWithApple;
-  const factory AuthEvent.registerWithEmail({
-    required String email,
-    required String password,
-    required String firstName,
-    required String lastName,
-    required String dateOfBirth,
-    required String referral,
-  }) = _RegisterWithEmail;
-  const factory AuthEvent.requestPhoneCode({
-    required String countryCode,
-    required String phoneNumber,
-    required String purpose,
-  }) = _RequestPhoneCode;
-  const factory AuthEvent.verifyPhoneCode({
-    required String verificationId,
-    required String code,
-  }) = _VerifyPhoneCode;
-  const factory AuthEvent.registerWithPhone({
-    required String verificationId,
-    required String firstName,
-    required String lastName,
-    String? dateOfBirth,
-    String? referral,
-  }) = _RegisterWithPhone;
-  const factory AuthEvent.startPhoneVerification({
-    required String phoneNumber,
-  }) = _StartPhoneVerification;
-  const factory AuthEvent.checkEmail({required String email}) = _CheckEmail;
-  const factory AuthEvent.verifyOtpCode({
-    required String verificationId,
-    required String code,
-    required bool isLogin,
-  }) = _VerifyOtpCode;
-  const factory AuthEvent.firebasePhoneLogin({
-    required String firebaseIdToken,
-  }) = _FirebasePhoneLogin;
-  const factory AuthEvent.firebasePhoneRegister({
-    required String firebaseIdToken,
-    required String firstName,
-    required String lastName,
-    String? dateOfBirth,
-    String? referral,
-  }) = _FirebasePhoneRegister;
-  const factory AuthEvent.logout() = _Logout;
-}
-
-// MARK: - Bloc
-@injectable
 class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
-  AuthBloc(@Named('AuthRepositoryImpl') this._authRepository)
-    : super(AuthState.initial()) {
-    _viewModel = AuthViewModel();
-  }
+  AuthBloc(@Named.from(AuthRepositoryImpl) this._repository)
+    : super(const _Initial());
 
-  final IAuthRepository _authRepository;
-  AuthViewModel _viewModel = AuthViewModel();
-
-  AuthViewModel get viewModel => _viewModel;
+  final IAuthRepository _repository;
+  AuthViewModel viewModel = AuthViewModel();
 
   @override
-  void onEventHandler(AuthEvent event, Emitter emit) async {
+  Future<void> onEventHandler(AuthEvent event, Emitter emit) async {
     await event.when(
       loginWithEmail: (email, password) =>
           _loginWithEmail(email, password, emit),
@@ -168,57 +77,57 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     String password,
     Emitter emit,
   ) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.loginWithEmail(
+    final result = await _repository.loginWithEmail(
       email: email,
       password: password,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
   }
 
   Future<void> _loginWithGoogle(Emitter emit) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.loginWithGoogle();
+    final result = await _repository.loginWithGoogle();
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
   }
 
   Future<void> _loginWithApple(Emitter emit) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.loginWithApple();
+    final result = await _repository.loginWithApple();
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
@@ -233,10 +142,10 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     String referral,
     Emitter emit,
   ) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.registerWithEmail(
+    final result = await _repository.registerWithEmail(
       email: email,
       password: password,
       firstName: firstName,
@@ -245,31 +154,31 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       referral: referral,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
   }
 
   Future<void> _checkEmail(String email, Emitter emit) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.checkEmailExists(email: email);
+    final result = await _repository.checkEmailExists(email: email);
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (exists) {
-        _viewModel = _viewModel.copyWith(email: email);
+        viewModel = viewModel.copyWith(email: email);
         emit(AuthState.emailChecked(exists: exists, email: email));
       },
     );
@@ -281,16 +190,16 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     String purpose,
     Emitter emit,
   ) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.requestPhoneCode(
+    final result = await _repository.requestPhoneCode(
       countryCode: countryCode,
       phoneNumber: phoneNumber,
       purpose: purpose,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
@@ -306,21 +215,21 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     String code,
     Emitter emit,
   ) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.verifyPhoneCode(
+    final result = await _repository.verifyPhoneCode(
       verificationId: verificationId,
       code: code,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
@@ -334,10 +243,10 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     String? referral,
     Emitter emit,
   ) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.registerWithPhone(
+    final result = await _repository.registerWithPhone(
       verificationId: verificationId,
       firstName: firstName,
       lastName: lastName,
@@ -345,46 +254,46 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       referral: referral,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
   }
 
   Future<void> _logout(Emitter emit) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.logout();
+    final result = await _repository.logout();
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (_) {
         getIt<ProfileBloc>().add(const ProfileEvent.logout());
-        _viewModel = _viewModel.copyWith(isLoggedIn: false);
-        emit(AuthState.loaded(viewModel: _viewModel));
+        viewModel = viewModel.copyWith(isLoggedIn: false);
+        emit(AuthState.loaded(viewModel: viewModel));
       },
     );
   }
 
   Future<void> _startPhoneVerification(String phoneNumber, Emitter emit) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.startPhoneVerification(
+    final result = await _repository.startPhoneVerification(
       phoneNumber: phoneNumber,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
@@ -406,24 +315,24 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     bool isLogin,
     Emitter emit,
   ) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final tokenResult = await _authRepository.verifyOtpAndGetToken(
+    final tokenResult = await _repository.verifyOtpAndGetToken(
       verificationId: verificationId,
       code: code,
     );
 
     await tokenResult.fold(
       (error) async {
-        _viewModel = _viewModel.copyWith(isLoading: false);
+        viewModel = viewModel.copyWith(isLoading: false);
         emit(AuthState.loadingFailure(error.message));
       },
       (firebaseIdToken) async {
         if (isLogin) {
           await _firebasePhoneLogin(firebaseIdToken, emit);
         } else {
-          _viewModel = _viewModel.copyWith(
+          viewModel = viewModel.copyWith(
             isLoading: false,
             firebaseIdToken: firebaseIdToken,
           );
@@ -434,14 +343,14 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
   }
 
   Future<void> _firebasePhoneLogin(String firebaseIdToken, Emitter emit) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.firebasePhoneLogin(
+    final result = await _repository.firebasePhoneLogin(
       firebaseIdToken: firebaseIdToken,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         // If user not found, redirect to registration
@@ -450,14 +359,14 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
             error.message.toLowerCase().contains('no user') ||
             error.message.toLowerCase().contains('please register') ||
             error.message.toLowerCase().contains('register first')) {
-          _viewModel = _viewModel.copyWith(firebaseIdToken: firebaseIdToken);
+          viewModel = viewModel.copyWith(firebaseIdToken: firebaseIdToken);
           emit(AuthState.goRegister());
         } else {
           emit(AuthState.loadingFailure(error.message));
         }
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );
@@ -471,10 +380,10 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
     String? referral,
     Emitter emit,
   ) async {
-    _viewModel = _viewModel.copyWith(isLoading: true);
-    emit(AuthState.loaded(viewModel: _viewModel));
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
 
-    final result = await _authRepository.firebasePhoneRegister(
+    final result = await _repository.firebasePhoneRegister(
       firebaseIdToken: firebaseIdToken,
       firstName: firstName,
       lastName: lastName,
@@ -482,13 +391,13 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       referral: referral,
     );
 
-    _viewModel = _viewModel.copyWith(isLoading: false);
+    viewModel = viewModel.copyWith(isLoading: false);
     result.fold(
       (error) {
         emit(AuthState.loadingFailure(error.message));
       },
       (loginEntity) {
-        _viewModel = _viewModel.copyWith(isLoggedIn: true);
+        viewModel = viewModel.copyWith(isLoggedIn: true);
         emit(AuthState.authenticated(loginEntity: loginEntity));
       },
     );

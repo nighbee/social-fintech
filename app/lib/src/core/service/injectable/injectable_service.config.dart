@@ -22,7 +22,6 @@ import '../../../features/auth/data/sources/remote/auth_remote_impl.dart'
 import '../../../features/auth/data/sources/remote/i_auth_remote.dart' as _i387;
 import '../../../features/auth/domain/repositories/i_auth_repository.dart'
     as _i664;
-import '../../../features/auth/presentation/bloc/auth_bloc.dart' as _i748;
 import '../../../features/home/data/repositories/home_repository_impl.dart'
     as _i955;
 import '../../../features/home/data/sources/remote/home_remote_impl.dart'
@@ -85,11 +84,6 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i964.IAuthLocal>(instanceName: 'AuthLocalImpl'),
       ),
       instanceName: 'AuthRepositoryImpl',
-    );
-    gh.factory<_i748.AuthBloc>(
-      () => _i748.AuthBloc(
-        gh<_i664.IAuthRepository>(instanceName: 'AuthRepositoryImpl'),
-      ),
     );
     gh.lazySingleton<_i529.IHomeRepository>(
       () => _i955.HomeRepositoryImpl(

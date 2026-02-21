@@ -102,9 +102,7 @@ class AuthRemoteImpl implements IAuthRemote {
   }) async {
     final result = await _client.post(
       EndPoints.authCheckEmail,
-      data: {
-        'email': email,
-      },
+      data: {'email': email},
     );
 
     return result.fold((error) => Left(error), (response) {
@@ -335,19 +333,14 @@ class AuthRemoteImpl implements IAuthRemote {
       },
     );
 
-    return result.fold(
-      (error) => Left(error),
-      (response) {
-        try {
-          final dto = LoginDto.fromJson(response.data);
-          return Right(dto);
-        } catch (e) {
-          return Left(
-            NetworkException(message: 'Failed to parse response: $e'),
-          );
-        }
-      },
-    );
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final dto = LoginDto.fromJson(response.data);
+        return Right(dto);
+      } catch (e) {
+        return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
   }
 
   @override
@@ -378,18 +371,13 @@ class AuthRemoteImpl implements IAuthRemote {
       data: requestData,
     );
 
-    return result.fold(
-      (error) => Left(error),
-      (response) {
-        try {
-          final dto = LoginDto.fromJson(response.data);
-          return Right(dto);
-        } catch (e) {
-          return Left(
-            NetworkException(message: 'Failed to parse response: $e'),
-          );
-        }
-      },
-    );
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final dto = LoginDto.fromJson(response.data);
+        return Right(dto);
+      } catch (e) {
+        return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
   }
 }
