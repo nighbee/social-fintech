@@ -9,6 +9,7 @@ import (
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/cache"
@@ -191,12 +192,22 @@ func main() {
 	profilesHandler := profiles.NewHandler(profilesService, ranksService)
 	logger.Info("profiles module initialized")
 
+	mapRepo := mapmodule.NewRepository(db.DB)
+	mapService := mapmodule.NewService(mapRepo, economyRepo)
+	mapHandler := mapmodule.NewHandler(mapService)
+	logger.Info("map module initialized")
+
 	economyWorker := economy.NewWorker(economyService, economyRepo, cfg.Economy)
 	economyWorker.Start()
 	defer economyWorker.Stop()
 	logger.Info("economy worker started")
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, jwtManager, authRepo, logger.Get())
+	mapWorker := mapmodule.NewWorker(redisCache, mapRepo)
+	mapWorker.Start()
+	defer mapWorker.Stop()
+	logger.Info("map worker started")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
