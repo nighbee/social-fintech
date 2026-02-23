@@ -43,7 +43,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailRequest"
+                            "$ref": "#/definitions/auth.CheckEmailRequest"
                         }
                     }
                 ],
@@ -51,19 +51,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailResponse"
+                            "$ref": "#/definitions/auth.CheckEmailResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -89,7 +89,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneAuthRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneAuthRequest"
                         }
                     }
                 ],
@@ -97,31 +97,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -147,7 +147,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneRegisterRequest"
                         }
                     }
                 ],
@@ -155,31 +155,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -205,7 +205,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
@@ -213,25 +213,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -257,7 +257,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailLoginRequest"
+                            "$ref": "#/definitions/auth.EmailLoginRequest"
                         }
                     }
                 ],
@@ -265,25 +265,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -314,13 +314,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -346,7 +346,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeRequest"
+                            "$ref": "#/definitions/auth.PhoneCodeRequest"
                         }
                     }
                 ],
@@ -354,31 +354,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeResponse"
+                            "$ref": "#/definitions/auth.PhoneCodeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -404,7 +404,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyRequest"
+                            "$ref": "#/definitions/auth.PhoneVerifyRequest"
                         }
                     }
                 ],
@@ -412,25 +412,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyResponse"
+                            "$ref": "#/definitions/auth.PhoneVerifyResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -456,7 +456,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.RefreshRequest"
+                            "$ref": "#/definitions/auth.RefreshRequest"
                         }
                     }
                 ],
@@ -464,25 +464,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -508,7 +508,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailRegisterRequest"
+                            "$ref": "#/definitions/auth.EmailRegisterRequest"
                         }
                     }
                 ],
@@ -516,25 +516,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -560,7 +560,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.PhoneRegisterRequest"
                         }
                     }
                 ],
@@ -568,25 +568,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -616,7 +616,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ClaimDailyAccrualRequest"
+                            "$ref": "#/definitions/economy.ClaimDailyAccrualRequest"
                         }
                     }
                 ],
@@ -624,25 +624,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AccrualResponse"
+                            "$ref": "#/definitions/economy.AccrualResponse"
                         }
                     },
                     "400": {
                         "description": "Already claimed today or cap reached",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -673,7 +673,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AdjustBalanceRequest"
+                            "$ref": "#/definitions/economy.AdjustBalanceRequest"
                         }
                     }
                 ],
@@ -681,31 +681,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -756,31 +756,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ViolationLogsResponse"
+                            "$ref": "#/definitions/economy.ViolationLogsResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -808,19 +808,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -870,25 +870,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransactionHistoryResponse"
+                            "$ref": "#/definitions/economy.TransactionHistoryResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -916,19 +916,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.LimitsResponse"
+                            "$ref": "#/definitions/economy.LimitsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -966,7 +966,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToPostRequest"
+                            "$ref": "#/definitions/economy.GiveSealToPostRequest"
                         }
                     }
                 ],
@@ -974,25 +974,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1020,19 +1020,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ReferralStatsResponse"
+                            "$ref": "#/definitions/economy.ReferralStatsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1063,7 +1063,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferRequest"
+                            "$ref": "#/definitions/economy.TransferRequest"
                         }
                     }
                 ],
@@ -1071,31 +1071,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "429": {
                         "description": "Transfer limit exceeded",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1133,7 +1133,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToUserRequest"
+                            "$ref": "#/definitions/economy.GiveSealToUserRequest"
                         }
                     }
                 ],
@@ -1141,25 +1141,176 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/map/champions": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns champions for a set of H3 indices at a given resolution/week",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Get champions for H3 cells",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comma-separated H3 indexes",
+                        "name": "h3",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "H3 resolution",
+                        "name": "resolution",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Year",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ISO week number",
+                        "name": "week",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mapmodule.ChampionPin"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/map/region": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Assigns H3 cells based on current location and privacy settings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Set user region using H3",
+                "parameters": [
+                    {
+                        "description": "Region assignment",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1187,7 +1338,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "401": {
@@ -1275,7 +1426,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.UpdateProfileRequest"
+                            "$ref": "#/definitions/profiles.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -1283,7 +1434,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -1334,7 +1485,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -1378,7 +1529,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated profile with new avatar URL",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -1433,7 +1584,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User's current rank",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse"
+                            "$ref": "#/definitions/ranks.CurrentRankResponse"
                         }
                     },
                     "401": {
@@ -1479,7 +1630,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "401": {
@@ -1520,7 +1671,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of all ranks",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankListResponse"
+                            "$ref": "#/definitions/ranks.RankListResponse"
                         }
                     },
                     "500": {
@@ -1582,7 +1733,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.ProfileSearchResult"
+                                "$ref": "#/definitions/profiles.ProfileSearchResult"
                             }
                         }
                     },
@@ -1638,7 +1789,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Public profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.PublicProfileResponse"
+                            "$ref": "#/definitions/profiles.PublicProfileResponse"
                         }
                     },
                     "400": {
@@ -1707,7 +1858,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -1902,7 +2053,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Relationship status",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.RelationshipStatus"
+                            "$ref": "#/definitions/profiles.RelationshipStatus"
                         }
                     },
                     "400": {
@@ -1961,7 +2112,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ReportRequest"
+                            "$ref": "#/definitions/profiles.ReportRequest"
                         }
                     }
                 ],
@@ -2090,7 +2241,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "400": {
@@ -2122,6 +2273,166 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to retrieve stats",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates a task with location and charges Silver Seals",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Create a map task",
+                "parameters": [
+                    {
+                        "description": "Task creation payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.CreateTaskRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.TaskResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Insufficient funds",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/nearby": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns active tasks within a radius (meters)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Find tasks nearby",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitude",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitude",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "default": 2000,
+                        "description": "Radius in meters",
+                        "name": "radius_m",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.NearbyTasksResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2173,7 +2484,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.UserSearchResult"
+                                "$ref": "#/definitions/profiles.UserSearchResult"
                             }
                         }
                     }
@@ -2182,123 +2493,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse": {
-            "type": "object",
-            "properties": {
-                "current_seals": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "full_title": {
-                    "type": "string"
-                },
-                "icon_url": {
-                    "type": "string"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "level_max_seals": {
-                    "type": "integer"
-                },
-                "level_min_seals": {
-                    "type": "integer"
-                },
-                "next_level": {
-                    "type": "string"
-                },
-                "next_rank": {
-                    "type": "string"
-                },
-                "progress_in_rank": {
-                    "type": "number"
-                },
-                "progress_to_next_level": {
-                    "type": "number"
-                },
-                "quality_name": {
-                    "type": "string"
-                },
-                "rank_max_seals": {
-                    "type": "integer"
-                },
-                "rank_min_seals": {
-                    "type": "integer"
-                },
-                "rank_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.RankListResponse": {
-            "type": "object",
-            "properties": {
-                "ranks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankWithLevels"
-                    }
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.RankWithLevels": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "icon_url": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "levels": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "max_seals": {
-                    "type": "integer"
-                },
-                "min_seals": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "quality": {
-                    "type": "string"
-                },
-                "sub_levels": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo"
-                    }
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo": {
-            "type": "object",
-            "properties": {
-                "level": {
-                    "type": "string"
-                },
-                "max_seals": {
-                    "type": "integer"
-                },
-                "min_seals": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_modules_auth.CheckEmailRequest": {
+        "auth.CheckEmailRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -2307,7 +2502,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.CheckEmailResponse": {
+        "auth.CheckEmailResponse": {
             "type": "object",
             "properties": {
                 "exists": {
@@ -2316,7 +2511,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.EmailLoginRequest": {
+        "auth.EmailLoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -2341,7 +2536,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.EmailRegisterRequest": {
+        "auth.EmailRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -2383,7 +2578,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.ErrorResponse": {
+        "auth.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -2396,7 +2591,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.FirebasePhoneAuthRequest": {
+        "auth.FirebasePhoneAuthRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -2413,7 +2608,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.FirebasePhoneRegisterRequest": {
+        "auth.FirebasePhoneRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -2443,7 +2638,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.LoginRequest": {
+        "auth.LoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -2456,14 +2651,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "provider_type": {
-                    "$ref": "#/definitions/internal_modules_auth.ProviderType"
+                    "$ref": "#/definitions/auth.ProviderType"
                 },
                 "user_agent": {
                     "type": "string"
                 }
             }
         },
-        "internal_modules_auth.LoginResponse": {
+        "auth.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -2473,11 +2668,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeRequest": {
+        "auth.PhoneCodeRequest": {
             "type": "object",
             "properties": {
                 "country_code": {
@@ -2495,7 +2690,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeResponse": {
+        "auth.PhoneCodeResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -2506,7 +2701,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneRegisterRequest": {
+        "auth.PhoneRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -2536,7 +2731,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyRequest": {
+        "auth.PhoneVerifyRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -2556,7 +2751,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyResponse": {
+        "auth.PhoneVerifyResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -2566,7 +2761,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 },
                 "verification_id": {
                     "type": "string"
@@ -2576,7 +2771,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.ProviderType": {
+        "auth.ProviderType": {
             "type": "string",
             "enum": [
                 "apple",
@@ -2591,7 +2786,7 @@ const docTemplate = `{
                 "ProviderPhone"
             ]
         },
-        "internal_modules_auth.RefreshRequest": {
+        "auth.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -2599,7 +2794,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.User": {
+        "auth.User": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -2643,7 +2838,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.AccrualResponse": {
+        "economy.AccrualResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -2660,7 +2855,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.AdjustBalanceRequest": {
+        "economy.AdjustBalanceRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -2673,7 +2868,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
+                    "$ref": "#/definitions/economy.CurrencyCode"
                 },
                 "reason": {
                     "type": "string",
@@ -2684,7 +2879,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.BalanceResponse": {
+        "economy.BalanceResponse": {
             "type": "object",
             "properties": {
                 "gold_balance": {
@@ -2704,7 +2899,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.ClaimDailyAccrualRequest": {
+        "economy.ClaimDailyAccrualRequest": {
             "type": "object",
             "properties": {
                 "idempotency_key": {
@@ -2712,7 +2907,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.CurrencyCode": {
+        "economy.CurrencyCode": {
             "type": "string",
             "enum": [
                 "SILVER_SEAL",
@@ -2723,7 +2918,7 @@ const docTemplate = `{
                 "CurrencyGoldSeal"
             ]
         },
-        "internal_modules_economy.ErrorResponse": {
+        "economy.ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -2740,7 +2935,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.GiveSealToPostRequest": {
+        "economy.GiveSealToPostRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -2768,7 +2963,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.GiveSealToUserRequest": {
+        "economy.GiveSealToUserRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -2794,7 +2989,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.LimitsResponse": {
+        "economy.LimitsResponse": {
             "type": "object",
             "properties": {
                 "daily_accrual_claimed": {
@@ -2817,7 +3012,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.Referral": {
+        "economy.Referral": {
             "type": "object",
             "properties": {
                 "bonus_ledger_entry_id": {
@@ -2840,7 +3035,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.ReferralStatsResponse": {
+        "economy.ReferralStatsResponse": {
             "type": "object",
             "properties": {
                 "active_referrals": {
@@ -2849,7 +3044,7 @@ const docTemplate = `{
                 "referrals": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.Referral"
+                        "$ref": "#/definitions/economy.Referral"
                     }
                 },
                 "total_earned": {
@@ -2860,7 +3055,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.TransactionCategory": {
+        "economy.TransactionCategory": {
             "type": "string",
             "enum": [
                 "DAILY_ACCRUAL",
@@ -2883,7 +3078,7 @@ const docTemplate = `{
                 "CategoryPostSeal"
             ]
         },
-        "internal_modules_economy.TransactionHistoryResponse": {
+        "economy.TransactionHistoryResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -2898,28 +3093,28 @@ const docTemplate = `{
                 "transactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.TransactionItem"
+                        "$ref": "#/definitions/economy.TransactionItem"
                     }
                 }
             }
         },
-        "internal_modules_economy.TransactionItem": {
+        "economy.TransactionItem": {
             "type": "object",
             "properties": {
                 "amount": {
                     "type": "number"
                 },
                 "category": {
-                    "$ref": "#/definitions/internal_modules_economy.TransactionCategory"
+                    "$ref": "#/definitions/economy.TransactionCategory"
                 },
                 "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
+                    "$ref": "#/definitions/economy.CurrencyCode"
                 },
                 "id": {
                     "type": "string"
                 },
                 "other_user": {
-                    "$ref": "#/definitions/internal_modules_economy.UserInfo"
+                    "$ref": "#/definitions/economy.UserInfo"
                 },
                 "reference": {
                     "type": "string"
@@ -2932,7 +3127,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.TransferRequest": {
+        "economy.TransferRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -2966,7 +3161,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.TransferResponse": {
+        "economy.TransferResponse": {
             "type": "object",
             "properties": {
                 "ledger_entry_id": {
@@ -2986,7 +3181,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.UserInfo": {
+        "economy.UserInfo": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -3000,7 +3195,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.ViolationLog": {
+        "economy.ViolationLog": {
             "type": "object",
             "properties": {
                 "amount_attempted": {
@@ -3025,11 +3220,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "violation_type": {
-                    "$ref": "#/definitions/internal_modules_economy.ViolationType"
+                    "$ref": "#/definitions/economy.ViolationType"
                 }
             }
         },
-        "internal_modules_economy.ViolationLogsResponse": {
+        "economy.ViolationLogsResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -3044,12 +3239,12 @@ const docTemplate = `{
                 "violations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.ViolationLog"
+                        "$ref": "#/definitions/economy.ViolationLog"
                     }
                 }
             }
         },
-        "internal_modules_economy.ViolationType": {
+        "economy.ViolationType": {
             "type": "string",
             "enum": [
                 "COOLDOWN_BREACH",
@@ -3068,7 +3263,125 @@ const docTemplate = `{
                 "ViolationRepeatTransferPattern"
             ]
         },
-        "internal_modules_profiles.AllyProfile": {
+        "mapmodule.ChampionPin": {
+            "type": "object",
+            "properties": {
+                "h3_index": {
+                    "type": "string"
+                },
+                "resolution": {
+                    "type": "integer"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.CreateTaskRequest": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "number",
+                    "example": 37.7749
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -122.4194
+                },
+                "reward": {
+                    "description": "in seals",
+                    "type": "number",
+                    "example": 1.5
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Pick up a package"
+                }
+            }
+        },
+        "mapmodule.NearbyTasksResponse": {
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
+                    }
+                }
+            }
+        },
+        "mapmodule.RegionAssignmentRequest": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "number",
+                    "example": 37.7749
+                },
+                "location_opt_in": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -122.4194
+                },
+                "participate_district": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "mapmodule.RegionAssignmentResponse": {
+            "type": "object",
+            "properties": {
+                "h3_res2": {
+                    "type": "string"
+                },
+                "h3_res4": {
+                    "type": "string"
+                },
+                "h3_res5": {
+                    "type": "string"
+                },
+                "location_opt_in": {
+                    "type": "boolean"
+                },
+                "participate_district": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.TaskResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "reward": {
+                    "description": "in seals",
+                    "type": "number"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "profiles.AllyProfile": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -3089,7 +3402,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.Profile": {
+        "profiles.Profile": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -3150,7 +3463,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.ProfileSearchResult": {
+        "profiles.ProfileSearchResult": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -3175,7 +3488,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.ProfileStats": {
+        "profiles.ProfileStats": {
             "type": "object",
             "properties": {
                 "gold_balance": {
@@ -3204,7 +3517,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.PublicProfileResponse": {
+        "profiles.PublicProfileResponse": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -3249,7 +3562,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.RelationshipStatus": {
+        "profiles.RelationshipStatus": {
             "type": "object",
             "properties": {
                 "i_blocked_them": {
@@ -3278,7 +3591,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.ReportRequest": {
+        "profiles.ReportRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -3301,7 +3614,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.UpdateProfileRequest": {
+        "profiles.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -3343,7 +3656,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.UserSearchResult": {
+        "profiles.UserSearchResult": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -3365,6 +3678,122 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "ranks.CurrentRankResponse": {
+            "type": "object",
+            "properties": {
+                "current_seals": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "full_title": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "level_max_seals": {
+                    "type": "integer"
+                },
+                "level_min_seals": {
+                    "type": "integer"
+                },
+                "next_level": {
+                    "type": "string"
+                },
+                "next_rank": {
+                    "type": "string"
+                },
+                "progress_in_rank": {
+                    "type": "number"
+                },
+                "progress_to_next_level": {
+                    "type": "number"
+                },
+                "quality_name": {
+                    "type": "string"
+                },
+                "rank_max_seals": {
+                    "type": "integer"
+                },
+                "rank_min_seals": {
+                    "type": "integer"
+                },
+                "rank_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "ranks.RankListResponse": {
+            "type": "object",
+            "properties": {
+                "ranks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ranks.RankWithLevels"
+                    }
+                }
+            }
+        },
+        "ranks.RankWithLevels": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "max_seals": {
+                    "type": "integer"
+                },
+                "min_seals": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "quality": {
+                    "type": "string"
+                },
+                "sub_levels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ranks.SubLevelInfo"
+                    }
+                }
+            }
+        },
+        "ranks.SubLevelInfo": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "string"
+                },
+                "max_seals": {
+                    "type": "integer"
+                },
+                "min_seals": {
+                    "type": "integer"
                 }
             }
         }
