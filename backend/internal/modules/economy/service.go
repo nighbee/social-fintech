@@ -797,43 +797,8 @@ func (s *service) ChargeForTaskCreation(ctx context.Context, userID, taskID stri
 
 		txRepo := s.repo.WithTx(tx)
 
-		wallet, err := txRepo.GetWallet(ctx, userID, CurrencySilverSeal)
-		if err != nil {
-			return WrapErrorf(err, "failed to get wallet")
-		}
-
-		referenceID := fmt.Sprintf("task_create_%s", taskID)
-		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
-			return nil
-		}
-
-		if !wallet.HasSufficientBalance(cost) {
-			return NewInsufficientFundsError(userID, CurrencySilverSeal, cost, wallet.Balance)
-		}
-
-		wallet.Balance -= cost
-		if wallet.FreeBalance > 0 {
-			deductFromFree := min(wallet.FreeBalance, cost)
-			wallet.FreeBalance -= deductFromFree
-		}
-
-		if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+		if err := ChargeForTaskCreationTx(ctx, txRepo, userID, taskID, cost); err != nil {
 			return err
-		}
-
-		entry := &LedgerEntry{
-			ID:             uuid.New().String(),
-			Amount:         cost,
-			Currency:       CurrencySilverSeal,
-			SenderWalletID: &wallet.ID,
-			Category:       CategoryTaskCreation,
-			ReferenceID:    referenceID,
-			Metadata:       mustMarshalJSON(map[string]interface{}{"task_id": taskID}),
-			CreatedAt:      time.Now(),
-		}
-
-		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
-			return WrapErrorf(err, "failed to create ledger entry")
 		}
 
 		if err := tx.Commit(); err != nil {
@@ -847,6 +812,55 @@ func (s *service) ChargeForTaskCreation(ctx context.Context, userID, taskID stri
 	})
 
 	return err
+}
+
+// ChargeForTaskCreationTx charges the user for task creation within an existing transaction.
+// The passed repo MUST be bound to the current transaction.
+func ChargeForTaskCreationTx(ctx context.Context, repo Repository, userID, taskID string, cost int64) error {
+	if cost <= 0 {
+		return NewInvalidAmountError(CentinelsToSeals(cost))
+	}
+
+	wallet, err := repo.GetWallet(ctx, userID, CurrencySilverSeal)
+	if err != nil {
+		return WrapErrorf(err, "failed to get wallet")
+	}
+
+	referenceID := fmt.Sprintf("task_create_%s", taskID)
+	if existing, err := repo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
+		return nil
+	}
+
+	if !wallet.HasSufficientBalance(cost) {
+		return NewInsufficientFundsError(userID, CurrencySilverSeal, cost, wallet.Balance)
+	}
+
+	wallet.Balance -= cost
+	if wallet.FreeBalance > 0 {
+		deductFromFree := min(wallet.FreeBalance, cost)
+		wallet.FreeBalance -= deductFromFree
+	}
+
+	if err := repo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+		return err
+	}
+
+	entry := &LedgerEntry{
+		ID:             uuid.New().String(),
+		Amount:         cost,
+		Currency:       CurrencySilverSeal,
+		SenderWalletID: &wallet.ID,
+		Category:       CategoryTaskCreation,
+		ReferenceID:    referenceID,
+		Metadata:       mustMarshalJSON(map[string]interface{}{"task_id": taskID}),
+		CreatedAt:      time.Now(),
+	}
+
+	if err := repo.CreateLedgerEntry(ctx, entry); err != nil {
+		return WrapErrorf(err, "failed to create ledger entry")
+	}
+
+	return nil
 }
 
 func (s *service) RewardForTaskCompletion(ctx context.Context, userID, taskID string, reward int64) error {
