@@ -18,6 +18,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/fiber-swagger v1.3.0
 	github.com/swaggo/swag v1.16.6
+	github.com/uber/h3-go/v4 v4.1.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
 	google.golang.org/api v0.214.0
