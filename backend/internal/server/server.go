@@ -7,6 +7,7 @@ import (
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
@@ -19,7 +20,7 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -121,6 +122,16 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 
 	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank)
 	api.Get("/profiles/ranks", profilesHandler.GetAllRanks)
+
+	// Map & Tasks routes
+	mapGroup := api.Group("/")
+	mapGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	mapGroup.Use(middleware.TouchSession(authRepo))
+
+	mapGroup.Post("/tasks", mapHandler.CreateTask)
+	mapGroup.Get("/tasks/nearby", mapHandler.GetNearbyTasks)
+	mapGroup.Post("/map/region", mapHandler.SetUserRegion)
+	mapGroup.Get("/map/champions", mapHandler.GetRegionChampions)
 
 	return app
 }
