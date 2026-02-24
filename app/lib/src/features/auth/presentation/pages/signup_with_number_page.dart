@@ -7,6 +7,7 @@ import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/core/widgets/phone_number_formatter.dart';
+import 'package:app/src/features/auth/domain/requests/login_request.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -293,7 +294,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
-                                    const AuthEvent.loginWithGoogle(),
+                                    AuthEvent.login(request: LoginRequest.social(provider: SocialProvider.google)),
                                   );
                                 },
                                 padding: EdgeInsets.symmetric(vertical: 10),

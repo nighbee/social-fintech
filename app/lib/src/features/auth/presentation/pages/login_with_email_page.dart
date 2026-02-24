@@ -6,6 +6,7 @@ import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/features/auth/domain/requests/login_request.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
@@ -212,9 +213,11 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 return;
                               }
                               context.read<AuthBloc>().add(
-                                AuthEvent.loginWithEmail(
-                                  email: _emailController.text.trim(),
-                                  password: _passwordController.text,
+                                AuthEvent.login(
+                                  request: LoginRequest.email(
+                                    email: _emailController.text.trim(),
+                                    password: _passwordController.text,
+                                  ),
                                 ),
                               );
                             },
@@ -259,7 +262,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
-                                    const AuthEvent.loginWithApple(),
+                                    AuthEvent.login(request: LoginRequest.social(provider: SocialProvider.apple)),
                                   );
                                 },
                                 padding: EdgeInsets.symmetric(vertical: 10),
@@ -273,7 +276,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
-                                    const AuthEvent.loginWithGoogle(),
+                                    AuthEvent.login(request: LoginRequest.social(provider: SocialProvider.google)),
                                   );
                                 },
                                 padding: EdgeInsets.symmetric(vertical: 10),

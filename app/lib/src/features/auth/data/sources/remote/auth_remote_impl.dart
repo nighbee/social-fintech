@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
+import 'package:app/src/core/utils/device_id.dart';
 import 'package:app/src/core/utils/loggers/log.dart';
 import 'package:app/src/features/auth/data/models/login_dto.dart';
 import 'package:app/src/features/auth/data/models/phone_code_response_dto.dart';
@@ -17,6 +18,7 @@ class AuthRemoteImpl implements IAuthRemote {
   AuthRemoteImpl(@Named('DioClient') this._client);
 
   final RestClient _client;
+  final DeviceId _deviceId = DeviceId();
 
   // Cache for app version
   String? _appVersion;
@@ -41,8 +43,8 @@ class AuthRemoteImpl implements IAuthRemote {
   @override
   Future<Either<DomainException, LoginDto>> loginWithGoogle({
     required String providerToken,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -70,8 +72,8 @@ class AuthRemoteImpl implements IAuthRemote {
   @override
   Future<Either<DomainException, LoginDto>> loginWithApple({
     required String providerToken,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -119,8 +121,8 @@ class AuthRemoteImpl implements IAuthRemote {
   Future<Either<DomainException, LoginDto>> loginWithEmail({
     required String email,
     required String password,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -178,10 +180,10 @@ class AuthRemoteImpl implements IAuthRemote {
     required String password,
     required String firstName,
     required String lastName,
-    required String deviceId,
     required String dateOfBirth,
     required String referral,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -256,8 +258,8 @@ class AuthRemoteImpl implements IAuthRemote {
   Future<Either<DomainException, LoginDto>> verifyPhoneCode({
     required String verificationId,
     required String code,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final result = await _client.post(
       EndPoints.authPhoneVerify,
       data: {
@@ -282,10 +284,10 @@ class AuthRemoteImpl implements IAuthRemote {
     required String verificationId,
     required String firstName,
     required String lastName,
-    required String deviceId,
     String? dateOfBirth,
     String? referral,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final result = await _client.post(
       EndPoints.authRegisterPhone,
       data: {
@@ -318,8 +320,8 @@ class AuthRemoteImpl implements IAuthRemote {
   @override
   Future<Either<DomainException, LoginDto>> firebasePhoneLogin({
     required String firebaseIdToken,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -348,10 +350,10 @@ class AuthRemoteImpl implements IAuthRemote {
     required String firebaseIdToken,
     required String firstName,
     required String lastName,
-    required String deviceId,
     String? dateOfBirth,
     String? referral,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 

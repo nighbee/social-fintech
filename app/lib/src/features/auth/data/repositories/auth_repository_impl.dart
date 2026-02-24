@@ -3,12 +3,15 @@ import 'package:injectable/injectable.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
-import 'package:app/src/core/utils/device_id.dart';
+import 'package:app/src/features/auth/data/models/login_dto.dart';
 import 'package:app/src/features/auth/data/sources/local/i_auth_local.dart';
-import 'package:app/src/features/auth/data/sources/remote/i_auth_remote.dart';
 import 'package:app/src/features/auth/data/sources/remote/firebase_auth_service.dart';
+import 'package:app/src/features/auth/data/sources/remote/i_auth_remote.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
+import 'package:app/src/features/auth/domain/requests/login_request.dart';
+import 'package:app/src/features/auth/domain/requests/phone_code_request.dart';
+import 'package:app/src/features/auth/domain/requests/register_request.dart';
 
 @named
 @LazySingleton(as: IAuthRepository)
@@ -22,204 +25,50 @@ class AuthRepositoryImpl implements IAuthRepository {
   final IAuthLocal _authLocal;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId: '493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com',
+    serverClientId:
+        '493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com',
   );
-  final DeviceId _deviceId = DeviceId();
   final FirebaseAuthService _firebaseAuth = FirebaseAuthService();
 
   @override
-  Future<Either<DomainException, LoginEntity>> loginWithGoogle() async {
-    try {
-      final googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        return Left(
-          GoogleSignInException(message: 'User cancelled Google Sign In'),
-        );
-      }
-
-      final googleAuth = await googleUser.authentication;
-      if (googleAuth.idToken == null) {
-        return Left(
-          GoogleSignInException(message: 'Failed to get Google ID token'),
-        );
-      }
-
-      final deviceId = await _deviceId.getDeviceId();
-      final result = await _authRemote.loginWithGoogle(
-        providerToken: googleAuth.idToken!,
-        deviceId: deviceId,
-      );
-
-      return await result.fold((error) => Left(error), (dto) async {
-        final entity = dto.toEntity();
-        await _authLocal.saveTokens(
-          accessToken: entity.accessToken,
-          refreshToken: entity.refreshToken,
-        );
-        return Right(entity);
-      });
-    } catch (e) {
-      return Left(GoogleSignInException(message: 'Google Sign In failed: $e'));
-    }
-  }
-
-  @override
-  Future<Either<DomainException, LoginEntity>> loginWithApple() async {
-    try {
-      final credential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
-
-      if (credential.identityToken == null) {
-        return Left(
-          AppleSignInException(message: 'Failed to get Apple identity token'),
-        );
-      }
-
-      final deviceId = await _deviceId.getDeviceId();
-      final result = await _authRemote.loginWithApple(
-        providerToken: credential.identityToken!,
-        deviceId: deviceId,
-      );
-
-      return await result.fold((error) => Left(error), (dto) async {
-        final entity = dto.toEntity();
-        await _authLocal.saveTokens(
-          accessToken: entity.accessToken,
-          refreshToken: entity.refreshToken,
-        );
-        return Right(entity);
-      });
-    } catch (e) {
-      return Left(AppleSignInException(message: 'Apple Sign In failed: $e'));
-    }
-  }
-
-  @override
-  Future<Either<DomainException, LoginEntity>> loginWithEmail({
-    required String email,
-    required String password,
-  }) async {
-    final deviceId = await _deviceId.getDeviceId();
-    final result = await _authRemote.loginWithEmail(
-      email: email,
-      password: password,
-      deviceId: deviceId,
+  Future<Either<DomainException, LoginEntity>> login(LoginRequest request) async {
+    return request.when(
+      email: _loginWithEmail,
+      social: _loginWithSocial,
+      phoneCode: _verifyPhoneCode,
+      firebasePhone: _firebasePhoneLogin,
     );
-
-    return await result.fold((error) => Left(error), (dto) async {
-      final entity = dto.toEntity();
-      await _authLocal.saveTokens(
-        accessToken: entity.accessToken,
-        refreshToken: entity.refreshToken,
-      );
-      return Right(entity);
-    });
   }
 
   @override
   Future<Either<DomainException, bool>> checkEmailExists({
     required String email,
   }) async {
-    return await _authRemote.checkEmailExists(email: email);
+    return _authRemote.checkEmailExists(email: email);
   }
 
   @override
-  Future<Either<DomainException, LoginEntity>> registerWithEmail({
-    required String email,
-    required String password,
-    required String firstName,
-    required String lastName,
-    required String dateOfBirth,
-    required String referral,
-  }) async {
-    final deviceId = await _deviceId.getDeviceId();
-    final result = await _authRemote.registerWithEmail(
-      email: email,
-      password: password,
-      firstName: firstName,
-      lastName: lastName,
-      deviceId: deviceId,
-      dateOfBirth: dateOfBirth,
-      referral: referral,
+  Future<Either<DomainException, LoginEntity>> register(
+    RegisterRequest request,
+  ) async {
+    return request.when(
+      email: _registerWithEmail,
+      phone: _registerWithPhone,
+      firebasePhone: _firebasePhoneRegister,
     );
-
-    return await result.fold((error) => Left(error), (dto) async {
-      final entity = dto.toEntity();
-      await _authLocal.saveTokens(
-        accessToken: entity.accessToken,
-        refreshToken: entity.refreshToken,
-      );
-      return Right(entity);
-    });
   }
 
   @override
-  Future<Either<DomainException, void>> requestPhoneCode({
-    required String countryCode,
-    required String phoneNumber,
-    required String purpose,
-  }) async {
+  Future<Either<DomainException, void>> requestPhoneCode(
+    PhoneCodeRequest request,
+  ) async {
     final result = await _authRemote.requestPhoneCode(
-      countryCode: countryCode,
-      phoneNumber: phoneNumber,
-      purpose: purpose,
+      countryCode: request.countryCode,
+      phoneNumber: request.phoneNumber,
+      purpose: request.purpose,
     );
 
     return result.fold((error) => Left(error), (_) => const Right(null));
-  }
-
-  @override
-  Future<Either<DomainException, LoginEntity>> verifyPhoneCode({
-    required String verificationId,
-    required String code,
-  }) async {
-    final deviceId = await _deviceId.getDeviceId();
-    final result = await _authRemote.verifyPhoneCode(
-      verificationId: verificationId,
-      code: code,
-      deviceId: deviceId,
-    );
-
-    return await result.fold((error) => Left(error), (dto) async {
-      final entity = dto.toEntity();
-      await _authLocal.saveTokens(
-        accessToken: entity.accessToken,
-        refreshToken: entity.refreshToken,
-      );
-      return Right(entity);
-    });
-  }
-
-  @override
-  Future<Either<DomainException, LoginEntity>> registerWithPhone({
-    required String verificationId,
-    required String firstName,
-    required String lastName,
-    String? dateOfBirth,
-    String? referral,
-  }) async {
-    final deviceId = await _deviceId.getDeviceId();
-    final result = await _authRemote.registerWithPhone(
-      verificationId: verificationId,
-      firstName: firstName,
-      lastName: lastName,
-      deviceId: deviceId,
-      dateOfBirth: dateOfBirth,
-      referral: referral,
-    );
-
-    return await result.fold((error) => Left(error), (dto) async {
-      final entity = dto.toEntity();
-      await _authLocal.saveTokens(
-        accessToken: entity.accessToken,
-        refreshToken: entity.refreshToken,
-      );
-      return Right(entity);
-    });
   }
 
   @override
@@ -263,45 +112,156 @@ class AuthRepositoryImpl implements IAuthRepository {
     }
   }
 
-  @override
-  Future<Either<DomainException, LoginEntity>> firebasePhoneLogin({
-    required String firebaseIdToken,
-  }) async {
-    final deviceId = await _deviceId.getDeviceId();
-    final result = await _authRemote.firebasePhoneLogin(
-      firebaseIdToken: firebaseIdToken,
-      deviceId: deviceId,
+  Future<Either<DomainException, LoginEntity>> _loginWithEmail(
+    String email,
+    String password,
+  ) async {
+    final result = await _authRemote.loginWithEmail(
+      email: email,
+      password: password,
     );
 
-    return await result.fold((error) => Left(error), (dto) async {
-      final entity = dto.toEntity();
-      await _authLocal.saveTokens(
-        accessToken: entity.accessToken,
-        refreshToken: entity.refreshToken,
-      );
-      return Right(entity);
-    });
+    return _mapLoginResult(result);
   }
 
-  @override
-  Future<Either<DomainException, LoginEntity>> firebasePhoneRegister({
-    required String firebaseIdToken,
-    required String firstName,
-    required String lastName,
-    String? dateOfBirth,
-    String? referral,
-  }) async {
-    final deviceId = await _deviceId.getDeviceId();
-    final result = await _authRemote.firebasePhoneRegister(
+  Future<Either<DomainException, LoginEntity>> _loginWithSocial(
+    SocialProvider provider,
+  ) async {
+    try {
+      switch (provider) {
+        case SocialProvider.google:
+          final googleUser = await _googleSignIn.signIn();
+          if (googleUser == null) {
+            return Left(
+              GoogleSignInException(message: 'User cancelled Google Sign In'),
+            );
+          }
+
+          final googleAuth = await googleUser.authentication;
+          final idToken = googleAuth.idToken;
+          if (idToken == null) {
+            return Left(
+              GoogleSignInException(message: 'Failed to get Google ID token'),
+            );
+          }
+
+          return _mapLoginResult(
+            await _authRemote.loginWithGoogle(providerToken: idToken),
+          );
+
+        case SocialProvider.apple:
+          final credential = await SignInWithApple.getAppleIDCredential(
+            scopes: [
+              AppleIDAuthorizationScopes.email,
+              AppleIDAuthorizationScopes.fullName,
+            ],
+          );
+
+          final identityToken = credential.identityToken;
+          if (identityToken == null) {
+            return Left(
+              AppleSignInException(
+                message: 'Failed to get Apple identity token',
+              ),
+            );
+          }
+
+          return _mapLoginResult(
+            await _authRemote.loginWithApple(providerToken: identityToken),
+          );
+      }
+    } catch (e) {
+      if (provider == SocialProvider.google) {
+        return Left(
+          GoogleSignInException(message: 'Google Sign In failed: $e'),
+        );
+      }
+      return Left(AppleSignInException(message: 'Apple Sign In failed: $e'));
+    }
+  }
+
+  Future<Either<DomainException, LoginEntity>> _verifyPhoneCode(
+    String verificationId,
+    String code,
+  ) async {
+    final result = await _authRemote.verifyPhoneCode(
+      verificationId: verificationId,
+      code: code,
+    );
+
+    return _mapLoginResult(result);
+  }
+
+  Future<Either<DomainException, LoginEntity>> _firebasePhoneLogin(
+    String firebaseIdToken,
+  ) async {
+    final result = await _authRemote.firebasePhoneLogin(
       firebaseIdToken: firebaseIdToken,
+    );
+
+    return _mapLoginResult(result);
+  }
+
+  Future<Either<DomainException, LoginEntity>> _registerWithEmail(
+    String email,
+    String password,
+    String firstName,
+    String lastName,
+    String dateOfBirth,
+    String referral,
+  ) async {
+    final result = await _authRemote.registerWithEmail(
+      email: email,
+      password: password,
       firstName: firstName,
       lastName: lastName,
-      deviceId: deviceId,
       dateOfBirth: dateOfBirth,
       referral: referral,
     );
 
-    return await result.fold((error) => Left(error), (dto) async {
+    return _mapLoginResult(result);
+  }
+
+  Future<Either<DomainException, LoginEntity>> _registerWithPhone(
+    String verificationId,
+    String firstName,
+    String lastName,
+    String? dateOfBirth,
+    String? referral,
+  ) async {
+    final result = await _authRemote.registerWithPhone(
+      verificationId: verificationId,
+      firstName: firstName,
+      lastName: lastName,
+      dateOfBirth: dateOfBirth,
+      referral: referral,
+    );
+
+    return _mapLoginResult(result);
+  }
+
+  Future<Either<DomainException, LoginEntity>> _firebasePhoneRegister(
+    String firebaseIdToken,
+    String firstName,
+    String lastName,
+    String? dateOfBirth,
+    String? referral,
+  ) async {
+    final result = await _authRemote.firebasePhoneRegister(
+      firebaseIdToken: firebaseIdToken,
+      firstName: firstName,
+      lastName: lastName,
+      dateOfBirth: dateOfBirth,
+      referral: referral,
+    );
+
+    return _mapLoginResult(result);
+  }
+
+  Future<Either<DomainException, LoginEntity>> _mapLoginResult(
+    Either<DomainException, LoginDto> result,
+  ) async {
+    return result.fold((error) => Left(error), (dto) async {
       final entity = dto.toEntity();
       await _authLocal.saveTokens(
         accessToken: entity.accessToken,
