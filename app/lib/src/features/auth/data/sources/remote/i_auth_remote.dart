@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/auth/data/models/login_dto.dart';
 import 'package:app/src/features/auth/data/models/phone_code_response_dto.dart';
+import 'package:app/src/features/auth/data/models/user_search_dto.dart';
 
 abstract interface class IAuthRemote {
   Future<Either<DomainException, LoginDto>> loginWithGoogle({
@@ -23,7 +24,7 @@ abstract interface class IAuthRemote {
     required String firstName,
     required String lastName,
     required String dateOfBirth,
-    required String referral,
+    String? referral,
   });
   Future<Either<DomainException, PhoneCodeResponseDto>> requestPhoneCode({
     required String countryCode,
@@ -38,7 +39,7 @@ abstract interface class IAuthRemote {
     required String verificationId,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
   });
   Future<Either<DomainException, LoginDto>> firebasePhoneLogin({
@@ -48,8 +49,13 @@ abstract interface class IAuthRemote {
     required String firebaseIdToken,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
+  });
+  Future<Either<DomainException, List<UserSearchDto>>> searchUsers({
+    required String firstName,
+    required String lastName,
+    int limit,
   });
   Future<Either<DomainException, void>> logout();
 }

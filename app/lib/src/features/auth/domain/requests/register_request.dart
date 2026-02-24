@@ -10,14 +10,14 @@ class RegisterRequest with _$RegisterRequest {
     required String firstName,
     required String lastName,
     required String dateOfBirth,
-    required String referral,
+    String? referral,
   }) = _EmailRegisterRequest;
 
   const factory RegisterRequest.phone({
     required String verificationId,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
   }) = _PhoneRegisterRequest;
 
@@ -25,7 +25,7 @@ class RegisterRequest with _$RegisterRequest {
     required String firebaseIdToken,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
   }) = _FirebasePhoneRegisterRequest;
 }

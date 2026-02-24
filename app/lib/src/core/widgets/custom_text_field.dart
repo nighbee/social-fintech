@@ -8,6 +8,7 @@ class CustomTextField extends StatefulWidget {
     super.key,
     required this.controller,
     required this.labelText,
+    this.focusNode,
     this.hintText,
     this.onChanged,
     this.keyboardType,
@@ -26,6 +27,7 @@ class CustomTextField extends StatefulWidget {
 
   final TextEditingController controller;
   final String labelText;
+  final FocusNode? focusNode;
   final String? hintText;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
@@ -115,6 +117,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                       Text(widget.labelText, style: TextStyles.bodyMain),
                     TextFormField(
                       controller: widget.controller,
+                      focusNode: widget.focusNode,
                       onChanged: (value) {
                         widget.onChanged?.call(value);
                       },

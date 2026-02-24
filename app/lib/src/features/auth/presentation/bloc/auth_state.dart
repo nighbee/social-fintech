@@ -24,6 +24,8 @@ class AuthViewModel with _$AuthViewModel {
   factory AuthViewModel({
     @Default(false) bool isLoading,
     @Default(false) bool isLoggedIn,
+    @Default(false) bool isUserSearchLoading,
+    @Default([]) List<UserSearchEntity> userSearchResults,
     String? firebaseIdToken,
     String? email,
     String? password,

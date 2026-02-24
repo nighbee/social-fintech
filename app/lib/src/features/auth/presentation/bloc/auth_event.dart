@@ -17,5 +17,8 @@ class AuthEvent with _$AuthEvent {
     required String code,
     required bool isLogin,
   }) = _VerifyOtpCode;
+  const factory AuthEvent.searchUsers({
+    required SearchUsersRequest request,
+  }) = _SearchUsers;
   const factory AuthEvent.logout() = _Logout;
 }

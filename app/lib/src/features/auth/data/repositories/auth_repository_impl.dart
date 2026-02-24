@@ -8,6 +8,7 @@ import 'package:app/src/features/auth/data/sources/local/i_auth_local.dart';
 import 'package:app/src/features/auth/data/sources/remote/firebase_auth_service.dart';
 import 'package:app/src/features/auth/data/sources/remote/i_auth_remote.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
+import 'package:app/src/features/auth/domain/entities/user_search_entity.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:app/src/features/auth/domain/requests/login_request.dart';
 import 'package:app/src/features/auth/domain/requests/phone_code_request.dart';
@@ -81,6 +82,28 @@ class AuthRepositoryImpl implements IAuthRepository {
   }
 
   @override
+  Future<Either<DomainException, List<UserSearchEntity>>> searchUsers({
+    required String firstName,
+    required String lastName,
+    int limit = 20,
+  }) async {
+    final result = await _authRemote.searchUsers(
+      firstName: firstName,
+      lastName: lastName,
+      limit: limit,
+    );
+
+    return result.fold(
+      (error) => Left(error),
+      (dtoList) {
+        final List<UserSearchEntity> entities =
+            dtoList.map((dto) => dto.toEntity()).toList();
+        return Right(entities);
+      },
+    );
+  }
+
+  @override
   Future<Either<DomainException, String>> startPhoneVerification({
     required String phoneNumber,
   }) async {
@@ -145,9 +168,27 @@ class AuthRepositoryImpl implements IAuthRepository {
             );
           }
 
-          return _mapLoginResult(
-            await _authRemote.loginWithGoogle(providerToken: idToken),
+          final loginResult = await _authRemote.loginWithGoogle(
+            providerToken: idToken,
           );
+          final shouldGoRegister = loginResult.fold(
+            (error) => _isRegisterRequiredMessage(error.message),
+            (_) => false,
+          );
+          if (shouldGoRegister) {
+            return Left(
+              SocialRegisterRequiredException(
+                provider: 'google',
+                providerToken: idToken,
+                message: loginResult.fold(
+                  (error) => error.message,
+                  (_) => 'Social register required',
+                ),
+              ),
+            );
+          }
+
+          return _mapLoginResult(loginResult);
 
         case SocialProvider.apple:
           final credential = await SignInWithApple.getAppleIDCredential(
@@ -208,7 +249,7 @@ class AuthRepositoryImpl implements IAuthRepository {
     String firstName,
     String lastName,
     String dateOfBirth,
-    String referral,
+    String? referral,
   ) async {
     final result = await _authRemote.registerWithEmail(
       email: email,
@@ -226,7 +267,7 @@ class AuthRepositoryImpl implements IAuthRepository {
     String verificationId,
     String firstName,
     String lastName,
-    String? dateOfBirth,
+    String dateOfBirth,
     String? referral,
   ) async {
     final result = await _authRemote.registerWithPhone(
@@ -244,7 +285,7 @@ class AuthRepositoryImpl implements IAuthRepository {
     String firebaseIdToken,
     String firstName,
     String lastName,
-    String? dateOfBirth,
+    String dateOfBirth,
     String? referral,
   ) async {
     final result = await _authRemote.firebasePhoneRegister(
@@ -269,5 +310,14 @@ class AuthRepositoryImpl implements IAuthRepository {
       );
       return Right(entity);
     });
+  }
+
+  bool _isRegisterRequiredMessage(String message) {
+    final value = message.toLowerCase();
+    return value.contains('not found') ||
+        value.contains('user does not exist') ||
+        value.contains('no user') ||
+        value.contains('please register') ||
+        value.contains('register first');
   }
 }

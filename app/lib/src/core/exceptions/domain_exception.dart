@@ -45,3 +45,14 @@ class AppleSignInException extends DomainException {
   AppleSignInException({String? message})
     : super(message: message ?? 'Apple Sign In Exception');
 }
+
+class SocialRegisterRequiredException extends DomainException {
+  SocialRegisterRequiredException({
+    required this.provider,
+    required this.providerToken,
+    String? message,
+  }) : super(message: message ?? 'Social register required');
+
+  final String provider;
+  final String providerToken;
+}

@@ -1,4 +1,5 @@
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
+import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
@@ -6,10 +7,12 @@ import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:app/src/features/auth/domain/entities/login_entity.dart';
+import 'package:app/src/features/auth/domain/entities/user_search_entity.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:app/src/features/auth/domain/requests/login_request.dart';
 import 'package:app/src/features/auth/domain/requests/phone_code_request.dart';
 import 'package:app/src/features/auth/domain/requests/register_request.dart';
+import 'package:app/src/features/auth/domain/requests/search_users_request.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 
 part 'auth_bloc.freezed.dart';
@@ -35,6 +38,7 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       checkEmail: (_) => _checkEmail(event as _CheckEmail, emit),
       verifyOtpCode: (_, __, ___) =>
           _verifyOtpCode(event as _VerifyOtpCode, emit),
+      searchUsers: (_) => _searchUsers(event as _SearchUsers, emit),
       logout: () => _logout(event as _Logout, emit),
     );
   }
@@ -52,15 +56,19 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
           firebasePhone: (firebaseIdToken) => firebaseIdToken,
           orElse: () => null,
         );
+        final socialProviderToken = error is SocialRegisterRequiredException
+            ? error.providerToken
+            : null;
 
-        if (firebaseIdToken != null &&
+        if ((firebaseIdToken != null || socialProviderToken != null) &&
             (error.message.toLowerCase().contains('not found') ||
                 error.message.toLowerCase().contains('user does not exist') ||
                 error.message.toLowerCase().contains('no user') ||
                 error.message.toLowerCase().contains('please register') ||
-                error.message.toLowerCase().contains('register first'))) {
+                error.message.toLowerCase().contains('register first') ||
+                error is SocialRegisterRequiredException)) {
           viewModel = viewModel.copyWith(
-            firebaseIdToken: firebaseIdToken,
+            firebaseIdToken: socialProviderToken ?? firebaseIdToken,
           );
           emit(AuthState.goRegister());
           return;
@@ -75,6 +83,17 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
   }
 
   Future<void> _register(_Register event, Emitter emit) async {
+    final dateOfBirth = event.request.when(
+      email: (_, __, ___, ____, dateOfBirth, _____) => dateOfBirth,
+      phone: (_, __, ___, dateOfBirth, ____) => dateOfBirth,
+      firebasePhone: (_, __, ___, dateOfBirth, ____) => dateOfBirth,
+    );
+
+    if (dateOfBirth.trim().isEmpty) {
+      emit(const AuthState.loadingFailure('Date of birth is required'));
+      return;
+    }
+
     viewModel = viewModel.copyWith(isLoading: true);
     emit(AuthState.loaded(viewModel: viewModel));
 
@@ -204,6 +223,31 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
           );
           emit(AuthState.goRegister());
         }
+      },
+    );
+  }
+
+  Future<void> _searchUsers(_SearchUsers event, Emitter emit) async {
+    viewModel = viewModel.copyWith(
+      isUserSearchLoading: true,
+      userSearchResults: [],
+    );
+    emit(AuthState.loaded(viewModel: viewModel));
+
+    final result = await _repository.searchUsers(
+      firstName: event.request.firstName,
+      lastName: event.request.lastName,
+      limit: event.request.limit,
+    );
+
+    viewModel = viewModel.copyWith(isUserSearchLoading: false);
+    result.fold(
+      (error) {
+        emit(AuthState.loadingFailure(error.message));
+      },
+      (users) {
+        viewModel = viewModel.copyWith(userSearchResults: users);
+        emit(AuthState.loaded(viewModel: viewModel));
       },
     );
   }

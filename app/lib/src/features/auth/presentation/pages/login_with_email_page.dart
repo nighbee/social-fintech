@@ -70,7 +70,18 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                       ),
                     );
                   },
-                  goRegister: () {},
+                  goRegister: () {
+                    final firebaseIdToken = context
+                        .read<AuthBloc>()
+                        .viewModel
+                        .firebaseIdToken;
+                    context.pushNamed(
+                      RouteNames.info,
+                      extra: {
+                        'firebaseIdToken': firebaseIdToken,
+                      },
+                    );
+                  },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
                     getIt<ProfileBloc>().add(const ProfileEvent.loadProfile());

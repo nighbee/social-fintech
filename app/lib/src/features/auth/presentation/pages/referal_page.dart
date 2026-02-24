@@ -1,13 +1,13 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
-import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/features/auth/domain/entities/user_search_entity.dart';
 import 'package:app/src/features/auth/domain/requests/register_request.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:app/src/features/auth/presentation/widgets/referral_autocomplete_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
@@ -39,12 +39,17 @@ class ReferalPage extends StatefulWidget {
 
 class _ReferalPageState extends State<ReferalPage> {
   final _formKey = GlobalKey<FormState>();
+
   final _nicknameController = TextEditingController();
+  final _nicknameFocusNode = FocusNode();
+
   bool _validateNickname = false;
+  UserSearchEntity? _selectedReferralUser;
 
   @override
   void dispose() {
     _nicknameController.dispose();
+    _nicknameFocusNode.dispose();
     super.dispose();
   }
 
@@ -53,50 +58,10 @@ class _ReferalPageState extends State<ReferalPage> {
     if ((value?.trim() ?? '').isEmpty) {
       return 'Please enter nickname or tap Skip';
     }
+    if (_selectedReferralUser == null) {
+      return 'Please select user from list';
+    }
     return null;
-  }
-
-  RegisterRequest? _buildRequest({required String referral}) {
-    if (widget.firebaseIdToken != null) {
-      if (widget.firstName == null ||
-          widget.lastName == null ||
-          widget.dateOfBirth == null) {
-        _showMissingDataError();
-        return null;
-      }
-
-      return RegisterRequest.firebasePhone(
-        firebaseIdToken: widget.firebaseIdToken!,
-        firstName: widget.firstName!,
-        lastName: widget.lastName!,
-        dateOfBirth: widget.dateOfBirth!,
-        referral: referral,
-      );
-    }
-
-    if (widget.email == null ||
-        widget.password == null ||
-        widget.firstName == null ||
-        widget.lastName == null ||
-        widget.dateOfBirth == null) {
-      _showMissingDataError();
-      return null;
-    }
-
-    return RegisterRequest.email(
-      email: widget.email!,
-      password: widget.password!,
-      firstName: widget.firstName!,
-      lastName: widget.lastName!,
-      dateOfBirth: widget.dateOfBirth!,
-      referral: referral,
-    );
-  }
-
-  void _showMissingDataError() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Missing registration data')),
-    );
   }
 
   void _dispatchRegister({required bool withReferral}) {
@@ -104,14 +69,31 @@ class _ReferalPageState extends State<ReferalPage> {
       setState(() {
         _validateNickname = true;
       });
+      if (_selectedReferralUser == null) {
+        _formKey.currentState?.validate();
+        return;
+      }
       final isValid = _formKey.currentState?.validate() ?? false;
       if (!isValid) return;
     }
 
-    final request = _buildRequest(
-      referral: withReferral ? _nicknameController.text.trim() : '',
-    );
-    if (request == null) return;
+    final referralUserId = _selectedReferralUser?.userId;
+    final request = widget.firebaseIdToken != null
+        ? RegisterRequest.firebasePhone(
+            firebaseIdToken: widget.firebaseIdToken!,
+            firstName: widget.firstName!,
+            lastName: widget.lastName!,
+            dateOfBirth: widget.dateOfBirth!,
+            referral: withReferral ? referralUserId : '',
+          )
+        : RegisterRequest.email(
+            email: widget.email!,
+            password: widget.password!,
+            firstName: widget.firstName!,
+            lastName: widget.lastName!,
+            dateOfBirth: widget.dateOfBirth!,
+            referral: withReferral ? referralUserId : '',
+          );
 
     getIt<AuthBloc>().add(AuthEvent.register(request: request));
   }
@@ -119,6 +101,7 @@ class _ReferalPageState extends State<ReferalPage> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
+      bloc: getIt<AuthBloc>(),
       listener: (context, state) {
         state.when(
           initial: () {},
@@ -141,6 +124,15 @@ class _ReferalPageState extends State<ReferalPage> {
         final isLoading = state.maybeWhen(
           loading: () => true,
           loaded: (viewModel) => viewModel.isLoading,
+          orElse: () => false,
+        );
+        final searchData = state.maybeWhen(
+          loaded: (viewModel) => viewModel.userSearchResults,
+          orElse: () => <UserSearchEntity>[],
+        );
+
+        final isSearchLoading = state.maybeWhen(
+          loaded: (viewModel) => viewModel.isUserSearchLoading,
           orElse: () => false,
         );
 
@@ -185,56 +177,42 @@ class _ReferalPageState extends State<ReferalPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Gap(40),
+                        const Gap(40),
                         Text('Have you been invited?',
                             style: TextStyles.titleXBig),
-                        Gap(16),
+                        const Gap(16),
                         Text(
                           'If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.',
                           style: TextStyles.bodyLarge,
                         ),
-                        Gap(40),
-                        CustomTextField(
+                        const Gap(40),
+                        ReferralAutocompleteField(
                           controller: _nicknameController,
-                          labelText: 'Nickname',
-                          hintText: '',
+                          focusNode: _nicknameFocusNode,
+                          searchData: searchData,
+                          isSearchLoading: isSearchLoading,
+                          validateNickname: _validateNickname,
+                          formKey: _formKey,
                           validator: _nicknameValidator,
-                          prefixIcon: Assets.icons.atsign.svg(
-                            width: 30,
-                            height: 30,
-                            colorFilter: const ColorFilter.mode(
-                              AppColors.whiteBackground,
-                              BlendMode.srcIn,
-                            ),
-                          ),
-                          suffixIcon: _nicknameController.text.isNotEmpty
-                              ? GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _nicknameController.clear();
-                                    });
-                                    if (_validateNickname) {
-                                      _formKey.currentState?.validate();
-                                    }
-                                  },
-                                  child: Assets.icons.close.svg(
-                                    width: 16,
-                                    height: 16,
-                                    colorFilter: const ColorFilter.mode(
-                                      AppColors.textGray2,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                )
-                              : null,
-                          onChanged: (_) {
-                            setState(() {});
-                            if (_validateNickname) {
-                              _formKey.currentState?.validate();
+                          onSelectedUser: (user) {
+                            setState(() {
+                              _selectedReferralUser = user;
+                            });
+                          },
+                          onInputChanged: (value) {
+                            final selected = _selectedReferralUser;
+                            if (selected == null) return;
+                            final selectedFullName =
+                                '${selected.firstName} ${selected.lastName}'
+                                    .trim();
+                            if (value.trim() != selectedFullName) {
+                              setState(() {
+                                _selectedReferralUser = null;
+                              });
                             }
                           },
                         ),
-                        Gap(40),
+                        const Gap(40),
                         CustomButton(
                           text: isLoading ? 'Loading...' : 'Confirm',
                           isDisabled: isLoading,

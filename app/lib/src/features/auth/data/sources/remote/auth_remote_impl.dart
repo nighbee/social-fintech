@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:app/src/features/auth/data/models/user_search_dto.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -181,7 +182,7 @@ class AuthRemoteImpl implements IAuthRemote {
     required String firstName,
     required String lastName,
     required String dateOfBirth,
-    required String referral,
+    String? referral,
   }) async {
     final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
@@ -196,7 +197,7 @@ class AuthRemoteImpl implements IAuthRemote {
       'app_version': appVersion,
       'user_agent': userAgent,
       'date_of_birth': dateOfBirth,
-      // 'referral': referral,
+      if ((referral ?? '').trim().isNotEmpty) 'referral': referral!.trim(),
     };
 
     Log.debug('AuthRemote', 'Register Email Request:');
@@ -284,7 +285,7 @@ class AuthRemoteImpl implements IAuthRemote {
     required String verificationId,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
   }) async {
     final deviceId = await _deviceId.getDeviceId();
@@ -295,8 +296,8 @@ class AuthRemoteImpl implements IAuthRemote {
         'first_name': firstName,
         'last_name': lastName,
         'device_id': deviceId,
-        if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
-        if (referral != null) 'referral': referral,
+        'date_of_birth': dateOfBirth,
+        if ((referral ?? '').trim().isNotEmpty) 'referral': referral!.trim(),
       },
     );
 
@@ -350,7 +351,7 @@ class AuthRemoteImpl implements IAuthRemote {
     required String firebaseIdToken,
     required String firstName,
     required String lastName,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
   }) async {
     final deviceId = await _deviceId.getDeviceId();
@@ -364,8 +365,8 @@ class AuthRemoteImpl implements IAuthRemote {
       'device_id': deviceId,
       'app_version': appVersion,
       'user_agent': userAgent,
-      if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
-      if (referral != null) 'referral': referral,
+      'date_of_birth': dateOfBirth,
+      if ((referral ?? '').trim().isNotEmpty) 'referral': referral!.trim(),
     };
 
     final result = await _client.post(
@@ -379,6 +380,35 @@ class AuthRemoteImpl implements IAuthRemote {
         return Right(dto);
       } catch (e) {
         return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
+  }
+
+  @override
+  Future<Either<DomainException, List<UserSearchDto>>> searchUsers({
+    required String firstName,
+    required String lastName,
+    int limit = 20,
+  }) async {
+    final result = await _client.get(
+      EndPoints.usersSearch,
+      queryParameters: {
+        'first_name': firstName,
+        'last_name': lastName,
+        'limit': limit,
+      },
+    );
+
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final List<dynamic> jsonList = response.data;
+        final users =
+            jsonList.map((json) => UserSearchDto.fromJson(json)).toList();
+        return Right(users);
+      } catch (e) {
+        return Left(
+          NetworkException(message: 'Failed to parse response: $e'),
+        );
       }
     });
   }
