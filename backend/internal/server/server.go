@@ -130,6 +130,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 
 	mapGroup.Post("/tasks", mapHandler.CreateTask)
 	mapGroup.Get("/tasks/nearby", mapHandler.GetNearbyTasks)
+	mapGroup.Post("/tasks/:task_id/complete", mapHandler.CompleteTask)
 	mapGroup.Post("/map/region", mapHandler.SetUserRegion)
 	mapGroup.Get("/map/champions", mapHandler.GetRegionChampions)
 
