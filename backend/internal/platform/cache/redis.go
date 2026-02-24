@@ -84,6 +84,10 @@ func (c *Cache) ZScore(ctx context.Context, key, member string) (float64, error)
 	return c.client.ZScore(ctx, key, member).Result()
 }
 
+func (c *Cache) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {
+	return c.client.ZIncrBy(ctx, key, increment, member).Result()
+}
+
 func (c *Cache) ScanKeys(ctx context.Context, pattern string, count int64) ([]string, error) {
 	iter := c.client.Scan(ctx, 0, pattern, count).Iterator()
 	var keys []string
