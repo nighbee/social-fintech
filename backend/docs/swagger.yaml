@@ -595,6 +595,16 @@ definitions:
       updated_at:
         type: string
     type: object
+  mapmodule.TaskCompletionResponse:
+    properties:
+      completed:
+        type: boolean
+      reward:
+        description: in seals
+        type: number
+      task_id:
+        type: string
+    type: object
   mapmodule.TaskResponse:
     properties:
       created_at:
@@ -2435,6 +2445,57 @@ paths:
       security:
       - Bearer: []
       summary: Create a map task
+      tags:
+      - Tasks
+  /tasks/{task_id}/complete:
+    post:
+      description: Marks task as completed and rewards the user
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mapmodule.TaskCompletionResponse'
+        "400":
+          description: Validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Task already completed
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Complete a task
       tags:
       - Tasks
   /tasks/nearby:
