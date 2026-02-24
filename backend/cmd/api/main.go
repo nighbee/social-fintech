@@ -193,7 +193,7 @@ func main() {
 	logger.Info("profiles module initialized")
 
 	mapRepo := mapmodule.NewRepository(db.DB)
-	mapService := mapmodule.NewService(mapRepo, economyRepo)
+	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
 	mapHandler := mapmodule.NewHandler(mapService)
 	logger.Info("map module initialized")
 
