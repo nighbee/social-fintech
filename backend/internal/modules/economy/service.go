@@ -877,35 +877,8 @@ func (s *service) RewardForTaskCompletion(ctx context.Context, userID, taskID st
 
 		txRepo := s.repo.WithTx(tx)
 
-		wallet, err := txRepo.GetOrCreateWallet(ctx, userID, CurrencySilverSeal)
-		if err != nil {
-			return WrapErrorf(err, "failed to get wallet")
-		}
-
-		referenceID := fmt.Sprintf("task_reward_%s", taskID)
-		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
-			return nil
-		}
-
-		wallet.Balance += reward
-
-		if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+		if err := RewardForTaskCompletionTx(ctx, txRepo, userID, taskID, reward); err != nil {
 			return err
-		}
-
-		entry := &LedgerEntry{
-			ID:               uuid.New().String(),
-			Amount:           reward,
-			Currency:         CurrencySilverSeal,
-			ReceiverWalletID: &wallet.ID,
-			Category:         CategoryTaskReward,
-			ReferenceID:      referenceID,
-			Metadata:         mustMarshalJSON(map[string]interface{}{"task_id": taskID}),
-			CreatedAt:        time.Now(),
-		}
-
-		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
-			return WrapErrorf(err, "failed to create ledger entry")
 		}
 
 		if err := tx.Commit(); err != nil {
@@ -919,6 +892,47 @@ func (s *service) RewardForTaskCompletion(ctx context.Context, userID, taskID st
 	})
 
 	return err
+}
+
+// RewardForTaskCompletionTx credits the user for completing a task within an existing transaction.
+// The passed repo MUST be bound to the current transaction.
+func RewardForTaskCompletionTx(ctx context.Context, repo Repository, userID, taskID string, reward int64) error {
+	if reward <= 0 {
+		return NewInvalidAmountError(CentinelsToSeals(reward))
+	}
+
+	wallet, err := repo.GetOrCreateWallet(ctx, userID, CurrencySilverSeal)
+	if err != nil {
+		return WrapErrorf(err, "failed to get wallet")
+	}
+
+	referenceID := fmt.Sprintf("task_reward_%s", taskID)
+	if existing, err := repo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
+		return nil
+	}
+
+	wallet.Balance += reward
+
+	if err := repo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+		return err
+	}
+
+	entry := &LedgerEntry{
+		ID:               uuid.New().String(),
+		Amount:           reward,
+		Currency:         CurrencySilverSeal,
+		ReceiverWalletID: &wallet.ID,
+		Category:         CategoryTaskReward,
+		ReferenceID:      referenceID,
+		Metadata:         mustMarshalJSON(map[string]interface{}{"task_id": taskID}),
+		CreatedAt:        time.Now(),
+	}
+
+	if err := repo.CreateLedgerEntry(ctx, entry); err != nil {
+		return WrapErrorf(err, "failed to create ledger entry")
+	}
+
+	return nil
 }
 
 func (s *service) AdminAdjustBalance(ctx context.Context, userID string, amountCentinels int64, currency CurrencyCode, reason string) error {
