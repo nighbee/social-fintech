@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
@@ -25,6 +26,7 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
 
   final IProfileRepository _repository;
   ProfileViewModel _viewModel = ProfileViewModel();
+  bool _isProfileLoadInProgress = false;
 
   @override
   Future<void> onEventHandler(ProfileEvent event, Emitter emit) async {
@@ -80,9 +82,13 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
   }
 
   Future<void> _loadProfile(_LoadProfile event, Emitter emit) async {
+    if (_isProfileLoadInProgress) return;
+    _isProfileLoadInProgress = true;
     try {
       emit(ProfileState.loading(viewModel: _viewModel));
-      final result = await _repository.getCurrentUser();
+      final result = await _repository.getCurrentUser().timeout(
+        const Duration(seconds: 15),
+      );
 
       result.fold((error) => emit(ProfileState.loadingError(error.message)), (
         profile,
@@ -90,8 +96,16 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
         _viewModel = _viewModel.copyWith(profile: profile);
         emit(ProfileState.loaded(viewModel: _viewModel));
       });
+    } on TimeoutException {
+      emit(
+        const ProfileState.loadingError(
+          'Profile loading timeout. Please try again.',
+        ),
+      );
     } catch (e) {
       emit(ProfileState.loadingError(e.toString()));
+    } finally {
+      _isProfileLoadInProgress = false;
     }
   }
 
@@ -356,6 +370,7 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
   }
 
   Future<void> _logout(Emitter emit) async {
+    _isProfileLoadInProgress = false;
     _viewModel = ProfileViewModel();
     emit(ProfileState.initial());
   }

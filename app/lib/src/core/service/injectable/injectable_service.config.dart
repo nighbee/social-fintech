@@ -22,7 +22,6 @@ import '../../../features/auth/data/sources/remote/auth_remote_impl.dart'
 import '../../../features/auth/data/sources/remote/i_auth_remote.dart' as _i387;
 import '../../../features/auth/domain/repositories/i_auth_repository.dart'
     as _i664;
-import '../../../features/auth/presentation/bloc/auth_bloc.dart' as _i748;
 import '../../../features/home/data/repositories/home_repository_impl.dart'
     as _i955;
 import '../../../features/home/data/sources/remote/home_remote_impl.dart'
@@ -45,12 +44,16 @@ import '../../config/environment_manager.dart' as _i931;
 import '../storage/app_storage/storage_service.dart' as _i6;
 
 extension GetItInjectableX on _i174.GetIt {
-  // initializes the registration of main-scope dependencies inside of GetIt
+// initializes the registration of main-scope dependencies inside of GetIt
   _i174.GetIt init({
     String? environment,
     _i526.EnvironmentFilter? environmentFilter,
   }) {
-    final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    final gh = _i526.GetItHelper(
+      this,
+      environment,
+      environmentFilter,
+    );
     gh.lazySingleton<_i6.IAppStorage>(() => _i6.AppStorageImpl());
     gh.lazySingleton<_i877.RestClient>(
       () => _i1019.DioClient(),
@@ -66,8 +69,7 @@ extension GetItInjectableX on _i174.GetIt {
       instanceName: 'HomeRemoteImpl',
     );
     gh.lazySingleton<_i931.EnvironmentManager>(
-      () => _i931.EnvironmentManager(gh<_i6.IAppStorage>()),
-    );
+        () => _i931.EnvironmentManager(gh<_i6.IAppStorage>()));
     gh.lazySingleton<_i387.IAuthRemote>(
       () =>
           _i974.AuthRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
@@ -75,8 +77,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i964.IProfileRemote>(
       () => _i236.ProfileRemoteImpl(
-        gh<_i877.RestClient>(instanceName: 'DioClient'),
-      ),
+          gh<_i877.RestClient>(instanceName: 'DioClient')),
       instanceName: 'ProfileRemoteImpl',
     );
     gh.lazySingleton<_i664.IAuthRepository>(
@@ -86,28 +87,18 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       instanceName: 'AuthRepositoryImpl',
     );
-    gh.factory<_i748.AuthBloc>(
-      () => _i748.AuthBloc(
-        gh<_i664.IAuthRepository>(instanceName: 'AuthRepositoryImpl'),
-      ),
-    );
     gh.lazySingleton<_i529.IHomeRepository>(
       () => _i955.HomeRepositoryImpl(
-        gh<_i482.IHomeRemote>(instanceName: 'HomeRemoteImpl'),
-      ),
+          gh<_i482.IHomeRemote>(instanceName: 'HomeRemoteImpl')),
       instanceName: 'HomeRepositoryImpl',
     );
     gh.lazySingleton<_i1037.IProfileRepository>(
       () => _i695.ProfileRepositoryImpl(
-        gh<_i964.IProfileRemote>(instanceName: 'ProfileRemoteImpl'),
-      ),
+          gh<_i964.IProfileRemote>(instanceName: 'ProfileRemoteImpl')),
       instanceName: 'ProfileRepositoryImpl',
     );
-    gh.factory<_i84.HomeBloc>(
-      () => _i84.HomeBloc(
-        gh<_i529.IHomeRepository>(instanceName: 'HomeRepositoryImpl'),
-      ),
-    );
+    gh.factory<_i84.HomeBloc>(() => _i84.HomeBloc(
+        gh<_i529.IHomeRepository>(instanceName: 'HomeRepositoryImpl')));
     return this;
   }
 }

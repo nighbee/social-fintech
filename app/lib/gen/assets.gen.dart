@@ -120,35 +120,35 @@ class $AssetsIconsGen {
 
   /// List of all assets
   List<SvgGenImage> get values => [
-    appleLogo,
-    arrowBack,
-    atsign,
-    bell,
-    blocked,
-    bronze,
-    calendar,
-    chatsIcon,
-    close,
-    eyeClosed,
-    eyeOpened,
-    feedIcon,
-    googleLogo,
-    images,
-    like,
-    mapIcon,
-    message,
-    more,
-    personFavourites,
-    plusIcon,
-    profileIcon,
-    ratingIcon,
-    search,
-    settingsIcon,
-    share,
-    silverCoin,
-    statsIcon,
-    timer,
-  ];
+        appleLogo,
+        arrowBack,
+        atsign,
+        bell,
+        blocked,
+        bronze,
+        calendar,
+        chatsIcon,
+        close,
+        eyeClosed,
+        eyeOpened,
+        feedIcon,
+        googleLogo,
+        images,
+        like,
+        mapIcon,
+        message,
+        more,
+        personFavourites,
+        plusIcon,
+        profileIcon,
+        ratingIcon,
+        search,
+        settingsIcon,
+        share,
+        silverCoin,
+        statsIcon,
+        timer
+      ];
 }
 
 class $AssetsImagesGen {
@@ -180,15 +180,8 @@ class $AssetsImagesGen {
       const AssetGenImage('assets/images/supernova.png');
 
   /// List of all assets
-  List<AssetGenImage> get values => [
-    ammolite,
-    jade,
-    lapislazuli,
-    moonstone,
-    onyx,
-    pearl,
-    supernova,
-  ];
+  List<AssetGenImage> get values =>
+      [ammolite, jade, lapislazuli, moonstone, onyx, pearl, supernova];
 }
 
 class $AssetsFontsCanelaDeckTrialGen {
@@ -244,19 +237,19 @@ class $AssetsFontsCanelaDeckTrialGen {
 
   /// List of all assets
   List<String> get values => [
-    canelaDeckBlackTrial,
-    canelaDeckBlackItalicTrial,
-    canelaDeckBoldTrial,
-    canelaDeckBoldItalicTrial,
-    canelaDeckLightTrial,
-    canelaDeckLightItalicTrial,
-    canelaDeckMediumTrial,
-    canelaDeckMediumItalicTrial,
-    canelaDeckRegularTrial,
-    canelaDeckRegularItalicTrial,
-    canelaDeckThinTrial,
-    canelaDeckThinItalicTrial,
-  ];
+        canelaDeckBlackTrial,
+        canelaDeckBlackItalicTrial,
+        canelaDeckBoldTrial,
+        canelaDeckBoldItalicTrial,
+        canelaDeckLightTrial,
+        canelaDeckLightItalicTrial,
+        canelaDeckMediumTrial,
+        canelaDeckMediumItalicTrial,
+        canelaDeckRegularTrial,
+        canelaDeckRegularItalicTrial,
+        canelaDeckThinTrial,
+        canelaDeckThinItalicTrial
+      ];
 }
 
 class $AssetsFontsLoraGen {
@@ -288,15 +281,15 @@ class $AssetsFontsLoraGen {
 
   /// List of all assets
   List<String> get values => [
-    loraBold,
-    loraBoldItalic,
-    loraItalic,
-    loraMedium,
-    loraMediumItalic,
-    loraRegular,
-    loraSemiBold,
-    loraSemiBoldItalic,
-  ];
+        loraBold,
+        loraBoldItalic,
+        loraItalic,
+        loraMedium,
+        loraMediumItalic,
+        loraRegular,
+        loraSemiBold,
+        loraSemiBoldItalic
+      ];
 }
 
 class Assets {
@@ -374,8 +367,15 @@ class AssetGenImage {
     );
   }
 
-  ImageProvider provider({AssetBundle? bundle, String? package}) {
-    return AssetImage(_assetName, bundle: bundle, package: package);
+  ImageProvider provider({
+    AssetBundle? bundle,
+    String? package,
+  }) {
+    return AssetImage(
+      _assetName,
+      bundle: bundle,
+      package: package,
+    );
   }
 
   String get path => _assetName;
@@ -396,11 +396,17 @@ class AssetGenImageAnimation {
 }
 
 class SvgGenImage {
-  const SvgGenImage(this._assetName, {this.size, this.flavors = const {}})
-    : _isVecFormat = false;
+  const SvgGenImage(
+    this._assetName, {
+    this.size,
+    this.flavors = const {},
+  }) : _isVecFormat = false;
 
-  const SvgGenImage.vec(this._assetName, {this.size, this.flavors = const {}})
-    : _isVecFormat = true;
+  const SvgGenImage.vec(
+    this._assetName, {
+    this.size,
+    this.flavors = const {},
+  }) : _isVecFormat = true;
 
   final String _assetName;
   final Size? size;
@@ -456,8 +462,7 @@ class SvgGenImage {
       placeholderBuilder: placeholderBuilder,
       semanticsLabel: semanticsLabel,
       excludeFromSemantics: excludeFromSemantics,
-      colorFilter:
-          colorFilter ??
+      colorFilter: colorFilter ??
           (color == null ? null : ColorFilter.mode(color, colorBlendMode)),
       clipBehavior: clipBehavior,
       cacheColorFilter: cacheColorFilter,

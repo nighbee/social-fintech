@@ -1,243 +1,235 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
-import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
-import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
+import 'package:app/src/features/auth/domain/entities/user_search_entity.dart';
+import 'package:app/src/features/auth/domain/requests/register_request.dart';
+import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:app/src/features/auth/presentation/widgets/referral_autocomplete_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
 class ReferalPage extends StatefulWidget {
-  const ReferalPage({super.key});
+  const ReferalPage({
+    this.email,
+    this.password,
+    this.phoneNumber,
+    this.firebaseIdToken,
+    this.firstName,
+    this.lastName,
+    this.dateOfBirth,
+    super.key,
+  });
+
+  final String? email;
+  final String? password;
+  final String? phoneNumber;
+  final String? firebaseIdToken;
+  final String? firstName;
+  final String? lastName;
+  final String? dateOfBirth;
 
   @override
   State<ReferalPage> createState() => _ReferalPageState();
 }
 
 class _ReferalPageState extends State<ReferalPage> {
-  final TextEditingController _nicknameController = TextEditingController();
-  bool _isLoading = false;
-  String? _email;
-  String? _password;
-  String? _phoneNumber;
-  String? _firebaseIdToken;
-  String? _firstName;
-  String? _lastName;
-  String? _dateOfBirth;
+  final _formKey = GlobalKey<FormState>();
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
-      if (extra != null) {
-        setState(() {
-          _email = extra['email'] as String?;
-          _password = extra['password'] as String?;
-          _phoneNumber = extra['phoneNumber'] as String?;
-          _firebaseIdToken = extra['firebaseIdToken'] as String?;
-          _firstName = extra['firstName'] as String?;
-          _lastName = extra['lastName'] as String?;
-          _dateOfBirth = extra['dateOfBirth'] as String?;
-        });
-      }
-    });
-    _nicknameController.addListener(() {
-      setState(() {});
-    });
-  }
+  final _nicknameController = TextEditingController();
+  final _nicknameFocusNode = FocusNode();
+
+  bool _validateNickname = false;
+  UserSearchEntity? _selectedReferralUser;
 
   @override
   void dispose() {
     _nicknameController.dispose();
+    _nicknameFocusNode.dispose();
     super.dispose();
   }
 
-  Future<void> _register() async {
-    if (_firebaseIdToken != null) {
-      if (_firstName == null || _lastName == null || _dateOfBirth == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Missing registration data')),
-        );
-        return;
-      }
-
-      setState(() {
-        _isLoading = true;
-      });
-
-      final authRepository = getIt<IAuthRepository>(
-        instanceName: 'AuthRepositoryImpl',
-      );
-
-      final result = await authRepository.firebasePhoneRegister(
-        firebaseIdToken: _firebaseIdToken!,
-        firstName: _firstName!,
-        lastName: _lastName!,
-        dateOfBirth: _dateOfBirth!,
-        referral: _nicknameController.text.trim(),
-      );
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (!mounted) return;
-
-      result.fold(
-        (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.message), backgroundColor: Colors.red),
-          );
-        },
-        (loginEntity) {
-          context.go(RoutePaths.home);
-        },
-      );
-    } else {
-      if (_email == null ||
-          _password == null ||
-          _firstName == null ||
-          _lastName == null ||
-          _dateOfBirth == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Missing registration data')),
-        );
-        return;
-      }
-
-      setState(() {
-        _isLoading = true;
-      });
-
-      final authRepository = getIt<IAuthRepository>(
-        instanceName: 'AuthRepositoryImpl',
-      );
-
-      final result = await authRepository.registerWithEmail(
-        email: _email!,
-        password: _password!,
-        firstName: _firstName!,
-        lastName: _lastName!,
-        dateOfBirth: _dateOfBirth!,
-        referral: _nicknameController.text.trim(),
-      );
-
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (!mounted) return;
-
-      result.fold(
-        (error) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.message), backgroundColor: Colors.red),
-          );
-        },
-        (loginEntity) {
-          context.go(RoutePaths.home);
-        },
-      );
+  String? _nicknameValidator(String? value) {
+    if (!_validateNickname) return null;
+    if ((value?.trim() ?? '').isEmpty) {
+      return 'Please enter nickname or tap Skip';
     }
+    if (_selectedReferralUser == null) {
+      return 'Please select user from list';
+    }
+    return null;
+  }
+
+  void _dispatchRegister({required bool withReferral}) {
+    if (withReferral) {
+      setState(() {
+        _validateNickname = true;
+      });
+      if (_selectedReferralUser == null) {
+        _formKey.currentState?.validate();
+        return;
+      }
+      final isValid = _formKey.currentState?.validate() ?? false;
+      if (!isValid) return;
+    }
+
+    final referralUserId = _selectedReferralUser?.userId;
+    final request = widget.firebaseIdToken != null
+        ? RegisterRequest.firebasePhone(
+            firebaseIdToken: widget.firebaseIdToken!,
+            firstName: widget.firstName!,
+            lastName: widget.lastName!,
+            dateOfBirth: widget.dateOfBirth!,
+            referral: withReferral ? referralUserId : '',
+          )
+        : RegisterRequest.email(
+            email: widget.email!,
+            password: widget.password!,
+            firstName: widget.firstName!,
+            lastName: widget.lastName!,
+            dateOfBirth: widget.dateOfBirth!,
+            referral: withReferral ? referralUserId : '',
+          );
+
+    getIt<AuthBloc>().add(AuthEvent.register(request: request));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.theme.mainBackground,
-      appBar: CustomAppBar(
-        title: 'Code',
-        backgroundColor: Colors.transparent,
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : _register,
-            child: Text(
-              'Skip',
-              style: TextStyles.titleHeadline.copyWith(
-                color: AppColors.whiteBackground,
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: IgnorePointer(
-              child: ParticleAnimation(
-                particleCount: 25,
-                particleColors: const [Color(0xFFFFFFFF)],
-                minSize: 4.0,
-                maxSize: 8.0,
-                minDistanceBetweenParticles: 70.0,
-              ),
-            ),
-          ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Gap(40),
-                  Text("Have you been invited?", style: TextStyles.titleXBig),
-                  Gap(16),
-                  Text(
-                    "If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.",
-                    style: TextStyles.bodyLarge,
+    return BlocConsumer<AuthBloc, AuthState>(
+      bloc: getIt<AuthBloc>(),
+      listener: (context, state) {
+        state.when(
+          initial: () {},
+          loading: () {},
+          loadingFailure: (message) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(message), backgroundColor: Colors.red),
+            );
+          },
+          goRegister: () {},
+          loaded: (_) {},
+          authenticated: (_) {
+            context.go(RoutePaths.home);
+          },
+          phoneVerificationStarted: (_, __) {},
+          emailChecked: (_, __) {},
+        );
+      },
+      builder: (context, state) {
+        final isLoading = state.maybeWhen(
+          loading: () => true,
+          loaded: (viewModel) => viewModel.isLoading,
+          orElse: () => false,
+        );
+        final searchData = state.maybeWhen(
+          loaded: (viewModel) => viewModel.userSearchResults,
+          orElse: () => <UserSearchEntity>[],
+        );
+
+        final isSearchLoading = state.maybeWhen(
+          loaded: (viewModel) => viewModel.isUserSearchLoading,
+          orElse: () => false,
+        );
+
+        return Scaffold(
+          backgroundColor: context.theme.mainBackground,
+          appBar: CustomAppBar(
+            title: 'Code',
+            backgroundColor: Colors.transparent,
+            actions: [
+              TextButton(
+                onPressed: isLoading
+                    ? null
+                    : () => _dispatchRegister(withReferral: false),
+                child: Text(
+                  'Skip',
+                  style: TextStyles.titleHeadline.copyWith(
+                    color: AppColors.whiteBackground,
                   ),
-                  Gap(40),
-                  CustomTextField(
-                    controller: _nicknameController,
-                    labelText: "Nickname",
-                    hintText: "",
-                    prefixIcon: Assets.icons.atsign.svg(
-                      width: 30,
-                      height: 30,
-                      colorFilter: const ColorFilter.mode(
-                        AppColors.whiteBackground,
-                        BlendMode.srcIn,
-                      ),
-                    ),
-                    suffixIcon: _nicknameController.text.isNotEmpty
-                        ? GestureDetector(
-                            onTap: () {
+                ),
+              ),
+            ],
+          ),
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ParticleAnimation(
+                    particleCount: 25,
+                    particleColors: const [Color(0xFFFFFFFF)],
+                    minSize: 4.0,
+                    maxSize: 8.0,
+                    minDistanceBetweenParticles: 70.0,
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Gap(40),
+                        Text('Have you been invited?',
+                            style: TextStyles.titleXBig),
+                        const Gap(16),
+                        Text(
+                          'If you came based on a recommendation, specify the nickname of the person who invited you. We will give him 1 seal as a token of gratitude.',
+                          style: TextStyles.bodyLarge,
+                        ),
+                        const Gap(40),
+                        ReferralAutocompleteField(
+                          controller: _nicknameController,
+                          focusNode: _nicknameFocusNode,
+                          searchData: searchData,
+                          isSearchLoading: isSearchLoading,
+                          validateNickname: _validateNickname,
+                          formKey: _formKey,
+                          validator: _nicknameValidator,
+                          onSelectedUser: (user) {
+                            setState(() {
+                              _selectedReferralUser = user;
+                            });
+                          },
+                          onInputChanged: (value) {
+                            final selected = _selectedReferralUser;
+                            if (selected == null) return;
+                            final selectedFullName =
+                                '${selected.firstName} ${selected.lastName}'
+                                    .trim();
+                            if (value.trim() != selectedFullName) {
                               setState(() {
-                                _nicknameController.clear();
+                                _selectedReferralUser = null;
                               });
-                            },
-                            child: Assets.icons.close.svg(
-                              width: 16,
-                              height: 16,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          )
-                        : null,
-                    onChanged: (value) {
-                      setState(() {});
-                    },
+                            }
+                          },
+                        ),
+                        const Gap(40),
+                        CustomButton(
+                          text: isLoading ? 'Loading...' : 'Confirm',
+                          isDisabled: isLoading,
+                          onTap: () => _dispatchRegister(withReferral: true),
+                        ),
+                        SizedBox(
+                          height: MediaQuery.of(context).viewInsets.bottom + 20,
+                        ),
+                      ],
+                    ),
                   ),
-                  Gap(40),
-                  CustomButton(
-                    text: _isLoading ? "Loading..." : "Confirm",
-                    isDisabled: _isLoading,
-                    onTap: _register,
-                  ),
-                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

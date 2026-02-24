@@ -93,17 +93,40 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
               GoRoute(
                 path: RoutePaths.info,
                 name: RouteNames.info,
-                builder: (context, state) => const InfoPage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return InfoPage(
+                    email: extra?['email'] as String?,
+                    password: extra?['password'] as String?,
+                    phoneNumber: extra?['phoneNumber'] as String?,
+                    firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                  );
+                },
               ),
               GoRoute(
                 path: RoutePaths.referal,
                 name: RouteNames.referal,
-                builder: (context, state) => const ReferalPage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return ReferalPage(
+                    email: extra?['email'] as String?,
+                    password: extra?['password'] as String?,
+                    phoneNumber: extra?['phoneNumber'] as String?,
+                    firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                    firstName: extra?['firstName'] as String?,
+                    lastName: extra?['lastName'] as String?,
+                    dateOfBirth: extra?['dateOfBirth'] as String?,
+                  );
+                },
               ),
               GoRoute(
                 path: RoutePaths.createPassword,
                 name: RouteNames.createPassword,
-                builder: (context, state) => const CreatePasswordPage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final email = extra?['email'] as String? ?? '';
+                  return CreatePasswordPage(email: email);
+                },
               ),
               // Auth routes - Login
               GoRoute(

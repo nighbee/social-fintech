@@ -1,3 +1,4 @@
+import 'package:app/src/core/constants/regex_constants.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -28,7 +29,7 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    return RegexConstants.email.hasMatch(email);
   }
 
   @override

@@ -43,6 +43,9 @@ class EndPoints {
   //* Payment
   static const String paymentWebhookRevenuecat = '/payment/webhook/revenuecat';
 
+  //* Users
+  static const String usersSearch = '/users/search';
+
   //* Profile
   static const String profiles = '/profiles';
   static const String profileMe = '/profiles/me';

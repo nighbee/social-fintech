@@ -1,59 +1,82 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/features/auth/presentation/widgets/password_visibility_toggle.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
 class CreatePasswordPage extends StatefulWidget {
-  const CreatePasswordPage({super.key});
+  const CreatePasswordPage({required this.email, super.key});
+
+  final String email;
 
   @override
   State<CreatePasswordPage> createState() => _CreatePasswordPageState();
 }
 
 class _CreatePasswordPageState extends State<CreatePasswordPage> {
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _pwController = TextEditingController();
+  final _confirmPwController = TextEditingController();
   bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
-  String? _email;
 
   @override
   void initState() {
     super.initState();
-    // Get email from route extra
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final extra = GoRouterState.of(context).extra as Map<String, dynamic>?;
-      if (extra != null) {
-        setState(() {
-          _email = extra['email'] as String?;
-        });
-      }
-    });
-    _passwordController.addListener(() {
+    _pwController.addListener(() {
       setState(() {});
     });
-    _confirmPasswordController.addListener(() {
+    _confirmPwController.addListener(() {
       setState(() {});
     });
   }
 
   @override
   void dispose() {
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _pwController.dispose();
+    _confirmPwController.dispose();
     super.dispose();
   }
 
   bool get _isFormValid {
-    return _passwordController.text.isNotEmpty &&
-        _confirmPasswordController.text.isNotEmpty;
+    return _pwController.text.isNotEmpty &&
+        _confirmPwController.text.isNotEmpty;
+  }
+
+  String? _passwordValidator(String? value) {
+    final password = value?.trim() ?? '';
+    if (password.isEmpty) return 'Please enter password';
+    if (password.length < 8) return 'Password must be at least 8 characters';
+    return null;
+  }
+
+  String? _confirmPasswordValidator(String? value) {
+    final confirm = value?.trim() ?? '';
+    if (confirm.isEmpty) return 'Please confirm password';
+    if (confirm != _pwController.text.trim()) return 'Passwords do not match';
+    return null;
+  }
+
+  void _onCreateTap() {
+    final isValid = _formKey.currentState?.validate() ?? false;
+    if (!isValid) return;
+    context.pushNamed(
+      RouteNames.info,
+      extra: {
+        'email': widget.email,
+        'password': _pwController.text.trim(),
+      },
+    );
+  }
+
+  void _toggleVisibility() {
+    setState(() {
+      _isPasswordVisible = !_isPasswordVisible;
+    });
   }
 
   @override
@@ -80,130 +103,56 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
           ),
           SafeArea(
             child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Gap(40),
-              Text("Create a password", style: TextStyles.titleXBig),
-              Gap(16),
-              Text(
-                "It needs to be at least 8 characters long and contain a number or symbol",
-                style: TextStyles.bodyLarge,
-              ),
-              Gap(40),
-              CustomTextField(
-                controller: _passwordController,
-                labelText: "Password",
-                hintText: "Password",
-                obscureText: !_isPasswordVisible,
-                suffixIcon: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isPasswordVisible = !_isPasswordVisible;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: _isPasswordVisible
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeOpened.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          )
-                        : SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeClosed.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                  ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Gap(40),
+                    Text("Create a password", style: TextStyles.titleXBig),
+                    Gap(16),
+                    Text(
+                      "It needs to be at least 8 characters long and contain a number or symbol",
+                      style: TextStyles.bodyLarge,
+                    ),
+                    Gap(40),
+                    CustomTextField(
+                      controller: _pwController,
+                      labelText: "Password",
+                      hintText: "Password",
+                      obscureText: !_isPasswordVisible,
+                      validator: _passwordValidator,
+                      suffixIcon: PasswordVisibilityToggle(
+                        isVisible: _isPasswordVisible,
+                        onTap: _toggleVisibility,
+                      ),
+                    ),
+                    Gap(16),
+                    CustomTextField(
+                      controller: _confirmPwController,
+                      labelText: "Password",
+                      hintText: "Re-enter your password",
+                      obscureText: !_isPasswordVisible,
+                      validator: _confirmPasswordValidator,
+                      suffixIcon: PasswordVisibilityToggle(
+                        isVisible: _isPasswordVisible,
+                        onTap: _toggleVisibility,
+                      ),
+                    ),
+                    Gap(40),
+                    CustomButton(
+                      text: "Create",
+                      onTap: _onCreateTap,
+                      isDisabled: !_isFormValid,
+                    ),
+                    Gap(20),
+                    SizedBox(
+                        height: MediaQuery.of(context).viewInsets.bottom + 20),
+                  ],
                 ),
               ),
-              Gap(16),
-              CustomTextField(
-                controller: _confirmPasswordController,
-                labelText: "Password",
-                hintText: "Re-enter your password",
-                obscureText: !_isConfirmPasswordVisible,
-                suffixIcon: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: _isConfirmPasswordVisible
-                        ? SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeOpened.svg(
-                              width: 20,
-                              height: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          )
-                        : SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: Assets.icons.eyeClosed.svg(
-                              height: 20,
-                              width: 20,
-                              colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
-                                BlendMode.srcIn,
-                              ),
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-              Gap(40),
-              CustomButton(
-                text: "Create",
-                onTap: () {
-                  if (_isFormValid) {
-                    if (_passwordController.text !=
-                        _confirmPasswordController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Passwords do not match')),
-                      );
-                      return;
-                    }
-                    // Navigate to info page with email and password
-                    context.pushNamed(
-                      RouteNames.info,
-                      extra: {
-                        'email': _email,
-                        'password': _passwordController.text,
-                      },
-                    );
-                  }
-                },
-                isDisabled: !_isFormValid,
-              ),
-              Gap(20),
-              SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 20),
-            ],
-          ),
-        ),
+            ),
           ),
         ],
       ),

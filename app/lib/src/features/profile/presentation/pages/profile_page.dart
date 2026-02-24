@@ -34,6 +34,22 @@ class _ProfilePageContent extends StatefulWidget {
 
 class _ProfilePageContentState extends State<_ProfilePageContent> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bloc = getIt<ProfileBloc>();
+      final shouldLoad = bloc.state.maybeWhen(
+        initial: () => true,
+        loadingError: (_) => true,
+        orElse: () => false,
+      );
+      if (shouldLoad) {
+        bloc.add(const ProfileEvent.loadProfile());
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [

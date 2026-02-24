@@ -8,6 +8,7 @@ class CustomTextField extends StatefulWidget {
     super.key,
     required this.controller,
     required this.labelText,
+    this.focusNode,
     this.hintText,
     this.onChanged,
     this.keyboardType,
@@ -26,6 +27,7 @@ class CustomTextField extends StatefulWidget {
 
   final TextEditingController controller;
   final String labelText;
+  final FocusNode? focusNode;
   final String? hintText;
   final ValueChanged<String>? onChanged;
   final TextInputType? keyboardType;
@@ -46,8 +48,28 @@ class CustomTextField extends StatefulWidget {
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
+  bool _hasValidationError = false;
+  String? _errorText;
+
   void _onTextChanged() {
     setState(() {});
+  }
+
+  String? _validate(String? value) {
+    final error = widget.validator?.call(value);
+    final hasError = error != null;
+
+    if (_hasValidationError != hasError || _errorText != error) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() {
+          _hasValidationError = hasError;
+          _errorText = error;
+        });
+      });
+    }
+
+    return error;
   }
 
   @override
@@ -66,65 +88,83 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Widget build(BuildContext context) {
     final hasText = widget.controller.text.isNotEmpty;
 
-    return Container(
-      height: widget.height ?? 64,
-      padding: const EdgeInsets.fromLTRB(16, 8, 0, 8.5),
-      decoration: BoxDecoration(
-        border: widget.showBorder
-            ? (widget.customBorder ?? Border.all(color: AppColors.whiteBackground, width: 1))
-            : null,
-        borderRadius: BorderRadius.circular(6),
-        color: widget.backgroundColor ?? context.theme.mainBackground,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (widget.prefixIcon != null) ...[widget.prefixIcon!, Gap(12)],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (hasText) Text(widget.labelText, style: TextStyles.bodyMain),
-                TextFormField(
-                  controller: widget.controller,
-                  onChanged: (value) {
-                    widget.onChanged?.call(value);
-                  },
-                  keyboardType: widget.keyboardType,
-                  validator: widget.validator,
-                  obscureText: widget.obscureText,
-                  readOnly: widget.readOnly,
-                  onTap: widget.onTap,
-
-                  inputFormatters: widget.inputFormatters,
-                  textAlignVertical: hasText
-                      ? TextAlignVertical.top
-                      : TextAlignVertical.center,
-                  style: TextStyles.titleHeadline,
-                  decoration: InputDecoration(
-                    hintText: hasText
-                        ? null
-                        : (widget.hintText ?? widget.labelText),
-                    hintStyle: TextStyles.titleTag,
-                    contentPadding: hasText
-                        ? EdgeInsets.zero
-                        : const EdgeInsets.symmetric(vertical: 0),
-                    filled: false,
-                    isDense: true,
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    errorBorder: InputBorder.none,
-                    focusedErrorBorder: InputBorder.none,
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: widget.height ?? 64,
+          padding: const EdgeInsets.fromLTRB(16, 8, 0, 8.5),
+          decoration: BoxDecoration(
+            border: widget.showBorder
+                ? (_hasValidationError
+                    ? Border.all(color: AppColors.error, width: 1)
+                    : (widget.customBorder ??
+                        Border.all(color: AppColors.whiteBackground, width: 1)))
+                : null,
+            borderRadius: BorderRadius.circular(6),
+            color: widget.backgroundColor ?? context.theme.mainBackground,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              if (widget.prefixIcon != null) ...[widget.prefixIcon!, Gap(12)],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (hasText)
+                      Text(widget.labelText, style: TextStyles.bodyMain),
+                    TextFormField(
+                      controller: widget.controller,
+                      focusNode: widget.focusNode,
+                      onChanged: (value) {
+                        widget.onChanged?.call(value);
+                      },
+                      keyboardType: widget.keyboardType,
+                      validator: _validate,
+                      obscureText: widget.obscureText,
+                      readOnly: widget.readOnly,
+                      onTap: widget.onTap,
+                      inputFormatters: widget.inputFormatters,
+                      textAlignVertical: hasText
+                          ? TextAlignVertical.top
+                          : TextAlignVertical.center,
+                      style: TextStyles.titleHeadline,
+                      decoration: InputDecoration(
+                        hintText: hasText
+                            ? null
+                            : (widget.hintText ?? widget.labelText),
+                        hintStyle: TextStyles.titleTag,
+                        contentPadding: hasText
+                            ? EdgeInsets.zero
+                            : const EdgeInsets.symmetric(vertical: 0),
+                        filled: false,
+                        isDense: true,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        errorBorder: InputBorder.none,
+                        focusedErrorBorder: InputBorder.none,
+                        errorStyle: const TextStyle(fontSize: 0, height: 0),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
+              if (widget.suffixIcon != null) widget.suffixIcon!,
+            ],
+          ),
+        ),
+        if ((_errorText ?? '').isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, left: 2),
+            child: Text(
+              _errorText!,
+              style: TextStyles.titleTag.copyWith(color: AppColors.error),
             ),
           ),
-          if (widget.suffixIcon != null) widget.suffixIcon!,
-        ],
-      ),
+      ],
     );
   }
 }
