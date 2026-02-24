@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/google/uuid"
 	"github.com/uber/h3-go/v4"
 )
@@ -19,12 +20,14 @@ const (
 type Service struct {
 	repo        Repository
 	economyRepo economy.Repository
+	cache       *cache.Cache
 }
 
-func NewService(repo Repository, economyRepo economy.Repository) *Service {
+func NewService(repo Repository, economyRepo economy.Repository, cacheClient *cache.Cache) *Service {
 	return &Service{
 		repo:        repo,
 		economyRepo: economyRepo,
+		cache:       cacheClient,
 	}
 }
 
@@ -120,6 +123,56 @@ func (s *Service) GetNearbyTasks(ctx context.Context, lat, lon, radiusMeters flo
 	return &resp, nil
 }
 
+func (s *Service) CompleteTask(ctx context.Context, userID, taskID string) (*TaskCompletionResponse, error) {
+	if taskID == "" {
+		return nil, ErrTaskNotFound
+	}
+
+	tx, err := s.repo.BeginTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	txRepo := s.repo.WithTx(tx)
+	econTxRepo := s.economyRepo.WithTx(tx)
+
+	task, err := txRepo.GetTaskByID(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+	if !task.IsActive {
+		return nil, ErrTaskCompleted
+	}
+	if task.CreatorID == userID {
+		return nil, ErrSelfComplete
+	}
+
+	updated, err := txRepo.MarkTaskCompleted(ctx, taskID, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !updated {
+		return nil, ErrTaskCompleted
+	}
+
+	if err := economy.RewardForTaskCompletionTx(ctx, econTxRepo, userID, taskID, task.Reward); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	s.updateLeaderboards(userID, task)
+
+	return &TaskCompletionResponse{
+		TaskID:    taskID,
+		Reward:    economy.CentinelsToSeals(task.Reward),
+		Completed: true,
+	}, nil
+}
+
 func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionAssignmentRequest) (*RegionAssignmentResponse, error) {
 	if req == nil {
 		return nil, ErrInvalidCoordinates
@@ -185,6 +238,27 @@ func computeH3Indices(lat, lon float64) (string, string, string) {
 	cell2 := h3.LatLngToCell(latLng, h3ResCountry)
 
 	return cell5.String(), cell4.String(), cell2.String()
+}
+
+func (s *Service) updateLeaderboards(userID string, task *Task) {
+	if s.cache == nil || task == nil {
+		return
+	}
+
+	year, week := time.Now().ISOWeek()
+	score := economy.CentinelsToSeals(task.Reward)
+
+	if task.H3Res5 != nil && *task.H3Res5 != "" {
+		key := fmt.Sprintf("leaderboard:arena:%s:week:%d:%d", *task.H3Res5, year, week)
+		_, _ = s.cache.ZIncrBy(context.Background(), key, score, userID)
+	}
+	if task.H3Res4 != nil && *task.H3Res4 != "" {
+		key := fmt.Sprintf("leaderboard:city:%s:week:%d:%d", *task.H3Res4, year, week)
+		_, _ = s.cache.ZIncrBy(context.Background(), key, score, userID)
+	}
+
+	globalKey := fmt.Sprintf("leaderboard:global:week:%d:%d", year, week)
+	_, _ = s.cache.ZIncrBy(context.Background(), globalKey, score, userID)
 }
 
 func isValidCoordinates(lat, lon float64) bool {

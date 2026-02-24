@@ -12,6 +12,8 @@ type Task struct {
 	Latitude  float64   `db:"latitude" json:"latitude"`
 	Longitude float64   `db:"longitude" json:"longitude"`
 	IsActive  bool      `db:"is_active" json:"is_active"`
+	CompletedBy *string   `db:"completed_by" json:"completed_by,omitempty"`
+	CompletedAt *time.Time `db:"completed_at" json:"completed_at,omitempty"`
 	H3Res5    *string   `db:"h3_res5" json:"h3_res5,omitempty"`
 	H3Res4    *string   `db:"h3_res4" json:"h3_res4,omitempty"`
 	H3Res2    *string   `db:"h3_res2" json:"h3_res2,omitempty"`
@@ -35,6 +37,13 @@ type TaskResponse struct {
 	Latitude  float64   `json:"latitude"`
 	Longitude float64   `json:"longitude"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+// TaskCompletionResponse represents completion result.
+type TaskCompletionResponse struct {
+	TaskID    string  `json:"task_id"`
+	Reward    float64 `json:"reward"` // in seals
+	Completed bool    `json:"completed"`
 }
 
 // NearbyTasksResponse is returned for map task search.

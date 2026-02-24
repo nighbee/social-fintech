@@ -14,6 +14,8 @@ type Repository interface {
 	WithTx(tx *sqlx.Tx) Repository
 
 	CreateTask(ctx context.Context, task *Task) error
+	GetTaskByID(ctx context.Context, taskID string) (*Task, error)
+	MarkTaskCompleted(ctx context.Context, taskID, completedBy string) (bool, error)
 	GetTasksNearby(ctx context.Context, lat, lon, radiusMeters float64, limit int) ([]Task, error)
 	UpdateUserRegion(ctx context.Context, userID string, h3Res5, h3Res4, h3Res2 *string, participateDistrict, locationOptIn bool) error
 
@@ -66,6 +68,49 @@ func (r *repository) CreateTask(ctx context.Context, task *Task) error {
 		return fmt.Errorf("failed to create task: %w", err)
 	}
 	return nil
+}
+
+func (r *repository) GetTaskByID(ctx context.Context, taskID string) (*Task, error) {
+	query := `
+		SELECT id, title, reward, creator_id,
+		       ST_Y(location) AS latitude,
+		       ST_X(location) AS longitude,
+		       is_active, completed_by, completed_at,
+		       h3_res5, h3_res4, h3_res2, created_at, updated_at
+		FROM tasks
+		WHERE id = $1
+	`
+
+	var task Task
+	err := sqlx.GetContext(ctx, r.executor(), &task, query, taskID)
+	if err == sql.ErrNoRows {
+		return nil, ErrTaskNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task: %w", err)
+	}
+	return &task, nil
+}
+
+func (r *repository) MarkTaskCompleted(ctx context.Context, taskID, completedBy string) (bool, error) {
+	query := `
+		UPDATE tasks
+		SET is_active = false,
+		    completed_by = $1,
+		    completed_at = NOW(),
+		    updated_at = NOW()
+		WHERE id = $2 AND is_active = true
+	`
+
+	res, err := r.executor().ExecContext(ctx, query, completedBy, taskID)
+	if err != nil {
+		return false, fmt.Errorf("failed to mark task completed: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return rows > 0, nil
 }
 
 func (r *repository) GetTasksNearby(ctx context.Context, lat, lon, radiusMeters float64, limit int) ([]Task, error) {

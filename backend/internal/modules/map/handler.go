@@ -115,6 +115,54 @@ func (h *Handler) GetNearbyTasks(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// CompleteTask godoc
+// @Summary Complete a task
+// @Description Marks task as completed and rewards the user
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Success 200 {object} TaskCompletionResponse
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Task not found"
+// @Failure 409 {object} map[string]string "Task already completed"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id}/complete [post]
+func (h *Handler) CompleteTask(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	if taskID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_task_id"})
+	}
+
+	resp, err := h.service.CompleteTask(c.Context(), userID, taskID)
+	if err != nil {
+		switch err {
+		case ErrTaskNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
+		case ErrTaskCompleted:
+			return c.Status(409).JSON(fiber.Map{"error": "task_already_completed"})
+		case ErrSelfComplete:
+			return c.Status(400).JSON(fiber.Map{"error": "cannot_complete_own_task"})
+		default:
+			logger.Error("failed to complete task",
+				zap.String("task_id", taskID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "task_complete_failed"})
+		}
+	}
+
+	return c.JSON(resp)
+}
+
 // SetUserRegion godoc
 // @Summary Set user region using H3
 // @Description Assigns H3 cells based on current location and privacy settings
