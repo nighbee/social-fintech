@@ -6,25 +6,30 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-// Worker snapshots weekly champions from Redis ZSETs into Postgres.
+// Worker runs two background loops:
+//  1. Champions snapshot  — every 1 h, persists Redis leaderboard leaders to Postgres.
+//  2. Auto-shutdown sweep — every 5 min, cancels expired tasks and refunds their creators.
 type Worker struct {
-	cache   *cache.Cache
-	repo    Repository
-	stopCh  chan struct{}
-	running bool
+	cache       *cache.Cache
+	repo        Repository
+	economyRepo economy.Repository
+	stopCh      chan struct{}
+	running     bool
 }
 
-func NewWorker(cacheClient *cache.Cache, repo Repository) *Worker {
+func NewWorker(cacheClient *cache.Cache, repo Repository, economyRepo economy.Repository) *Worker {
 	return &Worker{
-		cache:  cacheClient,
-		repo:   repo,
-		stopCh: make(chan struct{}),
+		cache:       cacheClient,
+		repo:        repo,
+		economyRepo: economyRepo,
+		stopCh:      make(chan struct{}),
 	}
 }
 
@@ -35,13 +40,21 @@ func (w *Worker) Start() {
 	w.running = true
 
 	go func() {
-		ticker := time.NewTicker(1 * time.Hour)
-		defer ticker.Stop()
+		championTicker := time.NewTicker(1 * time.Hour)
+		sweepTicker := time.NewTicker(5 * time.Minute)
+		defer championTicker.Stop()
+		defer sweepTicker.Stop()
+
+		// Run sweep immediately on startup to catch any tasks that expired
+		// while the service was down.
+		w.sweepExpiredTasks(context.Background())
 
 		for {
 			select {
-			case <-ticker.C:
+			case <-championTicker.C:
 				w.snapshotChampions(context.Background())
+			case <-sweepTicker.C:
+				w.sweepExpiredTasks(context.Background())
 			case <-w.stopCh:
 				return
 			}
@@ -109,6 +122,73 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 		}
 	}
 }
+
+// ─── Auto-shutdown sweep ──────────────────────────────────────────────────────
+
+// sweepExpiredTasks finds all open tasks whose auto_shutdown_at has passed,
+// cancels each one, and refunds the creator's upfront charge.
+func (w *Worker) sweepExpiredTasks(ctx context.Context) {
+	tasks, err := w.repo.GetOpenTasksForShutdown(ctx)
+	if err != nil {
+		logger.Warn("auto-shutdown sweep: failed to fetch tasks", zap.Error(err))
+		return
+	}
+	if len(tasks) == 0 {
+		return
+	}
+	logger.Info("auto-shutdown sweep: processing expired tasks", zap.Int("count", len(tasks)))
+	for _, task := range tasks {
+		w.autoShutdownTask(ctx, task)
+	}
+}
+
+// autoShutdownTask cancels a single expired task and refunds the creator atomically.
+func (w *Worker) autoShutdownTask(ctx context.Context, task Task) {
+	tx, err := w.repo.BeginTx(ctx)
+	if err != nil {
+		logger.Warn("auto-shutdown: failed to begin tx",
+			zap.String("task_id", task.ID), zap.Error(err))
+		return
+	}
+	defer tx.Rollback()
+
+	txRepo := w.repo.WithTx(tx)
+	econTxRepo := w.economyRepo.WithTx(tx)
+
+	cancelled, err := txRepo.CancelTask(ctx, task.ID, task.CreatorID)
+	if err != nil {
+		logger.Warn("auto-shutdown: failed to cancel task",
+			zap.String("task_id", task.ID), zap.Error(err))
+		return
+	}
+	if !cancelled {
+		// Another goroutine or worker already handled this task (workers confirmed,
+		// or it was manually cancelled). Nothing to do.
+		return
+	}
+
+	if err := economy.RefundTaskCreationTx(ctx, econTxRepo, task.CreatorID, task.ID, task.Reward); err != nil {
+		logger.Warn("auto-shutdown: refund failed",
+			zap.String("task_id", task.ID),
+			zap.String("creator_id", task.CreatorID),
+			zap.Error(err))
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		logger.Warn("auto-shutdown: failed to commit tx",
+			zap.String("task_id", task.ID), zap.Error(err))
+		return
+	}
+
+	logger.Info("auto-shutdown: task cancelled and refunded",
+		zap.String("task_id", task.ID),
+		zap.String("creator_id", task.CreatorID),
+		zap.Int64("reward_cents", task.Reward),
+	)
+}
+
+// ─── Leaderboard key parsing ───────────────────────────────────────────────────
 
 func parseLeaderboardKey(key string, resolution int) (string, int, int, bool) {
 	parts := strings.Split(key, ":")

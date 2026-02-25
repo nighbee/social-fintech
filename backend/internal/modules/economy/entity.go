@@ -45,13 +45,15 @@ const (
 	CategoryIAPDeposit       TransactionCategory = "IAP_DEPOSIT"
 	CategorySystemCorrection TransactionCategory = "SYSTEM_CORRECTION"
 	CategoryTaskReward       TransactionCategory = "TASK_REWARD"
+	CategoryTaskRefund       TransactionCategory = "TASK_REFUND"
 	CategoryPostSeal         TransactionCategory = "POST_SEAL"
 )
 
 func (t TransactionCategory) IsValid() bool {
 	switch t {
 	case CategoryDailyAccrual, CategoryReferralBonus, CategoryP2PTransfer,
-		CategoryTaskCreation, CategoryIAPDeposit, CategorySystemCorrection, CategoryTaskReward, CategoryPostSeal:
+		CategoryTaskCreation, CategoryTaskRefund, CategoryIAPDeposit,
+		CategorySystemCorrection, CategoryTaskReward, CategoryPostSeal:
 		return true
 	}
 	return false

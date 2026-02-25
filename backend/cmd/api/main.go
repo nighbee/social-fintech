@@ -202,7 +202,7 @@ func main() {
 	defer economyWorker.Stop()
 	logger.Info("economy worker started")
 
-	mapWorker := mapmodule.NewWorker(redisCache, mapRepo)
+	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo)
 	mapWorker.Start()
 	defer mapWorker.Stop()
 	logger.Info("map worker started")

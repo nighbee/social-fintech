@@ -935,6 +935,89 @@ func RewardForTaskCompletionTx(ctx context.Context, repo Repository, userID, tas
 	return nil
 }
 
+// RefundTaskCreationTx refunds the task-creation charge back to the creator.
+// Must be called within an existing transaction. Idempotent via reference ID.
+func RefundTaskCreationTx(ctx context.Context, repo Repository, userID, taskID string, amount int64) error {
+	if amount <= 0 {
+		return NewInvalidAmountError(CentinelsToSeals(amount))
+	}
+
+	referenceID := fmt.Sprintf("task_refund_%s", taskID)
+	if existing, err := repo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
+		return nil // already refunded
+	}
+
+	wallet, err := repo.GetWallet(ctx, userID, CurrencySilverSeal)
+	if err != nil {
+		return WrapErrorf(err, "failed to get wallet for refund")
+	}
+
+	wallet.Balance += amount
+
+	if err := repo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+		return err
+	}
+
+	entry := &LedgerEntry{
+		ID:               uuid.New().String(),
+		Amount:           amount,
+		Currency:         CurrencySilverSeal,
+		ReceiverWalletID: &wallet.ID,
+		Category:         CategoryTaskRefund,
+		ReferenceID:      referenceID,
+		Metadata:         mustMarshalJSON(map[string]interface{}{"task_id": taskID}),
+		CreatedAt:        time.Now(),
+	}
+
+	if err := repo.CreateLedgerEntry(ctx, entry); err != nil {
+		return WrapErrorf(err, "failed to create refund ledger entry")
+	}
+
+	return nil
+}
+
+// RewardForApplicationConfirmationTx credits a helper for completing a task application.
+// Uses applicationID as part of the idempotency key so each worker in a multi-worker
+// task receives their individual reward correctly.
+func RewardForApplicationConfirmationTx(ctx context.Context, repo Repository, workerUserID, taskID, applicationID string, reward int64) error {
+	if reward <= 0 {
+		return NewInvalidAmountError(CentinelsToSeals(reward))
+	}
+
+	referenceID := fmt.Sprintf("task_reward_%s_%s", taskID, applicationID)
+	if existing, err := repo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
+		return nil // already rewarded
+	}
+
+	wallet, err := repo.GetOrCreateWallet(ctx, workerUserID, CurrencySilverSeal)
+	if err != nil {
+		return WrapErrorf(err, "failed to get worker wallet")
+	}
+
+	wallet.Balance += reward
+
+	if err := repo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+		return err
+	}
+
+	entry := &LedgerEntry{
+		ID:               uuid.New().String(),
+		Amount:           reward,
+		Currency:         CurrencySilverSeal,
+		ReceiverWalletID: &wallet.ID,
+		Category:         CategoryTaskReward,
+		ReferenceID:      referenceID,
+		Metadata:         mustMarshalJSON(map[string]interface{}{"task_id": taskID, "application_id": applicationID}),
+		CreatedAt:        time.Now(),
+	}
+
+	if err := repo.CreateLedgerEntry(ctx, entry); err != nil {
+		return WrapErrorf(err, "failed to create reward ledger entry")
+	}
+
+	return nil
+}
+
 func (s *service) AdminAdjustBalance(ctx context.Context, userID string, amountCentinels int64, currency CurrencyCode, reason string) error {
 	if !currency.IsValid() {
 		return NewInvalidCurrencyError(string(currency))

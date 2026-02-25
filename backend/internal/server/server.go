@@ -128,9 +128,21 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	mapGroup.Use(middleware.RequireAuth(jwt, authRepo))
 	mapGroup.Use(middleware.TouchSession(authRepo))
 
+	// Task CRUD
 	mapGroup.Post("/tasks", mapHandler.CreateTask)
+	mapGroup.Delete("/tasks/:task_id", mapHandler.CancelTask)
 	mapGroup.Get("/tasks/nearby", mapHandler.GetNearbyTasks)
+
+	// Task application flow: apply → verify-code → confirm
+	mapGroup.Post("/tasks/:task_id/apply", mapHandler.ApplyToTask)
+	mapGroup.Post("/tasks/:task_id/applications/:application_id/verify-code", mapHandler.SubmitVerificationCode)
+	mapGroup.Post("/tasks/:task_id/applications/:application_id/confirm", mapHandler.ConfirmCompletion)
+	mapGroup.Get("/tasks/:task_id/applications", mapHandler.GetTaskApplications)
+
+	// Legacy (deprecated)
 	mapGroup.Post("/tasks/:task_id/complete", mapHandler.CompleteTask)
+
+	// Map / Champions
 	mapGroup.Post("/map/region", mapHandler.SetUserRegion)
 	mapGroup.Get("/map/champions", mapHandler.GetRegionChampions)
 

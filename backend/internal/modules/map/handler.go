@@ -18,23 +18,38 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// ─── error helpers ────────────────────────────────────────────────────────────
+
+func validationErr(c *fiber.Ctx, msg string) error {
+	return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": msg})
+}
+
+func requireUserID(c *fiber.Ctx) (string, bool) {
+	id, ok := c.Locals("user_id").(string)
+	return id, ok && id != ""
+}
+
 // CreateTask godoc
 // @Summary Create a map task
-// @Description Creates a task with location and charges Silver Seals
+// @Description Creates a task at the given coordinates. Charges 1–3 Silver Seals upfront.
+// @Description The response includes `verification_code` which is shown ONLY to the creator
+// @Description and must be shared with helpers out-of-band (via chat) to verify completion.
+// @Description A 7-day cooldown applies between task creations per user.
 // @Tags Tasks
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param request body CreateTaskRequest true "Task creation payload"
-// @Success 200 {object} TaskResponse
-// @Failure 400 {object} map[string]string "Validation error"
+// @Success 201 {object} CreateTaskResponse
+// @Failure 400 {object} map[string]string "Validation error (invalid_title | invalid_reward | invalid_workers | invalid_coordinates)"
 // @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 402 {object} map[string]string "Insufficient funds"
+// @Failure 402 {object} map[string]string "Insufficient Silver Seals"
+// @Failure 429 {object} map[string]string "Cooldown active — must wait 7 days"
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /tasks [post]
 func (h *Handler) CreateTask(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
+	userID, ok := requireUserID(c)
+	if !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
@@ -45,8 +60,11 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 
 	task, err := h.service.CreateTask(c.Context(), userID, &req)
 	if err != nil {
-		if err == ErrInvalidCoordinates || err == ErrInvalidReward || err == ErrInvalidTitle {
-			return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": err.Error()})
+		switch err {
+		case ErrInvalidTitle, ErrInvalidCoordinates, ErrInvalidReward, ErrInvalidWorkers:
+			return validationErr(c, err.Error())
+		case ErrCooldownActive:
+			return c.Status(429).JSON(fiber.Map{"error": "cooldown_active", "message": err.Error()})
 		}
 		if economy.IsInsufficientFunds(err) {
 			return c.Status(402).JSON(fiber.Map{"error": "insufficient_funds"})
@@ -59,27 +77,26 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "task_create_failed"})
 	}
 
-	return c.JSON(task)
+	return c.Status(201).JSON(task)
 }
 
 // GetNearbyTasks godoc
 // @Summary Find tasks nearby
-// @Description Returns active tasks within a radius (meters)
+// @Description Returns open tasks within a given radius (metres) of the provided coordinates.
 // @Tags Tasks
-// @Accept json
 // @Produce json
 // @Security Bearer
 // @Param lat query number true "Latitude"
 // @Param lon query number true "Longitude"
-// @Param radius_m query number false "Radius in meters" default(2000)
-// @Param limit query int false "Limit" default(50)
+// @Param radius_m query number false "Radius in metres" default(2000)
+// @Param limit query int false "Max results" default(50)
 // @Success 200 {object} NearbyTasksResponse
-// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 400 {object} map[string]string "Invalid coordinates"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /tasks/nearby [get]
 func (h *Handler) GetNearbyTasks(c *fiber.Ctx) error {
-	if _, ok := c.Locals("user_id").(string); !ok {
+	if _, ok := requireUserID(c); !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
@@ -115,23 +132,308 @@ func (h *Handler) GetNearbyTasks(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// CancelTask godoc
+// @Summary Cancel a task (creator only)
+// @Description Cancels an open task and refunds the Silver Seal charge to the creator.
+// @Description Only allowed while no worker has been confirmed yet (workers_filled == 0).
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Success 200 {object} CancelTaskResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Not the task creator"
+// @Failure 404 {object} map[string]string "Task not found"
+// @Failure 409 {object} map[string]string "Task already completed or cancelled, or has active workers"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id} [delete]
+func (h *Handler) CancelTask(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	if taskID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_task_id"})
+	}
+
+	resp, err := h.service.CancelTask(c.Context(), userID, taskID)
+	if err != nil {
+		switch err {
+		case ErrTaskNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
+		case ErrNotTaskOwner:
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		case ErrTaskCompleted:
+			return c.Status(409).JSON(fiber.Map{"error": "task_already_completed"})
+		case ErrTaskCancelled:
+			return c.Status(409).JSON(fiber.Map{"error": "task_already_cancelled"})
+		case ErrTaskFull:
+			return c.Status(409).JSON(fiber.Map{"error": "task_has_active_workers"})
+		default:
+			logger.Error("failed to cancel task",
+				zap.String("task_id", taskID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "task_cancel_failed"})
+		}
+	}
+
+	return c.JSON(resp)
+}
+
+// ApplyToTask godoc
+// @Summary Apply to help with a task ("I can help")
+// @Description User2 applies to help with the given task. Creates a pending application
+// @Description and opens a direct chat between the applicant and the creator.
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Success 201 {object} ApplyToTaskResponse
+// @Failure 400 {object} map[string]string "Cannot apply to your own task"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Task not found"
+// @Failure 409 {object} map[string]string "Already applied | Task full | Task not open"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id}/apply [post]
+func (h *Handler) ApplyToTask(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	if taskID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_task_id"})
+	}
+
+	resp, err := h.service.ApplyToTask(c.Context(), userID, taskID)
+	if err != nil {
+		switch err {
+		case ErrTaskNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
+		case ErrSelfComplete:
+			return c.Status(400).JSON(fiber.Map{"error": "cannot_apply_to_own_task"})
+		case ErrAlreadyApplied:
+			return c.Status(409).JSON(fiber.Map{"error": "already_applied"})
+		case ErrTaskFull:
+			return c.Status(409).JSON(fiber.Map{"error": "task_full"})
+		case ErrTaskCompleted:
+			return c.Status(409).JSON(fiber.Map{"error": "task_already_completed"})
+		case ErrTaskCancelled:
+			return c.Status(409).JSON(fiber.Map{"error": "task_cancelled"})
+		default:
+			logger.Error("failed to apply to task",
+				zap.String("task_id", taskID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "apply_failed"})
+		}
+	}
+
+	return c.Status(201).JSON(resp)
+}
+
+// SubmitVerificationCode godoc
+// @Summary Submit the 4-digit verification code (helper)
+// @Description User2 enters the code they received from the creator in chat.
+// @Description On success the application moves to `code_verified` status,
+// @Description which enables the creator to confirm completion.
+// @Tags Tasks
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Param application_id path string true "Application ID"
+// @Param request body SubmitVerificationCodeRequest true "4-digit code"
+// @Success 200 {object} VerifyCodeResponse
+// @Failure 400 {object} map[string]string "Wrong code"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Not the applicant"
+// @Failure 404 {object} map[string]string "Application not found"
+// @Failure 409 {object} map[string]string "Code already verified"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id}/applications/{application_id}/verify-code [post]
+func (h *Handler) SubmitVerificationCode(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	applicationID := c.Params("application_id")
+	if taskID == "" || applicationID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_params"})
+	}
+
+	var req SubmitVerificationCodeRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+	}
+	if len(req.Code) != 4 {
+		return validationErr(c, "code must be exactly 4 digits")
+	}
+
+	resp, err := h.service.SubmitVerificationCode(c.Context(), userID, taskID, applicationID, req.Code)
+	if err != nil {
+		switch err {
+		case ErrApplicationNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "application_not_found"})
+		case ErrNotApplicant:
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		case ErrInvalidCode:
+			return c.Status(400).JSON(fiber.Map{"error": "invalid_code"})
+		case ErrAlreadyVerified:
+			return c.Status(409).JSON(fiber.Map{"error": "already_verified"})
+		case ErrTaskNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
+		default:
+			logger.Error("failed to verify code",
+				zap.String("task_id", taskID),
+				zap.String("application_id", applicationID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "verify_code_failed"})
+		}
+	}
+
+	return c.JSON(resp)
+}
+
+// ConfirmCompletion godoc
+// @Summary Confirm a helper completed the task (creator only)
+// @Description User1 presses "Yes, this person helped me" in the confirmation popup.
+// @Description The application must already be in `code_verified` status.
+// @Description Triggers a Silver Seal transfer to the helper and increments `workers_filled`.
+// @Description When `workers_filled` reaches `workers_needed` the task moves to `completed`.
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Param application_id path string true "Application ID"
+// @Success 200 {object} ConfirmCompletionResponse
+// @Failure 400 {object} map[string]string "Application not in code_verified state"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Not the task creator"
+// @Failure 404 {object} map[string]string "Task or application not found"
+// @Failure 409 {object} map[string]string "Task already completed or cancelled"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id}/applications/{application_id}/confirm [post]
+func (h *Handler) ConfirmCompletion(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	applicationID := c.Params("application_id")
+	if taskID == "" || applicationID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_params"})
+	}
+
+	resp, err := h.service.ConfirmCompletion(c.Context(), userID, taskID, applicationID)
+	if err != nil {
+		switch err {
+		case ErrTaskNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
+		case ErrApplicationNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "application_not_found"})
+		case ErrNotTaskOwner:
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		case ErrNotConfirmable:
+			return c.Status(400).JSON(fiber.Map{"error": "application_not_code_verified"})
+		case ErrTaskCompleted:
+			return c.Status(409).JSON(fiber.Map{"error": "task_already_completed"})
+		case ErrTaskCancelled:
+			return c.Status(409).JSON(fiber.Map{"error": "task_cancelled"})
+		default:
+			logger.Error("failed to confirm completion",
+				zap.String("task_id", taskID),
+				zap.String("application_id", applicationID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "confirm_failed"})
+		}
+	}
+
+	return c.JSON(resp)
+}
+
+// GetTaskApplications godoc
+// @Summary List applicants for a task (creator only)
+// @Description Returns all applications for the given task.
+// @Description Only the task creator can call this endpoint.
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Success 200 {array} ApplicationResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Not the task creator"
+// @Failure 404 {object} map[string]string "Task not found"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id}/applications [get]
+func (h *Handler) GetTaskApplications(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	if taskID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_task_id"})
+	}
+
+	apps, err := h.service.GetTaskApplications(c.Context(), userID, taskID)
+	if err != nil {
+		switch err {
+		case ErrTaskNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
+		case ErrNotTaskOwner:
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		default:
+			logger.Error("failed to get task applications",
+				zap.String("task_id", taskID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "fetch_applications_failed"})
+		}
+	}
+
+	return c.JSON(apps)
+}
+
 // CompleteTask godoc
-// @Summary Complete a task
-// @Description Marks task as completed and rewards the user
+// @Summary [DEPRECATED] Legacy single-actor task completion
+// @Description Deprecated in favour of the apply → verify-code → confirm flow.
+// @Description Kept for backward compatibility only.
 // @Tags Tasks
 // @Produce json
 // @Security Bearer
 // @Param task_id path string true "Task ID"
 // @Success 200 {object} TaskCompletionResponse
-// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 400 {object} map[string]string "Cannot complete own task"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 404 {object} map[string]string "Task not found"
 // @Failure 409 {object} map[string]string "Task already completed"
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /tasks/{task_id}/complete [post]
+// @Deprecated true
 func (h *Handler) CompleteTask(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
+	userID, ok := requireUserID(c)
+	if !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
@@ -150,7 +452,7 @@ func (h *Handler) CompleteTask(c *fiber.Ctx) error {
 		case ErrSelfComplete:
 			return c.Status(400).JSON(fiber.Map{"error": "cannot_complete_own_task"})
 		default:
-			logger.Error("failed to complete task",
+			logger.Error("failed to complete task (legacy)",
 				zap.String("task_id", taskID),
 				zap.String("user_id", userID),
 				zap.String("request_id", c.Get("X-Request-Id")),
@@ -165,20 +467,20 @@ func (h *Handler) CompleteTask(c *fiber.Ctx) error {
 
 // SetUserRegion godoc
 // @Summary Set user region using H3
-// @Description Assigns H3 cells based on current location and privacy settings
+// @Description Assigns H3 cells (res 2/4/5) based on current location and privacy settings
 // @Tags Map
 // @Accept json
 // @Produce json
 // @Security Bearer
 // @Param request body RegionAssignmentRequest true "Region assignment"
 // @Success 200 {object} RegionAssignmentResponse
-// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 400 {object} map[string]string "Invalid coordinates"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /map/region [post]
 func (h *Handler) SetUserRegion(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
+	userID, ok := requireUserID(c)
+	if !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
@@ -205,21 +507,23 @@ func (h *Handler) SetUserRegion(c *fiber.Ctx) error {
 
 // GetRegionChampions godoc
 // @Summary Get champions for H3 cells
-// @Description Returns champions for a set of H3 indices at a given resolution/week
+// @Description Returns the current champion for each of the supplied H3 cell indices
+// @Description at the given resolution and ISO week. Used by the Flutter map to render
+// @Description champion pins on the visible viewport.
 // @Tags Map
 // @Produce json
 // @Security Bearer
-// @Param h3 query string true "Comma-separated H3 indexes"
-// @Param resolution query int true "H3 resolution"
-// @Param year query int true "Year"
-// @Param week query int true "ISO week number"
+// @Param h3 query string true "Comma-separated H3 cell IDs (e.g. 852830803fffffff,852830813fffffff)"
+// @Param resolution query int false "H3 resolution (2=country, 4=city, 5=district)" default(5)
+// @Param year query int false "Year (defaults to current)"
+// @Param week query int false "ISO week number (defaults to current)"
 // @Success 200 {array} ChampionPin
-// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 400 {object} map[string]string "Missing h3 parameter"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /map/champions [get]
 func (h *Handler) GetRegionChampions(c *fiber.Ctx) error {
-	if _, ok := c.Locals("user_id").(string); !ok {
+	if _, ok := requireUserID(c); !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
