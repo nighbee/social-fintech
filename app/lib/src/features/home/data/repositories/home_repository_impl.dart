@@ -24,6 +24,18 @@ class HomeRepositoryImpl implements IHomeRepository {
   }
 
   @override
+  Future<Either<DomainException, PostEntity>> createPost(
+    String content,
+    List<String> imageFileNames,
+  ) async {
+    final result = await _remote.createPost(content, imageFileNames);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
   Future<Either<DomainException, PostEntity>> likePost(String postId) async {
     final result = await _remote.likePost(postId);
     return result.fold(

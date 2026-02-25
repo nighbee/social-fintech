@@ -27,6 +27,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   Future<void> onEventHandler(HomeEvent event, Emitter emit) async {
     await event.when(
       loadPosts: () => _loadPosts(event as _LoadPosts, emit),
+      createPost: (_) => _createPost(event as _CreatePost, emit),
       likePost: (_) => _likePost(event as _LikePost, emit),
       unlikePost: (_) => _unlikePost(event as _UnlikePost, emit),
       loadComments: (_) => _loadComments(event as _LoadComments, emit),
@@ -47,6 +48,9 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
         emit,
       ),
       clearCommentPhotos: () => _clearCommentPhotos(emit),
+      addPostPhoto: (_, __) => _addPostPhoto(event as _AddPostPhoto, emit),
+      removePostPhoto: (_) => _removePostPhoto(event as _RemovePostPhoto, emit),
+      clearPostPhotos: () => _clearPostPhotos(emit),
     );
   }
 
@@ -98,6 +102,30 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       (actualPost) {
         // Update with actual data from server
         _viewModel = _viewModel.copyWithPost(actualPost);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _createPost(_CreatePost event, Emitter emit) async {
+    final hasContent = event.content.trim().isNotEmpty;
+    final hasPhotos = _viewModel.postComposerPhotos.isNotEmpty;
+    if (!hasContent && !hasPhotos) {
+      emit(const HomeState.loadingError('Post content is empty'));
+      return;
+    }
+
+    final result = await _repository.createPost(
+      event.content.trim(),
+      _viewModel.postComposerPhotos.map((photo) => photo.fileName).toList(),
+    );
+
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (post) {
+        _viewModel = _viewModel.prependPost(post).copyWith(
+          postComposerPhotos: const [],
+        );
         emit(HomeState.loaded(viewModel: _viewModel));
       },
     );
@@ -316,6 +344,23 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
 
   Future<void> _clearCommentPhotos(Emitter emit) async {
     _viewModel = _viewModel.copyWith(composerPhotos: const []);
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _addPostPhoto(_AddPostPhoto event, Emitter emit) async {
+    _viewModel = _viewModel.addPostComposerPhoto(
+      CommentComposerPhoto(bytes: event.bytes, fileName: event.fileName),
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _removePostPhoto(_RemovePostPhoto event, Emitter emit) async {
+    _viewModel = _viewModel.removePostComposerPhoto(event.fileName);
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _clearPostPhotos(Emitter emit) async {
+    _viewModel = _viewModel.copyWith(postComposerPhotos: const []);
     emit(HomeState.loaded(viewModel: _viewModel));
   }
 

@@ -5,6 +5,10 @@ import 'package:app/src/features/home/data/models/post_dto.dart';
 
 abstract class IHomeRemote {
   Future<Either<DomainException, List<PostDto>>> getPosts();
+  Future<Either<DomainException, PostDto>> createPost(
+    String content,
+    List<String> imageFileNames,
+  );
   Future<Either<DomainException, PostDto>> likePost(String postId);
   Future<Either<DomainException, PostDto>> unlikePost(String postId);
   Future<Either<DomainException, List<CommentDto>>> getComments(String postId);

@@ -25,6 +25,7 @@ class HomeViewModel with _$HomeViewModel {
     @Default({}) Map<String, List<CommentEntity>> commentsByPost,
     @Default(<String>{}) Set<String> expandedReplyCommentIds,
     @Default([]) List<CommentComposerPhoto> composerPhotos,
+    @Default([]) List<CommentComposerPhoto> postComposerPhotos,
     String? replyingToCommentId,
     String? currentlyViewingPostId,
   }) = _HomeViewModel;
@@ -50,6 +51,10 @@ class HomeViewModel with _$HomeViewModel {
     return copyWith(
       commentsByPost: {...commentsByPost, postId: updatedComments},
     );
+  }
+
+  HomeViewModel prependPost(PostEntity post) {
+    return copyWith(posts: [post, ...posts]);
   }
 
   HomeViewModel addCommentToPost(
@@ -140,6 +145,21 @@ class HomeViewModel with _$HomeViewModel {
   HomeViewModel removeComposerPhoto(String fileName) {
     return copyWith(
       composerPhotos: composerPhotos
+          .where((photo) => photo.fileName != fileName)
+          .toList(),
+    );
+  }
+
+  HomeViewModel addPostComposerPhoto(CommentComposerPhoto photo) {
+    if (postComposerPhotos.any((item) => item.fileName == photo.fileName)) {
+      return this;
+    }
+    return copyWith(postComposerPhotos: [...postComposerPhotos, photo]);
+  }
+
+  HomeViewModel removePostComposerPhoto(String fileName) {
+    return copyWith(
+      postComposerPhotos: postComposerPhotos
           .where((photo) => photo.fileName != fileName)
           .toList(),
     );

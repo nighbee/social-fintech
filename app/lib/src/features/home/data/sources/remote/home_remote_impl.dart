@@ -1,11 +1,11 @@
-import 'package:fpdart/fpdart.dart';
-import 'package:injectable/injectable.dart';
 import 'package:app/src/core/api/client/dio/dio_client.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/models/comment_dto.dart';
 import 'package:app/src/features/home/data/models/post_dto.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:injectable/injectable.dart';
 
 @named
 @LazySingleton(as: IHomeRemote)
@@ -14,8 +14,9 @@ class HomeRemoteImpl implements IHomeRemote {
 
   final RestClient _restClient;
 
-  // Mock in-memory storage for comments
   final Map<String, List<CommentDto>> _mockComments = {};
+  List<PostDto>? _mockPosts;
+  int _postIdCounter = 1000;
   int _commentIdCounter = 1;
 
   List<CommentDto> _getMockCommentsForPost(String postId) {
@@ -96,26 +97,8 @@ class HomeRemoteImpl implements IHomeRemote {
     return _mockComments[postId]!;
   }
 
-  @override
-  Future<Either<DomainException, List<PostDto>>> getPosts() async {
-    // TODO: Uncomment when API is ready
-    // try {
-    //   final response = await _restClient.get(EndPoints.posts);
-    //
-    //   return response.fold((error) => Left(error), (result) {
-    //     final dto = ListResponse<PostDto>.fromJson(
-    //       result.data,
-    //       (json) => PostDto.fromJson(json as Map<String, dynamic>),
-    //     );
-    //     return Right(dto.data);
-    //   });
-    // } catch (e) {
-    //   return Left(UnknownException(message: e.toString()));
-    // }
-
-    // Mock data for development
-    await Future.delayed(const Duration(milliseconds: 500));
-    final mockPosts = [
+  Future<void> _ensureMockPostsLoaded() async {
+    _mockPosts ??= [
       PostDto(
         id: 'post-1',
         userId: 'user-1',
@@ -138,7 +121,7 @@ class HomeRemoteImpl implements IHomeRemote {
         userId: 'user-2',
         username: 'John Bookworm',
         userAvatar: 'https://i.pravatar.cc/150?img=12',
-        content: 'Just finished "The Great Gatsby". What a masterpiece! 📚✨',
+        content: 'Just finished "The Great Gatsby". What a masterpiece!',
         imageUrls: [
           'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400',
         ],
@@ -170,7 +153,7 @@ class HomeRemoteImpl implements IHomeRemote {
         userId: 'user-4',
         username: 'Mike Literature',
         userAvatar: 'https://i.pravatar.cc/150?img=8',
-        content: 'Currently reading 5 books at once. Is that normal? 😅',
+        content: 'Currently reading 5 books at once. Is that normal?',
         imageUrls: [],
         likesCount: 42,
         commentsCount: 18,
@@ -179,56 +162,89 @@ class HomeRemoteImpl implements IHomeRemote {
             .toIso8601String(),
       ),
     ];
-    return Right(mockPosts);
+  }
+
+  @override
+  Future<Either<DomainException, List<PostDto>>> getPosts() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    await _ensureMockPostsLoaded();
+    return Right(List<PostDto>.from(_mockPosts!));
+  }
+
+  @override
+  Future<Either<DomainException, PostDto>> createPost(
+    String content,
+    List<String> imageFileNames,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    await _ensureMockPostsLoaded();
+
+    final post = PostDto(
+      id: 'post-${_postIdCounter++}',
+      userId: 'current-user',
+      username: 'You',
+      userAvatar: 'https://i.pravatar.cc/150?img=50',
+      content: content,
+      imageUrls: imageFileNames
+          .map(
+            (name) =>
+                'https://picsum.photos/seed/${Uri.encodeComponent(name)}/900/900',
+          )
+          .toList(),
+      likesCount: 0,
+      commentsCount: 0,
+      isLiked: false,
+      createdAt: DateTime.now().toIso8601String(),
+    );
+
+    _mockPosts = [post, ..._mockPosts!];
+    return Right(post);
   }
 
   @override
   Future<Either<DomainException, PostDto>> likePost(String postId) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    await _ensureMockPostsLoaded();
 
-    // Get current posts and update the liked one
-    final postsResult = await getPosts();
-    return postsResult.fold(
-      (error) => Left(error),
-      (posts) {
-        final updatedPosts = posts.map((post) {
-          if (post.id == postId && !post.isLiked) {
-            return post.copyWith(
-              likesCount: post.likesCount + 1,
-              isLiked: true,
-            );
-          }
-          return post;
-        }).toList();
+    final index = _mockPosts!.indexWhere((post) => post.id == postId);
+    if (index == -1) {
+      return Left(UnknownException(message: 'Post not found'));
+    }
 
-        final likedPost = updatedPosts.firstWhere((p) => p.id == postId);
-        return Right(likedPost);
-      },
+    final post = _mockPosts![index];
+    if (post.isLiked) {
+      return Right(post);
+    }
+
+    final updated = post.copyWith(
+      likesCount: post.likesCount + 1,
+      isLiked: true,
     );
+    _mockPosts![index] = updated;
+    return Right(updated);
   }
 
   @override
   Future<Either<DomainException, PostDto>> unlikePost(String postId) async {
     await Future.delayed(const Duration(milliseconds: 300));
+    await _ensureMockPostsLoaded();
 
-    final postsResult = await getPosts();
-    return postsResult.fold(
-      (error) => Left(error),
-      (posts) {
-        final updatedPosts = posts.map((post) {
-          if (post.id == postId && post.isLiked) {
-            return post.copyWith(
-              likesCount: post.likesCount > 0 ? post.likesCount - 1 : 0,
-              isLiked: false,
-            );
-          }
-          return post;
-        }).toList();
+    final index = _mockPosts!.indexWhere((post) => post.id == postId);
+    if (index == -1) {
+      return Left(UnknownException(message: 'Post not found'));
+    }
 
-        final unlikedPost = updatedPosts.firstWhere((p) => p.id == postId);
-        return Right(unlikedPost);
-      },
+    final post = _mockPosts![index];
+    if (!post.isLiked) {
+      return Right(post);
+    }
+
+    final updated = post.copyWith(
+      likesCount: post.likesCount > 0 ? post.likesCount - 1 : 0,
+      isLiked: false,
     );
+    _mockPosts![index] = updated;
+    return Right(updated);
   }
 
   @override

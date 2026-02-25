@@ -5,6 +5,10 @@ import 'package:app/src/features/home/domain/entities/post_entity.dart';
 
 abstract class IHomeRepository {
   Future<Either<DomainException, List<PostEntity>>> getPosts();
+  Future<Either<DomainException, PostEntity>> createPost(
+    String content,
+    List<String> imageFileNames,
+  );
   Future<Either<DomainException, PostEntity>> likePost(String postId);
   Future<Either<DomainException, PostEntity>> unlikePost(String postId);
   Future<Either<DomainException, List<CommentEntity>>> getComments(

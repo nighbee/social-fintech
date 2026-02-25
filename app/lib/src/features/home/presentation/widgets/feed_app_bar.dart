@@ -4,7 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
 class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const FeedAppBar({super.key});
+  const FeedAppBar({
+    super.key,
+    this.onCreatePostTap,
+  });
+
+  final VoidCallback? onCreatePostTap;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -61,7 +66,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         GestureDetector(
-          onTap: () {},
+          onTap: onCreatePostTap,
           child: Container(
             padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
