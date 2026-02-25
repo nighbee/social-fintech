@@ -1172,7 +1172,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns champions for a set of H3 indices at a given resolution/week",
+                "description": "Returns the current champion for each of the supplied H3 cell indices\nat the given resolution and ISO week. Used by the Flutter map to render\nchampion pins on the visible viewport.",
                 "produces": [
                     "application/json"
                 ],
@@ -1183,31 +1183,29 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Comma-separated H3 indexes",
+                        "description": "Comma-separated H3 cell IDs (e.g. 852830803fffffff,852830813fffffff)",
                         "name": "h3",
                         "in": "query",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "description": "H3 resolution",
+                        "default": 5,
+                        "description": "H3 resolution (2=country, 4=city, 5=district)",
                         "name": "resolution",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Year",
+                        "description": "Year (defaults to current)",
                         "name": "year",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "ISO week number",
+                        "description": "ISO week number (defaults to current)",
                         "name": "week",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1221,7 +1219,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error",
+                        "description": "Missing h3 parameter",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1257,7 +1255,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Assigns H3 cells based on current location and privacy settings",
+                "description": "Assigns H3 cells (res 2/4/5) based on current location and privacy settings",
                 "consumes": [
                     "application/json"
                 ],
@@ -1287,7 +1285,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error",
+                        "description": "Invalid coordinates",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2290,7 +2288,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a task with location and charges Silver Seals",
+                "description": "Creates a task at the given coordinates. Charges 1–3 Silver Seals upfront.\nThe response includes ` + "`" + `verification_code` + "`" + ` which is shown ONLY to the creator\nand must be shared with helpers out-of-band (via chat) to verify completion.\nA 7-day cooldown applies between task creations per user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2313,14 +2311,14 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "200": {
-                        "description": "OK",
+                    "201": {
+                        "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/mapmodule.TaskResponse"
+                            "$ref": "#/definitions/mapmodule.CreateTaskResponse"
                         }
                     },
                     "400": {
-                        "description": "Validation error",
+                        "description": "Validation error (invalid_title | invalid_reward | invalid_workers | invalid_coordinates)",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2338,7 +2336,16 @@ const docTemplate = `{
                         }
                     },
                     "402": {
-                        "description": "Insufficient funds",
+                        "description": "Insufficient Silver Seals",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Cooldown active — must wait 7 days",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2365,10 +2372,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns active tasks within a radius (meters)",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Returns open tasks within a given radius (metres) of the provided coordinates.",
                 "produces": [
                     "application/json"
                 ],
@@ -2394,14 +2398,14 @@ const docTemplate = `{
                     {
                         "type": "number",
                         "default": 2000,
-                        "description": "Radius in meters",
+                        "description": "Radius in metres",
                         "name": "radius_m",
                         "in": "query"
                     },
                     {
                         "type": "integer",
                         "default": 50,
-                        "description": "Limit",
+                        "description": "Max results",
                         "name": "limit",
                         "in": "query"
                     }
@@ -2414,7 +2418,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error",
+                        "description": "Invalid coordinates",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2443,6 +2447,439 @@ const docTemplate = `{
                 }
             }
         },
+        "/tasks/{task_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Cancels an open task and refunds the Silver Seal charge to the creator.\nOnly allowed while no worker has been confirmed yet (workers_filled == 0).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Cancel a task (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.CancelTaskResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Task already completed or cancelled, or has active workers",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns all applications for the given task.\nOnly the task creator can call this endpoint.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "List applicants for a task (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mapmodule.ApplicationResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications/{application_id}/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "User1 presses \"Yes, this person helped me\" in the confirmation popup.\nThe application must already be in ` + "`" + `code_verified` + "`" + ` status.\nTriggers a Silver Seal transfer to the helper and increments ` + "`" + `workers_filled` + "`" + `.\nWhen ` + "`" + `workers_filled` + "`" + ` reaches ` + "`" + `workers_needed` + "`" + ` the task moves to ` + "`" + `completed` + "`" + `.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Confirm a helper completed the task (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.ConfirmCompletionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Application not in code_verified state",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task or application not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Task already completed or cancelled",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications/{application_id}/verify-code": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "User2 enters the code they received from the creator in chat.\nOn success the application moves to ` + "`" + `code_verified` + "`" + ` status,\nwhich enables the creator to confirm completion.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Submit the 4-digit verification code (helper)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "4-digit code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.SubmitVerificationCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.VerifyCodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Wrong code",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the applicant",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Application not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Code already verified",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/apply": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "User2 applies to help with the given task. Creates a pending application\nand opens a direct chat between the applicant and the creator.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Apply to help with a task (\"I can help\")",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.ApplyToTaskResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Cannot apply to your own task",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Already applied | Task full | Task not open",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tasks/{task_id}/complete": {
             "post": {
                 "security": [
@@ -2450,14 +2887,15 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Marks task as completed and rewards the user",
+                "description": "Deprecated in favour of the apply → verify-code → confirm flow.\nKept for backward compatibility only.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Tasks"
                 ],
-                "summary": "Complete a task",
+                "summary": "[DEPRECATED] Legacy single-actor task completion",
+                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
@@ -2475,7 +2913,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Validation error",
+                        "description": "Cannot complete own task",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -3144,6 +3582,7 @@ const docTemplate = `{
                 "IAP_DEPOSIT",
                 "SYSTEM_CORRECTION",
                 "TASK_REWARD",
+                "TASK_REFUND",
                 "POST_SEAL"
             ],
             "x-enum-varnames": [
@@ -3154,6 +3593,7 @@ const docTemplate = `{
                 "CategoryIAPDeposit",
                 "CategorySystemCorrection",
                 "CategoryTaskReward",
+                "CategoryTaskRefund",
                 "CategoryPostSeal"
             ]
         },
@@ -3342,6 +3782,52 @@ const docTemplate = `{
                 "ViolationRepeatTransferPattern"
             ]
         },
+        "mapmodule.ApplicationResponse": {
+            "type": "object",
+            "properties": {
+                "applicant_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.ApplyToTaskResponse": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "always \"pending\" on creation",
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.CancelTaskResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
         "mapmodule.ChampionPin": {
             "type": "object",
             "properties": {
@@ -3359,9 +3845,36 @@ const docTemplate = `{
                 }
             }
         },
+        "mapmodule.ConfirmCompletionResponse": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "reward": {
+                    "description": "seals paid to user2",
+                    "type": "number"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "task_status": {
+                    "type": "string"
+                }
+            }
+        },
         "mapmodule.CreateTaskRequest": {
             "type": "object",
             "properties": {
+                "auto_shutdown": {
+                    "description": "AutoShutdown enables automatic task cancellation 24 hours after creation.",
+                    "type": "boolean",
+                    "example": true
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Please pick up the red package from the lobby"
+                },
                 "latitude": {
                     "type": "number",
                     "example": 37.7749
@@ -3371,13 +3884,60 @@ const docTemplate = `{
                     "example": -122.4194
                 },
                 "reward": {
-                    "description": "in seals",
-                    "type": "number",
-                    "example": 1.5
+                    "description": "Reward must be 1, 2, or 3 Silver Seals.",
+                    "type": "integer",
+                    "example": 2
                 },
                 "title": {
                     "type": "string",
                     "example": "Pick up a package"
+                },
+                "workers_needed": {
+                    "description": "WorkersNeeded is the number of helpers required to close the task (1–20).",
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "mapmodule.CreateTaskResponse": {
+            "type": "object",
+            "properties": {
+                "auto_shutdown_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "reward": {
+                    "description": "in seals",
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "verification_code": {
+                    "type": "string"
+                },
+                "workers_filled": {
+                    "type": "integer"
+                },
+                "workers_needed": {
+                    "type": "integer"
                 }
             }
         },
@@ -3436,6 +3996,15 @@ const docTemplate = `{
                 }
             }
         },
+        "mapmodule.SubmitVerificationCodeRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "4821"
+                }
+            }
+        },
         "mapmodule.TaskCompletionResponse": {
             "type": "object",
             "properties": {
@@ -3443,7 +4012,6 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "reward": {
-                    "description": "in seals",
                     "type": "number"
                 },
                 "task_id": {
@@ -3454,7 +4022,13 @@ const docTemplate = `{
         "mapmodule.TaskResponse": {
             "type": "object",
             "properties": {
+                "auto_shutdown_at": {
+                    "type": "string"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "description": {
                     "type": "string"
                 },
                 "id": {
@@ -3470,7 +4044,28 @@ const docTemplate = `{
                     "description": "in seals",
                     "type": "number"
                 },
+                "status": {
+                    "type": "string"
+                },
                 "title": {
+                    "type": "string"
+                },
+                "workers_filled": {
+                    "type": "integer"
+                },
+                "workers_needed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "mapmodule.VerifyCodeResponse": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"code_verified\" on success",
                     "type": "string"
                 }
             }

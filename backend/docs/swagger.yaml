@@ -392,6 +392,7 @@ definitions:
     - IAP_DEPOSIT
     - SYSTEM_CORRECTION
     - TASK_REWARD
+    - TASK_REFUND
     - POST_SEAL
     type: string
     x-enum-varnames:
@@ -402,6 +403,7 @@ definitions:
     - CategoryIAPDeposit
     - CategorySystemCorrection
     - CategoryTaskReward
+    - CategoryTaskRefund
     - CategoryPostSeal
   economy.TransactionHistoryResponse:
     properties:
@@ -531,6 +533,36 @@ definitions:
     - ViolationMonthlyLimitExceeded
     - ViolationInsufficientFundsAttempt
     - ViolationRepeatTransferPattern
+  mapmodule.ApplicationResponse:
+    properties:
+      applicant_id:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      status:
+        type: string
+      task_id:
+        type: string
+    type: object
+  mapmodule.ApplyToTaskResponse:
+    properties:
+      application_id:
+        type: string
+      status:
+        description: always "pending" on creation
+        type: string
+      task_id:
+        type: string
+    type: object
+  mapmodule.CancelTaskResponse:
+    properties:
+      status:
+        type: string
+      task_id:
+        type: string
+    type: object
   mapmodule.ChampionPin:
     properties:
       h3_index:
@@ -542,8 +574,28 @@ definitions:
       user_id:
         type: string
     type: object
+  mapmodule.ConfirmCompletionResponse:
+    properties:
+      application_id:
+        type: string
+      reward:
+        description: seals paid to user2
+        type: number
+      task_id:
+        type: string
+      task_status:
+        type: string
+    type: object
   mapmodule.CreateTaskRequest:
     properties:
+      auto_shutdown:
+        description: AutoShutdown enables automatic task cancellation 24 hours after
+          creation.
+        example: true
+        type: boolean
+      description:
+        example: Please pick up the red package from the lobby
+        type: string
       latitude:
         example: 37.7749
         type: number
@@ -551,12 +603,45 @@ definitions:
         example: -122.4194
         type: number
       reward:
-        description: in seals
-        example: 1.5
-        type: number
+        description: Reward must be 1, 2, or 3 Silver Seals.
+        example: 2
+        type: integer
       title:
         example: Pick up a package
         type: string
+      workers_needed:
+        description: WorkersNeeded is the number of helpers required to close the
+          task (1–20).
+        example: 1
+        type: integer
+    type: object
+  mapmodule.CreateTaskResponse:
+    properties:
+      auto_shutdown_at:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      latitude:
+        type: number
+      longitude:
+        type: number
+      reward:
+        description: in seals
+        type: number
+      status:
+        type: string
+      title:
+        type: string
+      verification_code:
+        type: string
+      workers_filled:
+        type: integer
+      workers_needed:
+        type: integer
     type: object
   mapmodule.NearbyTasksResponse:
     properties:
@@ -595,19 +680,28 @@ definitions:
       updated_at:
         type: string
     type: object
+  mapmodule.SubmitVerificationCodeRequest:
+    properties:
+      code:
+        example: "4821"
+        type: string
+    type: object
   mapmodule.TaskCompletionResponse:
     properties:
       completed:
         type: boolean
       reward:
-        description: in seals
         type: number
       task_id:
         type: string
     type: object
   mapmodule.TaskResponse:
     properties:
+      auto_shutdown_at:
+        type: string
       created_at:
+        type: string
+      description:
         type: string
       id:
         type: string
@@ -618,7 +712,21 @@ definitions:
       reward:
         description: in seals
         type: number
+      status:
+        type: string
       title:
+        type: string
+      workers_filled:
+        type: integer
+      workers_needed:
+        type: integer
+    type: object
+  mapmodule.VerifyCodeResponse:
+    properties:
+      application_id:
+        type: string
+      status:
+        description: '"code_verified" on success'
         type: string
     type: object
   profiles.AllyProfile:
@@ -1675,27 +1783,28 @@ paths:
       - Economy
   /map/champions:
     get:
-      description: Returns champions for a set of H3 indices at a given resolution/week
+      description: |-
+        Returns the current champion for each of the supplied H3 cell indices
+        at the given resolution and ISO week. Used by the Flutter map to render
+        champion pins on the visible viewport.
       parameters:
-      - description: Comma-separated H3 indexes
+      - description: Comma-separated H3 cell IDs (e.g. 852830803fffffff,852830813fffffff)
         in: query
         name: h3
         required: true
         type: string
-      - description: H3 resolution
+      - default: 5
+        description: H3 resolution (2=country, 4=city, 5=district)
         in: query
         name: resolution
-        required: true
         type: integer
-      - description: Year
+      - description: Year (defaults to current)
         in: query
         name: year
-        required: true
         type: integer
-      - description: ISO week number
+      - description: ISO week number (defaults to current)
         in: query
         name: week
-        required: true
         type: integer
       produces:
       - application/json
@@ -1707,7 +1816,7 @@ paths:
               $ref: '#/definitions/mapmodule.ChampionPin'
             type: array
         "400":
-          description: Validation error
+          description: Missing h3 parameter
           schema:
             additionalProperties:
               type: string
@@ -1733,7 +1842,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Assigns H3 cells based on current location and privacy settings
+      description: Assigns H3 cells (res 2/4/5) based on current location and privacy
+        settings
       parameters:
       - description: Region assignment
         in: body
@@ -1749,7 +1859,7 @@ paths:
           schema:
             $ref: '#/definitions/mapmodule.RegionAssignmentResponse'
         "400":
-          description: Validation error
+          description: Invalid coordinates
           schema:
             additionalProperties:
               type: string
@@ -2403,7 +2513,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a task with location and charges Silver Seals
+      description: |-
+        Creates a task at the given coordinates. Charges 1–3 Silver Seals upfront.
+        The response includes `verification_code` which is shown ONLY to the creator
+        and must be shared with helpers out-of-band (via chat) to verify completion.
+        A 7-day cooldown applies between task creations per user.
       parameters:
       - description: Task creation payload
         in: body
@@ -2414,12 +2528,13 @@ paths:
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/mapmodule.TaskResponse'
+            $ref: '#/definitions/mapmodule.CreateTaskResponse'
         "400":
-          description: Validation error
+          description: Validation error (invalid_title | invalid_reward | invalid_workers
+            | invalid_coordinates)
           schema:
             additionalProperties:
               type: string
@@ -2431,7 +2546,13 @@ paths:
               type: string
             type: object
         "402":
-          description: Insufficient funds
+          description: Insufficient Silver Seals
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: Cooldown active — must wait 7 days
           schema:
             additionalProperties:
               type: string
@@ -2447,9 +2568,306 @@ paths:
       summary: Create a map task
       tags:
       - Tasks
+  /tasks/{task_id}:
+    delete:
+      description: |-
+        Cancels an open task and refunds the Silver Seal charge to the creator.
+        Only allowed while no worker has been confirmed yet (workers_filled == 0).
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mapmodule.CancelTaskResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not the task creator
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Task already completed or cancelled, or has active workers
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Cancel a task (creator only)
+      tags:
+      - Tasks
+  /tasks/{task_id}/applications:
+    get:
+      description: |-
+        Returns all applications for the given task.
+        Only the task creator can call this endpoint.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/mapmodule.ApplicationResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not the task creator
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: List applicants for a task (creator only)
+      tags:
+      - Tasks
+  /tasks/{task_id}/applications/{application_id}/confirm:
+    post:
+      description: |-
+        User1 presses "Yes, this person helped me" in the confirmation popup.
+        The application must already be in `code_verified` status.
+        Triggers a Silver Seal transfer to the helper and increments `workers_filled`.
+        When `workers_filled` reaches `workers_needed` the task moves to `completed`.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Application ID
+        in: path
+        name: application_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mapmodule.ConfirmCompletionResponse'
+        "400":
+          description: Application not in code_verified state
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not the task creator
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task or application not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Task already completed or cancelled
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Confirm a helper completed the task (creator only)
+      tags:
+      - Tasks
+  /tasks/{task_id}/applications/{application_id}/verify-code:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        User2 enters the code they received from the creator in chat.
+        On success the application moves to `code_verified` status,
+        which enables the creator to confirm completion.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Application ID
+        in: path
+        name: application_id
+        required: true
+        type: string
+      - description: 4-digit code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/mapmodule.SubmitVerificationCodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mapmodule.VerifyCodeResponse'
+        "400":
+          description: Wrong code
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not the applicant
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Application not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Code already verified
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Submit the 4-digit verification code (helper)
+      tags:
+      - Tasks
+  /tasks/{task_id}/apply:
+    post:
+      description: |-
+        User2 applies to help with the given task. Creates a pending application
+        and opens a direct chat between the applicant and the creator.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/mapmodule.ApplyToTaskResponse'
+        "400":
+          description: Cannot apply to your own task
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Already applied | Task full | Task not open
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Apply to help with a task ("I can help")
+      tags:
+      - Tasks
   /tasks/{task_id}/complete:
     post:
-      description: Marks task as completed and rewards the user
+      deprecated: true
+      description: |-
+        Deprecated in favour of the apply → verify-code → confirm flow.
+        Kept for backward compatibility only.
       parameters:
       - description: Task ID
         in: path
@@ -2464,7 +2882,7 @@ paths:
           schema:
             $ref: '#/definitions/mapmodule.TaskCompletionResponse'
         "400":
-          description: Validation error
+          description: Cannot complete own task
           schema:
             additionalProperties:
               type: string
@@ -2495,14 +2913,13 @@ paths:
             type: object
       security:
       - Bearer: []
-      summary: Complete a task
+      summary: '[DEPRECATED] Legacy single-actor task completion'
       tags:
       - Tasks
   /tasks/nearby:
     get:
-      consumes:
-      - application/json
-      description: Returns active tasks within a radius (meters)
+      description: Returns open tasks within a given radius (metres) of the provided
+        coordinates.
       parameters:
       - description: Latitude
         in: query
@@ -2515,12 +2932,12 @@ paths:
         required: true
         type: number
       - default: 2000
-        description: Radius in meters
+        description: Radius in metres
         in: query
         name: radius_m
         type: number
       - default: 50
-        description: Limit
+        description: Max results
         in: query
         name: limit
         type: integer
@@ -2532,7 +2949,7 @@ paths:
           schema:
             $ref: '#/definitions/mapmodule.NearbyTasksResponse'
         "400":
-          description: Validation error
+          description: Invalid coordinates
           schema:
             additionalProperties:
               type: string
