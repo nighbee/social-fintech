@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 import 'package:app/src/core/api/client/dio/dio_client.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
+import 'package:app/src/features/home/data/models/comment_dto.dart';
 import 'package:app/src/features/home/data/models/post_dto.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
 
@@ -12,6 +13,88 @@ class HomeRemoteImpl implements IHomeRemote {
   HomeRemoteImpl(@Named.from(DioClient) this._restClient);
 
   final RestClient _restClient;
+
+  // Mock in-memory storage for comments
+  final Map<String, List<CommentDto>> _mockComments = {};
+  int _commentIdCounter = 1;
+
+  List<CommentDto> _getMockCommentsForPost(String postId) {
+    if (!_mockComments.containsKey(postId)) {
+      final topCommentId = 'comment-${_commentIdCounter++}';
+      final secondCommentId = 'comment-${_commentIdCounter++}';
+      final replyOneId = 'comment-${_commentIdCounter++}';
+      final replyTwoId = 'comment-${_commentIdCounter++}';
+      _mockComments[postId] = [
+        CommentDto(
+          id: topCommentId,
+          postId: postId,
+          userId: 'user-5',
+          username: 'Alice Reader',
+          userAvatar: 'https://i.pravatar.cc/150?img=20',
+          content: 'Great post! Really enjoyed reading this.',
+          imageUrls: const [],
+          likesCount: 5,
+          isLiked: false,
+          repliesCount: 2,
+          createdAt: DateTime.now()
+              .subtract(const Duration(minutes: 30))
+              .toIso8601String(),
+        ),
+        CommentDto(
+          id: replyOneId,
+          postId: postId,
+          parentCommentId: topCommentId,
+          rootCommentId: topCommentId,
+          userId: 'user-7',
+          username: 'Merey Zhumagul',
+          userAvatar: 'https://i.pravatar.cc/150?img=45',
+          content: 'Nice take!',
+          imageUrls: const [],
+          likesCount: 1,
+          isLiked: false,
+          repliesCount: 0,
+          createdAt: DateTime.now()
+              .subtract(const Duration(minutes: 20))
+              .toIso8601String(),
+        ),
+        CommentDto(
+          id: replyTwoId,
+          postId: postId,
+          parentCommentId: topCommentId,
+          rootCommentId: topCommentId,
+          userId: 'user-8',
+          username: 'Zhanar Yesmoldayeva',
+          userAvatar: 'https://i.pravatar.cc/150?img=46',
+          content: 'Awesome!',
+          imageUrls: const [],
+          likesCount: 0,
+          isLiked: false,
+          repliesCount: 0,
+          createdAt: DateTime.now()
+              .subtract(const Duration(minutes: 10))
+              .toIso8601String(),
+        ),
+        CommentDto(
+          id: secondCommentId,
+          postId: postId,
+          userId: 'user-6',
+          username: 'Bob BookLover',
+          userAvatar: 'https://i.pravatar.cc/150?img=33',
+          content: 'This is exactly what I needed to see today!',
+          imageUrls: const [
+            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400',
+          ],
+          likesCount: 2,
+          isLiked: true,
+          repliesCount: 0,
+          createdAt: DateTime.now()
+              .subtract(const Duration(hours: 1))
+              .toIso8601String(),
+        ),
+      ];
+    }
+    return _mockComments[postId]!;
+  }
 
   @override
   Future<Either<DomainException, List<PostDto>>> getPosts() async {
@@ -97,5 +180,165 @@ class HomeRemoteImpl implements IHomeRemote {
       ),
     ];
     return Right(mockPosts);
+  }
+
+  @override
+  Future<Either<DomainException, PostDto>> likePost(String postId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Get current posts and update the liked one
+    final postsResult = await getPosts();
+    return postsResult.fold(
+      (error) => Left(error),
+      (posts) {
+        final updatedPosts = posts.map((post) {
+          if (post.id == postId && !post.isLiked) {
+            return post.copyWith(
+              likesCount: post.likesCount + 1,
+              isLiked: true,
+            );
+          }
+          return post;
+        }).toList();
+
+        final likedPost = updatedPosts.firstWhere((p) => p.id == postId);
+        return Right(likedPost);
+      },
+    );
+  }
+
+  @override
+  Future<Either<DomainException, PostDto>> unlikePost(String postId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final postsResult = await getPosts();
+    return postsResult.fold(
+      (error) => Left(error),
+      (posts) {
+        final updatedPosts = posts.map((post) {
+          if (post.id == postId && post.isLiked) {
+            return post.copyWith(
+              likesCount: post.likesCount > 0 ? post.likesCount - 1 : 0,
+              isLiked: false,
+            );
+          }
+          return post;
+        }).toList();
+
+        final unlikedPost = updatedPosts.firstWhere((p) => p.id == postId);
+        return Right(unlikedPost);
+      },
+    );
+  }
+
+  @override
+  Future<Either<DomainException, List<CommentDto>>> getComments(
+    String postId,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    final comments = _getMockCommentsForPost(postId);
+    return Right(comments);
+  }
+
+  @override
+  Future<Either<DomainException, CommentDto>> addComment(
+    String postId,
+    String content,
+    String? parentCommentId,
+    List<String> imageFileNames,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final existing = _getMockCommentsForPost(postId);
+    String? rootCommentId;
+    if (parentCommentId != null) {
+      final parentIndex = existing.indexWhere((c) => c.id == parentCommentId);
+      if (parentIndex != -1) {
+        final parent = existing[parentIndex];
+        rootCommentId = parent.rootCommentId ?? parent.id;
+        existing[parentIndex] = parent.copyWith(
+          repliesCount: parent.repliesCount + 1,
+        );
+      }
+    }
+
+    final newComment = CommentDto(
+      id: 'comment-${_commentIdCounter++}',
+      postId: postId,
+      parentCommentId: parentCommentId,
+      rootCommentId: rootCommentId,
+      userId: 'current-user',
+      username: 'You',
+      userAvatar: null,
+      content: content,
+      imageUrls: imageFileNames
+          .map(
+            (name) =>
+                'https://picsum.photos/seed/${Uri.encodeComponent(name)}/500/500',
+          )
+          .toList(),
+      likesCount: 0,
+      isLiked: false,
+      repliesCount: 0,
+      createdAt: DateTime.now().toIso8601String(),
+    );
+
+    if (parentCommentId == null) {
+      _mockComments[postId] = [newComment, ...existing];
+    } else {
+      _mockComments[postId] = [...existing, newComment];
+    }
+
+    return Right(newComment);
+  }
+
+  @override
+  Future<Either<DomainException, CommentDto>> likeComment(
+    String commentId,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    for (final postId in _mockComments.keys) {
+      final comments = _mockComments[postId]!;
+      final index = comments.indexWhere((c) => c.id == commentId);
+      if (index != -1) {
+        final comment = comments[index];
+        if (!comment.isLiked) {
+          _mockComments[postId] = List.from(comments)
+            ..[index] = comment.copyWith(
+              likesCount: comment.likesCount + 1,
+              isLiked: true,
+            );
+          return Right(_mockComments[postId]![index]);
+        }
+      }
+    }
+
+    return Left(UnknownException(message: 'Comment not found'));
+  }
+
+  @override
+  Future<Either<DomainException, CommentDto>> unlikeComment(
+    String commentId,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    for (final postId in _mockComments.keys) {
+      final comments = _mockComments[postId]!;
+      final index = comments.indexWhere((c) => c.id == commentId);
+      if (index != -1) {
+        final comment = comments[index];
+        if (comment.isLiked) {
+          _mockComments[postId] = List.from(comments)
+            ..[index] = comment.copyWith(
+              likesCount: comment.likesCount > 0 ? comment.likesCount - 1 : 0,
+              isLiked: false,
+            );
+          return Right(_mockComments[postId]![index]);
+        }
+      }
+    }
+
+    return Left(UnknownException(message: 'Comment not found'));
   }
 }

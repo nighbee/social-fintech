@@ -49,7 +49,8 @@ class HomePage extends StatelessWidget {
                   );
                 }
 
-                return ListView.builder(
+                return ListView.separated(
+                  separatorBuilder: (context, index) => Gap(18),
                   padding: const EdgeInsets.all(16),
                   itemCount: viewModel.posts.length,
                   itemBuilder: (context, index) {

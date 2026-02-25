@@ -16,6 +16,7 @@ class PostEntity with _$PostEntity {
     @Default([]) List<String> imageUrls,
     @Default(0) int likesCount,
     @Default(0) int commentsCount,
+    @Default(false) bool isLiked,
     required DateTime createdAt,
   }) = _PostEntity;
 
@@ -28,6 +29,7 @@ class PostEntity with _$PostEntity {
     @Default([]) List<String> imageUrls,
     @Default(0) int likesCount,
     @Default(0) int commentsCount,
+    @Default(false) bool isLiked,
     required DateTime createdAt,
   }) = _PostEntityEmpty;
 
