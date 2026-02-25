@@ -18,8 +18,6 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
-// ─── error helpers ────────────────────────────────────────────────────────────
-
 func validationErr(c *fiber.Ctx, msg string) error {
 	return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": msg})
 }

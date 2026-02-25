@@ -123,8 +123,6 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 	}
 }
 
-// ─── Auto-shutdown sweep ──────────────────────────────────────────────────────
-
 // sweepExpiredTasks finds all open tasks whose auto_shutdown_at has passed,
 // cancels each one, and refunds the creator's upfront charge.
 func (w *Worker) sweepExpiredTasks(ctx context.Context) {
@@ -187,8 +185,6 @@ func (w *Worker) autoShutdownTask(ctx context.Context, task Task) {
 		zap.Int64("reward_cents", task.Reward),
 	)
 }
-
-// ─── Leaderboard key parsing ───────────────────────────────────────────────────
 
 func parseLeaderboardKey(key string, resolution int) (string, int, int, bool) {
 	parts := strings.Split(key, ":")

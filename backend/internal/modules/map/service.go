@@ -39,8 +39,6 @@ func NewService(repo Repository, economyRepo economy.Repository, cacheClient *ca
 	}
 }
 
-// ─── CreateTask ───────────────────────────────────────────────────────────────
-
 func (s *Service) CreateTask(ctx context.Context, userID string, req *CreateTaskRequest) (*CreateTaskResponse, error) {
 	if req == nil || req.Title == "" || len(req.Title) > 100 {
 		return nil, ErrInvalidTitle
@@ -141,8 +139,6 @@ func (s *Service) CreateTask(ctx context.Context, userID string, req *CreateTask
 	return resp, nil
 }
 
-// ─── CancelTask ───────────────────────────────────────────────────────────────
-
 // CancelTask allows the creator to cancel an open task that has no confirmed workers yet.
 // The task-creation charge is refunded atomically.
 func (s *Service) CancelTask(ctx context.Context, userID, taskID string) (*CancelTaskResponse, error) {
@@ -189,8 +185,6 @@ func (s *Service) CancelTask(ctx context.Context, userID, taskID string) (*Cance
 	return &CancelTaskResponse{TaskID: taskID, Status: "cancelled"}, nil
 }
 
-// ─── GetNearbyTasks ───────────────────────────────────────────────────────────
-
 func (s *Service) GetNearbyTasks(ctx context.Context, lat, lon, radiusMeters float64, limit int) (*NearbyTasksResponse, error) {
 	if !isValidCoordinates(lat, lon) {
 		return nil, ErrInvalidCoordinates
@@ -225,8 +219,6 @@ func (s *Service) GetNearbyTasks(ctx context.Context, lat, lon, radiusMeters flo
 	}
 	return &resp, nil
 }
-
-// ─── ApplyToTask ──────────────────────────────────────────────────────────────
 
 // ApplyToTask is called when user2 presses "I can help" on a task pin.
 // Creates a pending TaskApplication and (stub) opens a direct chat between the parties.
@@ -282,8 +274,6 @@ func (s *Service) ApplyToTask(ctx context.Context, userID, taskID string) (*Appl
 	}, nil
 }
 
-// ─── SubmitVerificationCode ───────────────────────────────────────────────────
-
 // SubmitVerificationCode is called by the helper (user2) after receiving the
 // 4-digit code from the task creator in their chat.
 func (s *Service) SubmitVerificationCode(ctx context.Context, userID, taskID, applicationID, code string) (*VerifyCodeResponse, error) {
@@ -325,8 +315,6 @@ func (s *Service) SubmitVerificationCode(ctx context.Context, userID, taskID, ap
 		Status:        "code_verified",
 	}, nil
 }
-
-// ─── ConfirmCompletion ────────────────────────────────────────────────────────
 
 // ConfirmCompletion is triggered when user1 presses "Yes, this person helped me"
 // in the confirmation popup. Transfers silver to the helper and closes the task
@@ -406,8 +394,6 @@ func (s *Service) ConfirmCompletion(ctx context.Context, userID, taskID, applica
 	}, nil
 }
 
-// ─── GetTaskApplications ──────────────────────────────────────────────────────
-
 // GetTaskApplications returns all applications for a task. Creator-only.
 func (s *Service) GetTaskApplications(ctx context.Context, userID, taskID string) ([]ApplicationResponse, error) {
 	task, err := s.repo.GetTaskByID(ctx, taskID)
@@ -435,8 +421,6 @@ func (s *Service) GetTaskApplications(ctx context.Context, userID, taskID string
 	}
 	return out, nil
 }
-
-// ─── Region / Champions (unchanged) ──────────────────────────────────────────
 
 func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionAssignmentRequest) (*RegionAssignmentResponse, error) {
 	if req == nil {
@@ -495,8 +479,6 @@ func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, re
 	return pins, nil
 }
 
-// ─── Legacy ───────────────────────────────────────────────────────────────────
-
 // CompleteTask is the legacy single-actor completion path. Deprecated.
 func (s *Service) CompleteTask(ctx context.Context, userID, taskID string) (*TaskCompletionResponse, error) {
 	if taskID == "" {
@@ -547,8 +529,6 @@ func (s *Service) CompleteTask(ctx context.Context, userID, taskID string) (*Tas
 		Completed: true,
 	}, nil
 }
-
-// ─── Internal helpers ─────────────────────────────────────────────────────────
 
 func (s *Service) updateLeaderboards(userID string, task *Task) {
 	if s.cache == nil || task == nil {
