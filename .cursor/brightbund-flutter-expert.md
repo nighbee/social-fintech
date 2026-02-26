@@ -162,10 +162,92 @@ flutter clean
 - **Requests**: Use Freezed for request objects in Domain layer. Do NOT use UseCases.
 - **BLoC**: Use Freezed for events/states, follow base_bloc patterns
 - **UI Components**: STRICTLY use `Class` widgets. Do NOT use helper methods for widget trees.
+- **Bottom Sheet Locality**: For feature-specific bottom sheets, keep trigger mixin and bottom sheet widget classes in the same file.
 - **BLoC Resolution**: Use `GetIt` for all BLoC injections.
 - **State Listening**: Use `BaseBlocWidget`, `BlocBuilder`, `BlocConsumer` or `BlocListener`. Do NOT use `BlocProvider` in the widget tree.
 - **Error Handling**: Return Either<Failure, Result> from repositories
 - **DI**: Constructor injection, register services via Injectable annotations
+
+### BLoC Best Practices
+
+#### Event Pattern
+- **Events carry data in properties** - Event constructors contain the data
+- **Access data via `event.property`** - In event handlers, use `event.postId` not function parameters
+- **Example**:
+  ```dart
+  // Event definition
+  const factory HomeEvent.likePost(String postId) = _LikePost;
+
+  // Handler implementation
+  Future<void> _likePost(_LikePost event, Emitter emit) async {
+    // Access via event.postId, NOT parameter
+    final result = await _repository.likePost(event.postId);
+  }
+  ```
+
+#### State Management
+- **Keep states minimal** - Only use: `_Initial`, `_Loading`, `_LoadingError`, `_Loaded`
+- **NEVER add flags to states** - Do NOT add `isLoading`, `errorMessage`, or any other flags
+- **Keep ViewModel clean** - ViewModel should only contain data, no state flags
+- **Example**:
+  ```dart
+  @freezed
+  class HomeState with _$HomeState {
+    const factory HomeState.initial() = _Initial;
+    const factory HomeState.loading({required HomeViewModel viewModel}) = _Loading;
+    const factory HomeState.loadingError(String message) = _LoadingError;
+    const factory HomeState.loaded({required HomeViewModel viewModel}) = _Loaded;
+    // NO other states like _LikePostLoading, _CommentsError, etc.
+  }
+  ```
+
+#### State Consumption in Widgets
+- **Use `state.when` pattern** - Always prefer `state.when()` over `if (state is _SomeState)`
+- **Use `state.maybeWhen`** - For optional handlers with `orElse` fallback
+- **Use `state.whenOrNull`** - For safe null handling
+- **NEVER use `buildWhen`** - Let BlocBuilder rebuild naturally on all state changes
+- **Example**:
+  ```dart
+  BlocBuilder<HomeBloc, HomeState>(
+    bloc: getIt<HomeBloc>(),
+    builder: (context, state) {
+      return state.when(
+        initial: () => SplashScreen(),
+        loading: (viewModel) => LoadingIndicator(),
+        loadingError: (message) => ErrorWidget(message),
+        loaded: (viewModel) => ContentWidget(viewModel: viewModel),
+      );
+    },
+  )
+  ```
+
+#### Bloc Injection
+- **Use GetIt for Bloc injection** - Always use `getIt<HomeBloc>()` not `context.read<HomeBloc>()`
+- **Pass bloc to BlocBuilder** - Use `bloc` parameter: `BlocBuilder(bloc: bloc, ...)`
+- **Example**:
+  ```dart
+  class MyWidget extends StatelessWidget {
+    @override
+    Widget build(BuildContext context) {
+      final bloc = getIt<HomeBloc>();
+
+      return BlocBuilder<HomeBloc, HomeState>(
+        bloc: bloc,
+        builder: (context, state) {
+          return state.when(...);
+        },
+      );
+    }
+  }
+  ```
+
+#### Event Dispatching
+- **Use bloc reference** - Dispatch events via bloc reference from GetIt
+- **Example**:
+  ```dart
+  final bloc = getIt<HomeBloc>();
+  bloc.add(HomeEvent.likePost(postId));
+  ```
 
 ## Repository Pattern Example
 

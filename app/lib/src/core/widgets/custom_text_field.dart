@@ -23,6 +23,9 @@ class CustomTextField extends StatefulWidget {
     this.customBorder,
     this.backgroundColor,
     this.height,
+    this.showLabel = true,
+    this.showLabelOnlyWhenHasText = false,
+    this.onLabelVisibilityChanged,
   });
 
   final TextEditingController controller;
@@ -42,6 +45,9 @@ class CustomTextField extends StatefulWidget {
   final BoxBorder? customBorder;
   final Color? backgroundColor;
   final double? height;
+  final bool showLabel;
+  final bool showLabelOnlyWhenHasText;
+  final ValueChanged<bool>? onLabelVisibilityChanged;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -50,8 +56,24 @@ class CustomTextField extends StatefulWidget {
 class _CustomTextFieldState extends State<CustomTextField> {
   bool _hasValidationError = false;
   String? _errorText;
+  bool? _lastReportedLabelVisibility;
+
+  bool _isLabelVisible(bool hasText) {
+    if (!widget.showLabel) return false;
+    if (widget.showLabelOnlyWhenHasText) return hasText;
+    return true;
+  }
+
+  void _notifyLabelVisibilityIfChanged() {
+    final hasText = widget.controller.text.isNotEmpty;
+    final isVisible = _isLabelVisible(hasText);
+    if (_lastReportedLabelVisibility == isVisible) return;
+    _lastReportedLabelVisibility = isVisible;
+    widget.onLabelVisibilityChanged?.call(isVisible);
+  }
 
   void _onTextChanged() {
+    _notifyLabelVisibilityIfChanged();
     setState(() {});
   }
 
@@ -75,7 +97,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   void initState() {
     super.initState();
+    _notifyLabelVisibilityIfChanged();
     widget.controller.addListener(_onTextChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant CustomTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.showLabel != widget.showLabel ||
+        oldWidget.showLabelOnlyWhenHasText != widget.showLabelOnlyWhenHasText) {
+      _notifyLabelVisibilityIfChanged();
+    }
   }
 
   @override
@@ -87,6 +119,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   Widget build(BuildContext context) {
     final hasText = widget.controller.text.isNotEmpty;
+    final showLabel = _isLabelVisible(hasText);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +146,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    if (hasText)
+                    if (showLabel)
                       Text(widget.labelText, style: TextStyles.bodyMain),
                     TextFormField(
                       controller: widget.controller,
