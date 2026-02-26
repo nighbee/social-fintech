@@ -8,6 +8,7 @@ import 'package:app/src/features/home/presentation/widgets/feed_app_bar.dart';
 import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -16,7 +17,9 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
-      appBar: const FeedAppBar(),
+      appBar: FeedAppBar(
+        onCreatePostTap: () => context.push(RoutePaths.createPost),
+      ),
       bottomNavigationBar: const CustomNavBar(currentTab: RoutePaths.home),
       body: SafeArea(
         child: BaseBlocWidget<HomeBloc, HomeEvent, HomeState>(
@@ -49,7 +52,8 @@ class HomePage extends StatelessWidget {
                   );
                 }
 
-                return ListView.builder(
+                return ListView.separated(
+                  separatorBuilder: (context, index) => Gap(18),
                   padding: const EdgeInsets.all(16),
                   itemCount: viewModel.posts.length,
                   itemBuilder: (context, index) {

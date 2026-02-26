@@ -101,6 +101,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/search.svg
   SvgGenImage get search => const SvgGenImage('assets/icons/search.svg');
 
+  /// File path: assets/icons/send_icon.svg
+  SvgGenImage get sendIcon => const SvgGenImage('assets/icons/send_icon.svg');
+
   /// File path: assets/icons/settings_icon.svg
   SvgGenImage get settingsIcon =>
       const SvgGenImage('assets/icons/settings_icon.svg');
@@ -143,6 +146,7 @@ class $AssetsIconsGen {
         profileIcon,
         ratingIcon,
         search,
+        sendIcon,
         settingsIcon,
         share,
         silverCoin,
