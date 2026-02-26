@@ -139,8 +139,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/confirm", mapHandler.ConfirmCompletion)
 	mapGroup.Get("/tasks/:task_id/applications", mapHandler.GetTaskApplications)
 
-	// Legacy (deprecated)
-	mapGroup.Post("/tasks/:task_id/complete", mapHandler.CompleteTask)
+	// Legacy (deprecated) endpoint removed to enforce 2-step approval flow.
 
 	// Map / Champions
 	mapGroup.Post("/map/region", mapHandler.SetUserRegion)
