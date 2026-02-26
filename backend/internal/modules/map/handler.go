@@ -413,22 +413,8 @@ func (h *Handler) GetTaskApplications(c *fiber.Ctx) error {
 	return c.JSON(apps)
 }
 
-// CompleteTask godoc
-// @Summary [DEPRECATED] Legacy single-actor task completion
-// @Description Deprecated in favour of the apply → verify-code → confirm flow.
-// @Description Kept for backward compatibility only.
-// @Tags Tasks
-// @Produce json
-// @Security Bearer
-// @Param task_id path string true "Task ID"
-// @Success 200 {object} TaskCompletionResponse
-// @Failure 400 {object} map[string]string "Cannot complete own task"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 404 {object} map[string]string "Task not found"
-// @Failure 409 {object} map[string]string "Task already completed"
-// @Failure 500 {object} map[string]string "Internal error"
-// @Router /tasks/{task_id}/complete [post]
-// @Deprecated true
+// CompleteTask is the legacy single-actor completion path.
+// Deprecated: kept only for backward compatibility (no route registered).
 func (h *Handler) CompleteTask(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {

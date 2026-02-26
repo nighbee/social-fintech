@@ -12,6 +12,10 @@ import (
 	"github.com/uber/h3-go/v4"
 )
 
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
 const (
 	h3ResCountry  = 2
 	h3ResCity     = 4
@@ -69,11 +73,9 @@ func (s *Service) CreateTask(ctx context.Context, userID string, req *CreateTask
 	h3Res5, h3Res4, h3Res2 := computeH3Indices(req.Latitude, req.Longitude)
 	code := generateVerificationCode()
 
-	var autoShutdownAt *time.Time
-	if req.AutoShutdown {
-		t := time.Now().UTC().Add(autoShutdownHours * time.Hour)
-		autoShutdownAt = &t
-	}
+	// Always set 24h lifecycle for tasks (auto-close if no responses).
+	t := time.Now().UTC().Add(autoShutdownHours * time.Hour)
+	autoShutdownAt := &t
 
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {

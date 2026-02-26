@@ -154,6 +154,7 @@ func (r *repository) GetTasksNearby(ctx context.Context, lat, lon, radiusMeters 
 		       h3_res5, h3_res4, h3_res2, created_at, updated_at
 		FROM tasks
 		WHERE status = 'open'
+		  AND (auto_shutdown_at IS NULL OR auto_shutdown_at > NOW())
 		  AND ST_DWithin(
 		      location::geography,
 		      ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
@@ -227,6 +228,10 @@ func (r *repository) GetOpenTasksForShutdown(ctx context.Context) ([]Task, error
 		WHERE status = 'open'
 		  AND auto_shutdown_at IS NOT NULL
 		  AND auto_shutdown_at <= NOW()
+		  AND NOT EXISTS (
+			  SELECT 1 FROM task_applications ta
+			  WHERE ta.task_id = tasks.id
+		  )
 	`
 	var tasks []Task
 	if err := sqlx.SelectContext(ctx, r.executor(), &tasks, query); err != nil {
