@@ -821,7 +821,7 @@ func ChargeForTaskCreationTx(ctx context.Context, repo Repository, userID, taskI
 		return NewInvalidAmountError(CentinelsToSeals(cost))
 	}
 
-	wallet, err := repo.GetWallet(ctx, userID, CurrencySilverSeal)
+	wallet, err := repo.GetOrCreateWallet(ctx, userID, CurrencySilverSeal)
 	if err != nil {
 		return WrapErrorf(err, "failed to get wallet")
 	}
