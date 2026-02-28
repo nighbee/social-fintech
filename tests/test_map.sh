@@ -21,6 +21,7 @@ NC='\033[0m'
 AUTH_URL="http://localhost:8081/api/v1/auth"
 ECO_URL="http://localhost:8081/api/v1/economy"
 TASK_URL="http://localhost:8081/api/v1/tasks"
+MAP_URL="http://localhost:8081/api/v1/map"
 
 PASS=0
 FAIL=0
@@ -495,6 +496,768 @@ fi
 echo ""
 
 # ======================================================================
+# TEST 10 – CreateTask: No auth token → 401
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 10: CreateTask Without Auth Token → 401 ===${NC}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Content-Type: application/json" \
+    -d "{\"title\":\"No auth\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (no token)" "POST" "$TASK_URL" "" "$HTTP_BODY" "$HTTP_CODE"
+if [[ "$HTTP_CODE" -eq 401 ]]; then
+    echo -e "${GREEN}✓ PASS: CreateTask without auth rejected (HTTP 401)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 401, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 11 – GetNearbyTasks: No auth token → 401
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 11: GetNearbyTasks Without Auth Token → 401 ===${NC}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${TASK_URL}/nearby?lat=40.71&lon=-74.00")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "GetNearbyTasks (no token)" "GET" "${TASK_URL}/nearby?lat=40.71&lon=-74.00" "" "$HTTP_BODY" "$HTTP_CODE"
+if [[ "$HTTP_CODE" -eq 401 ]]; then
+    echo -e "${GREEN}✓ PASS: GetNearbyTasks without auth rejected (HTTP 401)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 401, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 12 – CreateTask: Empty title → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 12: CreateTask – Empty Title → 400 ===${NC}"
+
+BAD_BODY="{\"title\":\"\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAD_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (empty title)" "POST" "$TASK_URL" "$BAD_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Empty title rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 13 – CreateTask: Title > 100 characters → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 13: CreateTask – Title Too Long (>100 chars) → 400 ===${NC}"
+
+LONG_TITLE=$(printf 'A%.0s' {1..101})
+BAD_BODY="{\"title\":\"${LONG_TITLE}\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAD_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (title >100 chars)" "POST" "$TASK_URL" "<101-char title>" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Long title rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 14 – CreateTask: Invalid reward (0) → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 14: CreateTask – Invalid Reward (0) → 400 ===${NC}"
+
+BAD_BODY="{\"title\":\"Test\",\"reward\":0,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAD_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (reward=0)" "POST" "$TASK_URL" "$BAD_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Invalid reward rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 15 – CreateTask: Invalid reward (99) → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 15: CreateTask – Invalid Reward (99) → 400 ===${NC}"
+
+BAD_BODY="{\"title\":\"Test\",\"reward\":99,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAD_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (reward=99)" "POST" "$TASK_URL" "$BAD_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Reward=99 rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 16 – CreateTask: Invalid workers_needed (0) → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 16: CreateTask – Invalid Workers (0) → 400 ===${NC}"
+
+BAD_BODY="{\"title\":\"Test\",\"reward\":1,\"workers_needed\":0,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAD_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (workers=0)" "POST" "$TASK_URL" "$BAD_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: workers_needed=0 rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 17 – CreateTask: Invalid workers_needed (21) → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 17: CreateTask – Invalid Workers (21) → 400 ===${NC}"
+
+BAD_BODY="{\"title\":\"Test\",\"reward\":1,\"workers_needed\":21,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAD_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (workers=21)" "POST" "$TASK_URL" "$BAD_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: workers_needed=21 rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 18 – CreateTask: Invalid coordinates (lat=999) → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 18: CreateTask – Invalid Coordinates (lat=999) → 400 ===${NC}"
+
+BAD_BODY="{\"title\":\"Test\",\"reward\":1,\"workers_needed\":1,\"latitude\":999,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAD_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (lat=999)" "POST" "$TASK_URL" "$BAD_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Invalid coordinates rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 19 – CreateTask: Malformed JSON body → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 19: CreateTask – Malformed JSON Body → 400 ===${NC}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "not-json-at-all")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (malformed JSON)" "POST" "$TASK_URL" "not-json-at-all" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Malformed JSON rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 20 – CreateTask: Insufficient funds (User2 has 1 Silver, needs 3) → 402
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 20: CreateTask – Insufficient Funds (User2) → 402 ===${NC}"
+echo -e "${CYAN}  User2 has 1 Silver (from completion reward), but needs 3${NC}"
+
+TASK_BODY="{\"title\":\"User2 task attempt\",\"reward\":3,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$TASK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (User2, insufficient funds)" "POST" "$TASK_URL" "$TASK_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+if [[ "$HTTP_CODE" -eq 402 ]]; then
+    echo -e "${GREEN}✓ PASS: Insufficient funds rejected (HTTP 402)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 402, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 21 – CreateTask: 7-day cooldown (User1 already created a task) → 429
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 21: CreateTask – Cooldown Active (User1) → 429 ===${NC}"
+
+TASK_BODY="{\"title\":\"Second task too soon\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$TASK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CreateTask (cooldown)" "POST" "$TASK_URL" "$TASK_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 429 ]]; then
+    echo -e "${GREEN}✓ PASS: Cooldown enforced (HTTP 429)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 429, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 22 – ApplyToTask: Creator applies to own task → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 22: ApplyToTask – Creator Applies to Own Task → 400 ===${NC}"
+
+# Use the original TASK_ID from Test 2 (created by User1, now completed)
+# We need a fresh open task – use Admin to fund a new user (User3) or apply to existing
+# Since the task is already completed, let's use Admin to create a fresh task
+
+# Fund Admin with Silver first
+ADJUST_BODY="{\"user_id\":\"$ADMIN_ID\",\"amount\":5.00,\"currency\":\"SILVER_SEAL\",\"reason\":\"Admin self-fund for test\"}"
+curl -s -X POST "$ECO_URL/admin/adjust" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$ADJUST_BODY" > /dev/null 2>&1
+
+# Admin creates a task for error testing
+TASK_BODY="{\"title\":\"Admin test task\",\"reward\":1,\"workers_needed\":1,\"latitude\":51.5074,\"longitude\":-0.1278}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$TASK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+ERROR_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+ERROR_TASK_CODE=$(get_json_string "$HTTP_BODY" "verification_code")
+echo -e "${CYAN}  Error-test task ID : ${ERROR_TASK_ID}${NC}"
+
+# Admin tries to apply to their own task → should get 400
+APPLY_URL="${TASK_URL}/${ERROR_TASK_ID}/apply"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APPLY_URL" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "ApplyToTask (own task)" "POST" "$APPLY_URL" "" "$HTTP_BODY" "$HTTP_CODE" "ADMIN"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Cannot apply to own task (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 23 – ApplyToTask: Apply to non-existent task → 404
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 23: ApplyToTask – Non-existent Task → 404 ===${NC}"
+
+FAKE_TASK_ID="00000000-0000-0000-0000-000000000000"
+APPLY_URL="${TASK_URL}/${FAKE_TASK_ID}/apply"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APPLY_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "ApplyToTask (non-existent task)" "POST" "$APPLY_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+if [[ "$HTTP_CODE" -eq 404 ]]; then
+    echo -e "${GREEN}✓ PASS: Non-existent task rejected (HTTP 404)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 404, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 24 – ApplyToTask: Duplicate application → 409
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 24: ApplyToTask – Duplicate Application → 409 ===${NC}"
+
+# User2 applies to Admin's error-test task
+APPLY_URL="${TASK_URL}/${ERROR_TASK_ID}/apply"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APPLY_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+ERROR_APP_ID=$(get_json_string "$HTTP_BODY" "application_id")
+echo -e "${CYAN}  First application : ${ERROR_APP_ID}${NC}"
+
+# User2 applies again → should be 409
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$APPLY_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "ApplyToTask (duplicate)" "POST" "$APPLY_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+if [[ "$HTTP_CODE" -eq 409 ]]; then
+    echo -e "${GREEN}✓ PASS: Duplicate application rejected (HTTP 409)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 409, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 25 – SubmitVerificationCode: Code not 4 digits → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 25: SubmitVerificationCode – Code Not 4 Digits → 400 ===${NC}"
+
+VERIFY_URL="${TASK_URL}/${ERROR_TASK_ID}/applications/${ERROR_APP_ID}/verify-code"
+VERIFY_BODY="{\"code\":\"12\"}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$VERIFY_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$VERIFY_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "SubmitVerificationCode (2-digit code)" "POST" "$VERIFY_URL" "$VERIFY_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Short code rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 26 – SubmitVerificationCode: Wrong user (User1 is not applicant) → 403
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 26: SubmitVerificationCode – Non-Applicant → 403 ===${NC}"
+
+VERIFY_BODY="{\"code\":\"${ERROR_TASK_CODE}\"}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$VERIFY_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$VERIFY_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "SubmitVerificationCode (non-applicant)" "POST" "$VERIFY_URL" "$VERIFY_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 403 ]]; then
+    echo -e "${GREEN}✓ PASS: Non-applicant rejected (HTTP 403)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 403, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 27 – ConfirmCompletion: Non-creator tries to confirm → 403
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 27: ConfirmCompletion – Non-Creator → 403 ===${NC}"
+
+CONFIRM_URL="${TASK_URL}/${ERROR_TASK_ID}/applications/${ERROR_APP_ID}/confirm"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$CONFIRM_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "ConfirmCompletion (non-creator)" "POST" "$CONFIRM_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+if [[ "$HTTP_CODE" -eq 403 ]]; then
+    echo -e "${GREEN}✓ PASS: Non-creator confirm rejected (HTTP 403)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 403, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 28 – ConfirmCompletion: Application not yet code_verified → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 28: ConfirmCompletion – Not Yet Code-Verified → 400 ===${NC}"
+
+# Admin (creator) tries to confirm before User2 submits code
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$CONFIRM_URL" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "ConfirmCompletion (pending app)" "POST" "$CONFIRM_URL" "" "$HTTP_BODY" "$HTTP_CODE" "ADMIN"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Confirm before code_verified rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 29 – CancelTask: Non-existent task → 404
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 29: CancelTask – Non-existent Task → 404 ===${NC}"
+
+FAKE_TASK_ID="00000000-0000-0000-0000-000000000000"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${TASK_URL}/${FAKE_TASK_ID}" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CancelTask (non-existent)" "DELETE" "${TASK_URL}/${FAKE_TASK_ID}" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 404 ]]; then
+    echo -e "${GREEN}✓ PASS: Cancel non-existent task rejected (HTTP 404)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 404, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 30 – CancelTask: Non-creator tries to cancel → 403
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 30: CancelTask – Non-Creator → 403 ===${NC}"
+
+# User1 tries to cancel Admin's error-test task
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${TASK_URL}/${ERROR_TASK_ID}" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CancelTask (non-creator)" "DELETE" "${TASK_URL}/${ERROR_TASK_ID}" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 403 ]]; then
+    echo -e "${GREEN}✓ PASS: Non-creator cancel rejected (HTTP 403)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 403, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 31 – CancelTask: Cancel already-completed task → 409
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 31: CancelTask – Already Completed Task → 409 ===${NC}"
+
+# TASK_ID is the original task from Test 2 which was completed in Test 7
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${TASK_URL}/${TASK_ID}" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CancelTask (completed task)" "DELETE" "${TASK_URL}/${TASK_ID}" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 409 ]]; then
+    echo -e "${GREEN}✓ PASS: Cancel completed task rejected (HTTP 409)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 409, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 32 – CancelTask: Happy path – cancel open task + refund
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 32: CancelTask – Cancel Open Task + Verify Refund ===${NC}"
+echo -e "${CYAN}  Creating a dedicated clean task for cancel testing (no applications)${NC}"
+
+# Fund User1 with extra Silver for this cancel test
+ADJUST_BODY="{\"user_id\":\"$USER1_ID\",\"amount\":2.00,\"currency\":\"SILVER_SEAL\",\"reason\":\"Cancel test funding\"}"
+curl -s -X POST "$ECO_URL/admin/adjust" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$ADJUST_BODY" > /dev/null 2>&1
+
+# Wait briefly to avoid wallet version conflicts
+sleep 1
+
+# Reset User1 cooldown so they can create a new task
+echo -e "${YELLOW}  Resetting User1 cooldown via SQL…${NC}"
+docker exec brightbund-db psql -U user -d brightbund \
+    -c "UPDATE tasks SET created_at = created_at - INTERVAL '8 days' WHERE creator_id = '$USER1_ID';" > /dev/null 2>&1
+
+# Check User1 balance before cancel-test task creation
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$ECO_URL/balance" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+USER1_SILVER_BEFORE_CANCEL=$(get_json_number "$HTTP_BODY" "silver_balance")
+echo -e "${CYAN}  User1 Silver before cancel-test : ${USER1_SILVER_BEFORE_CANCEL}${NC}"
+
+# User1 creates a clean task (no one will apply)
+CANCEL_TASK_BODY="{\"title\":\"Cancel test task\",\"reward\":1,\"workers_needed\":1,\"latitude\":51.50,\"longitude\":-0.12}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$CANCEL_TASK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+CANCEL_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+echo -e "${CYAN}  Cancel-test task ID : ${CANCEL_TASK_ID}${NC}"
+
+# Now cancel it immediately (no applications → clean cancel)
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${TASK_URL}/${CANCEL_TASK_ID}" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CancelTask (clean task)" "DELETE" "${TASK_URL}/${CANCEL_TASK_ID}" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "User1 cancels open task" "$HTTP_CODE"
+
+CANCEL_STATUS=$(get_json_string "$HTTP_BODY" "status")
+assert_eq "Cancel status is 'cancelled'" "cancelled" "$CANCEL_STATUS"
+
+# Check User1 balance after cancel (should be refunded +1 Silver)
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$ECO_URL/balance" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+USER1_SILVER_AFTER_CANCEL=$(get_json_number "$HTTP_BODY" "silver_balance")
+
+echo -e "${CYAN}  User1 Silver before cancel : ${USER1_SILVER_BEFORE_CANCEL}${NC}"
+echo -e "${CYAN}  User1 Silver after cancel  : ${USER1_SILVER_AFTER_CANCEL} (expected ${USER1_SILVER_BEFORE_CANCEL})${NC}"
+assert_eq "User1 refunded 1 Silver after cancel" "$USER1_SILVER_BEFORE_CANCEL" "$USER1_SILVER_AFTER_CANCEL"
+echo ""
+
+# ======================================================================
+# TEST 33 – CancelTask: Cancel already-cancelled task → 409
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 33: CancelTask – Already Cancelled → 409 ===${NC}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "${TASK_URL}/${CANCEL_TASK_ID}" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "CancelTask (already cancelled)" "DELETE" "${TASK_URL}/${CANCEL_TASK_ID}" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 409 ]]; then
+    echo -e "${GREEN}✓ PASS: Double-cancel rejected (HTTP 409)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 409, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 34 – SetUserRegion: Opt-in with valid coordinates → 200
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 34: SetUserRegion – Opt-In → 200 ===${NC}"
+
+REGION_BODY="{\"latitude\":37.7749,\"longitude\":-122.4194,\"participate_district\":true,\"location_opt_in\":true}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${MAP_URL}/region" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$REGION_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "SetUserRegion (opt-in)" "POST" "${MAP_URL}/region" "$REGION_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "SetUserRegion opt-in accepted" "$HTTP_CODE"
+
+REGION_OPT_IN=$(echo "$HTTP_BODY" | grep -o "\"location_opt_in\": *[a-z]*" | head -1 | grep -o "[a-z]*$")
+echo -e "${CYAN}  location_opt_in: ${REGION_OPT_IN}${NC}"
+assert_eq "location_opt_in is true" "true" "$REGION_OPT_IN"
+echo ""
+
+# ======================================================================
+# TEST 35 – SetUserRegion: Opt-out → 200
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 35: SetUserRegion – Opt-Out → 200 ===${NC}"
+
+REGION_BODY="{\"latitude\":0,\"longitude\":0,\"participate_district\":false,\"location_opt_in\":false}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${MAP_URL}/region" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$REGION_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "SetUserRegion (opt-out)" "POST" "${MAP_URL}/region" "$REGION_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "SetUserRegion opt-out accepted" "$HTTP_CODE"
+
+REGION_OPT_IN=$(echo "$HTTP_BODY" | grep -o "\"location_opt_in\": *[a-z]*" | head -1 | grep -o "[a-z]*$")
+assert_eq "location_opt_in is false" "false" "$REGION_OPT_IN"
+echo ""
+
+# ======================================================================
+# TEST 36 – SetUserRegion: Invalid coordinates → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 36: SetUserRegion – Invalid Coordinates → 400 ===${NC}"
+
+REGION_BODY="{\"latitude\":999,\"longitude\":-999,\"participate_district\":true,\"location_opt_in\":true}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${MAP_URL}/region" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$REGION_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "SetUserRegion (invalid coords)" "POST" "${MAP_URL}/region" "$REGION_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Invalid coordinates rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 37 – GetRegionChampions: Valid request → 200
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 37: GetRegionChampions – Valid Request → 200 ===${NC}"
+
+CHAMPS_URL="${MAP_URL}/champions?h3=852830803fffffff&resolution=5"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$CHAMPS_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "GetRegionChampions (valid)" "GET" "$CHAMPS_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "GetRegionChampions returns 200" "$HTTP_CODE"
+echo ""
+
+# ======================================================================
+# TEST 38 – GetRegionChampions: Missing h3 param → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 38: GetRegionChampions – Missing h3 Param → 400 ===${NC}"
+
+CHAMPS_URL="${MAP_URL}/champions?resolution=5"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$CHAMPS_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "GetRegionChampions (no h3)" "GET" "$CHAMPS_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Missing h3 rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 39 – GetNearbyTasks: Invalid lat query param → 400
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 39: GetNearbyTasks – Invalid Lat Param → 400 ===${NC}"
+
+NEARBY_URL="${TASK_URL}/nearby?lat=abc&lon=-74.00"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$NEARBY_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "GetNearbyTasks (lat=abc)" "GET" "$NEARBY_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+if [[ "$HTTP_CODE" -eq 400 ]]; then
+    echo -e "${GREEN}✓ PASS: Non-numeric lat rejected (HTTP 400)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 400, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
 # FINAL SUMMARY
 # ======================================================================
 
@@ -516,6 +1279,9 @@ echo -e "${GREEN}Artifacts:${NC}"
 echo "  Task ID          : $TASK_ID"
 echo "  Application ID   : $APPLICATION_ID"
 echo "  Verification Code: $VERIFICATION_CODE"
+echo "  Error Task ID    : $ERROR_TASK_ID"
+echo "  Error App ID     : $ERROR_APP_ID"
+echo "  Cancel Task ID   : $CANCEL_TASK_ID"
 echo ""
 TOTAL=$((PASS + FAIL))
 if [[ "$FAIL" -eq 0 ]]; then
@@ -525,13 +1291,62 @@ else
 fi
 echo ""
 echo -e "${CYAN}Flow tested:${NC}"
-echo "  1. Admin → funded User1 with 5 Silver"
-echo "  2. User1 → created task (reward = 1 Silver; balance charged upfront)"
-echo "  3. User2 → browsed nearby tasks"
-echo "  4. User2 → applied to task (status: pending)"
-echo "  5. User1 → listed applications (creator-only)"
-echo "  6. User2 → submitted verification code (status: code_verified)"
-echo "  7. User1 → confirmed completion (task: completed)"
-echo "  8. User2 balance verified (+1 Silver)"
-echo "  9. Double-confirm rejected"
+echo "  Happy path:"
+echo "   1. Admin → funded User1 with 5 Silver"
+echo "   2. User1 → created task (reward = 1 Silver; balance charged upfront)"
+echo "   3. User2 → browsed nearby tasks"
+echo "   4. User2 → applied to task (status: pending)"
+echo "   5. User1 → listed applications (creator-only)"
+echo "   6. User2 → submitted verification code (status: code_verified)"
+echo "   7. User1 → confirmed completion (task: completed)"
+echo "   8. User2 balance verified (+1 Silver)"
+echo "   9. Double-confirm rejected"
+echo ""
+echo "  Auth guards:"
+echo "  10. CreateTask without auth → 401"
+echo "  11. GetNearbyTasks without auth → 401"
+echo ""
+echo "  CreateTask validation errors:"
+echo "  12. Empty title → 400"
+echo "  13. Title >100 chars → 400"
+echo "  14. Invalid reward (0) → 400"
+echo "  15. Invalid reward (99) → 400"
+echo "  16. Invalid workers (0) → 400"
+echo "  17. Invalid workers (21) → 400"
+echo "  18. Invalid coordinates → 400"
+echo "  19. Malformed JSON → 400"
+echo "  20. Insufficient funds → 402"
+echo "  21. 7-day cooldown → 429"
+echo ""
+echo "  ApplyToTask errors:"
+echo "  22. Apply to own task → 400"
+echo "  23. Apply to non-existent task → 404"
+echo "  24. Duplicate application → 409"
+echo ""
+echo "  SubmitVerificationCode errors:"
+echo "  25. Code not 4 digits → 400"
+echo "  26. Non-applicant submits code → 403"
+echo ""
+echo "  ConfirmCompletion errors:"
+echo "  27. Non-creator confirms → 403"
+echo "  28. Confirm before code_verified → 400"
+echo ""
+echo "  CancelTask errors:"
+echo "  29. Cancel non-existent task → 404"
+echo "  30. Non-creator cancels → 403"
+echo "  31. Cancel completed task → 409"
+echo "  32. Cancel open task + verify refund → 200"
+echo "  33. Cancel already-cancelled → 409"
+echo ""
+echo "  SetUserRegion:"
+echo "  34. Opt-in with valid coords → 200"
+echo "  35. Opt-out → 200"
+echo "  36. Invalid coordinates → 400"
+echo ""
+echo "  GetRegionChampions:"
+echo "  37. Valid request → 200"
+echo "  38. Missing h3 param → 400"
+echo ""
+echo "  GetNearbyTasks:"
+echo "  39. Invalid lat param → 400"
 echo ""
