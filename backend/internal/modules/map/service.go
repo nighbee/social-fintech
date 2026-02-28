@@ -187,7 +187,7 @@ func (s *Service) CancelTask(ctx context.Context, userID, taskID string) (*Cance
 	return &CancelTaskResponse{TaskID: taskID, Status: "cancelled"}, nil
 }
 
-func (s *Service) GetNearbyTasks(ctx context.Context, lat, lon, radiusMeters float64, limit int) (*NearbyTasksResponse, error) {
+func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) (*NearbyTasksResponse, error) {
 	if !isValidCoordinates(lat, lon) {
 		return nil, ErrInvalidCoordinates
 	}
@@ -198,12 +198,37 @@ func (s *Service) GetNearbyTasks(ctx context.Context, lat, lon, radiusMeters flo
 		limit = 50
 	}
 
-	tasks, err := s.repo.GetTasksNearby(ctx, lat, lon, radiusMeters, limit)
+	tasks, err := s.repo.GetTasksNearby(ctx, userID, lat, lon, radiusMeters, limit)
 	if err != nil {
 		return nil, err
 	}
 
 	resp := NearbyTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
+	for _, t := range tasks {
+		resp.Tasks = append(resp.Tasks, TaskResponse{
+			ID:             t.ID,
+			Title:          t.Title,
+			Description:    t.Description,
+			Reward:         economy.CentinelsToSeals(t.Reward),
+			WorkersNeeded:  t.WorkersNeeded,
+			WorkersFilled:  t.WorkersFilled,
+			Status:         t.Status,
+			AutoShutdownAt: t.AutoShutdownAt,
+			Latitude:       t.Latitude,
+			Longitude:      t.Longitude,
+			CreatedAt:      t.CreatedAt,
+		})
+	}
+	return &resp, nil
+}
+
+func (s *Service) GetAppliedTasks(ctx context.Context, userID string) (*AppliedTasksResponse, error) {
+	tasks, err := s.repo.GetAppliedTasks(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := AppliedTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
 	for _, t := range tasks {
 		resp.Tasks = append(resp.Tasks, TaskResponse{
 			ID:             t.ID,

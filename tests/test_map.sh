@@ -342,6 +342,56 @@ assert_eq "Application status is 'pending'" "pending" "$APP_STATUS"
 echo ""
 
 # ======================================================================
+# TEST 4b – User2 fetches their applied tasks
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 4b: User2 Fetches Applied Tasks ===${NC}"
+
+APPLIED_URL="${TASK_URL}/applied"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$APPLIED_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "User2 Gets Applied Tasks" "GET" "$APPLIED_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+assert_ok "User2 fetches applied tasks successfully" "$HTTP_CODE"
+
+# Check if the task we just applied to is in the response list "[]"
+APPLIED_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+
+if [[ "$APPLIED_TASK_ID" == "$TASK_ID" ]]; then
+    echo -e "${GREEN}✓ PASS: The applied task ($TASK_ID) is in User2's applied tasks list${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: The applied task ($TASK_ID) is missing from User2's applied tasks! Found: $APPLIED_TASK_ID${NC}"
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
+# TEST 4c - User1 (creator) fetches their applied tasks (should be empty/different list)
+echo -e "${GREEN}=== TEST 4c: User1 Fetches Applied Tasks (Should not have User2's application) ===${NC}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$APPLIED_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "User1 Gets Applied Tasks" "GET" "$APPLIED_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "User1 fetches applied tasks successfully" "$HTTP_CODE"
+
+USER1_APPLIED_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+
+if [[ "$USER1_APPLIED_TASK_ID" != "$TASK_ID" ]]; then
+    echo -e "${GREEN}✓ PASS: The applied task ($TASK_ID) is NOT in User1's applied tasks list${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: The applied task ($TASK_ID) incorrectly appeared in User1's applied tasks!${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
 # TEST 5 – User1 lists applications (creator-only check)
 # ======================================================================
 

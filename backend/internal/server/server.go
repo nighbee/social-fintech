@@ -131,6 +131,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	// Task CRUD
 	mapGroup.Post("/tasks", mapHandler.CreateTask)
 	mapGroup.Delete("/tasks/:task_id", mapHandler.CancelTask)
+	mapGroup.Get("/tasks/applied", mapHandler.GetAppliedTasks)
 	mapGroup.Get("/tasks/nearby", mapHandler.GetNearbyTasks)
 
 	// Task application flow: apply → verify-code → confirm

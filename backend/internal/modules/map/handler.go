@@ -94,7 +94,8 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /tasks/nearby [get]
 func (h *Handler) GetNearbyTasks(c *fiber.Ctx) error {
-	if _, ok := requireUserID(c); !ok {
+	userID, ok := requireUserID(c)
+	if !ok {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
 
@@ -115,7 +116,7 @@ func (h *Handler) GetNearbyTasks(c *fiber.Ctx) error {
 	}
 	limit := c.QueryInt("limit", 50)
 
-	resp, err := h.service.GetNearbyTasks(c.Context(), lat, lon, radius, limit)
+	resp, err := h.service.GetNearbyTasks(c.Context(), userID, lat, lon, radius, limit)
 	if err != nil {
 		if err == ErrInvalidCoordinates {
 			return c.Status(400).JSON(fiber.Map{"error": "invalid_coordinates"})
@@ -125,6 +126,35 @@ func (h *Handler) GetNearbyTasks(c *fiber.Ctx) error {
 			zap.Error(err),
 		)
 		return c.Status(500).JSON(fiber.Map{"error": "tasks_fetch_failed"})
+	}
+
+	return c.JSON(resp)
+}
+
+// GetAppliedTasks godoc
+// @Summary Find tasks applied to
+// @Description Returns tasks that the worker has applied to.
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} AppliedTasksResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/applied [get]
+func (h *Handler) GetAppliedTasks(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	resp, err := h.service.GetAppliedTasks(c.Context(), userID)
+	if err != nil {
+		logger.Error("failed to get applied tasks",
+			zap.String("user_id", userID),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "applied_tasks_fetch_failed"})
 	}
 
 	return c.JSON(resp)

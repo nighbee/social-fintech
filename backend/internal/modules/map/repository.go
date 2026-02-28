@@ -17,7 +17,8 @@ type Repository interface {
 	// Task CRUD
 	CreateTask(ctx context.Context, task *Task) error
 	GetTaskByID(ctx context.Context, taskID string) (*Task, error)
-	GetTasksNearby(ctx context.Context, lat, lon, radiusMeters float64, limit int) ([]Task, error)
+	GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]Task, error)
+	GetAppliedTasks(ctx context.Context, applicantID string) ([]Task, error)
 	GetLastTaskCreatedAt(ctx context.Context, userID string) (*time.Time, error)
 	CancelTask(ctx context.Context, taskID, creatorID string) (bool, error)
 	GetOpenTasksForShutdown(ctx context.Context) ([]Task, error)
@@ -145,7 +146,7 @@ func (r *repository) MarkTaskCompleted(ctx context.Context, taskID, completedBy 
 	return rows > 0, nil
 }
 
-func (r *repository) GetTasksNearby(ctx context.Context, lat, lon, radiusMeters float64, limit int) ([]Task, error) {
+func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]Task, error) {
 	query := `
 		SELECT id, title, description, reward, creator_id,
 		       ST_Y(location) AS latitude,
@@ -155,17 +156,40 @@ func (r *repository) GetTasksNearby(ctx context.Context, lat, lon, radiusMeters 
 		FROM tasks
 		WHERE status = 'open'
 		  AND (auto_shutdown_at IS NULL OR auto_shutdown_at > NOW())
+		  AND creator_id != $1
+		  AND id NOT IN (
+			  SELECT task_id FROM task_applications WHERE applicant_id = $1 AND status != 'rejected'
+		  )
 		  AND ST_DWithin(
 		      location::geography,
-		      ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-		      $3
+		      ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
+		      $4
 		  )
 		ORDER BY created_at DESC
-		LIMIT $4
+		LIMIT $5
 	`
 	var tasks []Task
-	if err := sqlx.SelectContext(ctx, r.executor(), &tasks, query, lon, lat, radiusMeters, limit); err != nil {
+	if err := sqlx.SelectContext(ctx, r.executor(), &tasks, query, userID, lon, lat, radiusMeters, limit); err != nil {
 		return nil, fmt.Errorf("failed to fetch nearby tasks: %w", err)
+	}
+	return tasks, nil
+}
+
+func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([]Task, error) {
+	query := `
+		SELECT t.id, t.title, t.description, t.reward, t.creator_id,
+		       ST_Y(t.location) AS latitude,
+		       ST_X(t.location) AS longitude,
+		       t.workers_needed, t.workers_filled, t.status, t.auto_shutdown_at,
+		       t.h3_res5, t.h3_res4, t.h3_res2, t.created_at, t.updated_at
+		FROM tasks t
+		JOIN task_applications ta ON t.id = ta.task_id
+		WHERE ta.applicant_id = $1 AND ta.status != 'rejected'
+		ORDER BY ta.created_at DESC
+	`
+	var tasks []Task
+	if err := sqlx.SelectContext(ctx, r.executor(), &tasks, query, applicantID); err != nil {
+		return nil, fmt.Errorf("failed to fetch applied tasks: %w", err)
 	}
 	return tasks, nil
 }
