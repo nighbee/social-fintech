@@ -98,6 +98,10 @@ class $AssetsIconsGen {
   SvgGenImage get ratingIcon =>
       const SvgGenImage('assets/icons/rating_icon.svg');
 
+  /// File path: assets/icons/reward_indicator.svg
+  SvgGenImage get rewardIndicator =>
+      const SvgGenImage('assets/icons/reward_indicator.svg');
+
   /// File path: assets/icons/search.svg
   SvgGenImage get search => const SvgGenImage('assets/icons/search.svg');
 
@@ -145,6 +149,7 @@ class $AssetsIconsGen {
         plusIcon,
         profileIcon,
         ratingIcon,
+        rewardIndicator,
         search,
         sendIcon,
         settingsIcon,
@@ -161,6 +166,9 @@ class $AssetsImagesGen {
   /// File path: assets/images/ammolite.png
   AssetGenImage get ammolite =>
       const AssetGenImage('assets/images/ammolite.png');
+
+  /// File path: assets/images/image.png
+  AssetGenImage get image => const AssetGenImage('assets/images/image.png');
 
   /// File path: assets/images/jade.png
   AssetGenImage get jade => const AssetGenImage('assets/images/jade.png');
@@ -185,7 +193,7 @@ class $AssetsImagesGen {
 
   /// List of all assets
   List<AssetGenImage> get values =>
-      [ammolite, jade, lapislazuli, moonstone, onyx, pearl, supernova];
+      [ammolite, image, jade, lapislazuli, moonstone, onyx, pearl, supernova];
 }
 
 class $AssetsFontsCanelaDeckTrialGen {

@@ -111,6 +111,8 @@ dependencies:
   nested: ^1.0.0
   image_picker: ^1.2.1
   permission_handler: ^12.0.1
+  mapbox_maps_flutter: ^2.12.0
+  syncfusion_flutter_sliders: ^32.2.7
 dev_dependencies:
   flutter_test:
     sdk: flutter

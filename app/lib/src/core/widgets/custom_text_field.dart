@@ -26,6 +26,12 @@ class CustomTextField extends StatefulWidget {
     this.showLabel = true,
     this.showLabelOnlyWhenHasText = false,
     this.onLabelVisibilityChanged,
+    this.minLines = 1,
+    this.maxLines = 1,
+    this.maxLength,
+    this.textAlign = TextAlign.start,
+    this.textStyle,
+    this.contentPadding,
   });
 
   final TextEditingController controller;
@@ -48,6 +54,12 @@ class CustomTextField extends StatefulWidget {
   final bool showLabel;
   final bool showLabelOnlyWhenHasText;
   final ValueChanged<bool>? onLabelVisibilityChanged;
+  final int? minLines;
+  final int? maxLines;
+  final int? maxLength;
+  final TextAlign textAlign;
+  final TextStyle? textStyle;
+  final EdgeInsetsGeometry? contentPadding;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -120,6 +132,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Widget build(BuildContext context) {
     final hasText = widget.controller.text.isNotEmpty;
     final showLabel = _isLabelVisible(hasText);
+    final isMultiline = (widget.maxLines ?? 1) > 1;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -138,13 +151,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
             color: widget.backgroundColor ?? context.theme.mainBackground,
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: isMultiline
+                ? CrossAxisAlignment.start
+                : CrossAxisAlignment.center,
             children: [
               if (widget.prefixIcon != null) ...[widget.prefixIcon!, Gap(12)],
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: isMultiline
+                      ? MainAxisAlignment.start
+                      : MainAxisAlignment.center,
                   children: [
                     if (showLabel)
                       Text(widget.labelText, style: TextStyles.bodyMain),
@@ -160,20 +177,26 @@ class _CustomTextFieldState extends State<CustomTextField> {
                       readOnly: widget.readOnly,
                       onTap: widget.onTap,
                       inputFormatters: widget.inputFormatters,
-                      textAlignVertical: hasText
+                      minLines: widget.minLines,
+                      maxLines: widget.maxLines,
+                      maxLength: widget.maxLength,
+                      textAlign: widget.textAlign,
+                      textAlignVertical: isMultiline || hasText
                           ? TextAlignVertical.top
                           : TextAlignVertical.center,
-                      style: TextStyles.titleHeadline,
+                      style: widget.textStyle ?? TextStyles.titleHeadline,
                       decoration: InputDecoration(
                         hintText: hasText
                             ? null
                             : (widget.hintText ?? widget.labelText),
                         hintStyle: TextStyles.titleTag,
-                        contentPadding: hasText
-                            ? EdgeInsets.zero
-                            : const EdgeInsets.symmetric(vertical: 0),
+                        contentPadding: widget.contentPadding ??
+                            (hasText
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.symmetric(vertical: 0)),
                         filled: false,
                         isDense: true,
+                        counterText: '',
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,

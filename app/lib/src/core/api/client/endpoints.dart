@@ -37,8 +37,19 @@ class EndPoints {
   static const String leaderboardMe = '/leaderboards/me';
 
   //* Map
-  static const String mapTasks = '/map/tasks';
-  static const String mapTasksNearby = '/map/tasks/nearby';
+  static const String mapTasks = '/tasks';
+  static const String mapTasksNearby = '/tasks/nearby';
+  static String mapTaskById(String taskId) => '/tasks/$taskId';
+  static String mapApplyToTask(String taskId) => '/tasks/$taskId/apply';
+  static String mapTaskApplications(String taskId) => '/tasks/$taskId/applications';
+  static String mapConfirmTaskApplication(String taskId, String applicationId) =>
+      '/tasks/$taskId/applications/$applicationId/confirm';
+  static String mapVerifyTaskApplicationCode(
+    String taskId,
+    String applicationId,
+  ) => '/tasks/$taskId/applications/$applicationId/verify-code';
+  static const String mapRegion = '/map/region';
+  static const String mapChampions = '/map/champions';
 
   //* Payment
   static const String paymentWebhookRevenuecat = '/payment/webhook/revenuecat';

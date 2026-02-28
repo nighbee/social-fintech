@@ -25,6 +25,10 @@ class RoutePaths {
 
   // Map routes
   static const String map = '/map';
+  static const String mapCreateRequest = '/map/create-request';
+  static const String mapCreateRequestPublished = '/map/create-request/published';
+  static const String mapRequestCanceled = '/map/request-canceled';
+  static const String mapRequestCompleted = '/map/request-completed';
 
   // Rating routes
   static const String rating = '/rating';

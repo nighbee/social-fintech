@@ -1,0 +1,312 @@
+import 'package:app/src/core/api/client/dio/rest_client.dart';
+import 'package:app/src/core/api/client/endpoints.dart';
+import 'package:app/src/core/exceptions/domain_exception.dart';
+import 'package:app/src/features/map/data/models/map_apply_to_task_response_dto.dart';
+import 'package:app/src/features/map/data/models/map_cancel_task_response_dto.dart';
+import 'package:app/src/features/map/data/models/map_champions_request_dto.dart';
+import 'package:app/src/features/map/data/models/map_champion_dto.dart';
+import 'package:app/src/features/map/data/models/map_confirm_completion_response_dto.dart';
+import 'package:app/src/features/map/data/models/map_task_application_dto.dart';
+import 'package:app/src/features/map/data/models/map_create_task_request_dto.dart';
+import 'package:app/src/features/map/data/models/map_create_task_response_dto.dart';
+import 'package:app/src/features/map/data/models/map_nearby_tasks_response_dto.dart';
+import 'package:app/src/features/map/data/models/map_nearby_tasks_request_dto.dart';
+import 'package:app/src/features/map/data/models/map_task_dto.dart';
+import 'package:app/src/features/map/data/models/map_verify_code_request_dto.dart';
+import 'package:app/src/features/map/data/models/map_verify_code_response_dto.dart';
+import 'package:app/src/features/map/data/models/map_region_assignment_dto.dart';
+import 'package:app/src/features/map/data/sources/remote/i_map_remote.dart';
+import 'package:app/src/features/map/domain/requests/map_region_assignment_request.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:injectable/injectable.dart';
+
+@named
+@LazySingleton(as: IMapRemote)
+class MapRemoteImpl implements IMapRemote {
+  MapRemoteImpl(@Named('DioClient') this._restClient);
+
+  final RestClient _restClient;
+
+  @override
+  Future<Either<DomainException, MapRegionAssignmentDto>> assignRegion(
+    MapRegionAssignmentRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.mapRegion,
+        data: request.toJson(),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(UnknownException(message: 'Invalid region response'));
+        }
+
+        final dto = MapRegionAssignmentDto.fromJson(
+          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+        );
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<MapChampionDto>>> getChampions(
+    MapChampionsRequestDto request,
+  ) async {
+    if (request.h3Indices.isEmpty) {
+      return const Right(<MapChampionDto>[]);
+    }
+
+    final query = <String, dynamic>{
+      'h3': request.h3Indices.join(','),
+      'resolution': request.resolution,
+    };
+    if (request.year != null) {
+      query['year'] = request.year;
+    }
+    if (request.week != null) {
+      query['week'] = request.week;
+    }
+
+    try {
+      final response = await _restClient.get(
+        EndPoints.mapChampions,
+        queryParameters: query,
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! List) {
+          return Left(UnknownException(message: 'Invalid champions response'));
+        }
+
+        final champions = raw
+            .whereType<Map>()
+            .map(
+              (item) => MapChampionDto.fromJson(
+                Map<String, dynamic>.from(item as Map<dynamic, dynamic>),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.score.compareTo(a.score));
+        return Right(champions);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, MapCreateTaskResponseDto>> createTask(
+    MapCreateTaskRequestDto request,
+  ) async {
+    try {
+      final payload = <String, dynamic>{
+        'title': request.title,
+        'description': request.description,
+        'reward': request.reward,
+        'workers_needed': request.heroesCount,
+        // TODO: pass selected map pin coordinates from UI flow.
+        'latitude': 40.7128,
+        'longitude': -74.0060,
+        'auto_shutdown': request.autoShutdown,
+      };
+
+      final response = await _restClient.post(
+        EndPoints.mapTasks,
+        data: payload,
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(UnknownException(message: 'Invalid task create response'));
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final dto = MapCreateTaskResponseDto.fromJson(json);
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, MapCancelTaskResponseDto>> cancelTask(
+    String taskId,
+  ) async {
+    try {
+      final response = await _restClient.delete(
+        EndPoints.mapTaskById(taskId),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(UnknownException(message: 'Invalid cancel task response'));
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final dto = MapCancelTaskResponseDto.fromJson(json);
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, MapApplyToTaskResponseDto>> applyToTask(
+    String taskId,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.mapApplyToTask(taskId),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(UnknownException(message: 'Invalid apply-to-task response'));
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final dto = MapApplyToTaskResponseDto.fromJson(json);
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<MapTaskDto>>> getNearbyTasks(
+    MapNearbyTasksRequestDto request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.mapTasksNearby,
+        queryParameters: <String, dynamic>{
+          'lat': request.lat,
+          'lon': request.lon,
+          'radius_m': request.radiusM,
+          'limit': request.limit,
+        },
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(UnknownException(message: 'Invalid nearby tasks response'));
+        }
+        final dto = MapNearbyTasksResponseDto.fromJson(
+          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+        );
+        return Right(dto.tasks);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<MapTaskApplicationDto>>>
+      getTaskApplications(String taskId) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.mapTaskApplications(taskId),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! List) {
+          return Left(UnknownException(message: 'Invalid task applications response'));
+        }
+
+        final applications = raw
+            .whereType<Map>()
+            .map(
+              (item) => MapTaskApplicationDto.fromJson(
+                Map<String, dynamic>.from(item as Map<dynamic, dynamic>),
+              ),
+            )
+            .toList();
+
+        return Right(applications);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, MapConfirmCompletionResponseDto>>
+      confirmTaskApplication(String taskId, String applicationId) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.mapConfirmTaskApplication(taskId, applicationId),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(
+            UnknownException(message: 'Invalid confirm completion response'),
+          );
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final dto = MapConfirmCompletionResponseDto.fromJson(json);
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, MapVerifyCodeResponseDto>>
+      verifyTaskApplicationCode(
+        String taskId,
+        String applicationId,
+        MapVerifyCodeRequestDto request,
+      ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.mapVerifyTaskApplicationCode(taskId, applicationId),
+        data: request.toJson(),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(UnknownException(message: 'Invalid verify code response'));
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final dto = MapVerifyCodeResponseDto.fromJson(json);
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+}

@@ -30,6 +30,15 @@ import '../../../features/home/data/sources/remote/i_home_remote.dart' as _i482;
 import '../../../features/home/domain/repositories/i_home_repository.dart'
     as _i529;
 import '../../../features/home/presentation/bloc/home_bloc.dart' as _i84;
+import '../../../features/map/data/repositories/map_repository_impl.dart'
+    as _i770;
+import '../../../features/map/data/sources/local/i_map_local.dart' as _i852;
+import '../../../features/map/data/sources/local/map_local_impl.dart' as _i1042;
+import '../../../features/map/data/sources/remote/i_map_remote.dart' as _i951;
+import '../../../features/map/data/sources/remote/map_remote_impl.dart'
+    as _i953;
+import '../../../features/map/domain/repositories/i_map_repository.dart'
+    as _i593;
 import '../../../features/profile/data/repositories/profile_repository_impl.dart'
     as _i695;
 import '../../../features/profile/data/sources/remote/i_profile_remote.dart'
@@ -63,6 +72,15 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i134.AuthLocalImpl(),
       instanceName: 'AuthLocalImpl',
     );
+    gh.lazySingleton<_i852.IMapLocal>(
+      () => _i1042.MapLocalImpl(),
+      instanceName: 'MapLocalImpl',
+    );
+    gh.lazySingleton<_i951.IMapRemote>(
+      () =>
+          _i953.MapRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
+      instanceName: 'MapRemoteImpl',
+    );
     gh.lazySingleton<_i482.IHomeRemote>(
       () =>
           _i804.HomeRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
@@ -91,6 +109,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i955.HomeRepositoryImpl(
           gh<_i482.IHomeRemote>(instanceName: 'HomeRemoteImpl')),
       instanceName: 'HomeRepositoryImpl',
+    );
+    gh.lazySingleton<_i593.IMapRepository>(
+      () => _i770.MapRepositoryImpl(
+        gh<_i951.IMapRemote>(instanceName: 'MapRemoteImpl'),
+        gh<_i852.IMapLocal>(instanceName: 'MapLocalImpl'),
+      ),
+      instanceName: 'MapRepositoryImpl',
     );
     gh.lazySingleton<_i1037.IProfileRepository>(
       () => _i695.ProfileRepositoryImpl(

@@ -22,6 +22,10 @@ import 'package:app/src/features/auth/presentation/pages/create_password_page.da
 import 'package:app/src/features/auth/presentation/pages/change_password_page.dart';
 import 'package:app/src/features/home/presentation/pages/home_page.dart';
 import 'package:app/src/features/home/presentation/pages/create_post_page.dart';
+import 'package:app/src/features/map/presentation/pages/create_request_page.dart';
+import 'package:app/src/features/map/presentation/pages/create_request_published_page.dart';
+import 'package:app/src/features/map/presentation/pages/map_request_canceled_page.dart';
+import 'package:app/src/features/map/presentation/pages/map_request_completed_page.dart';
 import 'package:app/src/features/map/presentation/pages/map_page.dart';
 import 'package:app/src/features/rating/presentation/pages/rating_page.dart';
 import 'package:app/src/features/chats/presentation/pages/chats_page.dart';
