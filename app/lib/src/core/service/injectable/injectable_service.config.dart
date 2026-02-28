@@ -32,8 +32,6 @@ import '../../../features/home/domain/repositories/i_home_repository.dart'
 import '../../../features/home/presentation/bloc/home_bloc.dart' as _i84;
 import '../../../features/map/data/repositories/map_repository_impl.dart'
     as _i770;
-import '../../../features/map/data/sources/local/i_map_local.dart' as _i852;
-import '../../../features/map/data/sources/local/map_local_impl.dart' as _i1042;
 import '../../../features/map/data/sources/remote/i_map_remote.dart' as _i951;
 import '../../../features/map/data/sources/remote/map_remote_impl.dart'
     as _i953;
@@ -72,10 +70,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i134.AuthLocalImpl(),
       instanceName: 'AuthLocalImpl',
     );
-    gh.lazySingleton<_i852.IMapLocal>(
-      () => _i1042.MapLocalImpl(),
-      instanceName: 'MapLocalImpl',
-    );
     gh.lazySingleton<_i951.IMapRemote>(
       () =>
           _i953.MapRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
@@ -112,9 +106,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i593.IMapRepository>(
       () => _i770.MapRepositoryImpl(
-        gh<_i951.IMapRemote>(instanceName: 'MapRemoteImpl'),
-        gh<_i852.IMapLocal>(instanceName: 'MapLocalImpl'),
-      ),
+          gh<_i951.IMapRemote>(instanceName: 'MapRemoteImpl')),
       instanceName: 'MapRepositoryImpl',
     );
     gh.lazySingleton<_i1037.IProfileRepository>(

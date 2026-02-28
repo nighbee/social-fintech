@@ -11,6 +11,8 @@ class MapCreateTaskRequest with _$MapCreateTaskRequest implements BaseRequest {
     required String description,
     required int heroesCount,
     required int reward,
+    required double latitude,
+    required double longitude,
     @JsonKey(name: 'auto_shutdown') required bool autoShutdown,
   }) = _MapCreateTaskRequest;
 

@@ -9,5 +9,5 @@ CREATE TABLE IF NOT EXISTS pair_cooldowns (
     PRIMARY KEY (sender_user_id, receiver_user_id)
 );
 
-CREATE INDEX idx_pair_cooldowns_sender ON pair_cooldowns(sender_user_id);
-CREATE INDEX idx_pair_cooldowns_receiver ON pair_cooldowns(receiver_user_id);
+CREATE INDEX IF NOT EXISTS idx_pair_cooldowns_sender ON pair_cooldowns(sender_user_id);
+CREATE INDEX IF NOT EXISTS idx_pair_cooldowns_receiver ON pair_cooldowns(receiver_user_id);

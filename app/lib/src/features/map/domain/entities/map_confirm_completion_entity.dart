@@ -12,4 +12,11 @@ class MapConfirmCompletionEntity extends BaseEntity
     required double reward,
     required String taskStatus,
   }) = _MapConfirmCompletionEntity;
+
+  const factory MapConfirmCompletionEntity.empty({
+    @Default('') String taskId,
+    @Default('') String applicationId,
+    @Default(0.0) double reward,
+    @Default('') String taskStatus,
+  }) = _MapConfirmCompletionEntityEmpty;
 }

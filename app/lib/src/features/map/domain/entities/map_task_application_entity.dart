@@ -13,4 +13,12 @@ class MapTaskApplicationEntity extends BaseEntity
     required String status,
     required String createdAt,
   }) = _MapTaskApplicationEntity;
+
+  const factory MapTaskApplicationEntity.empty({
+    @Default('') String id,
+    @Default('') String taskId,
+    @Default('') String applicantId,
+    @Default('') String status,
+    @Default('') String createdAt,
+  }) = _MapTaskApplicationEntityEmpty;
 }

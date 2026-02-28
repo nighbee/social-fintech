@@ -9,4 +9,9 @@ class MapVerifyCodeEntity extends BaseEntity with _$MapVerifyCodeEntity {
     required String applicationId,
     required String status,
   }) = _MapVerifyCodeEntity;
+
+  const factory MapVerifyCodeEntity.empty({
+    @Default('') String applicationId,
+    @Default('') String status,
+  }) = _MapVerifyCodeEntityEmpty;
 }

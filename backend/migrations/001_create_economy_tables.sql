@@ -23,7 +23,9 @@
         'TASK_CREATION',   -- Spending Silver to create a map task
         'IAP_DEPOSIT',     -- Bought via Apple/Google
         'SYSTEM_CORRECTION', -- Admin manual adjustment
-        'TASK_REWARD'      -- Earning for completing a task
+        'TASK_REWARD',     -- Earning for completing a task
+        'TASK_REFUND',     -- Refund on task cancellation
+        'POST_SEAL'        -- Seal given to a post
     );
 
     -- =============================================

@@ -10,4 +10,10 @@ class MapSelectedRegionEntity extends BaseEntity with _$MapSelectedRegionEntity 
     required double longitude,
     required double zoom,
   }) = _MapSelectedRegionEntity;
+
+  const factory MapSelectedRegionEntity.empty({
+    @Default(0.0) double latitude,
+    @Default(0.0) double longitude,
+    @Default(0.0) double zoom,
+  }) = _MapSelectedRegionEntityEmpty;
 }

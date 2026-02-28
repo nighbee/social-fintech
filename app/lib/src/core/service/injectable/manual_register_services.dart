@@ -1,5 +1,7 @@
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
+import 'package:app/src/core/service/location/i_location_service.dart';
+import 'package:app/src/core/service/location/location_service_impl.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
@@ -38,5 +40,13 @@ Future<void> manualRegisterServices() async {
     () => MapBloc(
       getIt<IMapRepository>(instanceName: 'MapRepositoryImpl'),
     ),
+  );
+
+  if (getIt.isRegistered<ILocationService>(instanceName: 'LocationServiceImpl')) {
+    getIt.unregister<ILocationService>(instanceName: 'LocationServiceImpl');
+  }
+  getIt.registerLazySingleton<ILocationService>(
+    () => LocationServiceImpl(),
+    instanceName: 'LocationServiceImpl',
   );
 }

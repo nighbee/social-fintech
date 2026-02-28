@@ -3,20 +3,22 @@ import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/map/data/models/map_apply_to_task_response_dto.dart';
 import 'package:app/src/features/map/data/models/map_cancel_task_response_dto.dart';
-import 'package:app/src/features/map/data/models/map_champions_request_dto.dart';
 import 'package:app/src/features/map/data/models/map_champion_dto.dart';
 import 'package:app/src/features/map/data/models/map_confirm_completion_response_dto.dart';
 import 'package:app/src/features/map/data/models/map_task_application_dto.dart';
-import 'package:app/src/features/map/data/models/map_create_task_request_dto.dart';
 import 'package:app/src/features/map/data/models/map_create_task_response_dto.dart';
 import 'package:app/src/features/map/data/models/map_nearby_tasks_response_dto.dart';
-import 'package:app/src/features/map/data/models/map_nearby_tasks_request_dto.dart';
 import 'package:app/src/features/map/data/models/map_task_dto.dart';
-import 'package:app/src/features/map/data/models/map_verify_code_request_dto.dart';
 import 'package:app/src/features/map/data/models/map_verify_code_response_dto.dart';
 import 'package:app/src/features/map/data/models/map_region_assignment_dto.dart';
 import 'package:app/src/features/map/data/sources/remote/i_map_remote.dart';
+import 'package:app/src/features/map/domain/requests/map_champions_request.dart';
+import 'package:app/src/features/map/domain/requests/map_create_task_request.dart';
+import 'package:app/src/features/map/domain/requests/map_nearby_tasks_request.dart';
 import 'package:app/src/features/map/domain/requests/map_region_assignment_request.dart';
+import 'package:app/src/features/map/domain/requests/map_task_application_id_request.dart';
+import 'package:app/src/features/map/domain/requests/map_task_id_request.dart';
+import 'package:app/src/features/map/domain/requests/map_verify_code_request.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 
@@ -57,7 +59,7 @@ class MapRemoteImpl implements IMapRemote {
 
   @override
   Future<Either<DomainException, List<MapChampionDto>>> getChampions(
-    MapChampionsRequestDto request,
+    MapChampionsRequest request,
   ) async {
     if (request.h3Indices.isEmpty) {
       return const Right(<MapChampionDto>[]);
@@ -106,7 +108,7 @@ class MapRemoteImpl implements IMapRemote {
 
   @override
   Future<Either<DomainException, MapCreateTaskResponseDto>> createTask(
-    MapCreateTaskRequestDto request,
+    MapCreateTaskRequest request,
   ) async {
     try {
       final payload = <String, dynamic>{
@@ -114,9 +116,8 @@ class MapRemoteImpl implements IMapRemote {
         'description': request.description,
         'reward': request.reward,
         'workers_needed': request.heroesCount,
-        // TODO: pass selected map pin coordinates from UI flow.
-        'latitude': 40.7128,
-        'longitude': -74.0060,
+        'latitude': request.latitude,
+        'longitude': request.longitude,
         'auto_shutdown': request.autoShutdown,
       };
 
@@ -128,7 +129,8 @@ class MapRemoteImpl implements IMapRemote {
       return response.fold((error) => Left(error), (result) {
         final dynamic raw = result.data;
         if (raw is! Map) {
-          return Left(UnknownException(message: 'Invalid task create response'));
+          return Left(
+              UnknownException(message: 'Invalid task create response'));
         }
         final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
         final dto = MapCreateTaskResponseDto.fromJson(json);
@@ -143,17 +145,18 @@ class MapRemoteImpl implements IMapRemote {
 
   @override
   Future<Either<DomainException, MapCancelTaskResponseDto>> cancelTask(
-    String taskId,
+    MapTaskIdRequest request,
   ) async {
     try {
       final response = await _restClient.delete(
-        EndPoints.mapTaskById(taskId),
+        EndPoints.mapTaskById(request.taskId),
       );
 
       return response.fold((error) => Left(error), (result) {
         final dynamic raw = result.data;
         if (raw is! Map) {
-          return Left(UnknownException(message: 'Invalid cancel task response'));
+          return Left(
+              UnknownException(message: 'Invalid cancel task response'));
         }
         final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
         final dto = MapCancelTaskResponseDto.fromJson(json);
@@ -168,17 +171,18 @@ class MapRemoteImpl implements IMapRemote {
 
   @override
   Future<Either<DomainException, MapApplyToTaskResponseDto>> applyToTask(
-    String taskId,
+    MapTaskIdRequest request,
   ) async {
     try {
       final response = await _restClient.post(
-        EndPoints.mapApplyToTask(taskId),
+        EndPoints.mapApplyToTask(request.taskId),
       );
 
       return response.fold((error) => Left(error), (result) {
         final dynamic raw = result.data;
         if (raw is! Map) {
-          return Left(UnknownException(message: 'Invalid apply-to-task response'));
+          return Left(
+              UnknownException(message: 'Invalid apply-to-task response'));
         }
         final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
         final dto = MapApplyToTaskResponseDto.fromJson(json);
@@ -193,7 +197,7 @@ class MapRemoteImpl implements IMapRemote {
 
   @override
   Future<Either<DomainException, List<MapTaskDto>>> getNearbyTasks(
-    MapNearbyTasksRequestDto request,
+    MapNearbyTasksRequest request,
   ) async {
     try {
       final response = await _restClient.get(
@@ -209,7 +213,8 @@ class MapRemoteImpl implements IMapRemote {
       return response.fold((error) => Left(error), (result) {
         final dynamic raw = result.data;
         if (raw is! Map) {
-          return Left(UnknownException(message: 'Invalid nearby tasks response'));
+          return Left(
+              UnknownException(message: 'Invalid nearby tasks response'));
         }
         final dto = MapNearbyTasksResponseDto.fromJson(
           Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
@@ -225,16 +230,17 @@ class MapRemoteImpl implements IMapRemote {
 
   @override
   Future<Either<DomainException, List<MapTaskApplicationDto>>>
-      getTaskApplications(String taskId) async {
+      getTaskApplications(MapTaskIdRequest request) async {
     try {
       final response = await _restClient.get(
-        EndPoints.mapTaskApplications(taskId),
+        EndPoints.mapTaskApplications(request.taskId),
       );
 
       return response.fold((error) => Left(error), (result) {
         final dynamic raw = result.data;
         if (raw is! List) {
-          return Left(UnknownException(message: 'Invalid task applications response'));
+          return Left(
+              UnknownException(message: 'Invalid task applications response'));
         }
 
         final applications = raw
@@ -257,10 +263,13 @@ class MapRemoteImpl implements IMapRemote {
 
   @override
   Future<Either<DomainException, MapConfirmCompletionResponseDto>>
-      confirmTaskApplication(String taskId, String applicationId) async {
+      confirmTaskApplication(MapTaskApplicationIdRequest request) async {
     try {
       final response = await _restClient.post(
-        EndPoints.mapConfirmTaskApplication(taskId, applicationId),
+        EndPoints.mapConfirmTaskApplication(
+          request.taskId,
+          request.applicationId,
+        ),
       );
 
       return response.fold((error) => Left(error), (result) {
@@ -284,20 +293,23 @@ class MapRemoteImpl implements IMapRemote {
   @override
   Future<Either<DomainException, MapVerifyCodeResponseDto>>
       verifyTaskApplicationCode(
-        String taskId,
-        String applicationId,
-        MapVerifyCodeRequestDto request,
-      ) async {
+    MapTaskApplicationIdRequest target,
+    MapVerifyCodeRequest request,
+  ) async {
     try {
       final response = await _restClient.post(
-        EndPoints.mapVerifyTaskApplicationCode(taskId, applicationId),
+        EndPoints.mapVerifyTaskApplicationCode(
+          target.taskId,
+          target.applicationId,
+        ),
         data: request.toJson(),
       );
 
       return response.fold((error) => Left(error), (result) {
         final dynamic raw = result.data;
         if (raw is! Map) {
-          return Left(UnknownException(message: 'Invalid verify code response'));
+          return Left(
+              UnknownException(message: 'Invalid verify code response'));
         }
         final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
         final dto = MapVerifyCodeResponseDto.fromJson(json);

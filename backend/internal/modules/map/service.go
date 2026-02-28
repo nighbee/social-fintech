@@ -21,7 +21,7 @@ const (
 	h3ResCity     = 4
 	h3ResDistrict = 5
 
-	taskCooldownDays  = 7
+	taskCooldownDays  = 0
 	maxWorkersNeeded  = 20
 	autoShutdownHours = 24
 )

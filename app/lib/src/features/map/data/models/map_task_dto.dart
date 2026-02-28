@@ -14,8 +14,10 @@ class MapTaskDto extends BaseDto with _$MapTaskDto {
     @JsonKey(name: 'title', defaultValue: '') required String title,
     @JsonKey(name: 'description') String? description,
     @JsonKey(name: 'reward', defaultValue: 0) required double reward,
-    @JsonKey(name: 'workers_needed', defaultValue: 0) required int workersNeeded,
-    @JsonKey(name: 'workers_filled', defaultValue: 0) required int workersFilled,
+    @JsonKey(name: 'workers_needed', defaultValue: 0)
+    required int workersNeeded,
+    @JsonKey(name: 'workers_filled', defaultValue: 0)
+    required int workersFilled,
     @JsonKey(name: 'status', defaultValue: '') required String status,
     @JsonKey(name: 'auto_shutdown_at') String? autoShutdownAt,
     @JsonKey(name: 'latitude', defaultValue: 0) required double latitude,
@@ -30,12 +32,12 @@ class MapTaskDto extends BaseDto with _$MapTaskDto {
     return MapTaskEntity(
       id: id,
       title: title,
-      description: description,
+      description: description ?? "",
       reward: reward,
       workersNeeded: workersNeeded,
       workersFilled: workersFilled,
       status: status,
-      autoShutdownAt: autoShutdownAt,
+      autoShutdownAt: autoShutdownAt ?? "",
       latitude: latitude,
       longitude: longitude,
       createdAt: createdAt,

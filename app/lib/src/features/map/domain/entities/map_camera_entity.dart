@@ -9,4 +9,10 @@ class MapCameraEntity with _$MapCameraEntity {
     required double centerLongitude,
     required double zoom,
   }) = _MapCameraEntity;
+
+  const factory MapCameraEntity.empty({
+    @Default(0.0) double centerLatitude,
+    @Default(0.0) double centerLongitude,
+    @Default(0.0) double zoom,
+  }) = _MapCameraEntityEmpty;
 }

@@ -4,6 +4,7 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
+import 'package:app/src/features/map/domain/requests/map_create_task_request.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,14 +12,21 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
 class CreateRequestPage extends StatefulWidget {
-  const CreateRequestPage({super.key});
+  const CreateRequestPage({
+    required this.latitude,
+    required this.longitude,
+    super.key,
+  });
+
+  final double latitude;
+  final double longitude;
 
   @override
   State<CreateRequestPage> createState() => _CreateRequestPageState();
 }
 
 class _CreateRequestPageState extends State<CreateRequestPage> {
-  late final MapBloc _bloc;
+  late final MapBloc _mapBloc;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -31,7 +39,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
   @override
   void initState() {
     super.initState();
-    _bloc = getIt<MapBloc>();
+    _mapBloc = getIt<MapBloc>();
   }
 
   @override
@@ -76,170 +84,179 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
         ],
       ),
       body: BlocListener<MapBloc, MapState>(
-        bloc: _bloc,
+        bloc: _mapBloc,
         listener: (context, state) {
-          state.whenOrNull(
+          state.maybeWhen(
+            loadingError: (message) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(message),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            },
             loaded: (viewModel) {
-              if (viewModel.taskCreatedMessage != null) {
+              // Task creation completed successfully
+              if (!viewModel.isCreatingTask) {
                 context.pushReplacement(RoutePaths.mapCreateRequestPublished);
               }
-              if (viewModel.taskCreateError != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(viewModel.taskCreateError!),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
             },
+            orElse: () {},
           );
         },
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
-            child: Column(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _RequestField(
-                          label: 'Title',
-                          hint: 'Enter a short request title',
-                          controller: _titleController,
-                        ),
-                        const SizedBox(height: 12),
-                        _RequestField(
-                          label: 'Description',
-                          hint: 'Describe your request in detail',
-                          controller: _descriptionController,
-                          maxLines: 6,
-                          maxLength: 500,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Number of heroes',
-                          style: TextStyles.bodyMain
-                              .copyWith(color: Colors.white70),
-                        ),
-                        const SizedBox(height: 6),
-                        SizedBox(
-                          width: 44,
-                          child: TextField(
-                            controller: _heroesController,
-                            keyboardType: TextInputType.number,
-                            style: TextStyles.bodyLarge
-                                .copyWith(color: Colors.white),
-                            textAlign: TextAlign.center,
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: const Color(0xFF121418),
-                              contentPadding:
-                                  const EdgeInsets.symmetric(vertical: 8),
-                              isDense: true,
-                              enabledBorder: OutlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: Colors.white.withOpacity(0.14),
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderSide:
-                                    const BorderSide(color: Colors.white54),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Reward',
-                          style: TextStyles.bodyMain
-                              .copyWith(color: Colors.white70),
-                        ),
-                        SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            activeTrackColor: Colors.white70,
-                            inactiveTrackColor: Colors.white24,
-                            thumbColor: Colors.white,
-                            overlayColor: Colors.white24,
-                            trackHeight: 2,
-                          ),
-                          child: Slider(
-                            min: 1,
-                            max: 3,
-                            divisions: 2,
-                            value: _reward,
-                            onChanged: (v) => setState(() => _reward = v),
-                          ),
-                        ),
-                        Text(
-                          'Heroes will be reserved and cannot be edited after publishing',
-                          style: TextStyles.bodyMain.copyWith(
-                            color: Colors.white38,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
+        child: BlocBuilder<MapBloc, MapState>(
+          bloc: _mapBloc,
+          builder: (context, state) {
+            final isCreating = state.maybeWhen(
+              loaded: (viewModel) => viewModel.isCreatingTask,
+              orElse: () => false,
+            );
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 6, 14, 14),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Automatic shutdown',
-                                    style: TextStyles.bodyLarge.copyWith(
-                                      color: Colors.white,
+                            _RequestField(
+                              label: 'Title',
+                              hint: 'Enter a short request title',
+                              controller: _titleController,
+                            ),
+                            const SizedBox(height: 12),
+                            _RequestField(
+                              label: 'Description',
+                              hint: 'Describe your request in detail',
+                              controller: _descriptionController,
+                              maxLines: 6,
+                              maxLength: 500,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Number of heroes',
+                              style: TextStyles.bodyMain
+                                  .copyWith(color: Colors.white70),
+                            ),
+                            const SizedBox(height: 6),
+                            SizedBox(
+                              width: 44,
+                              child: TextField(
+                                controller: _heroesController,
+                                keyboardType: TextInputType.number,
+                                style: TextStyles.bodyLarge
+                                    .copyWith(color: Colors.white),
+                                textAlign: TextAlign.center,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFF121418),
+                                  contentPadding:
+                                      const EdgeInsets.symmetric(vertical: 8),
+                                  isDense: true,
+                                  enabledBorder: OutlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: Colors.white
+                                          .withValues(alpha: 0.14),
                                     ),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'The request will be disabled after 24 hours.',
-                                    style: TextStyles.bodyMain.copyWith(
-                                      color: Colors.white38,
-                                    ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide:
+                                        const BorderSide(color: Colors.white54),
+                                    borderRadius: BorderRadius.circular(6),
                                   ),
-                                ],
+                                ),
                               ),
                             ),
-                            Switch(
-                              value: _autoShutdown,
-                              activeColor: Colors.white,
-                              inactiveThumbColor: Colors.white70,
-                              inactiveTrackColor: Colors.white24,
-                              onChanged: (value) {
-                                setState(() => _autoShutdown = value);
-                              },
+                            const SizedBox(height: 14),
+                            Text(
+                              'Reward',
+                              style: TextStyles.bodyMain
+                                  .copyWith(color: Colors.white70),
+                            ),
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                activeTrackColor: Colors.white70,
+                                inactiveTrackColor: Colors.white24,
+                                thumbColor: Colors.white,
+                                overlayColor: Colors.white24,
+                                trackHeight: 2,
+                              ),
+                              child: Slider(
+                                min: 1,
+                                max: 3,
+                                divisions: 2,
+                                value: _reward,
+                                onChanged: (v) => setState(() => _reward = v),
+                              ),
+                            ),
+                            Text(
+                              'Heroes will be reserved and cannot be edited after publishing',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: Colors.white38,
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Automatic shutdown',
+                                        style:
+                                            TextStyles.bodyLarge.copyWith(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'The request will be disabled after 24 hours.',
+                                        style: TextStyles.bodyMain.copyWith(
+                                          color: Colors.white38,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch(
+                                  value: _autoShutdown,
+                                  activeColor: Colors.white,
+                                  inactiveThumbColor: Colors.white70,
+                                  inactiveTrackColor: Colors.white24,
+                                  onChanged: (value) {
+                                    setState(() => _autoShutdown = value);
+                                  },
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                BlocBuilder<MapBloc, MapState>(
-                  bloc: _bloc,
-                  builder: (context, state) {
-                    final isCreating = state.maybeWhen(
-                      loaded: (viewModel) => viewModel.isCreatingTask,
-                      orElse: () => false,
-                    );
-
-                    return CustomButton(
+                    const SizedBox(height: 10),
+                    CustomButton(
                       text: isCreating ? 'Creating...' : 'Create',
                       onTap: () {
                         if (!isCreating) {
                           final heroesCount =
                               int.tryParse(_heroesController.text) ?? 1;
-                          _bloc.add(MapEvent.createTask(
-                            title: _titleController.text,
-                            description: _descriptionController.text,
-                            heroesCount: heroesCount,
-                            reward: _reward.toInt(),
-                            autoShutdown: _autoShutdown,
+                          _mapBloc.add(MapEvent.createTask(
+                            MapCreateTaskRequest(
+                              title: _titleController.text,
+                              description: _descriptionController.text,
+                              heroesCount: heroesCount,
+                              reward: _reward.toInt(),
+                              latitude: widget.latitude,
+                              longitude: widget.longitude,
+                              autoShutdown: _autoShutdown,
+                            ),
                           ));
                         }
                       },
@@ -251,12 +268,12 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                         fontWeight: FontWeight.w600,
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                    );
-                  },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -325,7 +342,8 @@ class _RequestField extends StatelessWidget {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
-              borderSide: BorderSide(color: Colors.white.withOpacity(0.14)),
+              borderSide:
+                  BorderSide(color: Colors.white.withValues(alpha: 0.14)),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),

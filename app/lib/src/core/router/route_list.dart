@@ -202,7 +202,16 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 path: RoutePaths.mapCreateRequest,
                 name: RouteNames.mapCreateRequest,
                 redirect: AuthGuard,
-                builder: (context, state) => const CreateRequestPage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final latitude = (extra?['latitude'] as num?)?.toDouble() ?? 50.4501;
+                  final longitude =
+                      (extra?['longitude'] as num?)?.toDouble() ?? 30.5234;
+                  return CreateRequestPage(
+                    latitude: latitude,
+                    longitude: longitude,
+                  );
+                },
               ),
               GoRoute(
                 path: RoutePaths.mapCreateRequestPublished,
