@@ -50,25 +50,13 @@ class _MapContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mapBloc = getIt<MapBloc>();
-    MapTaskEntity? myRequest;
-    for (final task in viewModel.myTasks) {
-      final status = task.status.trim().toLowerCase();
-      if (status == 'open' ||
-          status == 'in_progress' ||
-          status.startsWith('mine')) {
-        myRequest = task;
-        break;
-      }
-    }
+    final myRequest = MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks);
 
     final nearbyTasks = viewModel.nearbyTasks.toList(growable: false);
-    final visibleApplications = viewModel.taskApplications
-        .where(
-          (app) =>
-              app.status.trim().toLowerCase() != 'rejected' &&
-              !locallyRejectedApplicationIds.contains(app.id),
-        )
-        .toList(growable: false);
+    final visibleApplications = MapFlowEvaluator.buildVisibleApplications(
+      viewModel.taskApplications,
+      locallyRejectedApplicationIds,
+    );
     final applyResult = viewModel.applyToTaskResult;
     final verifyResult = viewModel.verifyCodeResult;
     final hasAppliedTask =
@@ -105,12 +93,10 @@ class _MapContent extends StatelessWidget {
         verifyResult.applicationId == applyResult.applicationId &&
             verifyResult.status == 'code_verified';
     final isAwaitingCodeEntry = !executorCompletionShown &&
-        myRequest == null &&
         hasActiveApplicationLifecycle &&
         canEnterCodeByStatus &&
         !isCodeVerified;
     final isWaitingCreatorConfirm = !executorCompletionShown &&
-        myRequest == null &&
         hasActiveApplicationLifecycle &&
         isCodeVerified;
     final hasExecutorFlowActive =

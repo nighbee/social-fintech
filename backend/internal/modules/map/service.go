@@ -255,6 +255,11 @@ func (s *Service) GetMyTasks(ctx context.Context, userID string) (*AppliedTasksR
 
 	resp := AppliedTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
 	for _, t := range tasks {
+		status := t.Status
+		if t.VerificationCode != "" {
+			// Backward-compatible creator marker used by current Flutter UI.
+			status = fmt.Sprintf("mine|%s", t.VerificationCode)
+		}
 		resp.Tasks = append(resp.Tasks, TaskResponse{
 			ID:             t.ID,
 			Title:          t.Title,
@@ -262,7 +267,7 @@ func (s *Service) GetMyTasks(ctx context.Context, userID string) (*AppliedTasksR
 			Reward:         economy.CentinelsToSeals(t.Reward),
 			WorkersNeeded:  t.WorkersNeeded,
 			WorkersFilled:  t.WorkersFilled,
-			Status:         t.Status,
+			Status:         status,
 			AutoShutdownAt: t.AutoShutdownAt,
 			Latitude:       t.Latitude,
 			Longitude:      t.Longitude,
