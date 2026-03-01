@@ -1,4 +1,3 @@
-basePath: /api/v1
 definitions:
   auth.CheckEmailRequest:
     properties:
@@ -218,6 +217,12 @@ definitions:
         type: string
       first_name:
         type: string
+      h3_res2:
+        type: string
+      h3_res4:
+        type: string
+      h3_res5:
+        type: string
       id:
         type: string
       is_admin:
@@ -228,6 +233,12 @@ definitions:
         type: string
       last_name:
         type: string
+      location_opt_in:
+        type: boolean
+      location_updated_at:
+        type: string
+      participate_district:
+        type: boolean
       referral_code:
         type: string
       updated_at:
@@ -546,6 +557,13 @@ definitions:
       task_id:
         type: string
     type: object
+  mapmodule.AppliedTasksResponse:
+    properties:
+      tasks:
+        items:
+          $ref: '#/definitions/mapmodule.TaskResponse'
+        type: array
+    type: object
   mapmodule.ApplyToTaskResponse:
     properties:
       application_id:
@@ -589,8 +607,6 @@ definitions:
   mapmodule.CreateTaskRequest:
     properties:
       auto_shutdown:
-        description: AutoShutdown enables automatic task cancellation 24 hours after
-          creation.
         example: true
         type: boolean
       description:
@@ -603,15 +619,12 @@ definitions:
         example: -122.4194
         type: number
       reward:
-        description: Reward must be 1, 2, or 3 Silver Seals.
         example: 2
         type: integer
       title:
         example: Pick up a package
         type: string
       workers_needed:
-        description: WorkersNeeded is the number of helpers required to close the
-          task (1–20).
         example: 1
         type: integer
     type: object
@@ -684,15 +697,6 @@ definitions:
     properties:
       code:
         example: "4821"
-        type: string
-    type: object
-  mapmodule.TaskCompletionResponse:
-    properties:
-      completed:
-        type: boolean
-      reward:
-        type: number
-      task_id:
         type: string
     type: object
   mapmodule.TaskResponse:
@@ -1024,19 +1028,8 @@ definitions:
       min_seals:
         type: integer
     type: object
-host: localhost:8081
 info:
-  contact:
-    email: support@brightbund.com
-    name: API Support
-  description: API for the BrightBund social platform with economy, maps, chat, and
-    gamification
-  license:
-    name: Proprietary
-    url: https://brightbund.com/license
-  termsOfService: https://brightbund.com/terms
-  title: BrightBund API
-  version: "1.0"
+  contact: {}
 paths:
   /auth/check-email:
     post:
@@ -2862,45 +2855,18 @@ paths:
       summary: Apply to help with a task ("I can help")
       tags:
       - Tasks
-  /tasks/{task_id}/complete:
-    post:
-      deprecated: true
-      description: |-
-        Deprecated in favour of the apply → verify-code → confirm flow.
-        Kept for backward compatibility only.
-      parameters:
-      - description: Task ID
-        in: path
-        name: task_id
-        required: true
-        type: string
+  /tasks/applied:
+    get:
+      description: Returns tasks that the worker has applied to.
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.TaskCompletionResponse'
-        "400":
-          description: Cannot complete own task
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/mapmodule.AppliedTasksResponse'
         "401":
           description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Task not found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "409":
-          description: Task already completed
           schema:
             additionalProperties:
               type: string
@@ -2913,7 +2879,7 @@ paths:
             type: object
       security:
       - Bearer: []
-      summary: '[DEPRECATED] Legacy single-actor task completion'
+      summary: Find tasks applied to
       tags:
       - Tasks
   /tasks/nearby:
@@ -3003,11 +2969,4 @@ paths:
       summary: Search users by first/last name
       tags:
       - Users
-securityDefinitions:
-  Bearer:
-    description: 'Type "Bearer" followed by a space and your JWT Access Token (not
-      UUID). Example: "Bearer eyJhbGci..."'
-    in: header
-    name: Authorization
-    type: apiKey
 swagger: "2.0"

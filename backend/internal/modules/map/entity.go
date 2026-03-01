@@ -79,6 +79,10 @@ type NearbyTasksResponse struct {
 	Tasks []TaskResponse `json:"tasks"`
 }
 
+type AppliedTasksResponse struct {
+	Tasks []TaskResponse `json:"tasks"`
+}
+
 type ApplyToTaskResponse struct {
 	ApplicationID string `json:"application_id"`
 	TaskID        string `json:"task_id"`

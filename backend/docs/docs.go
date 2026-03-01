@@ -9,15 +9,7 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "termsOfService": "https://brightbund.com/terms",
-        "contact": {
-            "name": "API Support",
-            "email": "support@brightbund.com"
-        },
-        "license": {
-            "name": "Proprietary",
-            "url": "https://brightbund.com/license"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
@@ -2365,6 +2357,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/tasks/applied": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns tasks that the worker has applied to.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Find tasks applied to",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.AppliedTasksResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tasks/nearby": {
             "get": {
                 "security": [
@@ -2880,86 +2915,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/tasks/{task_id}/complete": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Deprecated in favour of the apply → verify-code → confirm flow.\nKept for backward compatibility only.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Tasks"
-                ],
-                "summary": "[DEPRECATED] Legacy single-actor task completion",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Task ID",
-                        "name": "task_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/mapmodule.TaskCompletionResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Cannot complete own task",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "404": {
-                        "description": "Task not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Task already completed",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/users/search": {
             "get": {
                 "description": "Public search for referrer user selection",
@@ -3329,6 +3284,15 @@ const docTemplate = `{
                 "first_name": {
                     "type": "string"
                 },
+                "h3_res2": {
+                    "type": "string"
+                },
+                "h3_res4": {
+                    "type": "string"
+                },
+                "h3_res5": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -3343,6 +3307,15 @@ const docTemplate = `{
                 },
                 "last_name": {
                     "type": "string"
+                },
+                "location_opt_in": {
+                    "type": "boolean"
+                },
+                "location_updated_at": {
+                    "type": "string"
+                },
+                "participate_district": {
+                    "type": "boolean"
                 },
                 "referral_code": {
                     "type": "string"
@@ -3802,6 +3775,17 @@ const docTemplate = `{
                 }
             }
         },
+        "mapmodule.AppliedTasksResponse": {
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
+                    }
+                }
+            }
+        },
         "mapmodule.ApplyToTaskResponse": {
             "type": "object",
             "properties": {
@@ -3867,7 +3851,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "auto_shutdown": {
-                    "description": "AutoShutdown enables automatic task cancellation 24 hours after creation.",
                     "type": "boolean",
                     "example": true
                 },
@@ -3884,7 +3867,6 @@ const docTemplate = `{
                     "example": -122.4194
                 },
                 "reward": {
-                    "description": "Reward must be 1, 2, or 3 Silver Seals.",
                     "type": "integer",
                     "example": 2
                 },
@@ -3893,7 +3875,6 @@ const docTemplate = `{
                     "example": "Pick up a package"
                 },
                 "workers_needed": {
-                    "description": "WorkersNeeded is the number of helpers required to close the task (1–20).",
                     "type": "integer",
                     "example": 1
                 }
@@ -4002,20 +3983,6 @@ const docTemplate = `{
                 "code": {
                     "type": "string",
                     "example": "4821"
-                }
-            }
-        },
-        "mapmodule.TaskCompletionResponse": {
-            "type": "object",
-            "properties": {
-                "completed": {
-                    "type": "boolean"
-                },
-                "reward": {
-                    "type": "number"
-                },
-                "task_id": {
-                    "type": "string"
                 }
             }
         },
@@ -4486,25 +4453,17 @@ const docTemplate = `{
                 }
             }
         }
-    },
-    "securityDefinitions": {
-        "Bearer": {
-            "description": "Type \"Bearer\" followed by a space and your JWT Access Token (not UUID). Example: \"Bearer eyJhbGci...\"",
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header"
-        }
     }
 }`
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "1.0",
-	Host:             "localhost:8081",
-	BasePath:         "/api/v1",
+	Version:          "",
+	Host:             "",
+	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "BrightBund API",
-	Description:      "API for the BrightBund social platform with economy, maps, chat, and gamification",
+	Title:            "",
+	Description:      "",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
