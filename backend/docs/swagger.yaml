@@ -2614,6 +2614,44 @@ paths:
       summary: Cancel a task (creator only)
       tags:
       - Tasks
+    get:
+      description: Returns the details of a single task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mapmodule.TaskResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get task details
+      tags:
+      - Tasks
   /tasks/{task_id}/applications:
     get:
       description: |-
@@ -2661,6 +2699,70 @@ paths:
       security:
       - Bearer: []
       summary: List applicants for a task (creator only)
+      tags:
+      - Tasks
+  /tasks/{task_id}/applications/{application_id}/accept:
+    post:
+      description: Marks an application as accepted, allowing the helper to proceed.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Application ID
+        in: path
+        name: application_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Application not pending
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not the task creator
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task or application not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Task is already full
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Accept a helper's application (creator only)
       tags:
       - Tasks
   /tasks/{task_id}/applications/{application_id}/confirm:
@@ -2727,6 +2829,64 @@ paths:
       security:
       - Bearer: []
       summary: Confirm a helper completed the task (creator only)
+      tags:
+      - Tasks
+  /tasks/{task_id}/applications/{application_id}/reject:
+    post:
+      description: Marks an application as rejected.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Application ID
+        in: path
+        name: application_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Application not pending
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not the task creator
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task or application not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Reject a helper's application (creator only)
       tags:
       - Tasks
   /tasks/{task_id}/applications/{application_id}/verify-code:
@@ -2880,6 +3040,33 @@ paths:
       security:
       - Bearer: []
       summary: Find tasks applied to
+      tags:
+      - Tasks
+  /tasks/my:
+    get:
+      description: Returns all tasks where the caller is the creator.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/mapmodule.AppliedTasksResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: List tasks created by me
       tags:
       - Tasks
   /tasks/nearby:

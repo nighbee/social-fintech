@@ -247,6 +247,51 @@ func (s *Service) GetAppliedTasks(ctx context.Context, userID string) (*AppliedT
 	return &resp, nil
 }
 
+func (s *Service) GetMyTasks(ctx context.Context, userID string) (*AppliedTasksResponse, error) {
+	tasks, err := s.repo.GetMyTasks(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := AppliedTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
+	for _, t := range tasks {
+		resp.Tasks = append(resp.Tasks, TaskResponse{
+			ID:             t.ID,
+			Title:          t.Title,
+			Description:    t.Description,
+			Reward:         economy.CentinelsToSeals(t.Reward),
+			WorkersNeeded:  t.WorkersNeeded,
+			WorkersFilled:  t.WorkersFilled,
+			Status:         t.Status,
+			AutoShutdownAt: t.AutoShutdownAt,
+			Latitude:       t.Latitude,
+			Longitude:      t.Longitude,
+			CreatedAt:      t.CreatedAt,
+		})
+	}
+	return &resp, nil
+}
+
+func (s *Service) GetTask(ctx context.Context, taskID string) (*TaskResponse, error) {
+	t, err := s.repo.GetTaskByID(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+	return &TaskResponse{
+		ID:             t.ID,
+		Title:          t.Title,
+		Description:    t.Description,
+		Reward:         economy.CentinelsToSeals(t.Reward),
+		WorkersNeeded:  t.WorkersNeeded,
+		WorkersFilled:  t.WorkersFilled,
+		Status:         t.Status,
+		AutoShutdownAt: t.AutoShutdownAt,
+		Latitude:       t.Latitude,
+		Longitude:      t.Longitude,
+		CreatedAt:      t.CreatedAt,
+	}, nil
+}
+
 // ApplyToTask is called when user2 presses "I can help" on a task pin.
 // Creates a pending TaskApplication and (stub) opens a direct chat between the parties.
 func (s *Service) ApplyToTask(ctx context.Context, userID, taskID string) (*ApplyToTaskResponse, error) {
@@ -314,10 +359,13 @@ func (s *Service) SubmitVerificationCode(ctx context.Context, userID, taskID, ap
 	if app.ApplicantID != userID {
 		return nil, ErrNotApplicant
 	}
+	if app.Status == "pending" || app.Status == "rejected" {
+		return nil, fmt.Errorf("application must be accepted by the creator first")
+	}
 	if app.Status == "code_verified" || app.Status == "confirmed" {
 		return nil, ErrAlreadyVerified
 	}
-	if app.Status != "pending" {
+	if app.Status != "accepted" {
 		return nil, ErrNotApplicant
 	}
 
@@ -341,6 +389,79 @@ func (s *Service) SubmitVerificationCode(ctx context.Context, userID, taskID, ap
 		ApplicationID: applicationID,
 		Status:        "code_verified",
 	}, nil
+}
+
+// AcceptApplication is called by the creator to accept a pending application.
+func (s *Service) AcceptApplication(ctx context.Context, userID, taskID, applicationID string) error {
+	task, err := s.repo.GetTaskByID(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if task.CreatorID != userID {
+		return ErrNotTaskOwner
+	}
+
+	app, err := s.repo.GetApplicationByID(ctx, applicationID)
+	if err != nil {
+		return err
+	}
+	if app.TaskID != taskID {
+		return ErrApplicationNotFound
+	}
+
+	// Fetch all applications to determine how many are already accepted/verified/confirmed
+	apps, err := s.repo.GetApplicationsByTaskID(ctx, taskID)
+	if err != nil {
+		return err
+	}
+
+	acceptedCount := 0
+	for _, a := range apps {
+		if a.Status == "accepted" || a.Status == "code_verified" || a.Status == "confirmed" {
+			acceptedCount++
+		}
+	}
+
+	if acceptedCount >= task.WorkersNeeded {
+		return ErrTaskFull
+	}
+
+	updated, err := s.repo.MarkApplicationAccepted(ctx, applicationID)
+	if err != nil {
+		return err
+	}
+	if !updated {
+		return fmt.Errorf("application is not pending")
+	}
+	return nil
+}
+
+// RejectApplication is called by the creator to reject a pending application.
+func (s *Service) RejectApplication(ctx context.Context, userID, taskID, applicationID string) error {
+	task, err := s.repo.GetTaskByID(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if task.CreatorID != userID {
+		return ErrNotTaskOwner
+	}
+
+	app, err := s.repo.GetApplicationByID(ctx, applicationID)
+	if err != nil {
+		return err
+	}
+	if app.TaskID != taskID {
+		return ErrApplicationNotFound
+	}
+
+	updated, err := s.repo.MarkApplicationRejected(ctx, applicationID)
+	if err != nil {
+		return err
+	}
+	if !updated {
+		return fmt.Errorf("application is not pending")
+	}
+	return nil
 }
 
 // ConfirmCompletion is triggered when user1 presses "Yes, this person helped me"

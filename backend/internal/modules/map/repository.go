@@ -17,6 +17,7 @@ type Repository interface {
 	// Task CRUD
 	CreateTask(ctx context.Context, task *Task) error
 	GetTaskByID(ctx context.Context, taskID string) (*Task, error)
+	GetMyTasks(ctx context.Context, userID string) ([]Task, error)
 	GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]Task, error)
 	GetAppliedTasks(ctx context.Context, applicantID string) ([]Task, error)
 	GetLastTaskCreatedAt(ctx context.Context, userID string) (*time.Time, error)
@@ -27,6 +28,8 @@ type Repository interface {
 	CreateTaskApplication(ctx context.Context, app *TaskApplication) error
 	GetApplicationByID(ctx context.Context, applicationID string) (*TaskApplication, error)
 	GetApplicationsByTaskID(ctx context.Context, taskID string) ([]TaskApplication, error)
+	MarkApplicationAccepted(ctx context.Context, applicationID string) (bool, error)
+	MarkApplicationRejected(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationCodeVerified(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationConfirmed(ctx context.Context, applicationID string) (bool, error)
 	IncrementWorkersFilled(ctx context.Context, taskID string) error
@@ -144,6 +147,25 @@ func (r *repository) MarkTaskCompleted(ctx context.Context, taskID, completedBy 
 		return false, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	return rows > 0, nil
+}
+
+func (r *repository) GetMyTasks(ctx context.Context, userID string) ([]Task, error) {
+	query := `
+		SELECT id, title, description, reward, creator_id,
+		       ST_Y(location) AS latitude,
+		       ST_X(location) AS longitude,
+		       workers_needed, workers_filled, verification_code, status, auto_shutdown_at,
+		       is_active, completed_by, completed_at,
+		       h3_res5, h3_res4, h3_res2, created_at, updated_at
+		FROM tasks
+		WHERE creator_id = $1
+		ORDER BY created_at DESC
+	`
+	var tasks []Task
+	if err := sqlx.SelectContext(ctx, r.executor(), &tasks, query, userID); err != nil {
+		return nil, fmt.Errorf("failed to fetch my tasks: %w", err)
+	}
+	return tasks, nil
 }
 
 func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]Task, error) {
@@ -312,7 +334,47 @@ func (r *repository) GetApplicationsByTaskID(ctx context.Context, taskID string)
 	return apps, nil
 }
 
-// MarkApplicationCodeVerified transitions a pending application to code_verified.
+// MarkApplicationAccepted transitions a pending application to accepted.
+// Returns true if the row was actually updated.
+func (r *repository) MarkApplicationAccepted(ctx context.Context, applicationID string) (bool, error) {
+	query := `
+		UPDATE task_applications
+		SET status = 'accepted',
+		    updated_at = NOW()
+		WHERE id = $1 AND status = 'pending'
+	`
+	res, err := r.executor().ExecContext(ctx, query, applicationID)
+	if err != nil {
+		return false, fmt.Errorf("failed to mark application accepted: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return rows > 0, nil
+}
+
+// MarkApplicationRejected transitions a pending application to rejected.
+// Returns true if the row was actually updated.
+func (r *repository) MarkApplicationRejected(ctx context.Context, applicationID string) (bool, error) {
+	query := `
+		UPDATE task_applications
+		SET status = 'rejected',
+		    updated_at = NOW()
+		WHERE id = $1 AND status = 'pending'
+	`
+	res, err := r.executor().ExecContext(ctx, query, applicationID)
+	if err != nil {
+		return false, fmt.Errorf("failed to mark application rejected: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return rows > 0, nil
+}
+
+// MarkApplicationCodeVerified transitions an accepted application to code_verified.
 // Returns true if the row was actually updated.
 func (r *repository) MarkApplicationCodeVerified(ctx context.Context, applicationID string) (bool, error) {
 	query := `
@@ -320,7 +382,7 @@ func (r *repository) MarkApplicationCodeVerified(ctx context.Context, applicatio
 		SET status = 'code_verified',
 		    code_submitted_at = NOW(),
 		    updated_at = NOW()
-		WHERE id = $1 AND status = 'pending'
+		WHERE id = $1 AND status = 'accepted'
 	`
 	res, err := r.executor().ExecContext(ctx, query, applicationID)
 	if err != nil {
