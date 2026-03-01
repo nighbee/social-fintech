@@ -130,12 +130,16 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 
 	// Task CRUD
 	mapGroup.Post("/tasks", mapHandler.CreateTask)
-	mapGroup.Delete("/tasks/:task_id", mapHandler.CancelTask)
+	mapGroup.Get("/tasks/my", mapHandler.GetMyTasks) // Placed before /:task_id
 	mapGroup.Get("/tasks/applied", mapHandler.GetAppliedTasks)
 	mapGroup.Get("/tasks/nearby", mapHandler.GetNearbyTasks)
+	mapGroup.Get("/tasks/:task_id", mapHandler.GetTask) // Placed after specific routes
+	mapGroup.Delete("/tasks/:task_id", mapHandler.CancelTask)
 
-	// Task application flow: apply → verify-code → confirm
+	// Task application flow: apply → accept/reject → verify-code → confirm
 	mapGroup.Post("/tasks/:task_id/apply", mapHandler.ApplyToTask)
+	mapGroup.Post("/tasks/:task_id/applications/:application_id/accept", mapHandler.AcceptApplication)
+	mapGroup.Post("/tasks/:task_id/applications/:application_id/reject", mapHandler.RejectApplication)
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/verify-code", mapHandler.SubmitVerificationCode)
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/confirm", mapHandler.ConfirmCompletion)
 	mapGroup.Get("/tasks/:task_id/applications", mapHandler.GetTaskApplications)
