@@ -20,12 +20,17 @@ class MapViewModel with _$MapViewModel {
     MapRegionAssignmentEntity assignedRegion,
     @Default(<MapChampionEntity>[]) List<MapChampionEntity> champions,
     @Default(<MapTaskEntity>[]) List<MapTaskEntity> nearbyTasks,
+    @Default(<MapTaskEntity>[]) List<MapTaskEntity> appliedTasks,
+    @Default(false) bool hasAppliedTasksLoaded,
+    @Default(<MapTaskEntity>[]) List<MapTaskEntity> myTasks,
+    @Default(MapTaskEntity.empty()) MapTaskEntity selectedTask,
     @Default(<MapTaskApplicationEntity>[]) List<MapTaskApplicationEntity>
         taskApplications,
     @Default(MapApplyToTaskEntity.empty()) MapApplyToTaskEntity applyToTaskResult,
     @Default(MapConfirmCompletionEntity.empty())
     MapConfirmCompletionEntity confirmCompletionResult,
     @Default(MapVerifyCodeEntity.empty()) MapVerifyCodeEntity verifyCodeResult,
+    @Default('') String taskApplicationActionResult,
     @Default('') String cancelTaskResult,
   }) = _MapViewModel;
 }

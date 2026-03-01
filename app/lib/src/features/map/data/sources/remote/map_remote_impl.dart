@@ -229,6 +229,85 @@ class MapRemoteImpl implements IMapRemote {
   }
 
   @override
+  Future<Either<DomainException, List<MapTaskDto>>> getAppliedTasks() async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.mapTasksApplied,
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(
+            UnknownException(message: 'Invalid applied tasks response'),
+          );
+        }
+        final dto = MapNearbyTasksResponseDto.fromJson(
+          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+        );
+        return Right(dto.tasks);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<MapTaskDto>>> getMyTasks() async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.mapTasksMy,
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(
+            UnknownException(message: 'Invalid my tasks response'),
+          );
+        }
+        final dto = MapNearbyTasksResponseDto.fromJson(
+          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+        );
+        return Right(dto.tasks);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, MapTaskDto>> getTaskById(
+    MapTaskIdRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.mapTaskById(request.taskId),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(UnknownException(message: 'Invalid task details response'));
+        }
+
+        final dto = MapTaskDto.fromJson(
+          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+        );
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
   Future<Either<DomainException, List<MapTaskApplicationDto>>>
       getTaskApplications(MapTaskIdRequest request) async {
     try {
@@ -253,6 +332,93 @@ class MapRemoteImpl implements IMapRemote {
             .toList();
 
         return Right(applications);
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, String>> acceptTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.mapAcceptTaskApplication(
+          request.taskId,
+          request.applicationId,
+        ),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(
+            UnknownException(message: 'Invalid accept application response'),
+          );
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        return Right((json['status'] ?? '').toString());
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, String>> rejectTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.mapRejectTaskApplication(
+          request.taskId,
+          request.applicationId,
+        ),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(
+            UnknownException(message: 'Invalid reject application response'),
+          );
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        return Right((json['status'] ?? '').toString());
+      });
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, String>> withdrawTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) async {
+    try {
+      final response = await _restClient.delete(
+        EndPoints.mapWithdrawTaskApplication(
+          request.taskId,
+          request.applicationId,
+        ),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dynamic raw = result.data;
+        if (raw is! Map) {
+          return Left(
+            UnknownException(message: 'Invalid withdraw application response'),
+          );
+        }
+        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        return Right((json['status'] ?? '').toString());
       });
     } catch (e) {
       return Left(

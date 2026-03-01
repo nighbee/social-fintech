@@ -36,8 +36,28 @@ abstract interface class IMapRepository {
     MapNearbyTasksRequest request,
   );
 
+  Future<Either<DomainException, List<MapTaskEntity>>> getAppliedTasks();
+
+  Future<Either<DomainException, List<MapTaskEntity>>> getMyTasks();
+
+  Future<Either<DomainException, MapTaskEntity>> getTaskById(
+    MapTaskIdRequest request,
+  );
+
   Future<Either<DomainException, List<MapTaskApplicationEntity>>>
       getTaskApplications(MapTaskIdRequest request);
+
+  Future<Either<DomainException, String>> acceptTaskApplication(
+    MapTaskApplicationIdRequest request,
+  );
+
+  Future<Either<DomainException, String>> rejectTaskApplication(
+    MapTaskApplicationIdRequest request,
+  );
+
+  Future<Either<DomainException, String>> withdrawTaskApplication(
+    MapTaskApplicationIdRequest request,
+  );
 
   Future<Either<DomainException, MapConfirmCompletionEntity>>
       confirmTaskApplication(MapTaskApplicationIdRequest request);

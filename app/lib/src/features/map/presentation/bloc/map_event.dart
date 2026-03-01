@@ -12,8 +12,23 @@ class MapEvent with _$MapEvent {
   const factory MapEvent.applyToTask(MapTaskIdRequest request) = _ApplyToTask;
   const factory MapEvent.getNearbyTasks(MapNearbyTasksRequest request) =
       _GetNearbyTasks;
+  const factory MapEvent.getAppliedTasks() = _GetAppliedTasks;
+  const factory MapEvent.getMyTasks() = _GetMyTasks;
+  const factory MapEvent.getTaskById(MapTaskIdRequest request) = _GetTaskById;
+  const factory MapEvent.hydrateExecutorApplication(
+    MapTaskApplicationIdRequest request,
+  ) = _HydrateExecutorApplication;
   const factory MapEvent.getTaskApplications(MapTaskIdRequest request) =
       _GetTaskApplications;
+  const factory MapEvent.acceptTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) = _AcceptTaskApplication;
+  const factory MapEvent.rejectTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) = _RejectTaskApplication;
+  const factory MapEvent.withdrawTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) = _WithdrawTaskApplication;
   const factory MapEvent.confirmTaskApplication(
     MapTaskApplicationIdRequest request,
   ) = _ConfirmTaskApplication;

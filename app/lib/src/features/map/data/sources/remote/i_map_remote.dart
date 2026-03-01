@@ -42,8 +42,28 @@ abstract interface class IMapRemote {
     MapNearbyTasksRequest request,
   );
 
+  Future<Either<DomainException, List<MapTaskDto>>> getAppliedTasks();
+
+  Future<Either<DomainException, List<MapTaskDto>>> getMyTasks();
+
+  Future<Either<DomainException, MapTaskDto>> getTaskById(
+    MapTaskIdRequest request,
+  );
+
   Future<Either<DomainException, List<MapTaskApplicationDto>>>
       getTaskApplications(MapTaskIdRequest request);
+
+  Future<Either<DomainException, String>> acceptTaskApplication(
+    MapTaskApplicationIdRequest request,
+  );
+
+  Future<Either<DomainException, String>> rejectTaskApplication(
+    MapTaskApplicationIdRequest request,
+  );
+
+  Future<Either<DomainException, String>> withdrawTaskApplication(
+    MapTaskApplicationIdRequest request,
+  );
 
   Future<Either<DomainException, MapConfirmCompletionResponseDto>>
       confirmTaskApplication(MapTaskApplicationIdRequest request);

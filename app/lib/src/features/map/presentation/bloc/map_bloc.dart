@@ -43,8 +43,21 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       cancelTask: (_) => _cancelTask(event as _CancelTask, emit),
       applyToTask: (_) => _applyToTask(event as _ApplyToTask, emit),
       getNearbyTasks: (_) => _getNearbyTasks(event as _GetNearbyTasks, emit),
+      getAppliedTasks: () => _getAppliedTasks(emit),
+      getMyTasks: () => _getMyTasks(emit),
+      getTaskById: (_) => _getTaskById(event as _GetTaskById, emit),
+      hydrateExecutorApplication: (_) => _hydrateExecutorApplication(
+        event as _HydrateExecutorApplication,
+        emit,
+      ),
       getTaskApplications: (_) =>
           _getTaskApplications(event as _GetTaskApplications, emit),
+      acceptTaskApplication: (_) =>
+          _acceptTaskApplication(event as _AcceptTaskApplication, emit),
+      rejectTaskApplication: (_) =>
+          _rejectTaskApplication(event as _RejectTaskApplication, emit),
+      withdrawTaskApplication: (_) =>
+          _withdrawTaskApplication(event as _WithdrawTaskApplication, emit),
       confirmTaskApplication: (_) =>
           _confirmTaskApplication(event as _ConfirmTaskApplication, emit),
       verifyTaskApplicationCode: (_, __) => _verifyTaskApplicationCode(
@@ -63,6 +76,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       applyToTaskResult: const MapApplyToTaskEntity.empty(),
       confirmCompletionResult: const MapConfirmCompletionEntity.empty(),
       verifyCodeResult: const MapVerifyCodeEntity.empty(),
+      taskApplicationActionResult: '',
+      hasAppliedTasksLoaded: false,
     );
     emit(MapState.loaded(viewModel: _viewModel));
   }
@@ -131,6 +146,10 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         final myTask = createdTask;
         _viewModel = _viewModel.copyWith(
           isCreatingTask: false,
+          myTasks: [
+            myTask,
+            ..._viewModel.myTasks.where((task) => task.id != myTask.id),
+          ],
           nearbyTasks: [
             myTask,
             ..._viewModel.nearbyTasks.where((task) => task.id != myTask.id),
@@ -178,10 +197,14 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         final filteredTasks = _viewModel.nearbyTasks
             .where((task) => task.id != event.request.taskId)
             .toList();
+        final filteredMyTasks = _viewModel.myTasks
+            .where((task) => task.id != event.request.taskId)
+            .toList();
         _viewModel = _viewModel.copyWith(
           isBusy: false,
           cancelTaskResult: taskId,
           nearbyTasks: filteredTasks,
+          myTasks: filteredMyTasks,
           taskApplications: const <MapTaskApplicationEntity>[],
         );
         emit(MapState.loaded(viewModel: _viewModel));
@@ -200,6 +223,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       (entity) {
         _viewModel = _viewModel.copyWith(
           isBusy: false,
+          taskApplicationActionResult: '',
           applyToTaskResult: entity,
         );
         emit(MapState.loaded(viewModel: _viewModel));
@@ -216,16 +240,67 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         emit(MapState.loadingError(error.message));
       },
       (items) {
-        final myTasks =
-            _viewModel.nearbyTasks.where((task) => task.status.startsWith('mine'));
         _viewModel = _viewModel.copyWith(
           isBusy: false,
-          nearbyTasks: [
-            ...myTasks,
-            ...items.where(
-              (task) => !myTasks.any((myTask) => myTask.id == task.id),
-            ),
-          ],
+          nearbyTasks: items,
+        );
+        emit(MapState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _getAppliedTasks(Emitter emit) async {
+    _setBusy(emit);
+    final result = await _repository.getAppliedTasks();
+    result.fold(
+      (error) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          hasAppliedTasksLoaded: false,
+        );
+        emit(MapState.loadingError(error.message));
+      },
+      (items) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          appliedTasks: items,
+          hasAppliedTasksLoaded: true,
+        );
+        emit(MapState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _getMyTasks(Emitter emit) async {
+    _setBusy(emit);
+    final result = await _repository.getMyTasks();
+    result.fold(
+      (error) {
+        _viewModel = _viewModel.copyWith(isBusy: false);
+        emit(MapState.loadingError(error.message));
+      },
+      (items) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          myTasks: items,
+        );
+        emit(MapState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _getTaskById(_GetTaskById event, Emitter emit) async {
+    _setBusy(emit);
+    final result = await _repository.getTaskById(event.request);
+    result.fold(
+      (error) {
+        _viewModel = _viewModel.copyWith(isBusy: false);
+        emit(MapState.loadingError(error.message));
+      },
+      (item) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          selectedTask: item,
         );
         emit(MapState.loaded(viewModel: _viewModel));
       },
@@ -253,6 +328,86 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
     );
   }
 
+  Future<void> _hydrateExecutorApplication(
+    _HydrateExecutorApplication event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(
+      applyToTaskResult: MapApplyToTaskEntity(
+        applicationId: event.request.applicationId,
+        taskId: event.request.taskId,
+        status: 'pending',
+      ),
+    );
+    emit(MapState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _acceptTaskApplication(
+    _AcceptTaskApplication event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(taskApplicationActionResult: '');
+    _setBusy(emit);
+    final result = await _repository.acceptTaskApplication(event.request);
+    result.fold(
+      (error) {
+        _viewModel = _viewModel.copyWith(isBusy: false);
+        emit(MapState.loadingError(error.message));
+      },
+      (status) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          taskApplicationActionResult: status,
+        );
+        emit(MapState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _rejectTaskApplication(
+    _RejectTaskApplication event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(taskApplicationActionResult: '');
+    _setBusy(emit);
+    final result = await _repository.rejectTaskApplication(event.request);
+    result.fold(
+      (error) {
+        _viewModel = _viewModel.copyWith(isBusy: false);
+        emit(MapState.loadingError(error.message));
+      },
+      (status) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          taskApplicationActionResult: status,
+        );
+        emit(MapState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _withdrawTaskApplication(
+    _WithdrawTaskApplication event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(taskApplicationActionResult: '');
+    _setBusy(emit);
+    final result = await _repository.withdrawTaskApplication(event.request);
+    result.fold(
+      (error) {
+        _viewModel = _viewModel.copyWith(isBusy: false);
+        emit(MapState.loadingError(error.message));
+      },
+      (status) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          taskApplicationActionResult: status,
+        );
+        emit(MapState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
   Future<void> _confirmTaskApplication(
     _ConfirmTaskApplication event,
     Emitter emit,
@@ -269,10 +424,14 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         final filteredTasks = _viewModel.nearbyTasks
             .where((task) => task.id != taskIdToRemove)
             .toList();
+        final filteredMyTasks = _viewModel.myTasks
+            .where((task) => task.id != taskIdToRemove)
+            .toList();
         _viewModel = _viewModel.copyWith(
           isBusy: false,
           confirmCompletionResult: entity,
           nearbyTasks: filteredTasks,
+          myTasks: filteredMyTasks,
           taskApplications: const <MapTaskApplicationEntity>[],
         );
         emit(MapState.loaded(viewModel: _viewModel));

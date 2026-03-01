@@ -3,8 +3,6 @@ import 'dart:ui';
 
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
-import 'package:app/src/core/api/client/dio/rest_client.dart';
-import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/storage/app_storage/storage_service.dart';
 import 'package:app/src/core/service/storage/key_store.dart';
@@ -67,10 +65,10 @@ class _MapPageState extends State<MapPage> {
   String? _handledApplyApplicationId;
   String? _handledConfirmResultTaskId;
   DateTime? _lastExecutorCompletionCheckAt;
-  bool _isCheckingExecutorCompletion = false;
   bool _executorCompletionShown = false;
   String _executorTaskStatus = '';
   String _executorCreatorName = '';
+  String? _handledTaskApplicationActionResult;
   String? _handledRejectedApplicationId;
   bool _isRejectedDialogOpen = false;
   final Set<String> _locallyCanceledExecutorApplicationIds = <String>{};
@@ -85,6 +83,9 @@ class _MapPageState extends State<MapPage> {
     _mapBloc = getIt<MapBloc>();
     _mapBloc.add(const MapEvent.loadMap());
     unawaited(_restoreSavedMapCenter());
+    unawaited(_restoreActiveExecutorApplication());
+    _mapBloc.add(const MapEvent.getMyTasks());
+    _mapBloc.add(const MapEvent.getAppliedTasks());
 
     if (_mapboxAccessToken.isNotEmpty) {
       MapboxOptions.setAccessToken(_mapboxAccessToken);
@@ -151,9 +152,15 @@ class _MapPageState extends State<MapPage> {
                       _handledApplyApplicationId) {
                 _handledApplyApplicationId =
                     viewModel.applyToTaskResult.applicationId;
-                _executorTaskStatus = '';
+                _executorTaskStatus = viewModel.applyToTaskResult.status;
                 _executorCreatorName = '';
                 _handledRejectedApplicationId = null;
+                unawaited(
+                  _persistActiveExecutorApplication(
+                    viewModel.applyToTaskResult.taskId,
+                    viewModel.applyToTaskResult.applicationId,
+                  ),
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text(
@@ -161,6 +168,15 @@ class _MapPageState extends State<MapPage> {
                     backgroundColor: Colors.green,
                   ),
                 );
+              }
+
+              if (viewModel.taskApplicationActionResult.isEmpty) {
+                _handledTaskApplicationActionResult = null;
+              } else if (viewModel.taskApplicationActionResult !=
+                  _handledTaskApplicationActionResult) {
+                _handledTaskApplicationActionResult =
+                    viewModel.taskApplicationActionResult;
+                _handleTaskApplicationActionResult(context, viewModel);
               }
             },
             orElse: () {},
@@ -295,6 +311,46 @@ class _MapPageState extends State<MapPage> {
     await prefsInstance.set<double>(KeyStore.mapLastCenterLon, lon);
   }
 
+  Future<void> _persistActiveExecutorApplication(
+    String taskId,
+    String applicationId,
+  ) async {
+    await prefsInstance.initialize();
+    await prefsInstance.set<String>(KeyStore.mapActiveExecutorTaskId, taskId);
+    await prefsInstance.set<String>(
+      KeyStore.mapActiveExecutorApplicationId,
+      applicationId,
+    );
+  }
+
+  Future<void> _clearActiveExecutorApplication() async {
+    await prefsInstance.initialize();
+    await prefsInstance.remove(KeyStore.mapActiveExecutorTaskId);
+    await prefsInstance.remove(KeyStore.mapActiveExecutorApplicationId);
+  }
+
+  Future<void> _restoreActiveExecutorApplication() async {
+    await prefsInstance.initialize();
+    final taskId = prefsInstance.get<String>(KeyStore.mapActiveExecutorTaskId);
+    final applicationId =
+        prefsInstance.get<String>(KeyStore.mapActiveExecutorApplicationId);
+    if (taskId == null ||
+        taskId.isEmpty ||
+        applicationId == null ||
+        applicationId.isEmpty) {
+      return;
+    }
+    _mapBloc.add(
+      MapEvent.hydrateExecutorApplication(
+        MapTaskApplicationIdRequest(
+          taskId: taskId,
+          applicationId: applicationId,
+        ),
+      ),
+    );
+    _executorTaskStatus = 'pending';
+  }
+
   void _onCameraChanged(CameraChangedEventData eventData) {
     _currentLatitude = eventData.cameraState.center.coordinates.lat.toDouble();
     _currentLongitude = eventData.cameraState.center.coordinates.lng.toDouble();
@@ -332,8 +388,11 @@ class _MapPageState extends State<MapPage> {
 
   void _tryRefreshTaskApplications(MapViewModel viewModel) {
     MapTaskEntity? myTask;
-    for (final task in viewModel.nearbyTasks) {
-      if (task.status.startsWith('mine')) {
+    for (final task in viewModel.myTasks) {
+      final status = task.status.trim().toLowerCase();
+      if (status == 'open' ||
+          status == 'in_progress' ||
+          status.startsWith('mine')) {
         myTask = task;
         break;
       }
@@ -637,6 +696,14 @@ class _MapPageState extends State<MapPage> {
       _selectedApplicationId = application.id;
       _locallyRejectedApplicationIds.remove(application.id);
     });
+    _mapBloc.add(
+      MapEvent.acceptTaskApplication(
+        MapTaskApplicationIdRequest(
+          taskId: application.taskId,
+          applicationId: application.id,
+        ),
+      ),
+    );
   }
 
   void _handleRejectApplication(MapTaskApplicationEntity application) {
@@ -646,11 +713,20 @@ class _MapPageState extends State<MapPage> {
         _selectedApplicationId = null;
       }
     });
+    _mapBloc.add(
+      MapEvent.rejectTaskApplication(
+        MapTaskApplicationIdRequest(
+          taskId: application.taskId,
+          applicationId: application.id,
+        ),
+      ),
+    );
   }
 
   void _handleExecutorCancel(BuildContext context) {
+    final taskId = _mapBloc.viewModel.applyToTaskResult.taskId;
     final applicationId = _mapBloc.viewModel.applyToTaskResult.applicationId;
-    if (applicationId.isEmpty) {
+    if (taskId.isEmpty || applicationId.isEmpty) {
       return;
     }
 
@@ -700,14 +776,14 @@ class _MapPageState extends State<MapPage> {
                             text: 'Confirm',
                             onTap: () {
                               Navigator.of(dialogContext).pop();
-                              setState(() {
-                                _executorTaskStatus = 'rejected';
-                                _executorCreatorName = '';
-                                _handledRejectedApplicationId = applicationId;
-                                _locallyCanceledExecutorApplicationIds
-                                    .add(applicationId);
-                              });
-                              _showExecutorCanceledDialog(context);
+                              _mapBloc.add(
+                                MapEvent.withdrawTaskApplication(
+                                  MapTaskApplicationIdRequest(
+                                    taskId: taskId,
+                                    applicationId: applicationId,
+                                  ),
+                                ),
+                              );
                             },
                             borderRadius: 6,
                             backgroundColor: const Color(0xFFE5E5E5),
@@ -916,11 +992,11 @@ class _MapPageState extends State<MapPage> {
     });
   }
 
-  Future<void> _tryCheckExecutorCompletion(
+  void _tryCheckExecutorCompletion(
     BuildContext context,
     MapViewModel viewModel,
-  ) async {
-    if (_executorCompletionShown || _isCheckingExecutorCompletion) {
+  ) {
+    if (_executorCompletionShown) {
       return;
     }
 
@@ -950,95 +1026,99 @@ class _MapPageState extends State<MapPage> {
     }
     _lastExecutorCompletionCheckAt = now;
 
-    _isCheckingExecutorCompletion = true;
-    try {
-      final restClient = getIt<RestClient>(instanceName: 'DioClient');
-      final result = await restClient.get(EndPoints.mapTasksApplied);
+    _mapBloc.add(const MapEvent.getAppliedTasks());
 
-      result.fold(
-        (_) {},
-        (response) {
-          final raw = response.data;
-          if (raw is! Map) {
-            return;
-          }
+    String? matchedTaskStatus;
+    for (final task in viewModel.appliedTasks) {
+      if (task.id == taskId) {
+        matchedTaskStatus = task.status;
+        break;
+      }
+    }
 
-          final tasksRaw = raw['tasks'];
-          if (tasksRaw is! List) {
-            return;
-          }
+    if (matchedTaskStatus == 'completed') {
+      unawaited(_clearActiveExecutorApplication());
+      if (mounted) {
+        setState(() {
+          _executorCompletionShown = true;
+          _executorTaskStatus = matchedTaskStatus!;
+          _executorCreatorName = '';
+        });
+      } else {
+        _executorCompletionShown = true;
+        _executorTaskStatus = matchedTaskStatus!;
+        _executorCreatorName = '';
+      }
+      if (context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const _ExecutorCompletedPage(),
+          ),
+        );
+      }
+      return;
+    }
 
-          String? matchedTaskStatus;
-          String? matchedCreatorName;
-          for (final item in tasksRaw) {
-            if (item is! Map) {
-              continue;
-            }
-            final json =
-                Map<String, dynamic>.from(item as Map<dynamic, dynamic>);
-            final id = (json['id'] ?? '').toString();
-            final status = (json['status'] ?? '').toString();
-            if (id == taskId) {
-              matchedTaskStatus = status;
-              final creatorNameRaw = (json['creator_name'] ??
-                      json['creatorName'] ??
-                      json['creator'] ??
-                      '')
-                  .toString()
-                  .trim();
-              matchedCreatorName = creatorNameRaw;
-            }
-            if (id == taskId && status == 'completed') {
-              if (mounted) {
-                setState(() {
-                  _executorCompletionShown = true;
-                  _executorTaskStatus = status;
-                  if ((matchedCreatorName ?? '').isNotEmpty) {
-                    _executorCreatorName = matchedCreatorName!;
-                  }
-                });
-              } else {
-                _executorCompletionShown = true;
-                _executorTaskStatus = status;
-                if ((matchedCreatorName ?? '').isNotEmpty) {
-                  _executorCreatorName = matchedCreatorName!;
-                }
-              }
-              if (context.mounted) {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const _ExecutorCompletedPage(),
-                  ),
-                );
-              }
-              break;
-            }
-          }
+    if (matchedTaskStatus != null &&
+        matchedTaskStatus != _executorTaskStatus &&
+        mounted &&
+        !_executorCompletionShown) {
+      setState(() {
+        _executorTaskStatus = matchedTaskStatus!;
+      });
+      return;
+    }
 
-          if (matchedTaskStatus != null &&
-              matchedTaskStatus != _executorTaskStatus &&
-              mounted &&
-              !_executorCompletionShown) {
-            setState(() {
-              _executorTaskStatus = matchedTaskStatus!;
-              if ((matchedCreatorName ?? '').isNotEmpty) {
-                _executorCreatorName = matchedCreatorName!;
-              }
-            });
-          }
-          if (matchedTaskStatus == null &&
-              mounted &&
-              !_executorCompletionShown) {
-            setState(() {
-              _executorTaskStatus = 'rejected';
-              _executorCreatorName = '';
+    if (matchedTaskStatus == null &&
+        viewModel.hasAppliedTasksLoaded &&
+        mounted &&
+        !_executorCompletionShown) {
+      unawaited(_clearActiveExecutorApplication());
+      setState(() {
+        _executorTaskStatus = 'rejected';
+        _executorCreatorName = '';
+      });
+    }
+  }
 
-            });
-          }
-        },
-      );
-    } finally {
-      _isCheckingExecutorCompletion = false;
+  void _handleTaskApplicationActionResult(
+    BuildContext context,
+    MapViewModel viewModel,
+  ) {
+    final action = viewModel.taskApplicationActionResult;
+    if (action == 'withdrawn') {
+      final applicationId = viewModel.applyToTaskResult.applicationId;
+      unawaited(_clearActiveExecutorApplication());
+      setState(() {
+        _executorTaskStatus = 'rejected';
+        _executorCreatorName = '';
+        _handledRejectedApplicationId = applicationId;
+        if (applicationId.isNotEmpty) {
+          _locallyCanceledExecutorApplicationIds.add(applicationId);
+        }
+      });
+      _showExecutorCanceledDialog(context);
+      return;
+    }
+
+    if (action == 'accepted' || action == 'rejected') {
+      final taskId = _lastApplicationsTaskId;
+      if (taskId != null && taskId.isNotEmpty) {
+        _mapBloc.add(
+          MapEvent.getTaskApplications(
+            MapTaskIdRequest(taskId: taskId),
+          ),
+        );
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Application $action'),
+            backgroundColor:
+                action == 'accepted' ? Colors.green : Colors.orange,
+          ),
+        );
+      }
     }
   }
 }

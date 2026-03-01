@@ -13,4 +13,7 @@ class KeyStore {
   //* Map
   static const String mapLastCenterLat = 'MAP_LAST_CENTER_LAT';
   static const String mapLastCenterLon = 'MAP_LAST_CENTER_LON';
+  static const String mapActiveExecutorTaskId = 'MAP_ACTIVE_EXECUTOR_TASK_ID';
+  static const String mapActiveExecutorApplicationId =
+      'MAP_ACTIVE_EXECUTOR_APPLICATION_ID';
 }

@@ -114,12 +114,76 @@ class MapRepositoryImpl implements IMapRepository {
   }
 
   @override
+  Future<Either<DomainException, List<MapTaskEntity>>> getAppliedTasks() async {
+    final result = await _remote.getAppliedTasks();
+
+    return result.fold(
+      (error) => Left(error),
+      (dtos) => Right(dtos.map((dto) => dto.toEntity()).toList()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, List<MapTaskEntity>>> getMyTasks() async {
+    final result = await _remote.getMyTasks();
+
+    return result.fold(
+      (error) => Left(error),
+      (dtos) => Right(dtos.map((dto) => dto.toEntity()).toList()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, MapTaskEntity>> getTaskById(
+    MapTaskIdRequest request,
+  ) async {
+    final result = await _remote.getTaskById(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
   Future<Either<DomainException, List<MapTaskApplicationEntity>>>
       getTaskApplications(MapTaskIdRequest request) async {
     final result = await _remote.getTaskApplications(request);
     return result.fold(
       (error) => Left(error),
       (dtos) => Right(dtos.map((dto) => dto.toEntity()).toList()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, String>> acceptTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) async {
+    final result = await _remote.acceptTaskApplication(request);
+    return result.fold(
+      (error) => Left(error),
+      (status) => Right(status),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, String>> rejectTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) async {
+    final result = await _remote.rejectTaskApplication(request);
+    return result.fold(
+      (error) => Left(error),
+      (status) => Right(status),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, String>> withdrawTaskApplication(
+    MapTaskApplicationIdRequest request,
+  ) async {
+    final result = await _remote.withdrawTaskApplication(request);
+    return result.fold(
+      (error) => Left(error),
+      (status) => Right(status),
     );
   }
 

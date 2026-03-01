@@ -51,29 +51,33 @@ class _MapContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final mapBloc = getIt<MapBloc>();
     MapTaskEntity? myRequest;
-    for (final task in viewModel.nearbyTasks) {
-      if (task.status.startsWith('mine')) {
+    for (final task in viewModel.myTasks) {
+      final status = task.status.trim().toLowerCase();
+      if (status == 'open' ||
+          status == 'in_progress' ||
+          status.startsWith('mine')) {
         myRequest = task;
         break;
       }
     }
 
-    final nearbyTasks = viewModel.nearbyTasks
-        .where((task) => !task.status.startsWith('mine'))
-        .toList(growable: false);
+    final nearbyTasks = viewModel.nearbyTasks.toList(growable: false);
     final visibleApplications = viewModel.taskApplications
-        .where((app) => !locallyRejectedApplicationIds.contains(app.id))
+        .where(
+          (app) =>
+              app.status.trim().toLowerCase() != 'rejected' &&
+              !locallyRejectedApplicationIds.contains(app.id),
+        )
         .toList(growable: false);
     final applyResult = viewModel.applyToTaskResult;
     final verifyResult = viewModel.verifyCodeResult;
     final hasAppliedTask =
         applyResult.taskId.isNotEmpty && applyResult.applicationId.isNotEmpty;
-    final isLocallyCanceledByExecutor =
-        locallyCanceledExecutorApplicationIds
-            .contains(applyResult.applicationId);
+    final isLocallyCanceledByExecutor = locallyCanceledExecutorApplicationIds
+        .contains(applyResult.applicationId);
     MapTaskEntity? appliedTask;
     if (hasAppliedTask) {
-      for (final task in nearbyTasks) {
+      for (final task in viewModel.appliedTasks) {
         if (task.id == applyResult.taskId) {
           appliedTask = task;
           break;
@@ -218,15 +222,17 @@ class _MapContent extends StatelessWidget {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                filter:
+                                    ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                                 child: Container(
                                   padding:
                                       const EdgeInsets.fromLTRB(14, 16, 14, 12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                                    color: const Color(0xFF6D6D6D)
+                                        .withOpacity(0.35),
                                     borderRadius: BorderRadius.circular(12),
-                                    border:
-                                        Border.all(color: const Color(0xFF656565)),
+                                    border: Border.all(
+                                        color: const Color(0xFF656565)),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.white.withOpacity(0.15),
@@ -256,10 +262,12 @@ class _MapContent extends StatelessWidget {
                                             child: CustomButton(
                                               text: 'Confirm',
                                               onTap: () {
-                                                Navigator.of(dialogContext).pop();
+                                                Navigator.of(dialogContext)
+                                                    .pop();
                                                 mapBloc.add(
                                                   MapEvent.cancelTask(
-                                                    MapTaskIdRequest(taskId: myTask.id),
+                                                    MapTaskIdRequest(
+                                                        taskId: myTask.id),
                                                   ),
                                                 );
                                               },
@@ -271,8 +279,9 @@ class _MapContent extends StatelessWidget {
                                                 color: Colors.black87,
                                                 fontWeight: FontWeight.w600,
                                               ),
-                                              padding: const EdgeInsets.symmetric(
-                                                  vertical: 8),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 8),
                                             ),
                                           ),
                                           const SizedBox(width: 10),
@@ -280,15 +289,19 @@ class _MapContent extends StatelessWidget {
                                             child: CustomButton(
                                               text: 'Cancel',
                                               onTap: () =>
-                                                  Navigator.of(dialogContext).pop(),
+                                                  Navigator.of(dialogContext)
+                                                      .pop(),
                                               borderRadius: 6,
-                                              backgroundColor: Colors.transparent,
-                                              border:
-                                                  Border.all(color: Colors.white38),
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              border: Border.all(
+                                                  color: Colors.white38),
                                               textStyle: TextStyles.bodyMain
-                                                  .copyWith(color: Colors.white70),
-                                              padding: const EdgeInsets.symmetric(
-                                                  vertical: 8),
+                                                  .copyWith(
+                                                      color: Colors.white70),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 8),
                                             ),
                                           ),
                                         ],
@@ -388,8 +401,6 @@ class _MapContent extends StatelessWidget {
                             ? Colors.white54
                             : Colors.white,
                       ),
-
-
                       icon:
                           const Icon(Icons.add, color: Colors.white, size: 18),
                       padding: const EdgeInsets.symmetric(vertical: 12),
