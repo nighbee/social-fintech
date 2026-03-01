@@ -1485,6 +1485,51 @@ fi
 echo ""
 
 # ======================================================================
+# TEST 41 – Executor Withdraws Application
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 41: Executor Withdraws Application (200) ===${NC}"
+
+# 1. User3 applies to the first main task from early tests so we have a clean application
+# The main task was $TASK_ID and since it's COMPLETED, we shouldn't apply to it. 
+# Let's create a quick new task for User1
+# Reset cooldown for User1
+docker exec brightbund-db psql -U user -d brightbund \
+    -c "UPDATE tasks SET created_at = created_at - INTERVAL '8 days' WHERE creator_id = '$USER1_ID';" > /dev/null 2>&1
+
+TASK_BODY="{\"title\":\"Withdraw Test\",\"description\":\"Test withdrawal\",\"reward\":1,\"workers_needed\":2,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" -H "Authorization: Bearer $USER1_TOKEN" -H "Content-Type: application/json" -d "$TASK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+WITHDRAW_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+
+echo -e "${CYAN}  Created Withdraw Task : ${WITHDRAW_TASK_ID}${NC}"
+
+# 2. User3 applies
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${TASK_URL}/${WITHDRAW_TASK_ID}/apply" -H "Authorization: Bearer $USER3_TOKEN" -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+WITHDRAW_APP_ID=$(get_json_string "$HTTP_BODY" "application_id")
+
+echo -e "${CYAN}  User3 App ID : ${WITHDRAW_APP_ID}${NC}"
+
+# 3. User3 withdraws their own application
+WITHDRAW_URL="${TASK_URL}/${WITHDRAW_TASK_ID}/applications/${WITHDRAW_APP_ID}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE "$WITHDRAW_URL" -H "Authorization: Bearer $USER3_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "Withdraw Application" "DELETE" "$WITHDRAW_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER3"
+
+if [[ "$HTTP_CODE" -eq 200 ]]; then
+    echo -e "${GREEN}✓ PASS: Application successfully withdrawn (HTTP 200)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 200, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
+# ======================================================================
 # FINAL SUMMARY
 # ======================================================================
 

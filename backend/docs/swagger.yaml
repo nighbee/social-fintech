@@ -2701,6 +2701,65 @@ paths:
       summary: List applicants for a task (creator only)
       tags:
       - Tasks
+  /tasks/{task_id}/applications/{application_id}:
+    delete:
+      description: Executor withdraws/cancels their pending or accepted application,
+        removing it from the task.
+      parameters:
+      - description: Task ID
+        in: path
+        name: task_id
+        required: true
+        type: string
+      - description: Application ID
+        in: path
+        name: application_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Success
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Cannot withdraw
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Not the applicant
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Task or application not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Withdraw an application (helper only)
+      tags:
+      - Tasks
   /tasks/{task_id}/applications/{application_id}/accept:
     post:
       description: Marks an application as accepted, allowing the helper to proceed.
