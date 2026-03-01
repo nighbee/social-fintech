@@ -45,9 +45,12 @@ import '../../../features/profile/data/sources/remote/profile_remote_impl.dart'
     as _i236;
 import '../../../features/profile/domain/repositories/i_profile_repository.dart'
     as _i1037;
+import '../../../features/ranking/presentation/bloc/ranking_bloc.dart' as _i815;
 import '../../api/client/dio/dio_client.dart' as _i1019;
 import '../../api/client/dio/rest_client.dart' as _i877;
 import '../../config/environment_manager.dart' as _i931;
+import '../location/i_location_service.dart' as _i374;
+import '../location/location_service_impl.dart' as _i131;
 import '../storage/app_storage/storage_service.dart' as _i6;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -61,6 +64,7 @@ extension GetItInjectableX on _i174.GetIt {
       environment,
       environmentFilter,
     );
+    gh.factory<_i815.RankingBloc>(() => _i815.RankingBloc());
     gh.lazySingleton<_i6.IAppStorage>(() => _i6.AppStorageImpl());
     gh.lazySingleton<_i877.RestClient>(
       () => _i1019.DioClient(),
@@ -69,6 +73,10 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i964.IAuthLocal>(
       () => _i134.AuthLocalImpl(),
       instanceName: 'AuthLocalImpl',
+    );
+    gh.lazySingleton<_i374.ILocationService>(
+      () => _i131.LocationServiceImpl(),
+      instanceName: 'LocationServiceImpl',
     );
     gh.lazySingleton<_i951.IMapRemote>(
       () =>

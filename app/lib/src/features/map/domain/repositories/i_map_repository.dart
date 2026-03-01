@@ -22,7 +22,7 @@ abstract interface class IMapRepository {
   Future<Either<DomainException, List<MapChampionEntity>>> getChampions(
     MapChampionsRequest request,
   );
-  Future<Either<DomainException, String>> createTask(
+  Future<Either<DomainException, MapTaskEntity>> createTask(
     MapCreateTaskRequest request,
   );
 

@@ -59,6 +59,10 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       centerLatitude: 50.4501,
       centerLongitude: 30.5234,
       zoom: 11.8,
+      cancelTaskResult: '',
+      applyToTaskResult: const MapApplyToTaskEntity.empty(),
+      confirmCompletionResult: const MapConfirmCompletionEntity.empty(),
+      verifyCodeResult: const MapVerifyCodeEntity.empty(),
     );
     emit(MapState.loaded(viewModel: _viewModel));
   }
@@ -115,19 +119,49 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
     emit(MapState.loaded(viewModel: _viewModel));
 
     final result = await _repository.createTask(event.request);
-    result.fold(
-      (error) {
+    await result.fold(
+      (error) async {
         final message = _mapCreateErrorMessage(error.message);
         _viewModel = _viewModel.copyWith(
           isCreatingTask: false,
         );
         emit(MapState.loadingError(message));
       },
-      (_) {
+      (createdTask) async {
+        final myTask = createdTask;
         _viewModel = _viewModel.copyWith(
           isCreatingTask: false,
+          nearbyTasks: [
+            myTask,
+            ..._viewModel.nearbyTasks.where((task) => task.id != myTask.id),
+          ],
         );
         emit(MapState.loaded(viewModel: _viewModel));
+
+        // Refresh nearby tasks after creation using current map center
+        final nearbyResult = await _repository.getNearbyTasks(
+          MapNearbyTasksRequest(
+            lat: event.request.latitude,
+            lon: event.request.longitude,
+            radiusM: 2000,
+            limit: 50,
+          ),
+        );
+
+        nearbyResult.fold(
+          (error) {
+            // Silently handle error - task was created successfully
+          },
+          (tasks) {
+            _viewModel = _viewModel.copyWith(
+              nearbyTasks: [
+                myTask,
+                ...tasks.where((task) => task.id != myTask.id),
+              ],
+            );
+            emit(MapState.loaded(viewModel: _viewModel));
+          },
+        );
       },
     );
   }
@@ -141,9 +175,14 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         emit(MapState.loadingError(error.message));
       },
       (taskId) {
+        final filteredTasks = _viewModel.nearbyTasks
+            .where((task) => task.id != event.request.taskId)
+            .toList();
         _viewModel = _viewModel.copyWith(
           isBusy: false,
           cancelTaskResult: taskId,
+          nearbyTasks: filteredTasks,
+          taskApplications: const <MapTaskApplicationEntity>[],
         );
         emit(MapState.loaded(viewModel: _viewModel));
       },
@@ -177,9 +216,16 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         emit(MapState.loadingError(error.message));
       },
       (items) {
+        final myTasks =
+            _viewModel.nearbyTasks.where((task) => task.status.startsWith('mine'));
         _viewModel = _viewModel.copyWith(
           isBusy: false,
-          nearbyTasks: items,
+          nearbyTasks: [
+            ...myTasks,
+            ...items.where(
+              (task) => !myTasks.any((myTask) => myTask.id == task.id),
+            ),
+          ],
         );
         emit(MapState.loaded(viewModel: _viewModel));
       },
@@ -219,9 +265,15 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         emit(MapState.loadingError(error.message));
       },
       (entity) {
+        final taskIdToRemove = event.request.taskId;
+        final filteredTasks = _viewModel.nearbyTasks
+            .where((task) => task.id != taskIdToRemove)
+            .toList();
         _viewModel = _viewModel.copyWith(
           isBusy: false,
           confirmCompletionResult: entity,
+          nearbyTasks: filteredTasks,
+          taskApplications: const <MapTaskApplicationEntity>[],
         );
         emit(MapState.loaded(viewModel: _viewModel));
       },

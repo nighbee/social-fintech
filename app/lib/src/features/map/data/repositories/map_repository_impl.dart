@@ -54,13 +54,28 @@ class MapRepositoryImpl implements IMapRepository {
   }
 
   @override
-  Future<Either<DomainException, String>> createTask(
+  Future<Either<DomainException, MapTaskEntity>> createTask(
     MapCreateTaskRequest request,
   ) async {
     final result = await _remote.createTask(request);
     return result.fold(
       (error) => Left(error),
-      (responseDto) => Right(responseDto.verificationCode),
+      (responseDto) => Right(
+        MapTaskEntity(
+          id: responseDto.id,
+          title: responseDto.title,
+          description: responseDto.description ?? '',
+          reward: responseDto.reward,
+          workersNeeded: responseDto.workersNeeded,
+          workersFilled: responseDto.workersFilled,
+          // Keep local creator marker + backend numeric verification code.
+          status: 'mine|${responseDto.verificationCode}',
+          autoShutdownAt: responseDto.autoShutdownAt ?? '',
+          latitude: responseDto.latitude,
+          longitude: responseDto.longitude,
+          createdAt: responseDto.createdAt,
+        ),
+      ),
     );
   }
 

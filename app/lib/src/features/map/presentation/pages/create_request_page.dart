@@ -85,6 +85,18 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
       ),
       body: BlocListener<MapBloc, MapState>(
         bloc: _mapBloc,
+        listenWhen: (previous, current) {
+          final wasCreating = previous.maybeWhen(
+            loaded: (viewModel) => viewModel.isCreatingTask,
+            orElse: () => false,
+          );
+          final isCreating = current.maybeWhen(
+            loaded: (viewModel) => viewModel.isCreatingTask,
+            orElse: () => false,
+          );
+          // Navigate only once on successful create flow completion edge.
+          return wasCreating && !isCreating;
+        },
         listener: (context, state) {
           state.maybeWhen(
             loadingError: (message) {
@@ -95,11 +107,11 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                 ),
               );
             },
-            loaded: (viewModel) {
-              // Task creation completed successfully
-              if (!viewModel.isCreatingTask) {
-                context.pushReplacement(RoutePaths.mapCreateRequestPublished);
+            loaded: (_) {
+              if (!context.mounted) {
+                return;
               }
+              context.pushReplacement(RoutePaths.mapCreateRequestPublished);
             },
             orElse: () {},
           );

@@ -39,6 +39,7 @@ class EndPoints {
   //* Map
   static const String mapTasks = '/tasks';
   static const String mapTasksNearby = '/tasks/nearby';
+  static const String mapTasksApplied = '/tasks/applied';
   static String mapTaskById(String taskId) => '/tasks/$taskId';
   static String mapApplyToTask(String taskId) => '/tasks/$taskId/apply';
   static String mapTaskApplications(String taskId) => '/tasks/$taskId/applications';

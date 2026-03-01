@@ -1,3 +1,6 @@
+import 'dart:ui';
+
+import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
@@ -13,51 +16,65 @@ class MapRequestCanceledPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF121418),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-          child: Column(
-            children: [
-              const Spacer(),
-              Container(
-                width: 86,
-                height: 86,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white70, width: 2),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(Icons.close, color: Colors.white70, size: 44),
-              ),
-              const Gap(16),
-              Text(
-                'Request canceled',
-                style: TextStyles.titleTag.copyWith(
-                  color: Colors.white,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w600,
+        child: Stack(
+          children: [
+            Positioned(
+              left: 30,
+              bottom: 200,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Color.fromARGB(255, 16, 57, 21),
+                  ),
+                  height: 250,
+                  width: 300,
                 ),
               ),
-              const Gap(8),
-              Text(
-                'Your request has been successfully canceled.',
-                textAlign: TextAlign.center,
-                style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+              child: Column(
+                children: [
+                  const Spacer(),
+                  Assets.icons.requestCancel.svg(
+                    width: 110,
+                    height: 110,
+                    color: AppColors.whiteBackground,
+                  ),
+                  const Gap(16),
+                  Text(
+                    'Request canceled',
+                    style: TextStyles.titleTag.copyWith(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Gap(8),
+                  Text(
+                    'Your request has been successfully canceled.',
+                    textAlign: TextAlign.center,
+                    style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                  ),
+                  const Spacer(),
+                  CustomButton(
+                    text: 'ok',
+                    onTap: () => context.go(RoutePaths.map),
+                    borderRadius: 8,
+                    backgroundColor: const Color(0xFF121418),
+                    border: Border.all(color: Colors.white24),
+                    textStyle: TextStyles.bodyMain.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ],
               ),
-              const Spacer(),
-              CustomButton(
-                text: 'ok',
-                onTap: () => context.go(RoutePaths.map),
-                borderRadius: 8,
-                backgroundColor: const Color(0xFF121418),
-                border: Border.all(color: Colors.white24),
-                textStyle: TextStyles.bodyMain.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
