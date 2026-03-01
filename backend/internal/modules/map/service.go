@@ -464,6 +464,38 @@ func (s *Service) RejectApplication(ctx context.Context, userID, taskID, applica
 	return nil
 }
 
+// WithdrawApplication is called by the executor to cancel/withdraw their own pending application.
+// Physically deletes the application from the database.
+func (s *Service) WithdrawApplication(ctx context.Context, userID, taskID, applicationID string) error {
+	app, err := s.repo.GetApplicationByID(ctx, applicationID)
+	if err != nil {
+		return err
+	}
+	if app.TaskID != taskID {
+		return ErrApplicationNotFound
+	}
+
+	// Verify the caller is the applicant
+	if app.ApplicantID != userID {
+		return ErrNotApplicant
+	}
+
+	// Only allow withdrawal if not confirmed. Even accepted applications can be withdrawn.
+	if app.Status == "code_verified" || app.Status == "confirmed" {
+		return fmt.Errorf("cannot withdraw after code verified or confirmed")
+	}
+
+	deleted, err := s.repo.DeleteApplication(ctx, applicationID)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		// Just in case it was deleted concurrently
+		return ErrApplicationNotFound
+	}
+	return nil
+}
+
 // ConfirmCompletion is triggered when user1 presses "Yes, this person helped me"
 // in the confirmation popup. Transfers silver to the helper and closes the task
 // when all required workers have been confirmed.

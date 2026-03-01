@@ -28,6 +28,7 @@ type Repository interface {
 	CreateTaskApplication(ctx context.Context, app *TaskApplication) error
 	GetApplicationByID(ctx context.Context, applicationID string) (*TaskApplication, error)
 	GetApplicationsByTaskID(ctx context.Context, taskID string) ([]TaskApplication, error)
+	DeleteApplication(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationAccepted(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationRejected(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationCodeVerified(ctx context.Context, applicationID string) (bool, error)
@@ -332,6 +333,21 @@ func (r *repository) GetApplicationsByTaskID(ctx context.Context, taskID string)
 		return nil, fmt.Errorf("failed to get applications for task: %w", err)
 	}
 	return apps, nil
+}
+
+// DeleteApplication physically removes an application record from the database.
+// Returns true if a row was actually deleted.
+func (r *repository) DeleteApplication(ctx context.Context, applicationID string) (bool, error) {
+	query := `DELETE FROM task_applications WHERE id = $1`
+	res, err := r.db.ExecContext(ctx, query, applicationID)
+	if err != nil {
+		return false, fmt.Errorf("failed to delete application: %w", err)
+	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rowsAffected > 0, nil
 }
 
 // MarkApplicationAccepted transitions a pending application to accepted.

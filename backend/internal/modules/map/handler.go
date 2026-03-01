@@ -623,6 +623,58 @@ func (h *Handler) RejectApplication(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "rejected"})
 }
 
+// WithdrawApplication godoc
+// @Summary Withdraw an application (helper only)
+// @Description Executor withdraws/cancels their pending or accepted application, removing it from the task.
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Param application_id path string true "Application ID"
+// @Success 200 {object} map[string]string "Success"
+// @Failure 400 {object} map[string]string "Cannot withdraw"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Not the applicant"
+// @Failure 404 {object} map[string]string "Task or application not found"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id}/applications/{application_id} [delete]
+func (h *Handler) WithdrawApplication(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	applicationID := c.Params("application_id")
+	if taskID == "" || applicationID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_params"})
+	}
+
+	err := h.service.WithdrawApplication(c.Context(), userID, taskID, applicationID)
+	if err != nil {
+		switch err {
+		case ErrApplicationNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "application_not_found"})
+		case ErrNotApplicant:
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden_not_applicant"})
+		default:
+			if err.Error() == "cannot withdraw after code verified or confirmed" {
+				return c.Status(400).JSON(fiber.Map{"error": "cannot_withdraw_now"})
+			}
+			logger.Error("failed to withdraw application",
+				zap.String("task_id", taskID),
+				zap.String("application_id", applicationID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "withdraw_failed"})
+		}
+	}
+
+	return c.JSON(fiber.Map{"status": "withdrawn"})
+}
+
 // CompleteTask is the legacy single-actor completion path.
 // Deprecated: kept only for backward compatibility (no route registered).
 func (h *Handler) CompleteTask(c *fiber.Ctx) error {

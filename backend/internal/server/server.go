@@ -140,6 +140,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	mapGroup.Post("/tasks/:task_id/apply", mapHandler.ApplyToTask)
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/accept", mapHandler.AcceptApplication)
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/reject", mapHandler.RejectApplication)
+	mapGroup.Delete("/tasks/:task_id/applications/:application_id", mapHandler.WithdrawApplication)
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/verify-code", mapHandler.SubmitVerificationCode)
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/confirm", mapHandler.ConfirmCompletion)
 	mapGroup.Get("/tasks/:task_id/applications", mapHandler.GetTaskApplications)
