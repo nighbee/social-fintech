@@ -206,6 +206,38 @@ echo -e "${GREEN}✓ User2 logged in${NC}"
 echo -e "${CYAN}  USER2_TOKEN: Bearer ${USER2_TOKEN}${NC}"
 echo ""
 
+# ── User 3 (extra task worker to test limits) ──────────
+USER3_EMAIL="map_user3_${RANDOM}@example.com"
+USER3_PASSWORD="Pass123!"
+
+REGISTER_BODY="{\"email\":\"$USER3_EMAIL\",\"password\":\"$USER3_PASSWORD\",\"first_name\":\"Charlie\",\"last_name\":\"Extra\",\"date_of_birth\":\"1999-09-09\",\"device_id\":\"map-device3\",\"app_version\":\"1.0.0\"}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
+    -H "Content-Type: application/json" -d "$REGISTER_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "Register User3" "POST" "$AUTH_URL/register-email" "$REGISTER_BODY" "$HTTP_BODY" "$HTTP_CODE"
+
+if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
+    USER3_ID=$(get_json_string "$HTTP_BODY" "id")
+    echo -e "${GREEN}✓ User3 created: $USER3_ID${NC}"
+else
+    echo -e "${RED}✗ User3 registration failed – aborting${NC}"
+    exit 1
+fi
+
+LOGIN_BODY="{\"email\":\"$USER3_EMAIL\",\"password\":\"$USER3_PASSWORD\",\"device_id\":\"map-device3\"}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
+    -H "Content-Type: application/json" -d "$LOGIN_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "Login User3" "POST" "$AUTH_URL/login-email" "$LOGIN_BODY" "$HTTP_BODY" "$HTTP_CODE"
+USER3_TOKEN=$(get_json_string "$HTTP_BODY" "access_token")
+echo -e "${GREEN}✓ User3 logged in${NC}"
+echo -e "${CYAN}  USER3_TOKEN: Bearer ${USER3_TOKEN}${NC}"
+echo ""
+
 # ======================================================================
 # TEST 1 – Admin funds User1 with Silver via accrual adjust (5 Silver)
 # ======================================================================
@@ -392,6 +424,44 @@ fi
 echo ""
 
 # ======================================================================
+# TEST 4d – User1 fetches their own tasks
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 4d: User1 Fetches My Tasks ===${NC}"
+
+MY_TASKS_URL="${TASK_URL}/my"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$MY_TASKS_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "User1 Gets My Tasks" "GET" "$MY_TASKS_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "User1 fetches my tasks successfully" "$HTTP_CODE"
+
+MY_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+assert_eq "User1's task is returned" "$TASK_ID" "$MY_TASK_ID"
+echo ""
+
+# ======================================================================
+# TEST 4e – User1 fetches specific task details
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 4e: User1 Fetches Specific Task ===${NC}"
+
+GET_TASK_URL="${TASK_URL}/${TASK_ID}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "$GET_TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "User1 Gets Task Detail" "GET" "$GET_TASK_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "User1 fetches task successfully" "$HTTP_CODE"
+
+FETCHED_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+assert_eq "Fetches the correct task" "$TASK_ID" "$FETCHED_TASK_ID"
+echo ""
+
+# ======================================================================
 # TEST 5 – User1 lists applications (creator-only check)
 # ======================================================================
 
@@ -423,6 +493,22 @@ else
     echo -e "${RED}✗ FAIL: Expected 403, got HTTP ${HTTP_CODE}${NC}"
     FAIL=$((FAIL + 1))
 fi
+echo ""
+
+# ======================================================================
+# TEST 5b – User1 accepts User2's application
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 5b: User1 Accepts User2's Application ===${NC}"
+
+ACCEPT_URL="${TASK_URL}/${TASK_ID}/applications/${APPLICATION_ID}/accept"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ACCEPT_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "User1 Accepts Application" "POST" "$ACCEPT_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "User1 accepts application successfully" "$HTTP_CODE"
 echo ""
 
 # ======================================================================
@@ -935,6 +1021,28 @@ fi
 echo ""
 
 # ======================================================================
+# TEST 24b – RejectApplication: Reject an application
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 24b: RejectApplication – Reject an Application ===${NC}"
+
+REJECT_URL="${TASK_URL}/${ERROR_TASK_ID}/applications/${ERROR_APP_ID}/reject"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$REJECT_URL" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "RejectApplication" "POST" "$REJECT_URL" "" "$HTTP_BODY" "$HTTP_CODE" "ADMIN"
+if [[ "$HTTP_CODE" -eq 200 ]]; then
+    echo -e "${GREEN}✓ PASS: Application rejected successfully (HTTP 200)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 200, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
 # TEST 25 – SubmitVerificationCode: Code not 4 digits → 400
 # ======================================================================
 
@@ -1308,6 +1416,75 @@ fi
 echo ""
 
 # ======================================================================
+# TEST 40 – Cannot Accept More Applicants Than Workers Needed
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 40: Cannot Accept > workers_needed (409) ===${NC}"
+
+# Admin gives User1 1 more Silver so they can create a task
+ADJUST_BODY="{\"user_id\":\"$USER1_ID\",\"amount\":1.00,\"currency\":\"SILVER_SEAL\",\"reason\":\"Extra testing cash\"}"
+curl -s -X POST "$ECO_URL/admin/adjust" -H "Authorization: Bearer $ADMIN_TOKEN" -H "Content-Type: application/json" -d "$ADJUST_BODY" > /dev/null
+
+sleep 1
+
+# Reset User1 cooldown so they can create a new task
+echo -e "${YELLOW}  Resetting User1 cooldown via SQL…${NC}"
+docker exec brightbund-db psql -U user -d brightbund \
+    -c "UPDATE tasks SET created_at = created_at - INTERVAL '8 days' WHERE creator_id = '$USER1_ID';" > /dev/null 2>&1
+
+# 1. User1 creates a task with workers_needed=1
+TASK_BODY="{\"title\":\"Limit Test\",\"description\":\"Need 1 worker only\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" -H "Authorization: Bearer $USER1_TOKEN" -H "Content-Type: application/json" -d "$TASK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+LIMIT_TASK_ID=$(get_json_string "$HTTP_BODY" "id")
+
+echo -e "${CYAN}  Created Limit Task : ${LIMIT_TASK_ID}${NC}"
+
+# 2. User2 applies
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${TASK_URL}/${LIMIT_TASK_ID}/apply" -H "Authorization: Bearer $USER2_TOKEN" -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+LIMIT_APP2_ID=$(get_json_string "$HTTP_BODY" "application_id")
+
+# 3. User3 applies
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${TASK_URL}/${LIMIT_TASK_ID}/apply" -H "Authorization: Bearer $USER3_TOKEN" -H "Content-Type: application/json")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+LIMIT_APP3_ID=$(get_json_string "$HTTP_BODY" "application_id")
+
+echo -e "${CYAN}  User2 App : ${LIMIT_APP2_ID}${NC}"
+echo -e "${CYAN}  User3 App : ${LIMIT_APP3_ID}${NC}"
+
+# 4. User1 Accepts User2 -> Should normally succeed
+ACCEPT2_URL="${TASK_URL}/${LIMIT_TASK_ID}/applications/${LIMIT_APP2_ID}/accept"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ACCEPT2_URL" -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+if [[ "$HTTP_CODE" -eq 200 ]]; then
+    echo -e "${GREEN}✓ PASS: First applicant accepted (HTTP 200)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: First applicant should be accepted, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+
+# 5. User1 Accepts User3 -> Should fail with 409 Task Full because workers_needed is 1
+ACCEPT3_URL="${TASK_URL}/${LIMIT_TASK_ID}/applications/${LIMIT_APP3_ID}/accept"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ACCEPT3_URL" -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "Accepting Excess Application" "POST" "$ACCEPT3_URL" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+
+if [[ "$HTTP_CODE" -eq 409 ]]; then
+    echo -e "${GREEN}✓ PASS: Second applicant rejected with Task Full (HTTP 409)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 409, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+
+echo ""
+
+# ======================================================================
 # FINAL SUMMARY
 # ======================================================================
 
@@ -1347,6 +1524,7 @@ echo "   2. User1 → created task (reward = 1 Silver; balance charged upfront)"
 echo "   3. User2 → browsed nearby tasks"
 echo "   4. User2 → applied to task (status: pending)"
 echo "   5. User1 → listed applications (creator-only)"
+echo "   5b. User1 → accepted application (status: accepted)"
 echo "   6. User2 → submitted verification code (status: code_verified)"
 echo "   7. User1 → confirmed completion (task: completed)"
 echo "   8. User2 balance verified (+1 Silver)"
