@@ -778,7 +778,10 @@ func (h *Handler) GetRegionChampions(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "missing_h3"})
 	}
 	resolution := c.QueryInt("resolution", 5)
-	year := c.QueryInt("year", time.Now().Year())
+	explicitYear := c.Query("year") != ""
+	explicitWeek := c.Query("week") != ""
+	currentYear, currentWeek := time.Now().ISOWeek()
+	year := c.QueryInt("year", currentYear)
 	_, week := time.Now().ISOWeek()
 	week = c.QueryInt("week", week)
 
@@ -790,6 +793,26 @@ func (h *Handler) GetRegionChampions(c *fiber.Ctx) error {
 			zap.Error(err),
 		)
 		return c.Status(500).JSON(fiber.Map{"error": "champions_fetch_failed"})
+	}
+
+	// If the client did not request a specific week and current week is empty,
+	// fall back to previous ISO week so Monday starts still show latest champions.
+	if len(pins) == 0 && !explicitYear && !explicitWeek {
+		prevYear, prevWeek := previousISOWeek(currentYear, currentWeek)
+		pins, err = h.service.GetRegionChampions(
+			c.Context(),
+			h3Indexes,
+			resolution,
+			prevYear,
+			prevWeek,
+		)
+		if err != nil {
+			logger.Error("failed to get previous-week region champions",
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "champions_fetch_failed"})
+		}
 	}
 
 	return c.JSON(pins)
@@ -807,4 +830,15 @@ func splitCSV(raw string) []string {
 		}
 	}
 	return out
+}
+
+func previousISOWeek(year, week int) (int, int) {
+	if week > 1 {
+		return year, week - 1
+	}
+
+	prevYear := year - 1
+	// ISO week for Dec 28 is always the last ISO week of the year.
+	_, lastWeek := time.Date(prevYear, time.December, 28, 0, 0, 0, 0, time.UTC).ISOWeek()
+	return prevYear, lastWeek
 }

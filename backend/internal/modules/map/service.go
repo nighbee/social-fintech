@@ -256,7 +256,7 @@ func (s *Service) GetMyTasks(ctx context.Context, userID string) (*AppliedTasksR
 	resp := AppliedTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
 	for _, t := range tasks {
 		status := t.Status
-		if t.VerificationCode != "" {
+		if t.VerificationCode != "" && (t.Status == "open" || t.Status == "in_progress") {
 			// Backward-compatible creator marker used by current Flutter UI.
 			status = fmt.Sprintf("mine|%s", t.VerificationCode)
 		}

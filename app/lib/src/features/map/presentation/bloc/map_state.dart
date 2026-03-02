@@ -11,8 +11,8 @@ class MapState with _$MapState {
 @freezed
 class MapViewModel with _$MapViewModel {
   const factory MapViewModel({
-    @Default(50.4501) double centerLatitude,
-    @Default(30.5234) double centerLongitude,
+    @Default(45.1704) double centerLatitude,  // Taraz, Kazakhstan
+    @Default(69.5165) double centerLongitude, // Taraz, Kazakhstan
     @Default(11.8) double zoom,
     @Default(false) bool isBusy,
     @Default(false) bool isCreatingTask,

@@ -16,6 +16,7 @@ import 'package:app/src/features/map/domain/requests/map_task_id_request.dart';
 import 'package:app/src/features/map/domain/requests/map_verify_code_request.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
 import 'package:app/src/features/map/presentation/controllers/map_page_controller.dart';
+import 'package:app/src/features/map/presentation/mixins/show_champion_leaderboard_bottom_sheet.dart';
 import 'package:app/src/features/map/presentation/services/map_dialog_service.dart';
 import 'package:app/src/features/map/presentation/services/map_persistence_service.dart';
 import 'package:app/src/features/map/presentation/services/map_polling_service.dart';
@@ -47,7 +48,8 @@ class MapPage extends StatefulWidget {
   State<MapPage> createState() => _MapPageState();
 }
 
-class _MapPageState extends State<MapPage> {
+class _MapPageState extends State<MapPage>
+    with ShowChampionLeaderboardBottomSheet {
   static const String _mapboxAccessToken = String.fromEnvironment(
     'MAPBOX_ACCESS_TOKEN',
     defaultValue: '',
@@ -62,6 +64,23 @@ class _MapPageState extends State<MapPage> {
       persistence: const MapPersistenceService(),
       polling: MapPollingService(),
       dialogs: MapDialogService(),
+      onChampionTap: (champion, champions) {
+        if (!mounted) {
+          return;
+        }
+
+        showChampionLeaderboardBottomSheet(
+          context,
+          selectedChampion: champion,
+          champions: champions,
+          onOpenProfile: (userId) {
+            context.pushNamed(
+              RouteNames.publicProfile,
+              pathParameters: <String, String>{'userId': userId},
+            );
+          },
+        );
+      },
     );
     _controller.onInit();
 
@@ -117,10 +136,12 @@ class _MapPageState extends State<MapPage> {
                 mapboxMap: _controller.mapboxMap,
                 isRequestExpanded: _controller.isRequestExpanded,
                 isLoading: true,
-                onToggleExpanded: () => setState(_controller.toggleRequestExpanded),
+                onToggleExpanded: () =>
+                    setState(_controller.toggleRequestExpanded),
                 onMapCreated: _controller.onMapCreated,
                 onCameraChanged: _controller.onCameraChanged,
-                onOpenCreateRequest: () => _controller.openCreateRequest(context),
+                onOpenCreateRequest: () =>
+                    _controller.openCreateRequest(context),
                 onOpenVerifyCode: (taskId, applicationId) =>
                     Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -133,15 +154,19 @@ class _MapPageState extends State<MapPage> {
                 ),
                 onZoomIn: () => _controller.zoomBy(1),
                 onZoomOut: () => _controller.zoomBy(-1),
-                onCurrentLocation: () => _controller.moveToCurrentLocation(context),
+                onCurrentLocation: () =>
+                    _controller.moveToCurrentLocation(context),
                 selectedApplicationId: _controller.selectedApplicationId,
                 locallyRejectedApplicationIds:
                     _controller.locallyRejectedApplicationIds,
-                onAcceptApplication: (application) => _controller
-                    .handleAcceptApplication(application, runSetState: setState),
-                onRejectApplication: (application) => _controller
-                    .handleRejectApplication(application, runSetState: setState),
-                onExecutorCancel: () => _controller.handleExecutorCancel(context),
+                onAcceptApplication: (application) =>
+                    _controller.handleAcceptApplication(application,
+                        runSetState: setState),
+                onRejectApplication: (application) =>
+                    _controller.handleRejectApplication(application,
+                        runSetState: setState),
+                onExecutorCancel: () =>
+                    _controller.handleExecutorCancel(context),
                 executorCompletionShown: _controller.executorCompletionShown,
                 executorTaskStatus: _controller.executorTaskStatus,
                 executorCreatorName: _controller.executorCreatorName,
@@ -155,10 +180,12 @@ class _MapPageState extends State<MapPage> {
                 mapboxMap: _controller.mapboxMap,
                 isRequestExpanded: _controller.isRequestExpanded,
                 isLoading: false,
-                onToggleExpanded: () => setState(_controller.toggleRequestExpanded),
+                onToggleExpanded: () =>
+                    setState(_controller.toggleRequestExpanded),
                 onMapCreated: _controller.onMapCreated,
                 onCameraChanged: _controller.onCameraChanged,
-                onOpenCreateRequest: () => _controller.openCreateRequest(context),
+                onOpenCreateRequest: () =>
+                    _controller.openCreateRequest(context),
                 onOpenVerifyCode: (taskId, applicationId) =>
                     Navigator.of(context).push(
                   MaterialPageRoute<void>(
@@ -171,15 +198,19 @@ class _MapPageState extends State<MapPage> {
                 ),
                 onZoomIn: () => _controller.zoomBy(1),
                 onZoomOut: () => _controller.zoomBy(-1),
-                onCurrentLocation: () => _controller.moveToCurrentLocation(context),
+                onCurrentLocation: () =>
+                    _controller.moveToCurrentLocation(context),
                 selectedApplicationId: _controller.selectedApplicationId,
                 locallyRejectedApplicationIds:
                     _controller.locallyRejectedApplicationIds,
-                onAcceptApplication: (application) => _controller
-                    .handleAcceptApplication(application, runSetState: setState),
-                onRejectApplication: (application) => _controller
-                    .handleRejectApplication(application, runSetState: setState),
-                onExecutorCancel: () => _controller.handleExecutorCancel(context),
+                onAcceptApplication: (application) =>
+                    _controller.handleAcceptApplication(application,
+                        runSetState: setState),
+                onRejectApplication: (application) =>
+                    _controller.handleRejectApplication(application,
+                        runSetState: setState),
+                onExecutorCancel: () =>
+                    _controller.handleExecutorCancel(context),
                 executorCompletionShown: _controller.executorCompletionShown,
                 executorTaskStatus: _controller.executorTaskStatus,
                 executorCreatorName: _controller.executorCreatorName,

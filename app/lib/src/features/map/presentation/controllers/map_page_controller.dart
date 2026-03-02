@@ -1,12 +1,17 @@
 import 'dart:async';
 
 import 'package:app/src/core/router/router.dart';
+import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
+import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_task_application_entity.dart';
+import 'package:app/src/features/map/domain/requests/map_champions_request.dart';
 import 'package:app/src/features/map/domain/requests/map_nearby_tasks_request.dart';
+import 'package:app/src/features/map/domain/requests/map_region_assignment_request.dart';
 import 'package:app/src/features/map/domain/requests/map_task_application_id_request.dart';
 import 'package:app/src/features/map/domain/requests/map_task_id_request.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
 import 'package:app/src/features/map/presentation/models/active_executor_application.dart';
+import 'package:app/src/features/map/presentation/services/map_champion_service.dart';
 import 'package:app/src/features/map/presentation/services/map_dialog_service.dart';
 import 'package:app/src/features/map/presentation/services/map_persistence_service.dart';
 import 'package:app/src/features/map/presentation/services/map_polling_service.dart';
@@ -21,15 +26,26 @@ class MapPageController {
     required MapPersistenceService persistence,
     required MapPollingService polling,
     required MapDialogService dialogs,
+    required void Function(
+      MapChampionEntity champion,
+      List<MapChampionEntity> champions,
+    ) onChampionTap,
   })  : _mapBloc = mapBloc,
         _persistence = persistence,
         _polling = polling,
-        _dialogs = dialogs;
+        _dialogs = dialogs,
+        _championService = MapChampionService(),
+        _onChampionTapCallback = onChampionTap;
 
   final MapBloc _mapBloc;
   final MapPersistenceService _persistence;
   final MapPollingService _polling;
   final MapDialogService _dialogs;
+  final MapChampionService _championService;
+  final void Function(
+    MapChampionEntity champion,
+    List<MapChampionEntity> champions,
+  ) _onChampionTapCallback;
   MapBloc get mapBloc => _mapBloc;
 
   MapboxMap? mapboxMap;
@@ -48,6 +64,7 @@ class MapPageController {
   double currentLongitude = 30.5234;
   bool isRequestExpanded = false;
   bool hasSavedCenter = false;
+  String? _lastChampionsRegionKey;
 
   void onInit() {
     _mapBloc.add(const MapEvent.loadMap());
@@ -59,6 +76,7 @@ class MapPageController {
 
   void onDispose() {
     _polling.dispose();
+    _championService.dispose();
   }
 
   void toggleRequestExpanded() {
@@ -82,6 +100,7 @@ class MapPageController {
     required bool mounted,
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
+    _ensureChampionsLoaded(viewModel);
     _refreshTaskApplications(viewModel);
     await _tryShowCreatorConfirmDialog(context, viewModel);
     _tryCheckExecutorCompletion(
@@ -100,14 +119,16 @@ class MapPageController {
     }
 
     if (viewModel.confirmCompletionResult.taskId.isNotEmpty &&
-        viewModel.confirmCompletionResult.taskId != handledConfirmResultTaskId) {
+        viewModel.confirmCompletionResult.taskId !=
+            handledConfirmResultTaskId) {
       handledConfirmResultTaskId = viewModel.confirmCompletionResult.taskId;
       if (viewModel.confirmCompletionResult.taskStatus == 'completed') {
         context.push(RoutePaths.mapRequestCompleted);
       } else if (viewModel.confirmCompletionResult.reward > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Reward: ${viewModel.confirmCompletionResult.reward}'),
+            content:
+                Text('Reward: ${viewModel.confirmCompletionResult.reward}'),
             backgroundColor: Colors.green,
           ),
         );
@@ -115,7 +136,8 @@ class MapPageController {
     }
 
     if (viewModel.applyToTaskResult.applicationId.isNotEmpty &&
-        viewModel.applyToTaskResult.applicationId != handledApplyApplicationId) {
+        viewModel.applyToTaskResult.applicationId !=
+            handledApplyApplicationId) {
       handledApplyApplicationId = viewModel.applyToTaskResult.applicationId;
       executorTaskStatus = viewModel.applyToTaskResult.status;
       executorCreatorName = '';
@@ -128,7 +150,8 @@ class MapPageController {
       );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Applied! Status: ${viewModel.applyToTaskResult.status}'),
+          content:
+              Text('Applied! Status: ${viewModel.applyToTaskResult.status}'),
           backgroundColor: Colors.green,
         ),
       );
@@ -138,11 +161,22 @@ class MapPageController {
       handledTaskApplicationActionResult = null;
     } else if (viewModel.taskApplicationActionResult !=
         handledTaskApplicationActionResult) {
-      handledTaskApplicationActionResult = viewModel.taskApplicationActionResult;
+      handledTaskApplicationActionResult =
+          viewModel.taskApplicationActionResult;
       _handleTaskApplicationActionResult(
         context,
         viewModel,
         runSetState: runSetState,
+      );
+    }
+
+    // Update champion markers when champions are loaded
+    if (viewModel.champions.isNotEmpty) {
+      unawaited(
+        _championService.updateChampions(
+          viewModel.champions,
+          viewModel.assignedRegion,
+        ),
       );
     }
   }
@@ -158,7 +192,8 @@ class MapPageController {
       unawaited(
         map.easeTo(
           CameraOptions(
-            center: Point(coordinates: Position(currentLongitude, currentLatitude)),
+            center:
+                Point(coordinates: Position(currentLongitude, currentLatitude)),
             zoom: 14.5,
           ),
           MapAnimationOptions(duration: 450),
@@ -166,11 +201,22 @@ class MapPageController {
       );
     }
 
+    // Initialize champion service
+    unawaited(
+      _championService.initialize(
+        map,
+        onChampionTap: _onChampionTap,
+      ),
+    );
+
     _refreshNearbyTasks();
     _polling.startNearbyRefreshTimer(
       interval: const Duration(seconds: 15),
       onTick: _refreshNearbyTasks,
     );
+
+    // Load champions for initial region
+    unawaited(_loadChampionsForCurrentRegion());
   }
 
   void onCameraChanged(CameraChangedEventData eventData) {
@@ -254,7 +300,8 @@ class MapPageController {
       if (position == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Unable to determine current location.')),
+            const SnackBar(
+                content: Text('Unable to determine current location.')),
           );
         }
         return;
@@ -364,7 +411,8 @@ class MapPageController {
     if (map != null) {
       await map.easeTo(
         CameraOptions(
-          center: Point(coordinates: Position(savedCenter.lon, savedCenter.lat)),
+          center:
+              Point(coordinates: Position(savedCenter.lon, savedCenter.lat)),
           zoom: 14.5,
         ),
         MapAnimationOptions(duration: 450),
@@ -497,7 +545,8 @@ class MapPageController {
 
     final now = DateTime.now();
     if (lastExecutorCompletionCheckAt != null &&
-        now.difference(lastExecutorCompletionCheckAt!) < const Duration(seconds: 8)) {
+        now.difference(lastExecutorCompletionCheckAt!) <
+            const Duration(seconds: 8)) {
       return;
     }
     lastExecutorCompletionCheckAt = now;
@@ -551,6 +600,107 @@ class MapPageController {
     }
   }
 
+  Future<void> _loadChampionsForCurrentRegion() async {
+    // First, ensure we have an assigned region
+    final assignedRegion = _mapBloc.viewModel.assignedRegion;
+    final hasAnyRegionIndex = assignedRegion.h3Res5.isNotEmpty ||
+        assignedRegion.h3Res4.isNotEmpty ||
+        assignedRegion.h3Res2.isNotEmpty;
+    if (!hasAnyRegionIndex) {
+      _mapBloc.add(
+        MapEvent.assignRegion(
+          MapRegionAssignmentRequest(
+            latitude: currentLatitude,
+            longitude: currentLongitude,
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Get H3 indices from the assigned region
+    final region = assignedRegion;
+    final h3Indices = <String>[];
+
+    // Add available H3 indices at different resolutions
+    if (region.h3Res5.isNotEmpty) {
+      h3Indices.add(region.h3Res5);
+    }
+    if (region.h3Res4.isNotEmpty) {
+      h3Indices.add(region.h3Res4);
+    }
+    if (region.h3Res2.isNotEmpty) {
+      h3Indices.add(region.h3Res2);
+    }
+
+    if (h3Indices.isEmpty) {
+      return;
+    }
+
+    // Load champions for these H3 indices
+    _lastChampionsRegionKey = _regionKey(region);
+    _mapBloc.add(
+      MapEvent.getChampions(
+        MapChampionsRequest(
+          h3Indices: h3Indices,
+          resolution: 5, // Use resolution 5 for detailed champions
+        ),
+      ),
+    );
+  }
+
+  void _ensureChampionsLoaded(MapViewModel viewModel) {
+    final region = viewModel.assignedRegion;
+    final hasAnyRegionIndex = region.h3Res5.isNotEmpty ||
+        region.h3Res4.isNotEmpty ||
+        region.h3Res2.isNotEmpty;
+    if (!hasAnyRegionIndex) {
+      return;
+    }
+
+    final regionKey = _regionKey(region);
+    if (viewModel.champions.isNotEmpty) {
+      _lastChampionsRegionKey = regionKey;
+      return;
+    }
+
+    if (_lastChampionsRegionKey == regionKey) {
+      return;
+    }
+
+    final h3Indices = <String>[];
+    if (region.h3Res5.isNotEmpty) {
+      h3Indices.add(region.h3Res5);
+    }
+    if (region.h3Res4.isNotEmpty) {
+      h3Indices.add(region.h3Res4);
+    }
+    if (region.h3Res2.isNotEmpty) {
+      h3Indices.add(region.h3Res2);
+    }
+    if (h3Indices.isEmpty) {
+      return;
+    }
+
+    _lastChampionsRegionKey = regionKey;
+    _mapBloc.add(
+      MapEvent.getChampions(
+        MapChampionsRequest(
+          h3Indices: h3Indices,
+          resolution: 5,
+        ),
+      ),
+    );
+  }
+
+  String _regionKey(MapRegionAssignmentEntity region) {
+    return '${region.h3Res5}|${region.h3Res4}|${region.h3Res2}';
+  }
+
+  void _onChampionTap(MapChampionEntity champion) {
+    _onChampionTapCallback(champion, _mapBloc.viewModel.champions);
+  }
+
   void _handleTaskApplicationActionResult(
     BuildContext context,
     MapViewModel viewModel, {
@@ -582,7 +732,8 @@ class MapPageController {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Application $action'),
-            backgroundColor: action == 'accepted' ? Colors.green : Colors.orange,
+            backgroundColor:
+                action == 'accepted' ? Colors.green : Colors.orange,
           ),
         );
       }
