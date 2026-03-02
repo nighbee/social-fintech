@@ -160,6 +160,7 @@ func (r *repository) GetMyTasks(ctx context.Context, userID string) ([]Task, err
 		       h3_res5, h3_res4, h3_res2, created_at, updated_at
 		FROM tasks
 		WHERE creator_id = $1
+		  AND status NOT IN ('cancelled', 'completed')
 		ORDER BY created_at DESC
 	`
 	var tasks []Task

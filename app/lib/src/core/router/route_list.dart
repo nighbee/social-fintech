@@ -198,6 +198,39 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                   return const NoTransitionPage(child: MapPage());
                 },
               ),
+              GoRoute(
+                path: RoutePaths.mapCreateRequest,
+                name: RouteNames.mapCreateRequest,
+                redirect: AuthGuard,
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final latitude = (extra?['latitude'] as num?)?.toDouble() ?? 50.4501;
+                  final longitude =
+                      (extra?['longitude'] as num?)?.toDouble() ?? 30.5234;
+                  return CreateRequestPage(
+                    latitude: latitude,
+                    longitude: longitude,
+                  );
+                },
+              ),
+              GoRoute(
+                path: RoutePaths.mapCreateRequestPublished,
+                name: RouteNames.mapCreateRequestPublished,
+                redirect: AuthGuard,
+                builder: (context, state) => const CreateRequestPublishedPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.mapRequestCanceled,
+                name: RouteNames.mapRequestCanceled,
+                redirect: AuthGuard,
+                builder: (context, state) => const MapRequestCanceledPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.mapRequestCompleted,
+                name: RouteNames.mapRequestCompleted,
+                redirect: AuthGuard,
+                builder: (context, state) => const MapRequestCompletedPage(),
+              ),
 
               // Rating route (protected by auth guard)
               GoRoute(

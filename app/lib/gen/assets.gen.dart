@@ -64,6 +64,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/feed_icon.svg
   SvgGenImage get feedIcon => const SvgGenImage('assets/icons/feed_icon.svg');
 
+  /// File path: assets/icons/global.svg
+  SvgGenImage get global => const SvgGenImage('assets/icons/global.svg');
+
   /// File path: assets/icons/google_logo.svg
   SvgGenImage get googleLogo =>
       const SvgGenImage('assets/icons/google_logo.svg');
@@ -74,6 +77,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/like.svg
   SvgGenImage get like => const SvgGenImage('assets/icons/like.svg');
 
+  /// File path: assets/icons/location.svg
+  SvgGenImage get location => const SvgGenImage('assets/icons/location.svg');
+
   /// File path: assets/icons/map_icon.svg
   SvgGenImage get mapIcon => const SvgGenImage('assets/icons/map_icon.svg');
 
@@ -83,9 +89,16 @@ class $AssetsIconsGen {
   /// File path: assets/icons/more.svg
   SvgGenImage get more => const SvgGenImage('assets/icons/more.svg');
 
+  /// File path: assets/icons/no_people.svg
+  SvgGenImage get noPeople => const SvgGenImage('assets/icons/no_people.svg');
+
   /// File path: assets/icons/person_favourites.svg
   SvgGenImage get personFavourites =>
       const SvgGenImage('assets/icons/person_favourites.svg');
+
+  /// File path: assets/icons/person_search.svg
+  SvgGenImage get personSearch =>
+      const SvgGenImage('assets/icons/person_search.svg');
 
   /// File path: assets/icons/plus_icon.svg
   SvgGenImage get plusIcon => const SvgGenImage('assets/icons/plus_icon.svg');
@@ -97,6 +110,22 @@ class $AssetsIconsGen {
   /// File path: assets/icons/rating_icon.svg
   SvgGenImage get ratingIcon =>
       const SvgGenImage('assets/icons/rating_icon.svg');
+
+  /// File path: assets/icons/request_cancel.svg
+  SvgGenImage get requestCancel =>
+      const SvgGenImage('assets/icons/request_cancel.svg');
+
+  /// File path: assets/icons/request_closed.svg
+  SvgGenImage get requestClosed =>
+      const SvgGenImage('assets/icons/request_closed.svg');
+
+  /// File path: assets/icons/request_done.svg
+  SvgGenImage get requestDone =>
+      const SvgGenImage('assets/icons/request_done.svg');
+
+  /// File path: assets/icons/reward_indicator.svg
+  SvgGenImage get rewardIndicator =>
+      const SvgGenImage('assets/icons/reward_indicator.svg');
 
   /// File path: assets/icons/search.svg
   SvgGenImage get search => const SvgGenImage('assets/icons/search.svg');
@@ -118,6 +147,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/stats_icon.svg
   SvgGenImage get statsIcon => const SvgGenImage('assets/icons/stats_icon.svg');
 
+  /// File path: assets/icons/task_done.svg
+  SvgGenImage get taskDone => const SvgGenImage('assets/icons/task_done.svg');
+
   /// File path: assets/icons/timer.svg
   SvgGenImage get timer => const SvgGenImage('assets/icons/timer.svg');
 
@@ -135,22 +167,31 @@ class $AssetsIconsGen {
         eyeClosed,
         eyeOpened,
         feedIcon,
+        global,
         googleLogo,
         images,
         like,
+        location,
         mapIcon,
         message,
         more,
+        noPeople,
         personFavourites,
+        personSearch,
         plusIcon,
         profileIcon,
         ratingIcon,
+        requestCancel,
+        requestClosed,
+        requestDone,
+        rewardIndicator,
         search,
         sendIcon,
         settingsIcon,
         share,
         silverCoin,
         statsIcon,
+        taskDone,
         timer
       ];
 }
@@ -161,6 +202,9 @@ class $AssetsImagesGen {
   /// File path: assets/images/ammolite.png
   AssetGenImage get ammolite =>
       const AssetGenImage('assets/images/ammolite.png');
+
+  /// File path: assets/images/image.png
+  AssetGenImage get image => const AssetGenImage('assets/images/image.png');
 
   /// File path: assets/images/jade.png
   AssetGenImage get jade => const AssetGenImage('assets/images/jade.png');
@@ -185,7 +229,7 @@ class $AssetsImagesGen {
 
   /// List of all assets
   List<AssetGenImage> get values =>
-      [ammolite, jade, lapislazuli, moonstone, onyx, pearl, supernova];
+      [ammolite, image, jade, lapislazuli, moonstone, onyx, pearl, supernova];
 }
 
 class $AssetsFontsCanelaDeckTrialGen {

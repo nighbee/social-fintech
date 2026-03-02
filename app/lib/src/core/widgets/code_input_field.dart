@@ -3,10 +3,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 class CodeInputField extends StatefulWidget {
-  const CodeInputField({super.key, required this.length, this.onChanged});
+  const CodeInputField({
+    super.key,
+    required this.length,
+    this.onChanged,
+    this.allowAlphanumeric = false,
+    this.isInvalid = false,
+  });
 
   final int length;
   final ValueChanged<String>? onChanged;
+  final bool allowAlphanumeric;
+  final bool isInvalid;
 
   @override
   State<CodeInputField> createState() => _CodeInputFieldState();
@@ -45,9 +53,7 @@ class _CodeInputFieldState extends State<CodeInputField> {
 
   void _onChanged() {
     final code = _controllers.map((c) => c.text).join();
-    if (code.length == widget.length) {
-      widget.onChanged?.call(code);
-    }
+    widget.onChanged?.call(code);
   }
 
   @override
@@ -64,7 +70,12 @@ class _CodeInputFieldState extends State<CodeInputField> {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.textGray2, width: 1),
+                border: Border.all(
+                  color: widget.isInvalid
+                      ? const Color(0xFFEF4444)
+                      : AppColors.textGray2,
+                  width: 1,
+                ),
               ),
               child: Stack(
                 alignment: Alignment.center,
@@ -76,21 +87,31 @@ class _CodeInputFieldState extends State<CodeInputField> {
                       child: Container(
                         width: 16,
                         height: 1.5,
-                        color: AppColors.textGray2,
+                        color: widget.isInvalid
+                            ? const Color(0xFFEF4444)
+                            : AppColors.textGray2,
                       ),
                     ),
                   TextFormField(
                     controller: _controllers[index],
                     focusNode: _focusNodes[index],
                     textAlign: TextAlign.center,
-                    keyboardType: TextInputType.number,
+                    keyboardType: widget.allowAlphanumeric
+                        ? TextInputType.text
+                        : TextInputType.number,
                     inputFormatters: [
-                      FilteringTextInputFormatter.digitsOnly,
+                      widget.allowAlphanumeric
+                          ? FilteringTextInputFormatter.allow(
+                              RegExp(r'[A-Za-z0-9]'),
+                            )
+                          : FilteringTextInputFormatter.digitsOnly,
                       LengthLimitingTextInputFormatter(1),
                     ],
                     style: TextStyles.titleMain.copyWith(
                       fontSize: 20,
-                      color: AppColors.textGray1,
+                      color: widget.isInvalid
+                          ? const Color(0xFFEF4444)
+                          : AppColors.textGray1,
                     ),
                     decoration: InputDecoration(
                       filled: true,
@@ -102,6 +123,12 @@ class _CodeInputFieldState extends State<CodeInputField> {
                     ),
                     onChanged: (value) {
                       setState(() {
+                        if (value.isNotEmpty && widget.allowAlphanumeric) {
+                          _controllers[index].text =
+                              value.substring(value.length - 1).toUpperCase();
+                          _controllers[index].selection =
+                              const TextSelection.collapsed(offset: 1);
+                        }
                         if (value.isNotEmpty && index < widget.length - 1) {
                           _focusNodes[index + 1].requestFocus();
                         }

@@ -30,6 +30,13 @@ import '../../../features/home/data/sources/remote/i_home_remote.dart' as _i482;
 import '../../../features/home/domain/repositories/i_home_repository.dart'
     as _i529;
 import '../../../features/home/presentation/bloc/home_bloc.dart' as _i84;
+import '../../../features/map/data/repositories/map_repository_impl.dart'
+    as _i770;
+import '../../../features/map/data/sources/remote/i_map_remote.dart' as _i951;
+import '../../../features/map/data/sources/remote/map_remote_impl.dart'
+    as _i953;
+import '../../../features/map/domain/repositories/i_map_repository.dart'
+    as _i593;
 import '../../../features/profile/data/repositories/profile_repository_impl.dart'
     as _i695;
 import '../../../features/profile/data/sources/remote/i_profile_remote.dart'
@@ -38,9 +45,12 @@ import '../../../features/profile/data/sources/remote/profile_remote_impl.dart'
     as _i236;
 import '../../../features/profile/domain/repositories/i_profile_repository.dart'
     as _i1037;
+import '../../../features/ranking/presentation/bloc/ranking_bloc.dart' as _i815;
 import '../../api/client/dio/dio_client.dart' as _i1019;
 import '../../api/client/dio/rest_client.dart' as _i877;
 import '../../config/environment_manager.dart' as _i931;
+import '../location/i_location_service.dart' as _i374;
+import '../location/location_service_impl.dart' as _i131;
 import '../storage/app_storage/storage_service.dart' as _i6;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -54,6 +64,7 @@ extension GetItInjectableX on _i174.GetIt {
       environment,
       environmentFilter,
     );
+    gh.factory<_i815.RankingBloc>(() => _i815.RankingBloc());
     gh.lazySingleton<_i6.IAppStorage>(() => _i6.AppStorageImpl());
     gh.lazySingleton<_i877.RestClient>(
       () => _i1019.DioClient(),
@@ -62,6 +73,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i964.IAuthLocal>(
       () => _i134.AuthLocalImpl(),
       instanceName: 'AuthLocalImpl',
+    );
+    gh.lazySingleton<_i374.ILocationService>(
+      () => _i131.LocationServiceImpl(),
+      instanceName: 'LocationServiceImpl',
+    );
+    gh.lazySingleton<_i951.IMapRemote>(
+      () =>
+          _i953.MapRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),
+      instanceName: 'MapRemoteImpl',
     );
     gh.lazySingleton<_i482.IHomeRemote>(
       () =>
@@ -91,6 +111,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i955.HomeRepositoryImpl(
           gh<_i482.IHomeRemote>(instanceName: 'HomeRemoteImpl')),
       instanceName: 'HomeRepositoryImpl',
+    );
+    gh.lazySingleton<_i593.IMapRepository>(
+      () => _i770.MapRepositoryImpl(
+          gh<_i951.IMapRemote>(instanceName: 'MapRemoteImpl')),
+      instanceName: 'MapRepositoryImpl',
     );
     gh.lazySingleton<_i1037.IProfileRepository>(
       () => _i695.ProfileRepositoryImpl(

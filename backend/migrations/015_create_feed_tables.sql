@@ -26,9 +26,9 @@ CREATE TABLE IF NOT EXISTS posts (
 );
 
 -- Indexes for posts
-CREATE INDEX idx_posts_user_id ON posts(user_id, created_at DESC);
-CREATE INDEX idx_posts_created_at ON posts(created_at DESC) WHERE is_archived = false;
-CREATE INDEX idx_posts_location ON posts 
+CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_created_at ON posts(created_at DESC) WHERE is_archived = false;
+CREATE INDEX IF NOT EXISTS idx_posts_location ON posts 
     USING GIST(ST_SetSRID(ST_MakePoint(location_lon, location_lat), 4326))
     WHERE location_lat IS NOT NULL AND location_lon IS NOT NULL AND is_archived = false;
 
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS post_media (
     UNIQUE(post_id, media_order)
 );
 
-CREATE INDEX idx_post_media_post_id ON post_media(post_id, media_order);
+CREATE INDEX IF NOT EXISTS idx_post_media_post_id ON post_media(post_id, media_order);
 
 -- Comments on posts
 CREATE TABLE IF NOT EXISTS post_comments (
@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS post_comments (
     CHECK (LENGTH(content) > 0 AND LENGTH(content) <= 2000)
 );
 
-CREATE INDEX idx_post_comments_post_id ON post_comments(post_id, created_at DESC) WHERE is_deleted = false;
-CREATE INDEX idx_post_comments_user_id ON post_comments(user_id, created_at DESC);
-CREATE INDEX idx_post_comments_parent ON post_comments(parent_comment_id) WHERE parent_comment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_post_comments_post_id ON post_comments(post_id, created_at DESC) WHERE is_deleted = false;
+CREATE INDEX IF NOT EXISTS idx_post_comments_user_id ON post_comments(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_post_comments_parent ON post_comments(parent_comment_id) WHERE parent_comment_id IS NOT NULL;
 
 -- Post interactions (likes, seals given)
 CREATE TABLE IF NOT EXISTS post_interactions (
@@ -86,8 +86,8 @@ CREATE TABLE IF NOT EXISTS post_interactions (
     UNIQUE(post_id, user_id, interaction_type)
 );
 
-CREATE INDEX idx_post_interactions_post ON post_interactions(post_id, interaction_type);
-CREATE INDEX idx_post_interactions_user ON post_interactions(user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_post_interactions_post ON post_interactions(post_id, interaction_type);
+CREATE INDEX IF NOT EXISTS idx_post_interactions_user ON post_interactions(user_id, created_at DESC);
 
 -- Comments
 COMMENT ON TABLE posts IS 'User posts with optional media attachments';

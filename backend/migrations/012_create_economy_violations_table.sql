@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS economy_violations (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_economy_violations_user ON economy_violations(user_id);
-CREATE INDEX idx_economy_violations_type ON economy_violations(violation_type);
-CREATE INDEX idx_economy_violations_created ON economy_violations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_economy_violations_user ON economy_violations(user_id);
+CREATE INDEX IF NOT EXISTS idx_economy_violations_type ON economy_violations(violation_type);
+CREATE INDEX IF NOT EXISTS idx_economy_violations_created ON economy_violations(created_at DESC);
 
 COMMENT ON TABLE economy_violations IS 'Audit log for economy rule violations and abuse attempts';
 COMMENT ON COLUMN economy_violations.violation_type IS 'Type: COOLDOWN_BREACH, RATE_LIMIT_EXCEEDED, FREE_SILVER_CAP, MONTHLY_LIMIT_EXCEEDED, INSUFFICIENT_FUNDS_ATTEMPT';

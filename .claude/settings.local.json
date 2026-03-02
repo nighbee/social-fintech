@@ -8,7 +8,10 @@
       "Bash(git restore:*)",
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(cd D:\\\\EverythingRelatedToIT\\\\flutterProjects\\\\brightbund\\\\app:*)"
+      "Bash(cd D:\\\\EverythingRelatedToIT\\\\flutterProjects\\\\brightbund\\\\app:*)",
+      "mcp__ide__getDiagnostics",
+      "WebSearch",
+      "Bash(xargs:*)"
     ]
   }
 }

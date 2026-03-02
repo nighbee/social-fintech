@@ -8,7 +8,9 @@
       "program": "app/lib/main_dev.dart",
       "args": [
         "--flavor",
-        "dev"
+        "dev",
+        "--dart-define",
+        "MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}"
       ]
     },
     {
@@ -18,7 +20,9 @@
       "program": "app/lib/main_prod.dart",
       "args": [
         "--flavor",
-        "dev"
+        "dev",
+        "--dart-define",
+        "MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}"
       ]
     },
     {
@@ -29,7 +33,9 @@
       "flutterMode": "release",
       "args": [
         "--flavor",
-        "prod"
+        "prod",
+        "--dart-define",
+        "MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}"
       ]
     },
     {
@@ -40,7 +46,9 @@
       "flutterMode": "release",
       "args": [
         "--flavor",
-        "prod"
+        "prod",
+        "--dart-define",
+        "MAPBOX_ACCESS_TOKEN=${env:MAPBOX_ACCESS_TOKEN}"
       ]
     }
   ]
