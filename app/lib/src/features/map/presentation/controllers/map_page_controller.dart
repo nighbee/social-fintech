@@ -60,6 +60,7 @@ class MapPageController {
   String executorCreatorName = '';
   String? handledTaskApplicationActionResult;
   final Set<String> locallyCanceledExecutorApplicationIds = <String>{};
+  int consecutiveMissingAppliedTaskChecks = 0;
   double currentLatitude = 50.4501;
   double currentLongitude = 30.5234;
   bool isRequestExpanded = false;
@@ -141,6 +142,7 @@ class MapPageController {
       handledApplyApplicationId = viewModel.applyToTaskResult.applicationId;
       executorTaskStatus = viewModel.applyToTaskResult.status;
       executorCreatorName = '';
+      consecutiveMissingAppliedTaskChecks = 0;
       _dialogs.resetRejectedHandledId();
       unawaited(
         _persistActiveExecutorApplication(
@@ -527,6 +529,7 @@ class MapPageController {
     final taskId = viewModel.applyToTaskResult.taskId;
     final applicationId = viewModel.applyToTaskResult.applicationId;
     if (taskId.isEmpty || applicationId.isEmpty) {
+      consecutiveMissingAppliedTaskChecks = 0;
       if (executorTaskStatus.isNotEmpty && mounted) {
         runSetState(() {
           executorTaskStatus = '';
@@ -540,6 +543,7 @@ class MapPageController {
     }
 
     if (locallyCanceledExecutorApplicationIds.contains(applicationId)) {
+      consecutiveMissingAppliedTaskChecks = 0;
       return;
     }
 
@@ -559,6 +563,10 @@ class MapPageController {
         matchedTaskStatus = task.status;
         break;
       }
+    }
+
+    if (matchedTaskStatus != null) {
+      consecutiveMissingAppliedTaskChecks = 0;
     }
 
     if (matchedTaskStatus == 'completed') {
@@ -592,11 +600,15 @@ class MapPageController {
         viewModel.hasAppliedTasksLoaded &&
         mounted &&
         !executorCompletionShown) {
-      unawaited(_clearActiveExecutorApplication());
-      runSetState(() {
-        executorTaskStatus = 'rejected';
-        executorCreatorName = '';
-      });
+      // Avoid false "rejected" when current state is stale right after apply.
+      consecutiveMissingAppliedTaskChecks += 1;
+      if (consecutiveMissingAppliedTaskChecks >= 2) {
+        unawaited(_clearActiveExecutorApplication());
+        runSetState(() {
+          executorTaskStatus = 'rejected';
+          executorCreatorName = '';
+        });
+      }
     }
   }
 

@@ -10,6 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:syncfusion_flutter_core/theme.dart';
+import 'package:syncfusion_flutter_sliders/sliders.dart';
 
 class CreateRequestPage extends StatefulWidget {
   const CreateRequestPage({
@@ -170,8 +172,8 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                                   isDense: true,
                                   enabledBorder: OutlineInputBorder(
                                     borderSide: BorderSide(
-                                      color: Colors.white
-                                          .withValues(alpha: 0.14),
+                                      color:
+                                          Colors.white.withValues(alpha: 0.14),
                                     ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
@@ -184,25 +186,50 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                               ),
                             ),
                             const SizedBox(height: 14),
-                            Text(
-                              'Reward',
-                              style: TextStyles.bodyMain
-                                  .copyWith(color: Colors.white70),
+                            Row(
+                              children: [
+                                Text(
+                                  'Reward',
+                                  style: TextStyles.bodyMain
+                                      .copyWith(color: Colors.white70),
+                                ),
+                                Gap(6),
+                                Assets.icons.silverCoin.svg(),
+                              ],
                             ),
-                            SliderTheme(
-                              data: SliderTheme.of(context).copyWith(
-                                activeTrackColor: Colors.white70,
-                                inactiveTrackColor: Colors.white24,
-                                thumbColor: Colors.white,
-                                overlayColor: Colors.white24,
-                                trackHeight: 2,
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 35,
+                                vertical: 15,
                               ),
-                              child: Slider(
-                                min: 1,
-                                max: 3,
-                                divisions: 2,
-                                value: _reward,
-                                onChanged: (v) => setState(() => _reward = v),
+                              child: SfSliderTheme(
+                                data: const SfSliderThemeData(
+                                  activeTrackHeight: 2,
+                                  inactiveTrackHeight: 2,
+                                  thumbRadius: 9,
+                                  overlayRadius: 0,
+                                  activeDividerRadius: 9,
+                                  inactiveDividerRadius: 9,
+                                  activeDividerColor: Colors.white,
+                                  inactiveDividerColor: Color(0xFF7A7A7A),
+                                  // thumbColor: AppColors.whiteBackground,
+                                ),
+                                child: SfSlider(
+                                  min: 1.0,
+                                  max: 3.0,
+                                  value: _reward,
+                                  stepSize: 1.0,
+                                  interval: 1.0,
+                                  showDividers: true,
+                                  showLabels: true,
+                                  activeColor: Colors.white,
+                                  inactiveColor: Color(0xFF7A7A7A),
+                                  thumbShape: _ContainerThumbShape(),
+                                  dividerShape: _ContainerDividerShape(),
+                                  onChanged: (dynamic value) {
+                                    setState(() => _reward = value as double);
+                                  },
+                                ),
                               ),
                             ),
                             Text(
@@ -222,8 +249,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                                     children: [
                                       Text(
                                         'Automatic shutdown',
-                                        style:
-                                            TextStyles.bodyLarge.copyWith(
+                                        style: TextStyles.bodyLarge.copyWith(
                                           color: Colors.white,
                                         ),
                                       ),
@@ -365,5 +391,111 @@ class _RequestField extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _ContainerThumbShape extends SfThumbShape {
+  const _ContainerThumbShape({
+    this.width = 18,
+    this.height = 18,
+    this.borderRadius = 6,
+  });
+
+  final double width;
+  final double height;
+  final double borderRadius;
+
+  @override
+  Size getPreferredSize(SfSliderThemeData themeData) {
+    return Size(width, height);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset thumbCenter, {
+    required RenderBox parentBox,
+    required RenderBox? child,
+    required SfSliderThemeData themeData,
+    SfRangeValues? currentValues,
+    dynamic currentValue,
+    required Paint? paint,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+    required SfThumb? thumb,
+  }) {
+    final canvas = context.canvas;
+    final rect = Rect.fromCenter(
+      center: thumbCenter,
+      width: width,
+      height: height,
+    );
+    final rRect = RRect.fromRectAndRadius(
+      rect,
+      Radius.circular(borderRadius),
+    );
+
+    final fillPaint = Paint()..color = const Color(0xFFF8F8F8);
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0x33000000);
+
+    canvas.drawRRect(rRect, fillPaint);
+    canvas.drawRRect(rRect, borderPaint);
+  }
+}
+
+class _ContainerDividerShape extends SfDividerShape {
+  const _ContainerDividerShape({
+    this.width = 18,
+    this.height = 18,
+    this.borderRadius = 6,
+  });
+
+  final double width;
+  final double height;
+  final double borderRadius;
+
+  @override
+  Size getPreferredSize(SfSliderThemeData themeData, {bool? isActive}) {
+    return Size(width, height);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center,
+    Offset? thumbCenter,
+    Offset? startThumbCenter,
+    Offset? endThumbCenter, {
+    required RenderBox parentBox,
+    required SfSliderThemeData themeData,
+    SfRangeValues? currentValues,
+    dynamic currentValue,
+    required Paint? paint,
+    required Animation<double> enableAnimation,
+    required TextDirection textDirection,
+  }) {
+    final bool isActive =
+        thumbCenter == null ? false : center.dx <= thumbCenter.dx;
+    final Color fillColor =
+        isActive ? const Color(0xFFF8F8F8) : const Color(0xFF8A8A8A);
+
+    final rect = Rect.fromCenter(
+      center: center,
+      width: width,
+      height: height,
+    );
+    final rRect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
+
+    final fillPaint = Paint()..color = fillColor;
+    final borderPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1
+      ..color = const Color(0x33000000);
+
+    context.canvas.drawRRect(rRect, fillPaint);
+    context.canvas.drawRRect(rRect, borderPaint);
   }
 }
