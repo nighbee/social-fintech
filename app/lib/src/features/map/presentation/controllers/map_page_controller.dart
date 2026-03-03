@@ -4,6 +4,7 @@ import 'package:app/src/core/router/router.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_task_application_entity.dart';
+import 'package:app/src/features/map/domain/entities/map_task_entity.dart';
 import 'package:app/src/features/map/domain/requests/map_champions_request.dart';
 import 'package:app/src/features/map/domain/requests/map_nearby_tasks_request.dart';
 import 'package:app/src/features/map/domain/requests/map_region_assignment_request.dart';
@@ -15,6 +16,7 @@ import 'package:app/src/features/map/presentation/services/map_champion_service.
 import 'package:app/src/features/map/presentation/services/map_dialog_service.dart';
 import 'package:app/src/features/map/presentation/services/map_persistence_service.dart';
 import 'package:app/src/features/map/presentation/services/map_polling_service.dart';
+import 'package:app/src/features/map/presentation/services/map_request_marker_service.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:go_router/go_router.dart';
@@ -30,11 +32,14 @@ class MapPageController {
       MapChampionEntity champion,
       List<MapChampionEntity> champions,
     ) onChampionTap,
+    required void Function(VoidCallback fn) requestSetState,
   })  : _mapBloc = mapBloc,
         _persistence = persistence,
         _polling = polling,
         _dialogs = dialogs,
         _championService = MapChampionService(),
+        _requestMarkerService = MapRequestMarkerService(),
+        _requestSetState = requestSetState,
         _onChampionTapCallback = onChampionTap;
 
   final MapBloc _mapBloc;
@@ -42,6 +47,8 @@ class MapPageController {
   final MapPollingService _polling;
   final MapDialogService _dialogs;
   final MapChampionService _championService;
+  final MapRequestMarkerService _requestMarkerService;
+  final void Function(VoidCallback fn) _requestSetState;
   final void Function(
     MapChampionEntity champion,
     List<MapChampionEntity> champions,
@@ -66,6 +73,8 @@ class MapPageController {
   bool isRequestExpanded = false;
   bool hasSavedCenter = false;
   String? _lastChampionsRegionKey;
+  String? selectedNearbyTaskId;
+  DateTime? _lastMarkerSelectionAt;
 
   void onInit() {
     _mapBloc.add(const MapEvent.loadMap());
@@ -77,11 +86,28 @@ class MapPageController {
 
   void onDispose() {
     _polling.dispose();
-    _championService.dispose();
+    unawaited(_championService.dispose());
+    unawaited(_requestMarkerService.dispose());
   }
 
   void toggleRequestExpanded() {
     isRequestExpanded = !isRequestExpanded;
+  }
+
+  void selectNearbyTask(String taskId) {
+    selectedNearbyTaskId = selectedNearbyTaskId == taskId ? null : taskId;
+    unawaited(_requestMarkerService.setSelectedTask(selectedNearbyTaskId));
+  }
+
+  void clearNearbyTaskSelection() {
+    final lastMarkerTap = _lastMarkerSelectionAt;
+    if (lastMarkerTap != null &&
+        DateTime.now().difference(lastMarkerTap) <
+            const Duration(milliseconds: 180)) {
+      return;
+    }
+    selectedNearbyTaskId = null;
+    unawaited(_requestMarkerService.clearSelection());
   }
 
   Future<void> onLoadingError(BuildContext context, String message) async {
@@ -101,6 +127,9 @@ class MapPageController {
     required bool mounted,
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
+    _reconcileSelectedNearbyTask(viewModel.nearbyTasks);
+    await _requestMarkerService.syncTasks(viewModel.nearbyTasks);
+    await _requestMarkerService.setSelectedTask(selectedNearbyTaskId);
     _ensureChampionsLoaded(viewModel);
     _refreshTaskApplications(viewModel);
     await _tryShowCreatorConfirmDialog(context, viewModel);
@@ -219,6 +248,12 @@ class MapPageController {
 
     // Load champions for initial region
     unawaited(_loadChampionsForCurrentRegion());
+    unawaited(
+      _requestMarkerService.initialize(
+        map,
+        onSelectionChanged: _onRequestMarkerSelectionChanged,
+      ),
+    );
   }
 
   void onCameraChanged(CameraChangedEventData eventData) {
@@ -463,6 +498,22 @@ class MapPageController {
         ),
       ),
     );
+  }
+
+  void _reconcileSelectedNearbyTask(List<MapTaskEntity> nearbyTasks) {
+    final selectedTaskId = selectedNearbyTaskId;
+    if (selectedTaskId == null) {
+      return;
+    }
+
+    for (final task in nearbyTasks) {
+      if (task.id == selectedTaskId) {
+        return;
+      }
+    }
+
+    selectedNearbyTaskId = null;
+    unawaited(_requestMarkerService.setSelectedTask(null));
   }
 
   void _refreshTaskApplications(MapViewModel viewModel) {
@@ -711,6 +762,13 @@ class MapPageController {
 
   void _onChampionTap(MapChampionEntity champion) {
     _onChampionTapCallback(champion, _mapBloc.viewModel.champions);
+  }
+
+  void _onRequestMarkerSelectionChanged(String? selectedTaskId) {
+    _lastMarkerSelectionAt = DateTime.now();
+    _requestSetState(() {
+      selectedNearbyTaskId = selectedTaskId;
+    });
   }
 
   void _handleTaskApplicationActionResult(

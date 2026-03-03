@@ -147,47 +147,70 @@ class MapChampionService {
 
   /// Create champion marker image
   Future<Uint8List> _createChampionMarkerImage() async {
-    // Create a simple champion badge icon
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
+    const width = 92.0;
+    const height = 114.0;
+    const avatarRadius = 24.0;
+    const avatarCenter = Offset(width / 2, 32);
 
-    const size = 60.0;
-    final center = Offset(size / 2, size / 2);
+    final outerRingPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFFFFE08A),
+          Color(0xFFE0A92F),
+        ],
+      ).createShader(
+        Rect.fromCircle(center: avatarCenter, radius: avatarRadius + 3),
+      );
+    canvas.drawCircle(avatarCenter, avatarRadius + 3, outerRingPaint);
 
-    // Draw gold circle background
-    final bgPaint = Paint()
-      ..color = const Color(0xFFFFD700) // Gold color
+    final innerBgPaint = Paint()
+      ..color = const Color(0xFF2E3D50)
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(center, size / 2, bgPaint);
+    canvas.drawCircle(avatarCenter, avatarRadius, innerBgPaint);
 
-    // Draw crown icon (simplified)
-    final crownPaint = Paint()
-      ..color = const Color(0xFF8B6914) // Darker gold
-      ..style = PaintingStyle.fill
-      ..strokeWidth = 2.0;
-
-    final path = Path();
-    // Crown base
-    path.moveTo(center.dx - 15, center.dy + 5);
-    path.lineTo(center.dx + 15, center.dy + 5);
-    // Crown points
-    path.lineTo(center.dx + 15, center.dy - 5);
-    path.lineTo(center.dx + 8, center.dy);
-    path.lineTo(center.dx, center.dy - 12);
-    path.lineTo(center.dx - 8, center.dy);
-    path.lineTo(center.dx - 15, center.dy - 5);
-    path.close();
-
-    canvas.drawPath(path, crownPaint);
-
-    // Draw score circle
-    final scorePaint = Paint()
+    final personPaint = Paint()
       ..color = Colors.white
       ..style = PaintingStyle.fill;
-    canvas.drawCircle(const Offset(size / 2, size / 2 + 8), 10, scorePaint);
+    canvas.drawCircle(
+      Offset(avatarCenter.dx, avatarCenter.dy - 7),
+      7.2,
+      personPaint,
+    );
+
+    final bodyPath = Path()
+      ..moveTo(avatarCenter.dx - 14, avatarCenter.dy + 12)
+      ..quadraticBezierTo(
+        avatarCenter.dx,
+        avatarCenter.dy - 2,
+        avatarCenter.dx + 14,
+        avatarCenter.dy + 12,
+      )
+      ..lineTo(avatarCenter.dx + 14, avatarCenter.dy + 18)
+      ..lineTo(avatarCenter.dx - 14, avatarCenter.dy + 18)
+      ..close();
+    canvas.drawPath(bodyPath, personPaint);
+
+    final textPainter = TextPainter(
+      text: const TextSpan(
+        text: 'Champion',
+        style: TextStyle(
+          color: Color(0xFFFFCF5A),
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: width);
+    final textX = (width - textPainter.width) / 2;
+    textPainter.paint(canvas, Offset(textX, 72));
 
     final picture = recorder.endRecording();
-    final image = await picture.toImage(size.toInt(), size.toInt());
+    final image = await picture.toImage(width.toInt(), height.toInt());
     final byteData = await image.toByteData(format: ImageByteFormat.png);
     return byteData!.buffer.asUint8List();
   }
