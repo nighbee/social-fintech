@@ -20,9 +20,14 @@ class MapRequestMarkerService {
   final Map<String, bool> _selectedByTaskId = <String, bool>{};
   final Map<String, MapTaskEntity> _tasksById = <String, MapTaskEntity>{};
   PointAnnotation? _selectionIndicator;
+  bool? _selectionIndicatorShowsGlow;
 
   Uint8List? _normalMarkerImage;
   Uint8List? _selectedMarkerImage;
+  Uint8List? _selectionIndicatorGlowImage;
+  Uint8List? _selectionIndicatorPlainImage;
+  Timer? _selectionGlowTimer;
+  bool _showSelectionGlow = false;
 
   String? _selectedTaskId;
   void Function(String? selectedTaskId)? _onSelectionChanged;
@@ -37,6 +42,13 @@ class MapRequestMarkerService {
     _normalMarkerImage ??= await _createTriangleMarkerImage(isSelected: false);
     _selectedMarkerImage ??= await _createTriangleMarkerImage(isSelected: true);
 
+    // Create selection-indicator manager first so it renders under task markers.
+    final selectionManager =
+        await map.annotations.createPointAnnotationManager();
+    _selectionIndicatorManager = selectionManager;
+    await selectionManager.setIconAllowOverlap(true);
+    await selectionManager.setIconIgnorePlacement(true);
+
     final manager = await map.annotations.createPointAnnotationManager();
     _annotationManager = manager;
     await manager.setIconAllowOverlap(true);
@@ -50,12 +62,6 @@ class MapRequestMarkerService {
         await _handleTap(taskId);
       },
     );
-
-    // Create separate manager for selection indicator
-    final selectionManager = await map.annotations.createPointAnnotationManager();
-    _selectionIndicatorManager = selectionManager;
-    await selectionManager.setIconAllowOverlap(true);
-    await selectionManager.setIconIgnorePlacement(true);
   }
 
   Future<void> syncTasks(List<MapTaskEntity> tasks) async {
@@ -103,6 +109,9 @@ class MapRequestMarkerService {
   }
 
   Future<void> clearSelection() async {
+    _selectionGlowTimer?.cancel();
+    _selectionGlowTimer = null;
+    _showSelectionGlow = false;
     _selectedTaskId = null;
     await _updateSelectionIndicator();
     await _syncVisualsAndPositions();
@@ -122,6 +131,12 @@ class MapRequestMarkerService {
       await selectionManager.deleteAll();
     }
     _selectionIndicator = null;
+    _selectionIndicatorShowsGlow = null;
+    _selectionGlowTimer?.cancel();
+    _selectionGlowTimer = null;
+    _showSelectionGlow = false;
+    _selectionIndicatorGlowImage = null;
+    _selectionIndicatorPlainImage = null;
     _annotationsByTaskId.clear();
     _taskIdByAnnotationId.clear();
     _selectedByTaskId.clear();
@@ -132,10 +147,19 @@ class MapRequestMarkerService {
   }
 
   Future<void> _handleTap(String taskId) async {
+    _selectionGlowTimer?.cancel();
     _selectedTaskId = taskId;
+    _showSelectionGlow = true;
     await _updateSelectionIndicator();
     _onSelectionChanged?.call(taskId);
     await _syncVisualsAndPositions();
+    _selectionGlowTimer = Timer(const Duration(seconds: 3), () async {
+      if (_selectedTaskId == null) {
+        return;
+      }
+      _showSelectionGlow = false;
+      await _updateSelectionIndicator();
+    });
   }
 
   Future<void> _updateSelectionIndicator() async {
@@ -144,16 +168,14 @@ class MapRequestMarkerService {
       return;
     }
 
-    // Remove old indicator
-    final oldIndicator = _selectionIndicator;
-    if (oldIndicator != null) {
-      await manager.delete(oldIndicator);
-      _selectionIndicator = null;
-    }
-
-    // Add new indicator if task is selected
     final selectedTaskId = _selectedTaskId;
     if (selectedTaskId == null) {
+      final existing = _selectionIndicator;
+      if (existing != null) {
+        await manager.delete(existing);
+        _selectionIndicator = null;
+        _selectionIndicatorShowsGlow = null;
+      }
       return;
     }
 
@@ -162,63 +184,81 @@ class MapRequestMarkerService {
       return;
     }
 
-    final indicatorImage = await _createSelectionIndicatorImage();
-    final indicator = await manager.create(
-      PointAnnotationOptions(
-        geometry: Point(
-          coordinates: Position(task.longitude, task.latitude),
-        ),
-        iconAnchor: IconAnchor.BOTTOM,
-        image: indicatorImage,
-        iconSize: 1.0,
-      ),
+    _selectionIndicatorGlowImage ??=
+        await _createSelectionIndicatorImage(showGlow: true);
+    _selectionIndicatorPlainImage ??=
+        await _createSelectionIndicatorImage(showGlow: false);
+    final indicatorImage = _showSelectionGlow
+        ? _selectionIndicatorGlowImage!
+        : _selectionIndicatorPlainImage!;
+
+    final geometry = Point(
+      coordinates: Position(task.longitude, task.latitude),
     );
-    _selectionIndicator = indicator;
+
+    final existing = _selectionIndicator;
+    if (existing == null) {
+      _selectionIndicator = await manager.create(
+        PointAnnotationOptions(
+          geometry: geometry,
+          iconAnchor: IconAnchor.BOTTOM,
+          image: indicatorImage,
+          iconSize: 1.0,
+        ),
+      );
+      _selectionIndicatorShowsGlow = _showSelectionGlow;
+    } else {
+      if (_selectionIndicatorShowsGlow != _showSelectionGlow) {
+        await manager.delete(existing);
+        _selectionIndicator = await manager.create(
+          PointAnnotationOptions(
+            geometry: geometry,
+            iconAnchor: IconAnchor.BOTTOM,
+            image: indicatorImage,
+            iconSize: 1.0,
+          ),
+        );
+      } else {
+        existing.geometry = geometry;
+        await manager.update(existing);
+      }
+      _selectionIndicatorShowsGlow = _showSelectionGlow;
+    }
 
     // Force map to redraw
     await _mapboxMap?.triggerRepaint();
   }
 
-  Future<Uint8List> _createSelectionIndicatorImage() async {
-    const width = 120.0;
-    const height = 160.0;
+  Future<Uint8List> _createSelectionIndicatorImage({
+    required bool showGlow,
+  }) async {
+    const width = 220.0;
+    const height = 240.0;
     final recorder = ui.PictureRecorder();
     final canvas = ui.Canvas(recorder);
 
-    ui.Image? networkImage;
-    try {
-      // Use a random network image for the selection indicator
-      final imageUrl = 'https://i.pravatar.cc/150?img=${DateTime.now().millisecond % 70}';
+    // Center position for the entire marker (circle + triangle)
+    const markerCenter = ui.Offset(width / 2, 140);
+    const circleCenter = ui.Offset(width / 2, 140);
+    const circleRadius = 24.0;
 
-      final imageProvider = NetworkImage(imageUrl);
-
-      // Load the image from network
-      final imageStream = imageProvider.resolve(ImageConfiguration.empty);
-      final completer = Completer<ui.Image>();
-
-      ImageStreamListener? listener;
-      listener = ImageStreamListener((ImageInfo info, bool synchronousCall) {
-        completer.complete(info.image);
-        imageStream.removeListener(listener!);
-      });
-
-      imageStream.addListener(listener);
-
-      networkImage = await completer.future.timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          throw Exception('Image load timeout');
-        },
-      );
-    } catch (_) {
-      // Network image failed, will use fallback
+    if (showGlow) {
+      // Circular glow under marker; large and non-rectangular.
+      final glowPaint = Paint()
+        ..shader = const RadialGradient(
+          colors: [
+            Color(0xA6000000),
+            Color(0x52000000),
+            Color(0x00000000),
+          ],
+          stops: [0.0, 0.58, 1.0],
+        ).createShader(
+          Rect.fromCircle(center: markerCenter, radius: 112),
+        );
+      canvas.drawCircle(markerCenter, 112, glowPaint);
     }
 
-    // Position: circle should be above the triangle
-    const circleCenter = ui.Offset(width / 2, 50);
-    const circleRadius = 28.0;
-
-    // Draw black border
+    // Draw black border on circle
     final blackBorderPaint = Paint()
       ..color = Colors.black
       ..style = PaintingStyle.stroke
@@ -226,39 +266,28 @@ class MapRequestMarkerService {
       ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1);
     canvas.drawCircle(circleCenter, circleRadius, blackBorderPaint);
 
-    // Draw white circle background
-    final whiteCirclePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(circleCenter, circleRadius - 1, whiteCirclePaint);
+    // Draw one stable avatar placeholder (no network image swapping).
+    final avatarBgPaint = Paint()..color = const Color(0xFF5C6B81);
+    canvas.drawCircle(circleCenter, circleRadius - 2.5, avatarBgPaint);
 
-    // Draw network image inside circle if loaded
-    if (networkImage != null) {
-      // Clip to circle
-      canvas.clipRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCircle(center: circleCenter, radius: circleRadius - 2),
-          Radius.circular(circleRadius - 2),
-        ),
-      );
-
-      // Draw image centered in circle
-      final imageSize = ui.Size(circleRadius * 2 - 8, circleRadius * 2 - 8);
-      final imageRect = Rect.fromCenter(
-        center: circleCenter,
-        width: imageSize.width,
-        height: imageSize.height,
-      );
-
-      paintImage(
-        canvas: canvas,
-        image: networkImage,
-        rect: imageRect,
-        scale: 1.0,
-        alignment: Alignment.center,
-        fit: BoxFit.cover,
-      );
-    }
+    final personPaint = Paint()..color = Colors.white;
+    canvas.drawCircle(
+      ui.Offset(circleCenter.dx, circleCenter.dy - 6),
+      6.2,
+      personPaint,
+    );
+    final bodyPath = Path()
+      ..moveTo(circleCenter.dx - 11, circleCenter.dy + 11)
+      ..quadraticBezierTo(
+        circleCenter.dx,
+        circleCenter.dy - 1,
+        circleCenter.dx + 11,
+        circleCenter.dy + 11,
+      )
+      ..lineTo(circleCenter.dx + 11, circleCenter.dy + 15)
+      ..lineTo(circleCenter.dx - 11, circleCenter.dy + 15)
+      ..close();
+    canvas.drawPath(bodyPath, personPaint);
 
     final picture = recorder.endRecording();
     final image = await picture.toImage(width.toInt(), height.toInt());
@@ -330,17 +359,6 @@ class MapRequestMarkerService {
     final triangleSize =
         isSelected ? const ui.Size(44, 34) : const ui.Size(30, 23);
     const triangleCenter = ui.Offset(width / 2, 62);
-
-    if (isSelected) {
-      const circleCenter = ui.Offset(width / 2, 26);
-      final circleFill = Paint()..color = const Color(0xFF2E3D50);
-      final circleStroke = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.8
-        ..color = const Color(0xCCFFFFFF);
-      canvas.drawCircle(circleCenter, 12, circleFill);
-      canvas.drawCircle(circleCenter, 12, circleStroke);
-    }
 
     final path = Path()
       ..moveTo(triangleCenter.dx, triangleCenter.dy + triangleSize.height / 2)

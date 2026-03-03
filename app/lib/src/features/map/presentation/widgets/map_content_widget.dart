@@ -84,23 +84,50 @@ class _MapContent extends StatelessWidget {
         }
       }
     }
-    final normalizedExecutorStatus = executorTaskStatus.trim().toLowerCase();
+    String normalizeStatus(String status) {
+      return status
+          .trim()
+          .toLowerCase()
+          .replaceAll('-', '_')
+          .replaceAll(' ', '_');
+    }
+
+    bool isApprovedStatus(String status) {
+      final normalized = normalizeStatus(status);
+      if (normalized.isEmpty) {
+        return false;
+      }
+      const exactApproved = <String>{
+        'accepted',
+        'assigned',
+        'arrived',
+        'in_progress',
+        'code_required',
+        'code_verified',
+      };
+      if (exactApproved.contains(normalized)) {
+        return true;
+      }
+      return normalized.contains('accepted') ||
+          normalized.contains('assigned') ||
+          normalized.contains('arrived') ||
+          normalized.contains('in_progress') ||
+          normalized.contains('code_required') ||
+          normalized.contains('code_verified');
+    }
+
+    final normalizedExecutorStatus = normalizeStatus(executorTaskStatus);
     final hasActiveApplicationLifecycle = hasAppliedTask &&
         !isLocallyCanceledByExecutor &&
         normalizedExecutorStatus != 'rejected' &&
         normalizedExecutorStatus != 'completed';
-    const acceptedStatuses = <String>{
-      'accepted',
-      'assigned',
-      'arrived',
-      'in_progress',
-      'code_required',
-      'code_verified',
-    };
-    final normalizedApplyStatus = applyResult.status.trim().toLowerCase();
+    final normalizedApplyStatus = normalizeStatus(applyResult.status);
+    final normalizedAppliedTaskStatus =
+        normalizeStatus(appliedTask?.status ?? '');
     final canEnterCodeByStatus =
-        acceptedStatuses.contains(normalizedExecutorStatus) ||
-            normalizedApplyStatus == 'pending';
+        isApprovedStatus(normalizedExecutorStatus) ||
+            isApprovedStatus(normalizedApplyStatus) ||
+            isApprovedStatus(normalizedAppliedTaskStatus);
     final isCodeVerified =
         verifyResult.applicationId == applyResult.applicationId &&
             verifyResult.status == 'code_verified';
@@ -114,6 +141,17 @@ class _MapContent extends StatelessWidget {
     final hasExecutorFlowActive =
         isAwaitingCodeEntry || isWaitingCreatorConfirm;
     final shouldShowExecutorTopStrip = hasExecutorFlowActive;
+
+    // Debug logging
+    debugPrint('[MapContent] Executor Status Check:');
+    debugPrint('  - executorTaskStatus: "$executorTaskStatus" (normalized: "$normalizedExecutorStatus")');
+    debugPrint('  - applyResult.status: "${applyResult.status}" (normalized: "$normalizedApplyStatus")');
+    debugPrint('  - appliedTask?.status: "${appliedTask?.status ?? ''}" (normalized: "$normalizedAppliedTaskStatus")');
+    debugPrint('  - hasAppliedTask: $hasAppliedTask');
+    debugPrint('  - canEnterCodeByStatus: $canEnterCodeByStatus');
+    debugPrint('  - isCodeVerified: $isCodeVerified');
+    debugPrint('  - isAwaitingCodeEntry: $isAwaitingCodeEntry');
+    debugPrint('  - hasExecutorFlowActive: $hasExecutorFlowActive');
 
     const mapboxAccessToken = String.fromEnvironment(
       'MAPBOX_ACCESS_TOKEN',

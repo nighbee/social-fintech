@@ -792,6 +792,10 @@ class MapPageController {
     }
 
     if (action == 'accepted' || action == 'rejected') {
+      runSetState(() {
+        executorTaskStatus = action;
+        debugPrint('[MapController] Task application $action - executorTaskStatus updated to: $action');
+      });
       final taskId = _polling.lastApplicationsTaskId;
       if (taskId != null && taskId.isNotEmpty) {
         _mapBloc.add(
@@ -807,6 +811,15 @@ class MapPageController {
           ),
         );
       }
+
+      // Refresh applied tasks to get the latest status and trigger UI update
+      debugPrint('[MapController] Refreshing applied tasks after $action');
+      _mapBloc.add(const MapEvent.getAppliedTasks());
+
+      // Force an extra setState to ensure UI updates
+      runSetState(() {
+        debugPrint('[MapController] Forced setState for UI update');
+      });
     }
   }
 }
