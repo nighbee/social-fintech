@@ -202,34 +202,11 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                                 horizontal: 35,
                                 vertical: 15,
                               ),
-                              child: SfSliderTheme(
-                                data: const SfSliderThemeData(
-                                  activeTrackHeight: 2,
-                                  inactiveTrackHeight: 2,
-                                  thumbRadius: 9,
-                                  overlayRadius: 0,
-                                  activeDividerRadius: 9,
-                                  inactiveDividerRadius: 9,
-                                  activeDividerColor: Colors.white,
-                                  inactiveDividerColor: Color(0xFF7A7A7A),
-                                  // thumbColor: AppColors.whiteBackground,
-                                ),
-                                child: SfSlider(
-                                  min: 1.0,
-                                  max: 3.0,
-                                  value: _reward,
-                                  stepSize: 1.0,
-                                  interval: 1.0,
-                                  showDividers: true,
-                                  showLabels: true,
-                                  activeColor: Colors.white,
-                                  inactiveColor: Color(0xFF7A7A7A),
-                                  thumbShape: _ContainerThumbShape(),
-                                  dividerShape: _ContainerDividerShape(),
-                                  onChanged: (dynamic value) {
-                                    setState(() => _reward = value as double);
-                                  },
-                                ),
+                              child: _RewardSlider(
+                                value: _reward,
+                                onChanged: (value) {
+                                  setState(() => _reward = value);
+                                },
                               ),
                             ),
                             Text(
@@ -394,16 +371,216 @@ class _RequestField extends StatelessWidget {
   }
 }
 
+class _RewardSlider extends StatelessWidget {
+  const _RewardSlider({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  static const double _stepMin = 1;
+  static const double _stepMax = 3;
+  static const double _markerSize = 18;
+  static const double _trackAreaHeight = 30;
+  static const double _labelsAreaHeight = 18;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: _trackAreaHeight + _labelsAreaHeight,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final markerRadius = _markerSize / 2;
+          final usableWidth = constraints.maxWidth - _markerSize;
+          final selectedStep = value.round().clamp(1, 3);
+
+          double centerXForStep(int step) {
+            final t = (step - _stepMin) / (_stepMax - _stepMin);
+            return markerRadius + (usableWidth * t);
+          }
+
+          return Stack(
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                height: _trackAreaHeight,
+                child: SfSliderTheme(
+                  data: const SfSliderThemeData(
+                    activeTrackHeight: 2,
+                    inactiveTrackHeight: 2,
+                    thumbRadius: 9,
+                    overlayRadius: 0,
+                  ),
+                  child: SfSlider(
+                    min: _stepMin,
+                    max: _stepMax,
+                    value: value,
+                    stepSize: 1.0,
+                    showDividers: false,
+                    showLabels: false,
+                    activeColor: Colors.white,
+                    inactiveColor: Color(0xFF7A7A7A),
+                    thumbShape: _ContainerThumbShape(),
+                    onChanged: (dynamic next) {
+                      onChanged(next as double);
+                    },
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                height: _trackAreaHeight,
+                child: IgnorePointer(
+                  child: Stack(
+                    children: List.generate(3, (index) {
+                      final step = index + 1;
+                      final centerX = centerXForStep(step);
+                      final isActive = step <= selectedStep;
+                      return Positioned(
+                        left: centerX - (_markerSize / 2),
+                        top: (_trackAreaHeight - _markerSize) / 2,
+                        child: _RewardMarker(isActive: isActive),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                top: _trackAreaHeight,
+                height: _labelsAreaHeight,
+                child: IgnorePointer(
+                  child: Stack(
+                    children: List.generate(3, (index) {
+                      final step = index + 1;
+                      final centerX = centerXForStep(step);
+                      return Positioned(
+                        left: centerX - 8,
+                        top: 0,
+                        width: 16,
+                        child: Text(
+                          '$step',
+                          textAlign: TextAlign.center,
+                          style: TextStyles.bodyMain.copyWith(
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _RewardMarker extends StatelessWidget {
+  const _RewardMarker({required this.isActive});
+
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final outerGradient = isActive
+        ? const RadialGradient(
+            center: Alignment.center,
+            radius: 1.0,
+            colors: [
+              Color(0xFFF3F3F3),
+              Color(0xFFD2D2D2),
+              Color(0xFFB0B0B0),
+            ],
+            stops: [0.0, 0.62, 1.0],
+          )
+        : const RadialGradient(
+            center: Alignment.center,
+            radius: 1.0,
+            colors: [
+              Color(0xFFBDBDBD),
+              Color(0xFF9A9A9A),
+              Color(0xFF7A7A7A),
+            ],
+            stops: [0.0, 0.62, 1.0],
+          );
+
+    final innerGradient = isActive
+        ? const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFF7F7F7),
+              Color(0xFFE7E7E7),
+            ],
+          )
+        : const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFD6D6D6),
+              Color(0xFFBBBBBB),
+            ],
+          );
+
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: outerGradient,
+          border: Border.all(color: const Color(0x66000000), width: 1),
+        ),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                Color(0x33000000),
+                Color(0x00000000),
+                Color(0x33000000),
+              ],
+              stops: [0.0, 0.5, 1.0],
+            ),
+          ),
+          child: Center(
+            child: Container(
+              width: 9.5,
+              height: 9.5,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: innerGradient,
+                border: Border.all(color: const Color(0x26FFFFFF), width: 1),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ContainerThumbShape extends SfThumbShape {
   const _ContainerThumbShape({
     this.width = 18,
     this.height = 18,
-    this.borderRadius = 6,
   });
 
   final double width;
   final double height;
-  final double borderRadius;
 
   @override
   Size getPreferredSize(SfSliderThemeData themeData) {
@@ -425,77 +602,60 @@ class _ContainerThumbShape extends SfThumbShape {
     required SfThumb? thumb,
   }) {
     final canvas = context.canvas;
-    final rect = Rect.fromCenter(
-      center: thumbCenter,
-      width: width,
-      height: height,
-    );
-    final rRect = RRect.fromRectAndRadius(
-      rect,
-      Radius.circular(borderRadius),
-    );
+    final radius = width / 2;
+    final outerRect = Rect.fromCircle(center: thumbCenter, radius: radius);
 
-    final fillPaint = Paint()..color = const Color(0xFFF8F8F8);
-    final borderPaint = Paint()
+    // Metallic outer circle: brighter top/bottom, darker left/right.
+    final outerPaint = Paint()
+      ..shader = const RadialGradient(
+        center: Alignment.center,
+        radius: 1.0,
+        colors: [
+          Color(0xFFF3F3F3),
+          Color.fromARGB(255, 195, 13, 13),
+          Color.fromARGB(255, 139, 8, 8),
+        ],
+        stops: [0.0, 0.62, 1.0],
+      ).createShader(outerRect);
+    canvas.drawCircle(thumbCenter, radius, outerPaint);
+
+    final sideShadePaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          Color(0x33000000),
+          Color(0x00000000),
+          Color(0x33000000),
+        ],
+        stops: [0.0, 0.5, 1.0],
+      ).createShader(outerRect);
+    canvas.drawCircle(thumbCenter, radius, sideShadePaint);
+
+    final outerStroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = const Color(0x33000000);
+      ..color = const Color(0x66000000);
+    canvas.drawCircle(thumbCenter, radius, outerStroke);
 
-    canvas.drawRRect(rRect, fillPaint);
-    canvas.drawRRect(rRect, borderPaint);
-  }
-}
+    // Inner brighter circle.
+    final innerRadius = radius * 0.53;
+    final innerRect = Rect.fromCircle(center: thumbCenter, radius: innerRadius);
+    final innerPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFFF7F7F7),
+          Color.fromARGB(255, 95, 13, 194),
+        ],
+      ).createShader(innerRect);
+    canvas.drawCircle(thumbCenter, innerRadius, innerPaint);
 
-class _ContainerDividerShape extends SfDividerShape {
-  const _ContainerDividerShape({
-    this.width = 18,
-    this.height = 18,
-    this.borderRadius = 6,
-  });
-
-  final double width;
-  final double height;
-  final double borderRadius;
-
-  @override
-  Size getPreferredSize(SfSliderThemeData themeData, {bool? isActive}) {
-    return Size(width, height);
-  }
-
-  @override
-  void paint(
-    PaintingContext context,
-    Offset center,
-    Offset? thumbCenter,
-    Offset? startThumbCenter,
-    Offset? endThumbCenter, {
-    required RenderBox parentBox,
-    required SfSliderThemeData themeData,
-    SfRangeValues? currentValues,
-    dynamic currentValue,
-    required Paint? paint,
-    required Animation<double> enableAnimation,
-    required TextDirection textDirection,
-  }) {
-    final bool isActive =
-        thumbCenter == null ? false : center.dx <= thumbCenter.dx;
-    final Color fillColor =
-        isActive ? const Color(0xFFF8F8F8) : const Color(0xFF8A8A8A);
-
-    final rect = Rect.fromCenter(
-      center: center,
-      width: width,
-      height: height,
-    );
-    final rRect = RRect.fromRectAndRadius(rect, Radius.circular(borderRadius));
-
-    final fillPaint = Paint()..color = fillColor;
-    final borderPaint = Paint()
+    final innerStroke = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = const Color(0x33000000);
-
-    context.canvas.drawRRect(rRect, fillPaint);
-    context.canvas.drawRRect(rRect, borderPaint);
+      ..color = const Color(0x26FFFFFF);
+    canvas.drawCircle(thumbCenter, innerRadius, innerStroke);
   }
 }
