@@ -1,5 +1,7 @@
 ﻿import 'dart:async';
+import 'dart:typed_data';
 import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
@@ -64,6 +66,11 @@ class _MapPageState extends State<MapPage>
       persistence: const MapPersistenceService(),
       polling: MapPollingService(),
       dialogs: MapDialogService(),
+      requestSetState: (fn) {
+        if (mounted) {
+          setState(fn);
+        }
+      },
       onChampionTap: (champion, champions) {
         if (!mounted) {
           return;
@@ -139,7 +146,8 @@ class _MapPageState extends State<MapPage>
                 onToggleExpanded: () =>
                     setState(_controller.toggleRequestExpanded),
                 onMapCreated: _controller.onMapCreated,
-                onCameraChanged: _controller.onCameraChanged,
+                onCameraChanged: (eventData) =>
+                    setState(() => _controller.onCameraChanged(eventData)),
                 onOpenCreateRequest: () =>
                     _controller.openCreateRequest(context),
                 onOpenVerifyCode: (taskId, applicationId) =>
@@ -156,6 +164,8 @@ class _MapPageState extends State<MapPage>
                 onZoomOut: () => _controller.zoomBy(-1),
                 onCurrentLocation: () =>
                     _controller.moveToCurrentLocation(context),
+                onTapMapBackground: () =>
+                    setState(_controller.clearNearbyTaskSelection),
                 selectedApplicationId: _controller.selectedApplicationId,
                 locallyRejectedApplicationIds:
                     _controller.locallyRejectedApplicationIds,
@@ -172,6 +182,9 @@ class _MapPageState extends State<MapPage>
                 executorCreatorName: _controller.executorCreatorName,
                 locallyCanceledExecutorApplicationIds:
                     _controller.locallyCanceledExecutorApplicationIds,
+                selectedNearbyTaskId: _controller.selectedNearbyTaskId,
+                onSelectNearbyTask: (taskId) =>
+                    setState(() => _controller.selectNearbyTask(taskId)),
               ),
               loadingError: (_) =>
                   const SizedBox.shrink(), // Handled by listener
@@ -183,7 +196,8 @@ class _MapPageState extends State<MapPage>
                 onToggleExpanded: () =>
                     setState(_controller.toggleRequestExpanded),
                 onMapCreated: _controller.onMapCreated,
-                onCameraChanged: _controller.onCameraChanged,
+                onCameraChanged: (eventData) =>
+                    setState(() => _controller.onCameraChanged(eventData)),
                 onOpenCreateRequest: () =>
                     _controller.openCreateRequest(context),
                 onOpenVerifyCode: (taskId, applicationId) =>
@@ -200,6 +214,8 @@ class _MapPageState extends State<MapPage>
                 onZoomOut: () => _controller.zoomBy(-1),
                 onCurrentLocation: () =>
                     _controller.moveToCurrentLocation(context),
+                onTapMapBackground: () =>
+                    setState(_controller.clearNearbyTaskSelection),
                 selectedApplicationId: _controller.selectedApplicationId,
                 locallyRejectedApplicationIds:
                     _controller.locallyRejectedApplicationIds,
@@ -216,6 +232,9 @@ class _MapPageState extends State<MapPage>
                 executorCreatorName: _controller.executorCreatorName,
                 locallyCanceledExecutorApplicationIds:
                     _controller.locallyCanceledExecutorApplicationIds,
+                selectedNearbyTaskId: _controller.selectedNearbyTaskId,
+                onSelectNearbyTask: (taskId) =>
+                    setState(() => _controller.selectNearbyTask(taskId)),
               ),
             );
           },
