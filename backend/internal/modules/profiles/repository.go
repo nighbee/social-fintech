@@ -33,6 +33,7 @@ func (r *Repository) GetProfile(ctx context.Context, userID string) (*Profile, e
 			COALESCE(p.location_city, '') as location_city, 
 			p.is_profile_public, 
 			COALESCE(w.balance / 100, 0) as reputation_score,
+			COALESCE(u.feed_time_limit_mins, 20) as feed_time_limit_mins,
 			p.created_at, p.updated_at 
 		FROM profiles p
 		JOIN users u ON p.user_id = u.id
@@ -106,6 +107,20 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID string, req *Upda
 			if err != nil {
 				return nil, fmt.Errorf("update user info failed: %w", err)
 			}
+		}
+	}
+
+	// Handle feed_time_limit_mins being stored in the users table
+	if req.FeedTimeLimitMins != nil {
+		validLimits := map[int]bool{0: true, 20: true, 30: true, 40: true}
+		if !validLimits[*req.FeedTimeLimitMins] {
+			return nil, fmt.Errorf("invalid feed_time_limit_mins: must be 0, 20, 30, or 40")
+		}
+		_, err = tx.ExecContext(ctx,
+			"UPDATE users SET feed_time_limit_mins = $1, updated_at = NOW() WHERE id = $2",
+			*req.FeedTimeLimitMins, userID)
+		if err != nil {
+			return nil, fmt.Errorf("update feed time limit failed: %w", err)
 		}
 	}
 
@@ -243,10 +258,11 @@ func (r *Repository) GetProfileStats(ctx context.Context, userID string) (*Profi
 	}
 	var t totalsRow
 	err = r.db.GetContext(ctx, &t, `
-		WITH uw AS (SELECT id FROM wallets WHERE user_id = $1)
-		SELECT
-			COALESCE((SELECT SUM(amount) FROM ledger_entries WHERE sender_wallet_id IN (SELECT id FROM uw)), 0) AS total_sent,
-			COALESCE((SELECT SUM(amount) FROM ledger_entries WHERE receiver_wallet_id IN (SELECT id FROM uw)), 0) AS total_received
+		SELECT 
+			COALESCE(SUM(total_sent_amount), 0) AS total_sent,
+			COALESCE(SUM(total_received_amount), 0) AS total_received
+		FROM wallets 
+		WHERE user_id = $1
 	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get totals failed: %w", err)

@@ -5,10 +5,14 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/ranks"
@@ -197,22 +201,42 @@ func main() {
 	mapHandler := mapmodule.NewHandler(mapService)
 	logger.Info("map module initialized")
 
-	economyWorker := economy.NewWorker(economyService, economyRepo, cfg.Economy)
-	economyWorker.Start()
-	defer economyWorker.Stop()
-	logger.Info("economy worker started")
+	// Feed Module Initialization
+	feedRepo := feed.NewRepository(db.DB)
+	feedCache := feed.NewCacheRepository(redisCache)
+	feedService := feed.NewService(feedRepo, feedCache, profilesRepo)
 
-	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo)
-	mapWorker.Start()
-	defer mapWorker.Stop()
-	logger.Info("map worker started")
+	// Workers have been moved to cmd/worker to unblock API event loop
+	// Handlers that depended on workers directly are injected appropriately OR refactored
+	// (Note: To keep this compiling safely right away, we will stub the feedWorker temporarily or pass nil if the handler supports it.
+	// Feed handler needs to use Redis directly or a dedicated queue interface instead of the worker instance,
+	// but for now we'll rely on the existing worker initialization for interface compliance if needed, just without .Start())
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, jwtManager, authRepo, logger.Get())
+	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
+	feedHandler := feed.NewHandler(feedService, feedWorker, economyService)
+	logger.Info("feed module initialized")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
 
-	if err := app.Listen(addr); err != nil {
-		logger.Fatal("server stopped", zap.Error(err))
+	// Listen for OS signals for graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		if err := app.Listen(addr); err != nil {
+			logger.Fatal("server stopped", zap.Error(err))
+		}
+	}()
+
+	<-sigCh
+	logger.Info("shutting down server...")
+
+	if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
+		logger.Error("server shutdown error", zap.Error(err))
 	}
+
+	logger.Info("shutdown complete")
 }

@@ -3,6 +3,7 @@ package economy
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/brightbund-backend/internal/config"
@@ -12,8 +13,12 @@ type Worker struct {
 	service Service
 	repo    Repository
 	cfg     config.EconomyConfig
-	ticker  *time.Ticker
-	done    chan bool
+
+	mu      sync.Mutex
+	running bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewWorker(service Service, repo Repository, cfg config.EconomyConfig) *Worker {
@@ -21,39 +26,57 @@ func NewWorker(service Service, repo Repository, cfg config.EconomyConfig) *Work
 		service: service,
 		repo:    repo,
 		cfg:     cfg,
-		done:    make(chan bool),
 	}
 }
 
 func (w *Worker) Start() {
-	w.ticker = time.NewTicker(1 * time.Hour)
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
-	go func() {
+	if w.running {
+		return
+	}
+	w.running = true
+	w.ctx, w.cancel = context.WithCancel(context.Background())
+
+	ticker := time.NewTicker(1 * time.Hour)
+
+	w.wg.Add(1)
+	go func(ctx context.Context) {
+		defer w.wg.Done()
+		defer ticker.Stop()
 		log.Println("[Economy Worker] Starting economy background worker")
 
-		w.EnsureUserWallets()
-		w.ProcessDailyAccruals()
+		w.EnsureUserWallets(ctx)
+		w.ProcessDailyAccruals(ctx)
 
 		for {
 			select {
-			case <-w.ticker.C:
-				w.EnsureUserWallets()
-				w.ProcessDailyAccruals()
-			case <-w.done:
-				w.ticker.Stop()
+			case <-ticker.C:
+				w.EnsureUserWallets(ctx)
+				w.ProcessDailyAccruals(ctx)
+			case <-ctx.Done():
 				log.Println("[Economy Worker] Stopped")
 				return
 			}
 		}
-	}()
+	}(w.ctx)
 }
 
 func (w *Worker) Stop() {
-	w.done <- true
+	w.mu.Lock()
+	if !w.running {
+		w.mu.Unlock()
+		return
+	}
+	w.running = false
+	w.cancel()
+	w.mu.Unlock()
+
+	w.wg.Wait()
 }
 
-func (w *Worker) EnsureUserWallets() {
-	ctx := context.Background()
+func (w *Worker) EnsureUserWallets(ctx context.Context) {
 	log.Println("[Economy Worker] Checking for users without wallets...")
 
 	query := `
@@ -94,8 +117,7 @@ func (w *Worker) EnsureUserWallets() {
 	log.Printf("[Economy Worker] Wallet creation: %d successful, %d failed", successCount, failCount)
 }
 
-func (w *Worker) ProcessDailyAccruals() {
-	ctx := context.Background()
+func (w *Worker) ProcessDailyAccruals(ctx context.Context) {
 	log.Println("[Economy Worker] Processing daily accruals...")
 
 	query := `

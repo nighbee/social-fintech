@@ -92,15 +92,6 @@ func isRetryableError(err error) bool {
 	retryablePatterns := []string{
 		"could not serialize access",
 		"deadlock detected",
-		"failed to commit transaction",
-		"failed to update transfer limit",
-		"failed to update wallet",
-		"failed to update cooldown",
-		"failed to upsert pair cooldown",
-		"failed to get pair cooldown",
-		"failed to get wallet",
-		"failed to get receiver wallet",
-		"failed to create ledger entry",
 		"pq: could not serialize",
 		"SQLSTATE 40001", // serialization_failure
 		"SQLSTATE 40P01", // deadlock_detected
@@ -174,6 +165,20 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 
 		txRepo := s.repo.WithTx(tx)
 
+		// Early idempotency gate — short-circuit before cooldown/balance checks
+		// so that a re-tap with the same key never hits the cooldown guard.
+		if req.IdempotencyKey != "" {
+			if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, req.IdempotencyKey); err == nil && existing != nil {
+				response = &TransferResponse{
+					LedgerEntryID:   existing.ID,
+					SenderBalance:   0,
+					ReceiverBalance: 0,
+					Timestamp:       existing.CreatedAt,
+				}
+				return nil
+			}
+		}
+
 		if isSeal {
 			// 1. Check/Update Cooldown for Seals
 			cooldown, err := txRepo.GetPairCooldown(ctx, senderUserID, req.RecipientUserID)
@@ -229,7 +234,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 				int64(s.cfg.MaxDailyTransfers), int64(limit.TransfersCount), amountCents)
 		}
 
-		senderWallet, err := txRepo.GetWallet(ctx, senderUserID, currency)
+		senderWallet, err := txRepo.GetOrCreateWallet(ctx, senderUserID, currency)
 		if err != nil {
 			return WrapErrorf(err, "failed to get sender wallet")
 		}
@@ -288,6 +293,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		}
 
 		senderWallet.Balance -= amountCents
+		senderWallet.TotalSentAmount += amountCents
 		if currency == CurrencySilverSeal && senderWallet.FreeBalance > 0 {
 			deductFromFree := min(senderWallet.FreeBalance, amountCents)
 			senderWallet.FreeBalance -= deductFromFree
@@ -301,6 +307,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 
 		// Use optimistic locking for receiver as well to prevent race conditions
 		receiverWallet.Balance += amountCents
+		receiverWallet.TotalReceivedAmount += amountCents
 		if err := txRepo.UpdateWalletWithVersion(ctx, receiverWallet, receiverWallet.Version); err != nil {
 			return err
 		}
@@ -1136,7 +1143,36 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 
 		txRepo := s.repo.WithTx(tx)
 
-		// 1. Check/Update Cooldown
+		// 1. Check Idempotency First
+		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, refID); err == nil && existing != nil {
+			// Strict check: parameters must match exactly
+			match := existing.Amount == amount && existing.Currency == currency
+
+			// Check Sender Wallet
+			senderWalletCheck, _ := txRepo.GetOrCreateWallet(ctx, senderID, currency)
+			if existing.SenderWalletID == nil || *existing.SenderWalletID != senderWalletCheck.ID {
+				match = false
+			}
+
+			// Check Receiver Wallet
+			receiverWalletCheck, _ := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
+			if existing.ReceiverWalletID == nil || *existing.ReceiverWalletID != receiverWalletCheck.ID {
+				match = false
+			}
+
+			if !match {
+				return ErrIdempotencyConflict
+			}
+
+			response = &TransferResponse{
+				LedgerEntryID: existing.ID,
+				SenderBalance: CentinelsToSeals(senderWalletCheck.Balance),
+				Timestamp:     existing.CreatedAt,
+			}
+			return nil
+		}
+
+		// 2. Check/Update Cooldown
 		cooldown, err := txRepo.GetPairCooldown(ctx, senderID, receiverID)
 		if err != nil {
 			return WrapErrorf(err, "failed to get pair cooldown")
@@ -1170,7 +1206,7 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			}
 		}
 
-		// 2. Check Balances
+		// 3. Check Balances
 		wallet, err := txRepo.GetOrCreateWallet(ctx, senderID, currency)
 		if err != nil {
 			return WrapErrorf(err, "failed to get wallet")
@@ -1178,34 +1214,6 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 
 		if !wallet.HasSufficientBalance(amount) {
 			return NewInsufficientFundsError(senderID, currency, amount, wallet.Balance)
-		}
-
-		// 3. Check Idempotency
-		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, refID); err == nil && existing != nil {
-			// Strict check: parameters must match exactly
-			match := existing.Amount == amount && existing.Currency == currency
-
-			// Check Sender Wallet
-			if existing.SenderWalletID == nil || *existing.SenderWalletID != wallet.ID {
-				match = false
-			}
-
-			// Check Receiver Wallet
-			receiverWallet, _ := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
-			if existing.ReceiverWalletID == nil || *existing.ReceiverWalletID != receiverWallet.ID {
-				match = false
-			}
-
-			if !match {
-				return ErrIdempotencyConflict
-			}
-
-			response = &TransferResponse{
-				LedgerEntryID: existing.ID,
-				SenderBalance: CentinelsToSeals(wallet.Balance),
-				Timestamp:     existing.CreatedAt,
-			}
-			return nil
 		}
 
 		// 4. Get Receiver Wallet (required for recording ID)
@@ -1217,6 +1225,7 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		// 5. Atomic Updates
 		// Sender
 		wallet.Balance -= amount
+		wallet.TotalSentAmount += amount
 		if currency == CurrencySilverSeal && wallet.FreeBalance > 0 {
 			deductFromFree := min(wallet.FreeBalance, amount)
 			wallet.FreeBalance -= deductFromFree
@@ -1225,11 +1234,12 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			return err
 		}
 
-		// Receiver
-		receiverWallet.Balance += amount
-		if err := txRepo.UpdateWalletWithVersion(ctx, receiverWallet, receiverWallet.Version); err != nil {
+		// Receiver (Atomic Increment to avoid optimistic locking retries during high-concurrency)
+		newRBalance, err := txRepo.IncrementWalletBalanceAtomic(ctx, receiverWallet.ID, amount)
+		if err != nil {
 			return err
 		}
+		receiverWallet.Balance = newRBalance
 
 		// 6. Create Ledger Entry
 		entry := &LedgerEntry{

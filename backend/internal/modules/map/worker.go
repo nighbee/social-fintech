@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/economy"
@@ -20,8 +21,12 @@ type Worker struct {
 	cache       *cache.Cache
 	repo        Repository
 	economyRepo economy.Repository
-	stopCh      chan struct{}
-	running     bool
+
+	mu      sync.Mutex
+	running bool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewWorker(cacheClient *cache.Cache, repo Repository, economyRepo economy.Repository) *Worker {
@@ -29,17 +34,23 @@ func NewWorker(cacheClient *cache.Cache, repo Repository, economyRepo economy.Re
 		cache:       cacheClient,
 		repo:        repo,
 		economyRepo: economyRepo,
-		stopCh:      make(chan struct{}),
 	}
 }
 
 func (w *Worker) Start() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	if w.running {
 		return
 	}
 	w.running = true
+	w.ctx, w.cancel = context.WithCancel(context.Background())
 
-	go func() {
+	w.wg.Add(1)
+	go func(ctx context.Context) {
+		defer w.wg.Done()
+
 		championTicker := time.NewTicker(1 * time.Hour)
 		sweepTicker := time.NewTicker(5 * time.Minute)
 		defer championTicker.Stop()
@@ -47,27 +58,32 @@ func (w *Worker) Start() {
 
 		// Run sweep immediately on startup to catch any tasks that expired
 		// while the service was down.
-		w.sweepExpiredTasks(context.Background())
+		w.sweepExpiredTasks(ctx)
 
 		for {
 			select {
 			case <-championTicker.C:
-				w.snapshotChampions(context.Background())
+				w.snapshotChampions(ctx)
 			case <-sweepTicker.C:
-				w.sweepExpiredTasks(context.Background())
-			case <-w.stopCh:
+				w.sweepExpiredTasks(ctx)
+			case <-ctx.Done():
 				return
 			}
 		}
-	}()
+	}(w.ctx)
 }
 
 func (w *Worker) Stop() {
+	w.mu.Lock()
 	if !w.running {
+		w.mu.Unlock()
 		return
 	}
-	close(w.stopCh)
 	w.running = false
+	w.cancel()
+	w.mu.Unlock()
+
+	w.wg.Wait()
 }
 
 func (w *Worker) snapshotChampions(ctx context.Context) {

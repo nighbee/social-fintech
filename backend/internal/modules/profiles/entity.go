@@ -4,20 +4,23 @@ import "time"
 
 // Profile represents a user's profile information
 type Profile struct {
-	UserID          string    `db:"user_id" json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
-	DisplayName     string    `db:"display_name" json:"display_name" example:"Alice Wonderland"`
-	FirstName       string    `db:"first_name" json:"first_name" example:"Alice"`
-	LastName        string    `db:"last_name" json:"last_name" example:"Wonderland"`
-	DateOfBirth     string    `db:"date_of_birth" json:"date_of_birth" example:"2000-01-01"`
-	Bio             string    `db:"bio" json:"bio" example:"Explorer and adventurer"`
-	AvatarURL       string    `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/user123/avatar.jpg"`
-	Country         string    `db:"location_country" json:"country" example:"United States"`
-	City            string    `db:"location_city" json:"city" example:"San Francisco"`
-	IsPublic        bool      `db:"is_profile_public" json:"is_public" example:"true"`
-	ReputationScore int       `db:"reputation_score" json:"reputation_score" example:"100"`
-	RankTier        string    `db:"current_rank_tier" json:"rank_tier" example:"Quartz"`
-	CreatedAt       time.Time `db:"created_at" json:"created_at" example:"2024-01-15T10:30:00Z"`
-	UpdatedAt       time.Time `db:"updated_at" json:"updated_at" example:"2024-01-20T14:45:00Z"`
+	UserID          string `db:"user_id" json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	DisplayName     string `db:"display_name" json:"display_name" example:"Alice Wonderland"`
+	FirstName       string `db:"first_name" json:"first_name" example:"Alice"`
+	LastName        string `db:"last_name" json:"last_name" example:"Wonderland"`
+	DateOfBirth     string `db:"date_of_birth" json:"date_of_birth" example:"2000-01-01"`
+	Bio             string `db:"bio" json:"bio" example:"Explorer and adventurer"`
+	AvatarURL       string `db:"avatar_url" json:"avatar_url" example:"https://storage.example.com/avatars/user123/avatar.jpg"`
+	Country         string `db:"location_country" json:"country" example:"United States"`
+	City            string `db:"location_city" json:"city" example:"San Francisco"`
+	IsPublic        bool   `db:"is_profile_public" json:"is_public" example:"true"`
+	ReputationScore int    `db:"reputation_score" json:"reputation_score" example:"100"`
+	RankTier        string `db:"current_rank_tier" json:"rank_tier" example:"Quartz"`
+	// FeedTimeLimitMins controls the Anti-Doomscroll ceiling.
+	// 0 = No limit; 20/30/40 = limit in minutes. Defaults to 20.
+	FeedTimeLimitMins int       `db:"feed_time_limit_mins" json:"feed_time_limit_mins" example:"20"`
+	CreatedAt         time.Time `db:"created_at" json:"created_at" example:"2024-01-15T10:30:00Z"`
+	UpdatedAt         time.Time `db:"updated_at" json:"updated_at" example:"2024-01-20T14:45:00Z"`
 }
 
 // UpdateProfileRequest represents profile update payload
@@ -33,7 +36,9 @@ type UpdateProfileRequest struct {
 	Region      *string `json:"region" example:"California"`
 	City        *string `json:"city" example:"San Francisco"`
 	IsPublic    *bool   `json:"is_public" example:"true"`
-	ClientIP    string  `json:"-"` // Not from JSON, set by handler
+	// FeedTimeLimitMins: 0 = no limit, 20 / 30 / 40 = limit in minutes
+	FeedTimeLimitMins *int   `json:"feed_time_limit_mins" example:"30"`
+	ClientIP          string `json:"-"` // Not from JSON, set by handler
 }
 
 // PublicProfileResponse represents limited profile info for other users

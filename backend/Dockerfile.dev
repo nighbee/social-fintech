@@ -17,4 +17,9 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["air", "-c", ".air.toml"]
+# entrypoint.dev.sh runs migrations then starts air
+# It is copied outside /app so the source-code volume mount doesn't shadow it.
+COPY entrypoint.dev.sh /entrypoint.dev.sh
+RUN chmod +x /entrypoint.dev.sh
+
+CMD ["/entrypoint.dev.sh"]

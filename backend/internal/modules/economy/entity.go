@@ -64,16 +64,18 @@ func (t TransactionCategory) String() string {
 }
 
 type Wallet struct {
-	ID                 string       `db:"id" json:"id"`
-	UserID             string       `db:"user_id" json:"user_id"`
-	Currency           CurrencyCode `db:"currency" json:"currency"`
-	Balance            int64        `db:"balance" json:"balance"`
-	FreeBalance        int64        `db:"free_balance" json:"free_balance"`
-	LastDailyAccrualAt *time.Time   `db:"last_daily_accrual_at" json:"last_daily_accrual_at,omitempty"`
-	LastTransferAt     *time.Time   `db:"last_transfer_at" json:"last_transfer_at,omitempty"`
-	Version            int64        `db:"version" json:"version"`
-	CreatedAt          time.Time    `db:"created_at" json:"created_at"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updated_at"`
+	ID                  string       `db:"id" json:"id"`
+	UserID              string       `db:"user_id" json:"user_id"`
+	Currency            CurrencyCode `db:"currency" json:"currency"`
+	Balance             int64        `db:"balance" json:"balance"`
+	FreeBalance         int64        `db:"free_balance" json:"free_balance"`
+	TotalSentAmount     int64        `db:"total_sent_amount" json:"total_sent_amount"`
+	TotalReceivedAmount int64        `db:"total_received_amount" json:"total_received_amount"`
+	LastDailyAccrualAt  *time.Time   `db:"last_daily_accrual_at" json:"last_daily_accrual_at,omitempty"`
+	LastTransferAt      *time.Time   `db:"last_transfer_at" json:"last_transfer_at,omitempty"`
+	Version             int64        `db:"version" json:"version"`
+	CreatedAt           time.Time    `db:"created_at" json:"created_at"`
+	UpdatedAt           time.Time    `db:"updated_at" json:"updated_at"`
 }
 
 func (w *Wallet) HasSufficientBalance(amount int64) bool {

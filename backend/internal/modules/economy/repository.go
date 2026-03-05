@@ -17,6 +17,7 @@ type Repository interface {
 	GetOrCreateWallet(ctx context.Context, userID string, currency CurrencyCode) (*Wallet, error)
 	UpdateWallet(ctx context.Context, wallet *Wallet) error
 	UpdateWalletWithVersion(ctx context.Context, wallet *Wallet, expectedVersion int64) error
+	IncrementWalletBalanceAtomic(ctx context.Context, walletID string, amount int64) (int64, error)
 
 	CreateLedgerEntry(ctx context.Context, entry *LedgerEntry) error
 	GetUserTransactionHistory(ctx context.Context, userID string, currency CurrencyCode, category *TransactionCategory, limit, offset int) ([]*LedgerEntry, int, error)
@@ -75,6 +76,7 @@ func (r *repository) getExecutor() sqlx.ExtContext {
 func (r *repository) GetWallet(ctx context.Context, userID string, currency CurrencyCode) (*Wallet, error) {
 	query := `
 		SELECT id, user_id, currency, balance, free_balance, 
+		       total_sent_amount, total_received_amount,
 		       last_daily_accrual_at, last_transfer_at, version, created_at, updated_at
 		FROM wallets
 		WHERE user_id = $1 AND currency = $2
@@ -102,9 +104,10 @@ func (r *repository) GetOrCreateWallet(ctx context.Context, userID string, curre
 	}
 
 	query := `
-		INSERT INTO wallets (user_id, currency, balance, free_balance, version)
-		VALUES ($1, $2, 0, 0, 1)
+		INSERT INTO wallets (user_id, currency, balance, free_balance, version, total_sent_amount, total_received_amount)
+		VALUES ($1, $2, 0, 0, 1, 0, 0)
 		RETURNING id, user_id, currency, balance, free_balance, 
+		          total_sent_amount, total_received_amount,
 		          last_daily_accrual_at, last_transfer_at, version, created_at, updated_at
 	`
 
@@ -122,16 +125,18 @@ func (r *repository) UpdateWallet(ctx context.Context, wallet *Wallet) error {
 		UPDATE wallets
 		SET balance = $1,
 		    free_balance = $2,
-		    last_daily_accrual_at = $3,
-		    last_transfer_at = $4,
+		    total_sent_amount = $3,
+		    total_received_amount = $4,
+		    last_daily_accrual_at = $5,
+		    last_transfer_at = $6,
 		    version = version + 1,
 		    updated_at = NOW()
-		WHERE id = $5
+		WHERE id = $7
 		RETURNING version
 	`
 
 	err := sqlx.GetContext(ctx, r.getExecutor(), &wallet.Version, query,
-		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID)
+		wallet.Balance, wallet.FreeBalance, wallet.TotalSentAmount, wallet.TotalReceivedAmount, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update wallet: %w", err)
 	}
@@ -144,26 +149,50 @@ func (r *repository) UpdateWalletWithVersion(ctx context.Context, wallet *Wallet
 		UPDATE wallets
 		SET balance = $1,
 		    free_balance = $2,
-		    last_daily_accrual_at = $3,
-		    last_transfer_at = $4,
+		    total_sent_amount = $3,
+		    total_received_amount = $4,
+		    last_daily_accrual_at = $5,
+		    last_transfer_at = $6,
 		    version = version + 1,
 		    updated_at = NOW()
-		WHERE id = $5 AND version = $6
+		WHERE id = $7 AND version = $8
 		RETURNING version
 	`
 
 	var newVersion int64
 	err := sqlx.GetContext(ctx, r.getExecutor(), &newVersion, query,
-		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID, expectedVersion)
+		wallet.Balance, wallet.FreeBalance, wallet.TotalSentAmount, wallet.TotalReceivedAmount, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID, expectedVersion)
 	if err == sql.ErrNoRows {
+		fmt.Printf("DEBUG OPTIMISTIC: ID='%s', Version=%d, Balance=%d\n", wallet.ID, expectedVersion, wallet.Balance)
 		return ErrOptimisticLock
 	}
 	if err != nil {
+		fmt.Printf("DEBUG UPDATE ERROR: %v\n", err)
 		return fmt.Errorf("failed to update wallet with version: %w", err)
 	}
 
 	wallet.Version = newVersion
 	return nil
+}
+
+func (r *repository) IncrementWalletBalanceAtomic(ctx context.Context, walletID string, amount int64) (int64, error) {
+	query := `
+		UPDATE wallets
+		SET balance = balance + $1,
+		    total_received_amount = total_received_amount + $1,
+		    version = version + 1,
+		    updated_at = NOW()
+		WHERE id = $2
+		RETURNING balance
+	`
+
+	var newBalance int64
+	err := sqlx.GetContext(ctx, r.getExecutor(), &newBalance, query, amount, walletID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment wallet balance atomically: %w", err)
+	}
+
+	return newBalance, nil
 }
 
 func (r *repository) CreateLedgerEntry(ctx context.Context, entry *LedgerEntry) error {
@@ -174,9 +203,14 @@ func (r *repository) CreateLedgerEntry(ctx context.Context, entry *LedgerEntry) 
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
+	var metadataVal interface{}
+	if entry.Metadata != nil {
+		metadataVal = string(entry.Metadata)
+	}
+
 	_, err := r.getExecutor().ExecContext(ctx, query,
 		entry.ID, entry.Amount, entry.Currency, entry.SenderWalletID, entry.ReceiverWalletID,
-		entry.Category, entry.ReferenceID, entry.Metadata, entry.CreatedAt)
+		entry.Category, entry.ReferenceID, metadataVal, entry.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create ledger entry: %w", err)
 	}

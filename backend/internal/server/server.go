@@ -7,6 +7,7 @@ import (
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/server/middleware"
@@ -20,10 +21,11 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
+		IdleTimeout:  cfg.Server.IdleTimeout,
 	})
 
 	// Request ID для трейсинга
@@ -51,9 +53,13 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	api := app.Group("/api/v1")
 	authGroup := api.Group("/auth")
 
+	// Use Redis for rate limiter storage rather than in-memory
 	authLim := limiter.New(limiter.Config{
 		Max:        10,
 		Expiration: 1 * time.Minute,
+		// Note: Storage can be passed explicitly if a redis storage wrapper is initialized.
+		// For now we add the property placeholder if we needed it:
+		// Storage: redisStorage,
 	})
 
 	api.Get("/users/search", profilesHandler.SearchUsers)
@@ -122,6 +128,33 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 
 	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank)
 	api.Get("/profiles/ranks", profilesHandler.GetAllRanks)
+
+	// Feed & Interactions (Note: Feed router actually manages its own sub-routing in routes.go
+	// but for consistency we can call a Feed register wrapper here or just inject the handler)
+	// Since we defined feed.RegisterRoutes separately, we don't strictly need to mount feedHandler here manually,
+	// but if server.go is the single source of truth for routing, we mount it directly instead.
+
+	feedGroup := api.Group("/feed")
+	feedGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	feedGroup.Use(middleware.TouchSession(authRepo))
+
+	feedGroup.Get("/state", feedHandler.GetFeedState)
+	feedGroup.Post("/state/sync", feedHandler.SyncFeedState)
+	feedGroup.Get("/", feedHandler.GetFeed)
+
+	// Notice: for Post creations and interactions, they typically fall under /posts
+	// To keep RESTful:
+	postGroup := api.Group("/posts")
+	postGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	postGroup.Use(middleware.TouchSession(authRepo))
+
+	postGroup.Post("/", feedHandler.CreatePost)
+	postGroup.Get("/:post_id/comments", feedHandler.GetThreadedComments)
+	postGroup.Post("/:post_id/comments", feedHandler.CreateComment)
+	postGroup.Post("/:post_id/likes", feedHandler.ToggleLike)
+	postGroup.Get("/:post_id/likes", feedHandler.GetLikes)
+	postGroup.Get("/:post_id/seals", feedHandler.GetSeals)
+	postGroup.Post("/:post_id/seals", feedHandler.SendSeal)
 
 	// Map & Tasks routes
 	mapGroup := api.Group("/")

@@ -17,7 +17,7 @@ type Config struct {
 }
 
 type Cache struct {
-	client *redis.Client
+	Client *redis.Client
 }
 
 func New(cfg Config) (*Cache, error) {
@@ -39,57 +39,57 @@ func New(cfg Config) (*Cache, error) {
 		return nil, fmt.Errorf("failed to connect to redis: %w", err)
 	}
 
-	return &Cache{client: client}, nil
+	return &Cache{Client: client}, nil
 }
 
 func (c *Cache) Get(ctx context.Context, key string) (string, error) {
-	return c.client.Get(ctx, key).Result()
+	return c.Client.Get(ctx, key).Result()
 }
 
 func (c *Cache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
-	return c.client.Set(ctx, key, value, ttl).Err()
+	return c.Client.Set(ctx, key, value, ttl).Err()
 }
 
 func (c *Cache) Delete(ctx context.Context, key string) error {
-	return c.client.Del(ctx, key).Err()
+	return c.Client.Del(ctx, key).Err()
 }
 
 func (c *Cache) Exists(ctx context.Context, key string) (bool, error) {
-	result, err := c.client.Exists(ctx, key).Result()
+	result, err := c.Client.Exists(ctx, key).Result()
 	return result > 0, err
 }
 
 // ZSET operations для Leaderboards
 func (c *Cache) ZAdd(ctx context.Context, key string, score float64, member string) error {
-	return c.client.ZAdd(ctx, key, redis.Z{Score: score, Member: member}).Err()
+	return c.Client.ZAdd(ctx, key, redis.Z{Score: score, Member: member}).Err()
 }
 
 func (c *Cache) ZRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
-	return c.client.ZRange(ctx, key, start, stop).Result()
+	return c.Client.ZRange(ctx, key, start, stop).Result()
 }
 
 func (c *Cache) ZRevRange(ctx context.Context, key string, start, stop int64) ([]string, error) {
-	return c.client.ZRevRange(ctx, key, start, stop).Result()
+	return c.Client.ZRevRange(ctx, key, start, stop).Result()
 }
 
 func (c *Cache) ZRank(ctx context.Context, key, member string) (int64, error) {
-	return c.client.ZRank(ctx, key, member).Result()
+	return c.Client.ZRank(ctx, key, member).Result()
 }
 
 func (c *Cache) ZRevRank(ctx context.Context, key, member string) (int64, error) {
-	return c.client.ZRevRank(ctx, key, member).Result()
+	return c.Client.ZRevRank(ctx, key, member).Result()
 }
 
 func (c *Cache) ZScore(ctx context.Context, key, member string) (float64, error) {
-	return c.client.ZScore(ctx, key, member).Result()
+	return c.Client.ZScore(ctx, key, member).Result()
 }
 
 func (c *Cache) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {
-	return c.client.ZIncrBy(ctx, key, increment, member).Result()
+	return c.Client.ZIncrBy(ctx, key, increment, member).Result()
 }
 
 func (c *Cache) ScanKeys(ctx context.Context, pattern string, count int64) ([]string, error) {
-	iter := c.client.Scan(ctx, 0, pattern, count).Iterator()
+	iter := c.Client.Scan(ctx, 0, pattern, count).Iterator()
 	var keys []string
 	for iter.Next(ctx) {
 		keys = append(keys, iter.Val())
@@ -101,9 +101,9 @@ func (c *Cache) ScanKeys(ctx context.Context, pattern string, count int64) ([]st
 }
 
 func (c *Cache) HealthCheck(ctx context.Context) error {
-	return c.client.Ping(ctx).Err()
+	return c.Client.Ping(ctx).Err()
 }
 
 func (c *Cache) Close() error {
-	return c.client.Close()
+	return c.Client.Close()
 }

@@ -76,6 +76,7 @@ type ServerConfig struct {
 	Environment  string        `yaml:"environment"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
+	IdleTimeout  time.Duration `yaml:"idle_timeout"`
 }
 
 type DatabaseConfig struct {
@@ -225,6 +226,22 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("FIREBASE_PROJECT_ID"); v != "" {
 		cfg.Firebase.ProjectID = v
+	}
+
+	// Server Defaults
+	if cfg.Server.IdleTimeout == 0 {
+		cfg.Server.IdleTimeout = 120 * time.Second
+	}
+
+	// Database Defaults
+	if cfg.Database.MaxOpenConns == 0 {
+		cfg.Database.MaxOpenConns = 25
+	}
+	if cfg.Database.MaxIdleConns == 0 {
+		cfg.Database.MaxIdleConns = 25
+	}
+	if cfg.Database.ConnMaxLifetime == 0 {
+		cfg.Database.ConnMaxLifetime = 5 * time.Minute
 	}
 
 	// Economy Defaults and Overrides

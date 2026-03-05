@@ -894,25 +894,25 @@ echo ""
 # TEST 21 – CreateTask: 7-day cooldown (User1 already created a task) → 429
 # ======================================================================
 
-#echo -e "${GREEN}=== TEST 21: CreateTask – Cooldown Active (User1) → 429 ===${NC}"
+echo -e "${GREEN}=== TEST 21: CreateTask – Cooldown Active (User1) → 429 ===${NC}"
 
-#TASK_BODY="{\"title\":\"Second task too soon\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
-#RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
-#    -H "Authorization: Bearer $USER1_TOKEN" \
-#    -H "Content-Type: application/json" \
-#    -d "$TASK_BODY")
-#HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
-#HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+TASK_BODY="{\"title\":\"Second task too soon\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$TASK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 log_request "CreateTask (cooldown)" "POST" "$TASK_URL" "$TASK_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
-#if [[ "$HTTP_CODE" -eq 429 ]]; then
-#    echo -e "${GREEN}✓ PASS: Cooldown enforced (HTTP 429)${NC}"
-#    PASS=$((PASS + 1))
-#else
-#    echo -e "${RED}✗ FAIL: Expected 429, got HTTP ${HTTP_CODE}${NC}"
-#    FAIL=$((FAIL + 1))
-#fi
-#echo ""
+if [[ "$HTTP_CODE" -eq 429 ]]; then
+    echo -e "${GREEN}✓ PASS: Cooldown enforced (HTTP 429)${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: Expected 429, got HTTP ${HTTP_CODE}${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
 
 # ======================================================================
 # TEST 22 – ApplyToTask: Creator applies to own task → 400
