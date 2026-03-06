@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -13,7 +11,9 @@ import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_feedback_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/widgets/reported_post_card_widget.dart';
 
 class PostCardWidget extends StatefulWidget {
   const PostCardWidget({super.key, required this.post});
@@ -25,18 +25,26 @@ class PostCardWidget extends StatefulWidget {
 }
 
 class _PostCardWidgetState extends State<PostCardWidget>
-    with ShowPostCommentsBottomSheet, ShowPostReportBottomSheet {
-  bool _isReportOverlayVisible = false;
+    with
+        ShowPostCommentsBottomSheet,
+        ShowPostReportFeedbackBottomSheet,
+        ShowPostReportBottomSheet {
+  bool _showReportedPostCard = false;
 
-  void _onReportSubmitted(PostReportReason _) {
-    if (!mounted) return;
-    setState(() {
-      _isReportOverlayVisible = true;
-    });
-  }
+  void _onReportSubmitted(PostReportReason _) {}
 
   @override
   Widget build(BuildContext context) {
+    if (_showReportedPostCard) {
+      return ReportedPostCardWidget(
+        onClose: () {
+          setState(() {
+            _showReportedPostCard = false;
+          });
+        },
+      );
+    }
+
     final hasImages = widget.post.imageUrls.isNotEmpty;
 
     return Container(
@@ -49,16 +57,6 @@ class _PostCardWidgetState extends State<PostCardWidget>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (_isReportOverlayVisible) ...[
-            _ReportSubmittedOverlayCard(
-              onClose: () {
-                setState(() {
-                  _isReportOverlayVisible = false;
-                });
-              },
-            ),
-            const Gap(12),
-          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -95,6 +93,13 @@ class _PostCardWidgetState extends State<PostCardWidget>
                 onTap: () => showPostReportBottomSheet(
                   context,
                   onSubmitted: _onReportSubmitted,
+                  reportTargetName: widget.post.username,
+                  onFeedbackDone: () {
+                    if (!mounted) return;
+                    setState(() {
+                      _showReportedPostCard = true;
+                    });
+                  },
                 ),
                 child: Assets.icons.more.svg(width: 16, height: 16),
               ),
@@ -137,93 +142,6 @@ class _PostCardWidgetState extends State<PostCardWidget>
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ReportSubmittedOverlayCard extends StatelessWidget {
-  const _ReportSubmittedOverlayCard({required this.onClose});
-
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(16, 14, 12, 16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF202020).withOpacity(0.26),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.1),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.white.withOpacity(0.12),
-                blurRadius: 10,
-                offset: const Offset(0, -2),
-              ),
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: 0,
-                right: 0,
-                child: GestureDetector(
-                  onTap: onClose,
-                  behavior: HitTestBehavior.opaque,
-                  child: const Padding(
-                    padding: EdgeInsets.all(2),
-                    child: Icon(
-                      Icons.close,
-                      size: 18,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                  ),
-                ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.check_circle_outline,
-                    size: 20,
-                    color: Colors.white,
-                  ),
-                  const Gap(10),
-                  Text(
-                    'Thanks for reporting this post',
-                    style: TextStyles.titleTag.copyWith(
-                      color: AppColors.whiteBackground,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const Gap(8),
-                  Text(
-                    'Your feedback is important in helping us keep the BrightBud community safe.',
-                    style: TextStyles.bodyMain.copyWith(
-                      color: AppColors.textGray2,
-                      fontSize: 12,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

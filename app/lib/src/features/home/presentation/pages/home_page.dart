@@ -66,7 +66,8 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 64, color: AppColors.colorffEF4444),
+                    Icon(Icons.error_outline,
+                        size: 64, color: AppColors.colorffEF4444),
                     const Gap(16),
                     Text(
                       'Error loading posts',

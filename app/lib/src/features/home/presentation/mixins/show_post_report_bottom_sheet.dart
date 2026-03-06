@@ -1,6 +1,9 @@
+import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/action_bottom_sheet.dart';
 import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
+import 'package:app/src/core/widgets/list_item/custom_action_list_item.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_feedback_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
@@ -19,17 +22,30 @@ enum PostReportReason {
   final String label;
 }
 
-mixin ShowPostReportBottomSheet {
+mixin ShowPostReportBottomSheet on ShowPostReportFeedbackBottomSheet {
   void showPostReportBottomSheet(
     BuildContext context, {
     required ValueChanged<PostReportReason> onSubmitted,
+    String reportTargetName = 'User',
+    VoidCallback? onFeedbackDone,
   }) {
     context.showRoundedModalBottomSheet(
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.78,
       child: ActionBottomSheet(
         backgroundColor: const Color(0xFF202020).withOpacity(0.20),
-        child: _PostReportSheet(onSubmitted: onSubmitted),
+        child: _PostReportSheet(
+          onSubmitted: (reason) {
+            onSubmitted(reason);
+            Future.microtask(() {
+              showPostReportFeedbackBottomSheet(
+                context,
+                reportTargetName: reportTargetName,
+                onDone: onFeedbackDone,
+              );
+            });
+          },
+        ),
       ),
     );
   }
@@ -46,58 +62,38 @@ class _PostReportSheet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Text(
             'Why are you reporting this post?',
-            style: TextStyles.titleHeadline.copyWith(
-              color: AppColors.whiteBackground,
+            style: TextStyles.titleBig.copyWith(
+              color: AppColors.colorffffffff,
             ),
+            textAlign: TextAlign.center,
           ),
           const Gap(8),
           Text(
             'Your report is anonymous. If someone is in immediate danger, call local emergency services.',
             style: TextStyles.bodyMain.copyWith(
-              color: AppColors.textGray2,
-              fontSize: 12,
+              color: AppColors.colorff838383,
             ),
+            textAlign: TextAlign.center,
           ),
-          const Gap(10),
+          const Gap(16),
           SizedBox(
             height: 360,
             child: ListView.separated(
               itemCount: PostReportReason.values.length,
-              separatorBuilder: (_, __) => const Divider(
-                height: 1,
-                color: Color(0x33FFFFFF),
-              ),
+              separatorBuilder: (_, __) => const Gap(12),
               itemBuilder: (context, index) {
                 final reason = PostReportReason.values[index];
-                return InkWell(
+                return CustomActionListItem(
+                  text: reason.label,
+                  color: AppColors.colorffffffff,
                   onTap: () {
                     Navigator.of(context).pop();
                     onSubmitted(reason);
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            reason.label,
-                            style: TextStyles.bodyMain.copyWith(
-                              color: AppColors.whiteBackground,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right,
-                          size: 18,
-                          color: Color(0xFF8E8E93),
-                        ),
-                      ],
-                    ),
-                  ),
                 );
               },
             ),

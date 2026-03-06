@@ -95,9 +95,8 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
 
   void _onSendComment() {
     final text = _commentController.text.trim();
-    final photoFileNames = _currentComposerPhotos()
-        .map((photo) => photo.fileName)
-        .toList();
+    final photoFileNames =
+        _currentComposerPhotos().map((photo) => photo.fileName).toList();
     if (text.isEmpty && photoFileNames.isEmpty) return;
 
     _bloc.add(
@@ -157,7 +156,8 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                           ),
                           const Gap(8),
                           IconButton(
-                            icon: const Icon(Icons.refresh, color: Colors.white),
+                            icon:
+                                const Icon(Icons.refresh, color: Colors.white),
                             onPressed: () {
                               _bloc.add(HomeEvent.loadComments(widget.post.id));
                             },

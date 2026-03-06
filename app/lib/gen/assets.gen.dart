@@ -37,6 +37,10 @@ class $AssetsIconsGen {
   /// File path: assets/icons/atsign.svg
   SvgGenImage get atsign => const SvgGenImage('assets/icons/atsign.svg');
 
+  /// File path: assets/icons/basil_user-block-solid.svg
+  SvgGenImage get basilUserBlockSolid =>
+      const SvgGenImage('assets/icons/basil_user-block-solid.svg');
+
   /// File path: assets/icons/bell.svg
   SvgGenImage get bell => const SvgGenImage('assets/icons/bell.svg');
 
@@ -52,6 +56,10 @@ class $AssetsIconsGen {
   /// File path: assets/icons/chats_icon.svg
   SvgGenImage get chatsIcon => const SvgGenImage('assets/icons/chats_icon.svg');
 
+  /// File path: assets/icons/checked_circle.svg
+  SvgGenImage get checkedCircle =>
+      const SvgGenImage('assets/icons/checked_circle.svg');
+
   /// File path: assets/icons/close.svg
   SvgGenImage get close => const SvgGenImage('assets/icons/close.svg');
 
@@ -63,6 +71,14 @@ class $AssetsIconsGen {
 
   /// File path: assets/icons/feed_icon.svg
   SvgGenImage get feedIcon => const SvgGenImage('assets/icons/feed_icon.svg');
+
+  /// File path: assets/icons/flowbite_file-shield-outline.svg
+  SvgGenImage get flowbiteFileShieldOutline =>
+      const SvgGenImage('assets/icons/flowbite_file-shield-outline.svg');
+
+  /// File path: assets/icons/fluent_eye-hide-24-filled.svg
+  SvgGenImage get fluentEyeHide24Filled =>
+      const SvgGenImage('assets/icons/fluent_eye-hide-24-filled.svg');
 
   /// File path: assets/icons/global.svg
   SvgGenImage get global => const SvgGenImage('assets/icons/global.svg');
@@ -153,20 +169,28 @@ class $AssetsIconsGen {
   /// File path: assets/icons/timer.svg
   SvgGenImage get timer => const SvgGenImage('assets/icons/timer.svg');
 
+  /// File path: assets/icons/tuiIconChevronRightLarge.svg
+  SvgGenImage get tuiIconChevronRightLarge =>
+      const SvgGenImage('assets/icons/tuiIconChevronRightLarge.svg');
+
   /// List of all assets
   List<SvgGenImage> get values => [
         appleLogo,
         arrowBack,
         atsign,
+        basilUserBlockSolid,
         bell,
         blocked,
         bronze,
         calendar,
         chatsIcon,
+        checkedCircle,
         close,
         eyeClosed,
         eyeOpened,
         feedIcon,
+        flowbiteFileShieldOutline,
+        fluentEyeHide24Filled,
         global,
         googleLogo,
         images,
@@ -192,7 +216,8 @@ class $AssetsIconsGen {
         silverCoin,
         statsIcon,
         taskDone,
-        timer
+        timer,
+        tuiIconChevronRightLarge
       ];
 }
 

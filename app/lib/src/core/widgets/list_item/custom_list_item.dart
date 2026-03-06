@@ -59,12 +59,11 @@ class CustomListItem extends StatelessWidget {
                       Text(
                         title,
                         style: isSecondary
-                            ? TextStyles
-                                  .titleMain // Adopting brightbund styles
-                                  .copyWith(
-                                    color: color ?? Colors.black,
-                                    fontSize: 16,
-                                  )
+                            ? TextStyles.titleMain // Adopting brightbund styles
+                                .copyWith(
+                                color: color ?? Colors.black,
+                                fontSize: 16,
+                              )
                             : TextStyles.titleMain.copyWith(
                                 color: color ?? Colors.black,
                               ),
