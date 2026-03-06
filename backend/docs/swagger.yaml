@@ -648,10 +648,9 @@ definitions:
         type: string
       media_attachment:
         $ref: '#/definitions/internal_modules_feed.MediaAttachment'
-      replies:
-        items:
-          $ref: '#/definitions/internal_modules_feed.CommentResponse'
-        type: array
+      reply_count:
+        description: Only > 0 for root comments
+        type: integer
       time_ago:
         type: string
     type: object
@@ -1386,12 +1385,17 @@ paths:
       - Feed
   /api/v1/posts/{post_id}/comments:
     get:
-      description: Fetch threaded comments (1 level deep) for a specific post
+      description: Fetch threaded comments for a specific post. Pass parent_id to
+        get replies for a specific comment.
       parameters:
       - description: Post UUID
         in: path
         name: post_id
         required: true
+        type: string
+      - description: Optional comment UUID to fetch replies for
+        in: query
+        name: parent_id
         type: string
       - description: Pagination cursor
         in: query
@@ -1537,7 +1541,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Deducts silver and attaches optional message to a post.
+      description: Deducts silver from the viewer and credits the post author. Validates
+        balance, cooldown, and self-seal rules via the Economy module.
       parameters:
       - description: Post UUID
         in: path
@@ -1554,7 +1559,24 @@ paths:
       - application/json
       responses:
         "201":
-          description: Seal Sent
+          description: Seal sent — returns ledger_entry_id and new sender balance
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "402":
+          description: insufficient_balance
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "429":
+          description: cooldown active
           schema:
             additionalProperties:
               type: string

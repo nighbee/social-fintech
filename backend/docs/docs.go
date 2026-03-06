@@ -248,7 +248,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Fetch threaded comments (1 level deep) for a specific post",
+                "description": "Fetch threaded comments for a specific post. Pass parent_id to get replies for a specific comment.",
                 "produces": [
                     "application/json"
                 ],
@@ -263,6 +263,12 @@ const docTemplate = `{
                         "name": "post_id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional comment UUID to fetch replies for",
+                        "name": "parent_id",
+                        "in": "query"
                     },
                     {
                         "type": "string",
@@ -478,7 +484,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Deducts silver and attaches optional message to a post.",
+                "description": "Deducts silver from the viewer and credits the post author. Validates balance, cooldown, and self-seal rules via the Economy module.",
                 "consumes": [
                     "application/json"
                 ],
@@ -509,7 +515,32 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Seal Sent",
+                        "description": "Seal sent — returns ledger_entry_id and new sender balance",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "insufficient_balance",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "cooldown active",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4793,11 +4824,9 @@ const docTemplate = `{
                 "media_attachment": {
                     "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
                 },
-                "replies": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_modules_feed.CommentResponse"
-                    }
+                "reply_count": {
+                    "description": "Only \u003e 0 for root comments",
+                    "type": "integer"
                 },
                 "time_ago": {
                     "type": "string"
