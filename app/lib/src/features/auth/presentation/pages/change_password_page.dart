@@ -106,7 +106,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   width: 20,
                                   height: 20,
                                   colorFilter: const ColorFilter.mode(
-                                    AppColors.textGray2,
+                                    AppColors.colorff838383,
                                     BlendMode.srcIn,
                                   ),
                                 ),
@@ -118,7 +118,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   width: 20,
                                   height: 20,
                                   colorFilter: const ColorFilter.mode(
-                                    AppColors.textGray2,
+                                    AppColors.colorff838383,
                                     BlendMode.srcIn,
                                   ),
                                 ),
@@ -148,7 +148,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   width: 20,
                                   height: 20,
                                   colorFilter: const ColorFilter.mode(
-                                    AppColors.textGray2,
+                                    AppColors.colorff838383,
                                     BlendMode.srcIn,
                                   ),
                                 ),
@@ -160,7 +160,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                                   height: 20,
                                   width: 20,
                                   colorFilter: const ColorFilter.mode(
-                                    AppColors.textGray2,
+                                    AppColors.colorff838383,
                                     BlendMode.srcIn,
                                   ),
                                 ),

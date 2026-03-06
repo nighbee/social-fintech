@@ -71,6 +71,6 @@ class _RankingCountdownWidgetState extends State<RankingCountdownWidget> {
   @override
   Widget build(BuildContext context) {
     return Text(_countdown,
-        style: TextStyles.titleXBig.copyWith(color: AppColors.whiteBackground));
+        style: TextStyles.titleXBig.copyWith(color: AppColors.colorffffffff));
   }
 }

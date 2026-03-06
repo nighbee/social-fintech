@@ -31,7 +31,7 @@ class CustomButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final effectiveBackgroundColor = isDisabled
         ? const Color.fromARGB(255, 111, 111, 111)
-        : (backgroundColor ?? AppColors.btnGray1);
+        : (backgroundColor ?? AppColors.colorffdbdbdb);
 
     return Container(
       width: width ?? double.infinity,

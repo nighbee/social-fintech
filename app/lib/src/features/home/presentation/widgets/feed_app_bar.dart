@@ -1,7 +1,9 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 
 class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
   const FeedAppBar({
@@ -17,16 +19,16 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.mainBackground,
+      backgroundColor: AppColors.colorff19191A,
       elevation: 0,
       title: Row(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.colorff2A2A2B,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.border, width: 1),
+              border: Border.all(color: AppColors.colorff3F3F40, width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -36,7 +38,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Text(
                   '27',
                   style: TextStyles.titleTag.copyWith(
-                    color: AppColors.textPrimary,
+                    color: AppColors.colorffE5E5E5,
                     fontWeight: FontWeight.w500,
                     fontSize: 16,
                   ),
@@ -55,7 +57,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Text(
                   '20 min',
                   style: TextStyles.titleHeadline.copyWith(
-                    color: AppColors.textPrimary,
+                    color: AppColors.colorffE5E5E5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -70,22 +72,24 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
           child: Container(
             padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border, width: 1),
+              color: AppColors.colorff2A2A2B,
+              border: Border.all(color: AppColors.colorff3F3F40, width: 1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Assets.icons.plusIcon.svg(width: 24, height: 24),
           ),
         ),
-        Gap(14),
+        const Gap(14),
         GestureDetector(
-          onTap: () {},
+          onTap: () {
+            context.push(RoutePaths.notifications);
+          },
           child: Container(
-            padding: EdgeInsets.all(6),
+            padding: const EdgeInsets.all(6),
             child: Assets.icons.bell.svg(width: 24, height: 24),
           ),
         ),
-        Gap(7),
+        const Gap(7),
         GestureDetector(
           onTap: () {},
           child: Container(

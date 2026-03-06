@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/models/comment_dto.dart';
+import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/post_dto.dart';
 
 abstract class IHomeRemote {
@@ -20,4 +21,7 @@ abstract class IHomeRemote {
   );
   Future<Either<DomainException, CommentDto>> likeComment(String commentId);
   Future<Either<DomainException, CommentDto>> unlikeComment(String commentId);
+
+  // Notifications
+  Future<Either<DomainException, List<NotificationDto>>> getNotifications();
 }

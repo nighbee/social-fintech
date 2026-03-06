@@ -34,9 +34,9 @@ class _PublicProfilePageState extends State<PublicProfilePage>
       builder: (context, state) {
         final bloc = getIt<ProfileBloc>();
         return Scaffold(
-          backgroundColor: AppColors.mainBackground,
+          backgroundColor: AppColors.colorff19191A,
           appBar: AppBar(
-            backgroundColor: AppColors.mainBackground,
+            backgroundColor: AppColors.colorff19191A,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back, color: Colors.white),
               onPressed: () => context.pop(),

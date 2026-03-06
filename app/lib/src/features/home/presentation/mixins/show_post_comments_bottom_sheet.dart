@@ -95,9 +95,8 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
 
   void _onSendComment() {
     final text = _commentController.text.trim();
-    final photoFileNames = _currentComposerPhotos()
-        .map((photo) => photo.fileName)
-        .toList();
+    final photoFileNames =
+        _currentComposerPhotos().map((photo) => photo.fileName).toList();
     if (text.isEmpty && photoFileNames.isEmpty) return;
 
     _bloc.add(
@@ -157,7 +156,8 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                           ),
                           const Gap(8),
                           IconButton(
-                            icon: const Icon(Icons.refresh, color: Colors.white),
+                            icon:
+                                const Icon(Icons.refresh, color: Colors.white),
                             onPressed: () {
                               _bloc.add(HomeEvent.loadComments(widget.post.id));
                             },
@@ -281,7 +281,7 @@ class PostCommentItem extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.colorff2A2A2B,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 alignment: Alignment.center,
@@ -290,7 +290,7 @@ class PostCommentItem extends StatelessWidget {
                       ? comment.username[0].toUpperCase()
                       : '?',
                   style: TextStyles.bodyMain.copyWith(
-                    color: AppColors.textPrimary,
+                    color: AppColors.colorffE5E5E5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

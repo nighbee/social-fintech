@@ -47,7 +47,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                 child: ParticleAnimation(
                   particleCount: 25,
                   particleColors: [
-                    // AppColors.textGray2.withOpacity(0.2),
+                    // AppColors.colorff838383.withOpacity(0.2),
                     const Color(0xFFFFFFFF),
                   ],
                   minSize: 4.0,
@@ -169,7 +169,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                           width: 20,
                                           height: 20,
                                           colorFilter: const ColorFilter.mode(
-                                            AppColors.textGray2,
+                                            AppColors.colorff838383,
                                             BlendMode.srcIn,
                                           ),
                                         ),
@@ -181,7 +181,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                           width: 20,
                                           height: 20,
                                           colorFilter: const ColorFilter.mode(
-                                            AppColors.textGray2,
+                                            AppColors.colorff838383,
                                             BlendMode.srcIn,
                                           ),
                                         ),
@@ -202,7 +202,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 "Forgot your password?",
                                 style: TextStyles.bodyMain.copyWith(
                                   fontSize: 14,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                             ),
@@ -243,7 +243,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                               Text("or", style: TextStyles.titleTag),
@@ -251,7 +251,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                             ],

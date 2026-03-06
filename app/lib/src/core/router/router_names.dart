@@ -43,6 +43,9 @@ class RouteNames {
   static const String publicProfile = 'publicProfile';
   static const String editProfile = 'editProfile';
 
+  // Notifications routes
+  static const String notifications = 'notifications';
+
   // Developer features
   static const String developerFeatures = 'developer_features';
   static const String log = 'log';

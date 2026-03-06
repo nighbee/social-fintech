@@ -149,7 +149,7 @@ class _ReferalPageState extends State<ReferalPage> {
                 child: Text(
                   'Skip',
                   style: TextStyles.titleHeadline.copyWith(
-                    color: AppColors.whiteBackground,
+                    color: AppColors.colorffffffff,
                   ),
                 ),
               ),

@@ -26,7 +26,7 @@ class PasswordVisibilityToggle extends StatelessWidget {
                   width: 20,
                   height: 20,
                   colorFilter: const ColorFilter.mode(
-                    AppColors.textGray2,
+                    AppColors.colorff838383,
                     BlendMode.srcIn,
                   ),
                 )
@@ -34,7 +34,7 @@ class PasswordVisibilityToggle extends StatelessWidget {
                   width: 20,
                   height: 20,
                   colorFilter: const ColorFilter.mode(
-                    AppColors.textGray2,
+                    AppColors.colorff838383,
                     BlendMode.srcIn,
                   ),
                 ),

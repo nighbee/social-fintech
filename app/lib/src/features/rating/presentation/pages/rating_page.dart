@@ -10,7 +10,7 @@ class RatingPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.mainBackground,
+      backgroundColor: AppColors.colorff19191A,
       appBar: const CustomAppBar(showLeading: false),
       bottomNavigationBar: const CustomNavBar(currentTab: RoutePaths.rating),
       body: const SafeArea(child: Center(child: Text('Rating Page'))),

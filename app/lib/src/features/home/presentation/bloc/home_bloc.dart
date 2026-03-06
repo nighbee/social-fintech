@@ -9,6 +9,7 @@ import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 
 part 'home_bloc.freezed.dart';
@@ -22,7 +23,6 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
 
   final IHomeRepository _repository;
   HomeViewModel _viewModel = HomeViewModel();
-
   @override
   Future<void> onEventHandler(HomeEvent event, Emitter emit) async {
     await event.when(
@@ -51,6 +51,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       addPostPhoto: (_, __) => _addPostPhoto(event as _AddPostPhoto, emit),
       removePostPhoto: (_) => _removePostPhoto(event as _RemovePostPhoto, emit),
       clearPostPhotos: () => _clearPostPhotos(emit),
+      loadNotifications: () =>
+          _loadNotifications(event as _LoadNotifications, emit),
     );
   }
 
@@ -362,6 +364,22 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   Future<void> _clearPostPhotos(Emitter emit) async {
     _viewModel = _viewModel.copyWith(postComposerPhotos: const []);
     emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _loadNotifications(
+      _LoadNotifications event, Emitter emit) async {
+    try {
+      final result = await _repository.getNotifications();
+      result.fold(
+        (error) => emit(HomeState.loadingError(error.message)),
+        (notifications) {
+          _viewModel = _viewModel.copyWith(notifications: notifications);
+          emit(HomeState.loaded(viewModel: _viewModel));
+        },
+      );
+    } catch (e) {
+      emit(HomeState.loadingError(e.toString()));
+    }
   }
 
   @override

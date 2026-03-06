@@ -4,6 +4,7 @@ import 'package:app/src/core/router/router.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_task_application_entity.dart';
+import 'package:app/src/features/map/domain/entities/map_task_entity.dart';
 import 'package:app/src/features/map/domain/requests/map_champions_request.dart';
 import 'package:app/src/features/map/domain/requests/map_nearby_tasks_request.dart';
 import 'package:app/src/features/map/domain/requests/map_region_assignment_request.dart';
@@ -15,6 +16,7 @@ import 'package:app/src/features/map/presentation/services/map_champion_service.
 import 'package:app/src/features/map/presentation/services/map_dialog_service.dart';
 import 'package:app/src/features/map/presentation/services/map_persistence_service.dart';
 import 'package:app/src/features/map/presentation/services/map_polling_service.dart';
+import 'package:app/src/features/map/presentation/services/map_request_marker_service.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:go_router/go_router.dart';
@@ -30,11 +32,14 @@ class MapPageController {
       MapChampionEntity champion,
       List<MapChampionEntity> champions,
     ) onChampionTap,
+    required void Function(VoidCallback fn) requestSetState,
   })  : _mapBloc = mapBloc,
         _persistence = persistence,
         _polling = polling,
         _dialogs = dialogs,
         _championService = MapChampionService(),
+        _requestMarkerService = MapRequestMarkerService(),
+        _requestSetState = requestSetState,
         _onChampionTapCallback = onChampionTap;
 
   final MapBloc _mapBloc;
@@ -42,6 +47,8 @@ class MapPageController {
   final MapPollingService _polling;
   final MapDialogService _dialogs;
   final MapChampionService _championService;
+  final MapRequestMarkerService _requestMarkerService;
+  final void Function(VoidCallback fn) _requestSetState;
   final void Function(
     MapChampionEntity champion,
     List<MapChampionEntity> champions,
@@ -60,11 +67,14 @@ class MapPageController {
   String executorCreatorName = '';
   String? handledTaskApplicationActionResult;
   final Set<String> locallyCanceledExecutorApplicationIds = <String>{};
+  int consecutiveMissingAppliedTaskChecks = 0;
   double currentLatitude = 50.4501;
   double currentLongitude = 30.5234;
   bool isRequestExpanded = false;
   bool hasSavedCenter = false;
   String? _lastChampionsRegionKey;
+  String? selectedNearbyTaskId;
+  DateTime? _lastMarkerSelectionAt;
 
   void onInit() {
     _mapBloc.add(const MapEvent.loadMap());
@@ -76,11 +86,28 @@ class MapPageController {
 
   void onDispose() {
     _polling.dispose();
-    _championService.dispose();
+    unawaited(_championService.dispose());
+    unawaited(_requestMarkerService.dispose());
   }
 
   void toggleRequestExpanded() {
     isRequestExpanded = !isRequestExpanded;
+  }
+
+  void selectNearbyTask(String taskId) {
+    selectedNearbyTaskId = selectedNearbyTaskId == taskId ? null : taskId;
+    unawaited(_requestMarkerService.setSelectedTask(selectedNearbyTaskId));
+  }
+
+  void clearNearbyTaskSelection() {
+    final lastMarkerTap = _lastMarkerSelectionAt;
+    if (lastMarkerTap != null &&
+        DateTime.now().difference(lastMarkerTap) <
+            const Duration(milliseconds: 180)) {
+      return;
+    }
+    selectedNearbyTaskId = null;
+    unawaited(_requestMarkerService.clearSelection());
   }
 
   Future<void> onLoadingError(BuildContext context, String message) async {
@@ -100,6 +127,9 @@ class MapPageController {
     required bool mounted,
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
+    _reconcileSelectedNearbyTask(viewModel.nearbyTasks);
+    await _requestMarkerService.syncTasks(viewModel.nearbyTasks);
+    await _requestMarkerService.setSelectedTask(selectedNearbyTaskId);
     _ensureChampionsLoaded(viewModel);
     _refreshTaskApplications(viewModel);
     await _tryShowCreatorConfirmDialog(context, viewModel);
@@ -141,6 +171,7 @@ class MapPageController {
       handledApplyApplicationId = viewModel.applyToTaskResult.applicationId;
       executorTaskStatus = viewModel.applyToTaskResult.status;
       executorCreatorName = '';
+      consecutiveMissingAppliedTaskChecks = 0;
       _dialogs.resetRejectedHandledId();
       unawaited(
         _persistActiveExecutorApplication(
@@ -217,6 +248,12 @@ class MapPageController {
 
     // Load champions for initial region
     unawaited(_loadChampionsForCurrentRegion());
+    unawaited(
+      _requestMarkerService.initialize(
+        map,
+        onSelectionChanged: _onRequestMarkerSelectionChanged,
+      ),
+    );
   }
 
   void onCameraChanged(CameraChangedEventData eventData) {
@@ -463,6 +500,22 @@ class MapPageController {
     );
   }
 
+  void _reconcileSelectedNearbyTask(List<MapTaskEntity> nearbyTasks) {
+    final selectedTaskId = selectedNearbyTaskId;
+    if (selectedTaskId == null) {
+      return;
+    }
+
+    for (final task in nearbyTasks) {
+      if (task.id == selectedTaskId) {
+        return;
+      }
+    }
+
+    selectedNearbyTaskId = null;
+    unawaited(_requestMarkerService.setSelectedTask(null));
+  }
+
   void _refreshTaskApplications(MapViewModel viewModel) {
     _polling.refreshTaskApplicationsIfNeeded(
       myTasks: viewModel.myTasks,
@@ -527,6 +580,7 @@ class MapPageController {
     final taskId = viewModel.applyToTaskResult.taskId;
     final applicationId = viewModel.applyToTaskResult.applicationId;
     if (taskId.isEmpty || applicationId.isEmpty) {
+      consecutiveMissingAppliedTaskChecks = 0;
       if (executorTaskStatus.isNotEmpty && mounted) {
         runSetState(() {
           executorTaskStatus = '';
@@ -540,6 +594,7 @@ class MapPageController {
     }
 
     if (locallyCanceledExecutorApplicationIds.contains(applicationId)) {
+      consecutiveMissingAppliedTaskChecks = 0;
       return;
     }
 
@@ -559,6 +614,10 @@ class MapPageController {
         matchedTaskStatus = task.status;
         break;
       }
+    }
+
+    if (matchedTaskStatus != null) {
+      consecutiveMissingAppliedTaskChecks = 0;
     }
 
     if (matchedTaskStatus == 'completed') {
@@ -592,11 +651,15 @@ class MapPageController {
         viewModel.hasAppliedTasksLoaded &&
         mounted &&
         !executorCompletionShown) {
-      unawaited(_clearActiveExecutorApplication());
-      runSetState(() {
-        executorTaskStatus = 'rejected';
-        executorCreatorName = '';
-      });
+      // Avoid false "rejected" when current state is stale right after apply.
+      consecutiveMissingAppliedTaskChecks += 1;
+      if (consecutiveMissingAppliedTaskChecks >= 2) {
+        unawaited(_clearActiveExecutorApplication());
+        runSetState(() {
+          executorTaskStatus = 'rejected';
+          executorCreatorName = '';
+        });
+      }
     }
   }
 
@@ -701,6 +764,13 @@ class MapPageController {
     _onChampionTapCallback(champion, _mapBloc.viewModel.champions);
   }
 
+  void _onRequestMarkerSelectionChanged(String? selectedTaskId) {
+    _lastMarkerSelectionAt = DateTime.now();
+    _requestSetState(() {
+      selectedNearbyTaskId = selectedTaskId;
+    });
+  }
+
   void _handleTaskApplicationActionResult(
     BuildContext context,
     MapViewModel viewModel, {
@@ -722,6 +792,10 @@ class MapPageController {
     }
 
     if (action == 'accepted' || action == 'rejected') {
+      runSetState(() {
+        executorTaskStatus = action;
+        debugPrint('[MapController] Task application $action - executorTaskStatus updated to: $action');
+      });
       final taskId = _polling.lastApplicationsTaskId;
       if (taskId != null && taskId.isNotEmpty) {
         _mapBloc.add(
@@ -737,6 +811,15 @@ class MapPageController {
           ),
         );
       }
+
+      // Refresh applied tasks to get the latest status and trigger UI update
+      debugPrint('[MapController] Refreshing applied tasks after $action');
+      _mapBloc.add(const MapEvent.getAppliedTasks());
+
+      // Force an extra setState to ensure UI updates
+      runSetState(() {
+        debugPrint('[MapController] Forced setState for UI update');
+      });
     }
   }
 }

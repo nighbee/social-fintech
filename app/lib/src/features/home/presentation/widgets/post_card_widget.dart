@@ -11,33 +11,58 @@ import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_feedback_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/widgets/reported_post_card_widget.dart';
 
-class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
+class PostCardWidget extends StatefulWidget {
+  const PostCardWidget({super.key, required this.post});
+
   final PostEntity post;
 
-  const PostCardWidget({super.key, required this.post});
+  @override
+  State<PostCardWidget> createState() => _PostCardWidgetState();
+}
+
+class _PostCardWidgetState extends State<PostCardWidget>
+    with
+        ShowPostCommentsBottomSheet,
+        ShowPostReportFeedbackBottomSheet,
+        ShowPostReportBottomSheet {
+  bool _showReportedPostCard = false;
+
+  void _onReportSubmitted(PostReportReason _) {}
 
   @override
   Widget build(BuildContext context) {
-    final hasImages = post.imageUrls.isNotEmpty;
+    if (_showReportedPostCard) {
+      return ReportedPostCardWidget(
+        onClose: () {
+          setState(() {
+            _showReportedPostCard = false;
+          });
+        },
+      );
+    }
+
+    final hasImages = widget.post.imageUrls.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.colorff2A2A2B,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: AppColors.colorff3F3F40, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: User info and menu
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (hasImages) ...[
                 CustomNetworkImage(
-                  imageUrl: post.imageUrls.first,
+                  imageUrl: widget.post.imageUrls.first,
                   width: 40,
                   height: 40,
                   borderRadius: BorderRadius.circular(4),
@@ -49,51 +74,60 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      post.username,
+                      widget.post.username,
                       style: TextStyles.titleHeadline.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: AppColors.colorffE5E5E5,
                       ),
                     ),
                     Text(
-                      timeago.format(post.createdAt),
+                      timeago.format(widget.post.createdAt),
                       style: TextStyles.bodySecondary.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColors.colorff9CA3AF,
                       ),
                     ),
                   ],
                 ),
               ),
               GestureDetector(
-                onTap: () {},
+                onTap: () => showPostReportBottomSheet(
+                  context,
+                  onSubmitted: _onReportSubmitted,
+                  reportTargetName: widget.post.username,
+                  onFeedbackDone: () {
+                    if (!mounted) return;
+                    setState(() {
+                      _showReportedPostCard = true;
+                    });
+                  },
+                ),
                 child: Assets.icons.more.svg(width: 16, height: 16),
               ),
             ],
           ),
           const Gap(12),
-          // Content
           Text(
-            post.content,
-            style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
+            widget.post.content,
+            style: TextStyles.bodyMain.copyWith(color: AppColors.colorffE5E5E5),
           ),
           if (hasImages) ...[
             const Gap(12),
-            PostImageGrid(imageUrls: post.imageUrls),
+            PostImageGrid(imageUrls: widget.post.imageUrls),
           ],
           const Gap(12),
-          // Actions: Like, Comment, Share
           Row(
             children: [
               PostLikeButton(
-                postId: post.id,
-                isLiked: post.isLiked,
-                count: post.likesCount,
+                postId: widget.post.id,
+                isLiked: widget.post.isLiked,
+                count: widget.post.likesCount,
               ),
               const Gap(16),
               PostActionButton(
                 icon: Assets.icons.message.svg(width: 20, height: 20),
-                count: post.commentsCount,
-                onTap: () => showPostCommentsBottomSheet(context, post: post),
+                count: widget.post.commentsCount,
+                onTap: () =>
+                    showPostCommentsBottomSheet(context, post: widget.post),
               ),
               const Gap(16),
               GestureDetector(
@@ -136,7 +170,7 @@ class PostActionButton extends StatelessWidget {
           const Gap(4),
           Text(
             count.toString(),
-            style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
+            style: TextStyles.bodyMain.copyWith(color: AppColors.colorffE5E5E5),
           ),
         ],
       ),
@@ -199,7 +233,7 @@ class PostLikeButton extends StatelessWidget {
                     width: 20,
                     height: 20,
                     colorFilter: ColorFilter.mode(
-                      currentlyLiked ? Colors.red : AppColors.textPrimary,
+                      currentlyLiked ? Colors.red : AppColors.colorffE5E5E5,
                       BlendMode.srcIn,
                     ),
                   ),
@@ -207,7 +241,8 @@ class PostLikeButton extends StatelessWidget {
                   Text(
                     currentCount.toString(),
                     style: TextStyles.bodyMain.copyWith(
-                      color: currentlyLiked ? Colors.red : AppColors.textPrimary,
+                      color:
+                          currentlyLiked ? Colors.red : AppColors.colorffE5E5E5,
                     ),
                   ),
                 ],
@@ -226,7 +261,7 @@ class PostLikeButton extends StatelessWidget {
                   width: 20,
                   height: 20,
                   colorFilter: ColorFilter.mode(
-                    AppColors.textPrimary,
+                    AppColors.colorffE5E5E5,
                     BlendMode.srcIn,
                   ),
                 ),
@@ -234,7 +269,7 @@ class PostLikeButton extends StatelessWidget {
                 Text(
                   count.toString(),
                   style: TextStyles.bodyMain.copyWith(
-                    color: AppColors.textPrimary,
+                    color: AppColors.colorffE5E5E5,
                   ),
                 ),
               ],

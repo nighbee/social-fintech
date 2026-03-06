@@ -32,7 +32,7 @@ class CustomNetworkImage extends StatelessWidget {
           return Container(
             width: width,
             height: height,
-            color: AppColors.surface,
+            color: AppColors.colorff2A2A2B,
             child: Center(
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
@@ -40,7 +40,7 @@ class CustomNetworkImage extends StatelessWidget {
                           loadingProgress.expectedTotalBytes!
                     : null,
                 strokeWidth: 2,
-                color: AppColors.textSecondary,
+                color: AppColors.colorff9CA3AF,
               ),
             ),
           );
@@ -49,10 +49,10 @@ class CustomNetworkImage extends StatelessWidget {
           return Container(
             width: width,
             height: height,
-            color: AppColors.surface,
+            color: AppColors.colorff2A2A2B,
             child: Icon(
               Icons.broken_image,
-              color: AppColors.textSecondary,
+              color: AppColors.colorff9CA3AF,
               size: 32,
             ),
           );

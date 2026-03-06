@@ -26,7 +26,7 @@ class CustomNavBar extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
-        color: AppColors.blackBackground,
+        color: AppColors.colorff000000,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
@@ -39,14 +39,14 @@ class CustomNavBar extends StatelessWidget {
             elevation: 0,
             backgroundColor: Colors.transparent,
             currentIndex: paths.indexOf(currentTab),
-            unselectedItemColor: AppColors.textGray2,
-            selectedItemColor: AppColors.blueText1,
+            unselectedItemColor: AppColors.colorff838383,
+            selectedItemColor: AppColors.colorff74afe3,
             type: BottomNavigationBarType.fixed,
             selectedLabelStyle: TextStyles.titleTag.copyWith(
-              color: AppColors.blueText1,
+              color: AppColors.colorff74afe3,
             ),
             unselectedLabelStyle: TextStyles.titleTag
-                .copyWith(color: AppColors.textGray2),
+                .copyWith(color: AppColors.colorff838383),
             onTap: (int index) {
               context.go(paths[index]);
             },
@@ -62,7 +62,7 @@ class CustomNavBar extends StatelessWidget {
                     width: 24,
                     height: 24,
                     colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
+                      isSelected ? AppColors.colorff74afe3 : AppColors.colorff838383,
                       BlendMode.srcIn,
                     ),
                   );
@@ -72,7 +72,7 @@ class CustomNavBar extends StatelessWidget {
                     width: 24,
                     height: 24,
                     colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
+                      isSelected ? AppColors.colorff74afe3 : AppColors.colorff838383,
                       BlendMode.srcIn,
                     ),
                   );
@@ -82,7 +82,7 @@ class CustomNavBar extends StatelessWidget {
                     width: 24,
                     height: 24,
                     colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
+                      isSelected ? AppColors.colorff74afe3 : AppColors.colorff838383,
                       BlendMode.srcIn,
                     ),
                   );
@@ -92,7 +92,7 @@ class CustomNavBar extends StatelessWidget {
                     width: 24,
                     height: 24,
                     colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
+                      isSelected ? AppColors.colorff74afe3 : AppColors.colorff838383,
                       BlendMode.srcIn,
                     ),
                   );
@@ -102,7 +102,7 @@ class CustomNavBar extends StatelessWidget {
                     width: 24,
                     height: 24,
                     colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
+                      isSelected ? AppColors.colorff74afe3 : AppColors.colorff838383,
                       BlendMode.srcIn,
                     ),
                   );

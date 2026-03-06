@@ -56,7 +56,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         // Layer 1: Fixed particle background (behind everything)
         Positioned.fill(
           child: Container(
-            color: AppColors.mainBackground,
+            color: AppColors.colorff19191A,
             child: const IgnorePointer(
               child: ParticleAnimation(
                 particleCount: 20,

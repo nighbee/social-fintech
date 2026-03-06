@@ -11,7 +11,8 @@
       "Bash(cd D:\\\\EverythingRelatedToIT\\\\flutterProjects\\\\brightbund\\\\app:*)",
       "mcp__ide__getDiagnostics",
       "WebSearch",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(sed:*)"
     ]
   }
 }

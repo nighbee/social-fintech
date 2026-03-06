@@ -956,10 +956,10 @@ packages:
     dependency: "direct main"
     description:
       name: mapbox_maps_flutter
-      sha256: "1dbc74d04fb9d177ed46c8d1b624f9327559e528586661f766932cf7b6156256"
+      sha256: "982c7ef853190e16cdf06332ec1b5274b9c4e77cb35d81330aa84c4242faf4ad"
       url: "https://pub.dev"
     source: hosted
-    version: "2.19.0"
+    version: "2.19.1"
   matcher:
     dependency: transitive
     description:
@@ -1425,18 +1425,18 @@ packages:
     dependency: transitive
     description:
       name: syncfusion_flutter_core
-      sha256: a7cc6eaed797806890de86b208b2094e66f61e278457867677a29b040ed56879
+      sha256: "080c4a57f12cb03869c863f6b33fb170ce9653ac741281f11ff8e067dc96fe99"
       url: "https://pub.dev"
     source: hosted
-    version: "32.2.7"
+    version: "32.2.8"
   syncfusion_flutter_sliders:
     dependency: "direct main"
     description:
       name: syncfusion_flutter_sliders
-      sha256: ce49d43e6e144b2ca9a8e1df7a939a8b1d088cf0398f0ee0af247f3adc99b60b
+      sha256: "2fa41997a52eab53f1a63af3ebe12a1b701785ad01f04d67dfaf39b8f7f511e2"
       url: "https://pub.dev"
     source: hosted
-    version: "32.2.7"
+    version: "32.2.8"
   talker:
     dependency: "direct main"
     description:

@@ -1,4 +1,6 @@
+import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
@@ -102,6 +104,19 @@ class HomeRepositoryImpl implements IHomeRepository {
     return result.fold(
       (error) => Left(error),
       (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, List<NotificationEntity>>>
+      getNotifications() async {
+    final result = await _remote.getNotifications();
+    return result.fold(
+      (error) => Left(error),
+      (dtoList) {
+        final entities = dtoList.map((dto) => dto.toEntity()).toList();
+        return Right(entities);
+      },
     );
   }
 }
