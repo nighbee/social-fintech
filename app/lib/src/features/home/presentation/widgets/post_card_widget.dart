@@ -207,7 +207,8 @@ class PostLikeButton extends StatelessWidget {
                   Text(
                     currentCount.toString(),
                     style: TextStyles.bodyMain.copyWith(
-                      color: currentlyLiked ? Colors.red : AppColors.colorffE5E5E5,
+                      color:
+                          currentlyLiked ? Colors.red : AppColors.colorffE5E5E5,
                     ),
                   ),
                 ],

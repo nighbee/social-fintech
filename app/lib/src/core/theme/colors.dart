@@ -27,6 +27,11 @@ class AppColors {
   static const colorff2A2A2B = Color(0xff2A2A2B);
   static const colorff3F3F40 = Color(0xff3F3F40);
   static const colorffEF4444 = Color(0xffEF4444);
+
+  // Additional colors for notifications page
+  static const colorff232324 = Color(0xff232324);
+  static const colorff7E8086 = Color(0xff7E8086);
+  static const colorff2C2D31 = Color(0xff2C2D31);
 }
 
 extension ColorThemeDataExtension on ThemeData {

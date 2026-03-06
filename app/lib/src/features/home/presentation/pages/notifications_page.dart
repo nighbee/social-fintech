@@ -5,6 +5,7 @@ import 'package:app/src/core/enums/notification_type.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
+import 'package:app/src/core/widgets/glass_container.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/widgets/notification_item_widget.dart';
 import 'package:flutter/material.dart';
@@ -196,7 +197,7 @@ class _NotificationsPageContentState extends State<_NotificationsPageContent> {
                   Positioned(
                     top: 8,
                     right: 38,
-                    child: _GlassMenu(
+                    child: SelectCategoryMenu(
                       onSelectCategory: (category) {
                         setState(() {
                           _selectedCategory = category;
@@ -214,8 +215,8 @@ class _NotificationsPageContentState extends State<_NotificationsPageContent> {
   }
 }
 
-class _GlassMenu extends StatelessWidget {
-  const _GlassMenu({
+class SelectCategoryMenu extends StatelessWidget {
+  const SelectCategoryMenu({
     required this.onSelectCategory,
   });
 
@@ -224,60 +225,37 @@ class _GlassMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IntrinsicWidth(
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.white.withOpacity(0.15),
-                  blurRadius: 12,
-                  offset: const Offset(0, -3),
-                  spreadRadius: 0,
-                ),
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.4),
-                  blurRadius: 25,
-                  offset: const Offset(0, 8),
-                  spreadRadius: 0,
-                ),
-              ],
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _MenuItem(
+              title: 'All',
+              onTap: () => onSelectCategory('All'),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _MenuItem(
-                  title: 'All',
-                  onTap: () => onSelectCategory('All'),
-                ),
-                _MenuItem(
-                  title: 'Like',
-                  onTap: () => onSelectCategory('Like'),
-                ),
-                _MenuItem(
-                  title: 'Comment',
-                  onTap: () => onSelectCategory('Comment'),
-                ),
-                _MenuItem(
-                  title: 'Help',
-                  onTap: () => onSelectCategory('Help'),
-                ),
-                _MenuItem(
-                  title: 'Subscriptions',
-                  onTap: () => onSelectCategory('Subscriptions'),
-                ),
-                _MenuItem(
-                  title: 'Posts',
-                  onTap: () => onSelectCategory('Posts'),
-                ),
-              ],
+            _MenuItem(
+              title: 'Like',
+              onTap: () => onSelectCategory('Like'),
             ),
-          ),
+            _MenuItem(
+              title: 'Comment',
+              onTap: () => onSelectCategory('Comment'),
+            ),
+            _MenuItem(
+              title: 'Help',
+              onTap: () => onSelectCategory('Help'),
+            ),
+            _MenuItem(
+              title: 'Subscriptions',
+              onTap: () => onSelectCategory('Subscriptions'),
+            ),
+            _MenuItem(
+              title: 'Posts',
+              onTap: () => onSelectCategory('Posts'),
+            ),
+          ],
         ),
       ),
     );

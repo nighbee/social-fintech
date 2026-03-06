@@ -33,7 +33,8 @@ class NotificationItemWidget extends StatelessWidget {
   Widget _buildStatusIcon() {
     switch (notification.notificationType) {
       case NotificationType.like:
-        return const Icon(Icons.favorite_border, size: 12, color: Colors.white);
+        return const Icon(Icons.favorite_border,
+            size: 12, color: AppColors.colorffffffff);
       case NotificationType.comment:
         return Assets.icons.message.svg(width: 12, height: 12);
       case NotificationType.subscriptions:
@@ -43,14 +44,16 @@ class NotificationItemWidget extends StatelessWidget {
           return Assets.icons.requestClosed.svg(width: 12, height: 12);
         }
         if (notification.type == 'approved') {
-          return const Icon(Icons.check, size: 12, color: Colors.white);
+          return const Icon(Icons.check,
+              size: 12, color: AppColors.colorffffffff);
         }
         return Assets.icons.silverCoin.svg(width: 12, height: 12);
       case NotificationType.post:
         if (notification.type == 'rejected') {
           return Assets.icons.close.svg(width: 12, height: 12);
         }
-        return const Icon(Icons.check, size: 12, color: Colors.white);
+        return const Icon(Icons.check,
+            size: 12, color: AppColors.colorffffffff);
       case NotificationType.all:
       case NotificationType.unknown:
         return Assets.icons.message.svg(width: 12, height: 12);
@@ -63,7 +66,7 @@ class NotificationItemWidget extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: const Color(0xFF232324),
+        backgroundColor: AppColors.colorff232324,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -144,7 +147,7 @@ class NotificationItemWidget extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(6),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF232324),
+                  color: AppColors.colorff232324,
                   shape: BoxShape.circle,
                 ),
                 child: _buildStatusIcon(),
@@ -159,14 +162,15 @@ class NotificationItemWidget extends StatelessWidget {
             children: [
               Text(
                 '@${notification.userName}',
-                style: TextStyles.titleTag.copyWith(color: AppColors.colorffcacaca),
+                style: TextStyles.titleTag
+                    .copyWith(color: AppColors.colorffcacaca),
               ),
               if (notification.userMeta.isNotEmpty) ...[
                 const Gap(2),
                 Text(
                   notification.userMeta,
                   style: TextStyles.bodySecondary.copyWith(
-                    color: const Color(0xFF819DFF),
+                    color: AppColors.colorff819dff,
                   ),
                 ),
               ],
@@ -174,7 +178,7 @@ class NotificationItemWidget extends StatelessWidget {
               RichText(
                 text: TextSpan(
                   style: TextStyles.bodyLarge.copyWith(
-                    color: const Color(0xFF87898F),
+                    color: AppColors.colorff87898f,
                   ),
                   children: [
                     TextSpan(text: notification.message),
@@ -202,7 +206,7 @@ class NotificationItemWidget extends StatelessWidget {
               Text(
                 _getTimeAgo(notification.createdAt),
                 style: TextStyles.bodyMain.copyWith(
-                  color: const Color(0xFF7E8086),
+                  color: AppColors.colorff7E8086,
                 ),
               ),
             ],
@@ -214,7 +218,7 @@ class NotificationItemWidget extends StatelessWidget {
             height: 30,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(
-              color: const Color(0xFF2C2D31),
+              color: AppColors.colorff2C2D31,
               borderRadius: BorderRadius.circular(6),
             ),
             child: Center(
