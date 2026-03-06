@@ -1,4 +1,4 @@
-basePath: /api/v1
+﻿basePath: /api/v1
 definitions:
   github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse:
     properties:
@@ -748,7 +748,7 @@ definitions:
       content_text:
         type: string
       is_own_post:
-        description: IsOwnPost lets the client show/hide the ··· edit/delete options
+        description: IsOwnPost lets the client show/hide the В·В·В· edit/delete options
           menu
         type: boolean
       media_attachments:
@@ -764,7 +764,7 @@ definitions:
       time_ago:
         type: string
       viewer_has_liked:
-        description: ViewerHasLiked lets the client render the ❤️ heart as filled
+        description: ViewerHasLiked lets the client render the вќ¤пёЏ heart as filled
           immediately
         type: boolean
       visibility:
@@ -1245,7 +1245,7 @@ info:
   title: BrightBund API
   version: "1.0"
 paths:
-  /api/v1/feed:
+  /feed:
     get:
       description: Fetch mixed feed (Allies + Local Geo + World)
       parameters:
@@ -1276,7 +1276,7 @@ paths:
       summary: Get mixed feed
       tags:
       - Feed
-  /api/v1/feed/state:
+  /feed/state:
     get:
       description: Calculates background decay and returns the current fatigue seconds
       produces:
@@ -1303,7 +1303,7 @@ paths:
       summary: Fetch current feed fatigue state
       tags:
       - Feed
-  /api/v1/feed/state/sync:
+  /feed/state/sync:
     post:
       consumes:
       - application/json
@@ -1345,7 +1345,7 @@ paths:
       summary: Sync active feed time
       tags:
       - Feed
-  /api/v1/posts:
+  /posts:
     post:
       consumes:
       - application/json
@@ -1383,7 +1383,7 @@ paths:
       summary: Create a new feed post
       tags:
       - Feed
-  /api/v1/posts/{post_id}/comments:
+  /posts/{post_id}/comments:
     get:
       description: Fetch threaded comments for a specific post. Pass parent_id to
         get replies for a specific comment.
@@ -1472,7 +1472,7 @@ paths:
       summary: Comment on a post
       tags:
       - Feed
-  /api/v1/posts/{post_id}/likes:
+  /posts/{post_id}/likes:
     get:
       description: Fetch paginated list of users who liked the post
       parameters:
@@ -1519,7 +1519,7 @@ paths:
       summary: Like a post
       tags:
       - Feed Interactions
-  /api/v1/posts/{post_id}/seals:
+  /posts/{post_id}/seals:
     get:
       description: Fetch all users who contributed Silver Seals and their messages
       parameters:
@@ -1559,7 +1559,7 @@ paths:
       - application/json
       responses:
         "201":
-          description: Seal sent — returns ledger_entry_id and new sender balance
+          description: Seal sent вЂ” returns ledger_entry_id and new sender balance
           schema:
             additionalProperties: true
             type: object
@@ -3062,7 +3062,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Creates a task at the given coordinates. Charges 1–3 Silver Seals upfront.
+        Creates a task at the given coordinates. Charges 1вЂ“3 Silver Seals upfront.
         The response includes `verification_code` which is shown ONLY to the creator
         and must be shared with helpers out-of-band (via chat) to verify completion.
         A 7-day cooldown applies between task creations per user.
@@ -3100,7 +3100,7 @@ paths:
               type: string
             type: object
         "429":
-          description: Cooldown active — must wait 7 days
+          description: Cooldown active вЂ” must wait 7 days
           schema:
             additionalProperties:
               type: string
@@ -3778,3 +3778,5 @@ securityDefinitions:
     name: Authorization
     type: apiKey
 swagger: "2.0"
+
+

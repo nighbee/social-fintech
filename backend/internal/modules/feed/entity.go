@@ -87,7 +87,7 @@ type FeedStateResponse struct {
 	IsInCooldown             bool      `json:"is_in_cooldown"`
 	MaxAllowedSeconds        int       `json:"max_allowed_seconds"`
 	ServerTimestamp          time.Time `json:"server_timestamp"`
-	ActionRequired           string    `json:"action_required,omitempty"` // "trigger_friction", "enforce_cooldown" or none
+	ActionRequired           string    `json:"action_required"` // "trigger_friction", "enforce_cooldown" or none
 }
 
 type AuthorInfo struct {

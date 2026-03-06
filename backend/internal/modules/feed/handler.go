@@ -1,4 +1,4 @@
-package feed
+﻿package feed
 
 import (
 	"errors"
@@ -31,7 +31,7 @@ func NewHandler(service *Service, worker *InteractionWorker, economyService econ
 // @Param post_id path string true "Post UUID"
 // @Success 202 {object} map[string]string "Accepted for processing"
 // @Failure 401 {object} map[string]string "Unauthorized"
-// @Router /api/v1/posts/{post_id}/likes [post]
+// @Router /posts/{post_id}/likes [post]
 func (h *Handler) ToggleLike(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -76,7 +76,7 @@ func requireUserID(c *fiber.Ctx) (uuid.UUID, bool) {
 // @Success 200 {object} FeedStateResponse
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 500 {object} map[string]string "Internal error"
-// @Router /api/v1/feed/state [get]
+// @Router /feed/state [get]
 func (h *Handler) GetFeedState(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -107,7 +107,7 @@ func (h *Handler) GetFeedState(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]string "Validation error"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 500 {object} map[string]string "Internal error"
-// @Router /api/v1/feed/state/sync [post]
+// @Router /feed/state/sync [post]
 func (h *Handler) SyncFeedState(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -145,7 +145,7 @@ func (h *Handler) SyncFeedState(c *fiber.Ctx) error {
 // @Success 201 {object} map[string]string "Success"
 // @Failure 400 {object} map[string]string "Validation error"
 // @Failure 401 {object} map[string]string "Unauthorized"
-// @Router /api/v1/posts [post]
+// @Router /posts [post]
 func (h *Handler) CreatePost(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -189,7 +189,7 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 // @Param limit query int false "Max results" default(20)
 // @Success 200 {object} FeedResponse
 // @Failure 401 {object} map[string]string "Unauthorized"
-// @Router /api/v1/feed [get]
+// @Router /feed [get]
 func (h *Handler) GetFeed(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -221,7 +221,7 @@ func (h *Handler) GetFeed(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]string "Validation error"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 403 {object} map[string]string "Commenting disabled or restricted"
-// @Router /api/v1/posts/{post_id}/comments [post]
+// @Router /posts/{post_id}/comments [post]
 func (h *Handler) CreateComment(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -268,7 +268,7 @@ func (h *Handler) CreateComment(c *fiber.Ctx) error {
 // @Param limit query int false "Max results" default(50)
 // @Success 200 {object} ThreadedCommentsResponse
 // @Failure 401 {object} map[string]string "Unauthorized"
-// @Router /api/v1/posts/{post_id}/comments [get]
+// @Router /posts/{post_id}/comments [get]
 func (h *Handler) GetThreadedComments(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -310,7 +310,7 @@ func (h *Handler) GetThreadedComments(c *fiber.Ctx) error {
 // @Produce json
 // @Param post_id path string true "Post UUID"
 // @Success 200 {object} InteractionListResponse
-// @Router /api/v1/posts/{post_id}/likes [get]
+// @Router /posts/{post_id}/likes [get]
 func (h *Handler) GetLikes(c *fiber.Ctx) error {
 	postID, err := uuid.Parse(c.Params("post_id"))
 	if err != nil {
@@ -333,11 +333,11 @@ func (h *Handler) GetLikes(c *fiber.Ctx) error {
 // @Security Bearer
 // @Param post_id path string true "Post UUID"
 // @Param request body SendSealRequest true "Seal Request"
-// @Success 201 {object} map[string]interface{} "Seal sent — returns ledger_entry_id and new sender balance"
+// @Success 201 {object} map[string]interface{} "Seal sent вЂ” returns ledger_entry_id and new sender balance"
 // @Failure 400 {object} map[string]string
 // @Failure 402 {object} map[string]string "insufficient_balance"
 // @Failure 429 {object} map[string]string "cooldown active"
-// @Router /api/v1/posts/{post_id}/seals [post]
+// @Router /posts/{post_id}/seals [post]
 func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	userID, ok := requireUserID(c)
 	if !ok {
@@ -373,7 +373,7 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	// Build the idempotency key from viewer+post+comment so duplicate taps are safe.
 	idempotencyKey := uuid.NewSHA1(uuid.NameSpaceURL, []byte(userID.String()+":"+postID.String())).String()
 
-	// Call Economy — handles wallet debit, ledger entry, cooldown, monthly limit.
+	// Call Economy вЂ” handles wallet debit, ledger entry, cooldown, monthly limit.
 	txResp, err := h.economy.GiveSealToPost(c.Context(), userID.String(), postID.String(), &economy.GiveSealToPostRequest{
 		ReceiverUserID: authorID.String(),
 		Amount:         req.Amount,
@@ -429,7 +429,7 @@ func contains(s, substr string) bool {
 // @Produce json
 // @Param post_id path string true "Post UUID"
 // @Success 200 {object} SealListResponse
-// @Router /api/v1/posts/{post_id}/seals [get]
+// @Router /posts/{post_id}/seals [get]
 func (h *Handler) GetSeals(c *fiber.Ctx) error {
 	postID, err := uuid.Parse(c.Params("post_id"))
 	if err != nil {
@@ -442,3 +442,4 @@ func (h *Handler) GetSeals(c *fiber.Ctx) error {
 	}
 	return c.JSON(resp)
 }
+

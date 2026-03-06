@@ -61,6 +61,7 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 		IsInCooldown:             state.IsInCooldown,
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
 		ServerTimestamp:          time.Now().UTC(),
+		ActionRequired:           "none",
 	}, nil
 }
 

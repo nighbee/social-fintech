@@ -8,3 +8,4 @@ SET total_sent_amount = COALESCE((SELECT SUM(amount) FROM ledger_entries WHERE s
     total_received_amount = COALESCE((SELECT SUM(amount) FROM ledger_entries WHERE receiver_wallet_id = w.id), 0);
 
 -- Optional: skip adding goose downs since migrate mechanism doesn't support undo.
+
