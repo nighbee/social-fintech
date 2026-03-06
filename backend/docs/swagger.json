@@ -1,4 +1,4 @@
-{
+﻿{
     "swagger": "2.0",
     "info": {
         "description": "API for the BrightBund social platform with economy, maps, chat, and gamification",
@@ -17,7 +17,7 @@
     "host": "localhost:8081",
     "basePath": "/api/v1",
     "paths": {
-        "/api/v1/feed": {
+        "/feed": {
             "get": {
                 "security": [
                     {
@@ -66,7 +66,7 @@
                 }
             }
         },
-        "/api/v1/feed/state": {
+        "/feed/state": {
             "get": {
                 "security": [
                     {
@@ -109,7 +109,7 @@
                 }
             }
         },
-        "/api/v1/feed/state/sync": {
+        "/feed/state/sync": {
             "post": {
                 "security": [
                     {
@@ -175,7 +175,7 @@
                 }
             }
         },
-        "/api/v1/posts": {
+        "/posts": {
             "post": {
                 "security": [
                     {
@@ -235,7 +235,7 @@
                 }
             }
         },
-        "/api/v1/posts/{post_id}/comments": {
+        "/posts/{post_id}/comments": {
             "get": {
                 "security": [
                     {
@@ -371,7 +371,7 @@
                 }
             }
         },
-        "/api/v1/posts/{post_id}/likes": {
+        "/posts/{post_id}/likes": {
             "get": {
                 "description": "Fetch paginated list of users who liked the post",
                 "produces": [
@@ -444,7 +444,7 @@
                 }
             }
         },
-        "/api/v1/posts/{post_id}/seals": {
+        "/posts/{post_id}/seals": {
             "get": {
                 "description": "Fetch all users who contributed Silver Seals and their messages",
                 "produces": [
@@ -509,7 +509,7 @@
                 ],
                 "responses": {
                     "201": {
-                        "description": "Seal sent — returns ledger_entry_id and new sender balance",
+                        "description": "Seal sent вЂ” returns ledger_entry_id and new sender balance",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -2810,7 +2810,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a task at the given coordinates. Charges 1–3 Silver Seals upfront.\nThe response includes `verification_code` which is shown ONLY to the creator\nand must be shared with helpers out-of-band (via chat) to verify completion.\nA 7-day cooldown applies between task creations per user.",
+                "description": "Creates a task at the given coordinates. Charges 1вЂ“3 Silver Seals upfront.\nThe response includes `verification_code` which is shown ONLY to the creator\nand must be shared with helpers out-of-band (via chat) to verify completion.\nA 7-day cooldown applies between task creations per user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2867,7 +2867,7 @@
                         }
                     },
                     "429": {
-                        "description": "Cooldown active — must wait 7 days",
+                        "description": "Cooldown active вЂ” must wait 7 days",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4859,7 +4859,7 @@
                     "type": "string"
                 },
                 "is_own_post": {
-                    "description": "IsOwnPost lets the client show/hide the ··· edit/delete options menu",
+                    "description": "IsOwnPost lets the client show/hide the В·В·В· edit/delete options menu",
                     "type": "boolean"
                 },
                 "media_attachments": {
@@ -4881,11 +4881,11 @@
                     "type": "string"
                 },
                 "viewer_has_liked": {
-                    "description": "ViewerHasLiked lets the client render the ❤️ heart as filled immediately",
+                    "description": "ViewerHasLiked lets the client render the вќ¤пёЏ heart as filled immediately",
                     "type": "boolean"
                 },
                 "visibility": {
-                    "description": "Visibility is returned so the client can show the globe 🌐 or allies 👥 icon",
+                    "description": "Visibility is returned so the client can show the globe рџЊђ or allies рџ‘Ґ icon",
                     "type": "string"
                 }
             }
@@ -5672,3 +5672,4 @@
         }
     }
 }
+
