@@ -62,9 +62,9 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.colorff2A2A2B,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.border, width: 1),
+              border: Border.all(color: AppColors.colorff3F3F40, width: 1),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -74,7 +74,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                 Text(
                   '27',
                   style: TextStyles.titleTag.copyWith(
-                    color: AppColors.textPrimary,
+                    color: AppColors.colorffE5E5E5,
                     fontWeight: FontWeight.w500,
                     fontSize: 16,
                   ),

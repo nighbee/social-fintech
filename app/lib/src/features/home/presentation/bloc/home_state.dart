@@ -28,6 +28,7 @@ class HomeViewModel with _$HomeViewModel {
     @Default([]) List<CommentComposerPhoto> postComposerPhotos,
     String? replyingToCommentId,
     String? currentlyViewingPostId,
+    @Default([]) List<NotificationEntity> notifications,
   }) = _HomeViewModel;
 
   List<CommentEntity>? getCommentsForPost(String postId) {

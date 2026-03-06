@@ -202,7 +202,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                               padding: const EdgeInsets.only(right: 16),
                               child: Icon(
                                 Icons.arrow_drop_down,
-                                color: AppColors.textGray2,
+                                color: AppColors.colorff838383,
                               ),
                             ),
                           ),
@@ -256,7 +256,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                               Text("or", style: TextStyles.titleTag),
@@ -264,7 +264,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                             ],

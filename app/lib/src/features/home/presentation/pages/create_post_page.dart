@@ -108,9 +108,9 @@ class _CreatePostPageState extends State<CreatePostPage>
             viewModel.postComposerPhotos.isNotEmpty;
 
         return Scaffold(
-          backgroundColor: AppColors.mainBackground,
+          backgroundColor: AppColors.colorff19191A,
           appBar: AppBar(
-            backgroundColor: AppColors.mainBackground,
+            backgroundColor: AppColors.colorff19191A,
             elevation: 0,
             leading: IconButton(
               icon: const Icon(Icons.close, color: Colors.white),
@@ -216,9 +216,9 @@ class _CreatePostPageState extends State<CreatePostPage>
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppColors.surface,
+                          color: AppColors.colorff2A2A2B,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.border),
+                          border: Border.all(color: AppColors.colorff3F3F40),
                         ),
                         child: Assets.icons.plusIcon.svg(width: 20, height: 20),
                       ),

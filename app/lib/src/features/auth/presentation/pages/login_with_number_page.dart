@@ -204,7 +204,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                               padding: const EdgeInsets.only(right: 16),
                               child: Icon(
                                 Icons.arrow_drop_down,
-                                color: AppColors.textGray2,
+                                color: AppColors.colorff838383,
                               ),
                             ),
                           ),
@@ -258,7 +258,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                               Text("or", style: TextStyles.titleTag),
@@ -266,7 +266,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                             ],

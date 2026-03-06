@@ -43,6 +43,9 @@ class RoutePaths {
   static const String publicProfile = '/public-profile/:userId';
   static const String editProfile = 'edit-profile';
 
+  // Notifications routes
+  static const String notifications = '/notifications';
+
   // Developer features
   static const String developerFeatures = '/developer_features';
   static const String log = '/log';

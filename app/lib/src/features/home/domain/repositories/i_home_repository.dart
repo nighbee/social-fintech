@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 
 abstract class IHomeRepository {
@@ -21,5 +22,8 @@ abstract class IHomeRepository {
     List<String> imageFileNames,
   );
   Future<Either<DomainException, CommentEntity>> likeComment(String commentId);
-  Future<Either<DomainException, CommentEntity>> unlikeComment(String commentId);
+  Future<Either<DomainException, CommentEntity>> unlikeComment(
+      String commentId);
+
+  Future<Either<DomainException, List<NotificationEntity>>> getNotifications();
 }

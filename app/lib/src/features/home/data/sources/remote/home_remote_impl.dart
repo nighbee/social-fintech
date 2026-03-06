@@ -3,6 +3,7 @@ import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/models/comment_dto.dart';
 import 'package:app/src/features/home/data/models/post_dto.dart';
+import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -112,9 +113,8 @@ class HomeRemoteImpl implements IHomeRemote {
         ],
         likesCount: 29,
         commentsCount: 44,
-        createdAt: DateTime.now()
-            .subtract(const Duration(hours: 3))
-            .toIso8601String(),
+        createdAt:
+            DateTime.now().subtract(const Duration(hours: 3)).toIso8601String(),
       ),
       PostDto(
         id: 'post-2',
@@ -127,9 +127,8 @@ class HomeRemoteImpl implements IHomeRemote {
         ],
         likesCount: 87,
         commentsCount: 23,
-        createdAt: DateTime.now()
-            .subtract(const Duration(hours: 5))
-            .toIso8601String(),
+        createdAt:
+            DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
       ),
       PostDto(
         id: 'post-3',
@@ -144,9 +143,8 @@ class HomeRemoteImpl implements IHomeRemote {
         ],
         likesCount: 156,
         commentsCount: 67,
-        createdAt: DateTime.now()
-            .subtract(const Duration(hours: 8))
-            .toIso8601String(),
+        createdAt:
+            DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
       ),
       PostDto(
         id: 'post-4',
@@ -267,7 +265,7 @@ class HomeRemoteImpl implements IHomeRemote {
 
     final existing = _getMockCommentsForPost(postId);
     String? rootCommentId;
-    if (parentCommentId != null) {
+    if (parentCommentId != "") {
       final parentIndex = existing.indexWhere((c) => c.id == parentCommentId);
       if (parentIndex != -1) {
         final parent = existing[parentIndex];
@@ -285,7 +283,7 @@ class HomeRemoteImpl implements IHomeRemote {
       rootCommentId: rootCommentId,
       userId: 'current-user',
       username: 'You',
-      userAvatar: null,
+      userAvatar: "",
       content: content,
       imageUrls: imageFileNames
           .map(
@@ -299,7 +297,7 @@ class HomeRemoteImpl implements IHomeRemote {
       createdAt: DateTime.now().toIso8601String(),
     );
 
-    if (parentCommentId == null) {
+    if (parentCommentId == "") {
       _mockComments[postId] = [newComment, ...existing];
     } else {
       _mockComments[postId] = [...existing, newComment];
@@ -357,4 +355,120 @@ class HomeRemoteImpl implements IHomeRemote {
 
     return Left(UnknownException(message: 'Comment not found'));
   }
+
+  // Notifications mock data and methods
+  final List<NotificationDto> _mockNotifications = [
+    NotificationDto(
+      id: '1',
+      type: 'like',
+      notificationType: 'like',
+      userId: 'user1',
+      userName: 'Isabbekov',
+      userAvatarUrl: '',
+      userMeta: 'Moonstone - Intention - A',
+      message: 'Did you like your video',
+      accentText: '',
+      ctaLabel: '',
+      ctaValue: '',
+      rightImageUrl: 'post-thumb-1',
+      postId: 'post123',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
+      isRead: false,
+    ),
+    NotificationDto(
+      id: '2',
+      type: 'follow',
+      notificationType: 'subscriptions',
+      userId: 'user2',
+      userName: 'Zhajd',
+      userAvatarUrl: '',
+      userMeta: 'Moonstone - Intention - A',
+      message: 'Subscribed to you',
+      accentText: '',
+      ctaLabel: 'View',
+      ctaValue: '',
+      rightImageUrl: '',
+      postId: '',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
+      isRead: false,
+    ),
+    NotificationDto(
+      id: '3',
+      type: 'comment',
+      notificationType: 'comment',
+      userId: 'user3',
+      userName: 'Esimova',
+      userAvatarUrl: '',
+      userMeta: 'Lapiz Lazuli - Influence - A',
+      message: 'Left a comment',
+      accentText: '"Cool bro"',
+      ctaLabel: '',
+      ctaValue: '',
+      rightImageUrl: 'post-thumb-2',
+      postId: 'post456',
+      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+      isRead: true,
+    ),
+    NotificationDto(
+      id: '4',
+      type: 'rejected',
+      notificationType: 'post',
+      userId: 'user4',
+      userName: 'You',
+      userAvatarUrl: '',
+      userMeta: '',
+      message: 'Your post was not verified',
+      accentText: 'reason',
+      ctaLabel: 'Clear',
+      ctaValue: 'Does not comply with social norms',
+      rightImageUrl: 'post-thumb-3',
+      postId: 'post789',
+      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+      isRead: true,
+    ),
+    NotificationDto(
+      id: '5',
+      type: 'pending',
+      notificationType: 'help',
+      userId: 'user5',
+      userName: 'Ahanov',
+      userAvatarUrl: '',
+      userMeta: 'Ammolite - Fortitude - S',
+      message: 'Request "Son\'s birthday"',
+      accentText: '',
+      ctaLabel: 'View',
+      ctaValue: '',
+      rightImageUrl: '',
+      postId: '',
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+      isRead: true,
+    ),
+    NotificationDto(
+      id: '6',
+      type: 'published',
+      notificationType: 'post',
+      userId: 'me',
+      userName: 'You',
+      userAvatarUrl: '',
+      userMeta: '',
+      message: 'Your post has been successfully published',
+      accentText: '',
+      ctaLabel: '',
+      ctaValue: '',
+      rightImageUrl: 'post-thumb-4',
+      postId: '',
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      isRead: true,
+    ),
+  ];
+
+  @override
+  Future<Either<DomainException, List<NotificationDto>>>
+      getNotifications() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    return Right(List<NotificationDto>.from(_mockNotifications));
+  }
+
+
 }
+

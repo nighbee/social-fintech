@@ -73,7 +73,7 @@ class _CodeInputFieldState extends State<CodeInputField> {
                 border: Border.all(
                   color: widget.isInvalid
                       ? const Color(0xFFEF4444)
-                      : AppColors.textGray2,
+                      : AppColors.colorff838383,
                   width: 1,
                 ),
               ),
@@ -89,7 +89,7 @@ class _CodeInputFieldState extends State<CodeInputField> {
                         height: 1.5,
                         color: widget.isInvalid
                             ? const Color(0xFFEF4444)
-                            : AppColors.textGray2,
+                            : AppColors.colorff838383,
                       ),
                     ),
                   TextFormField(
@@ -111,7 +111,7 @@ class _CodeInputFieldState extends State<CodeInputField> {
                       fontSize: 20,
                       color: widget.isInvalid
                           ? const Color(0xFFEF4444)
-                          : AppColors.textGray1,
+                          : AppColors.colorffcacaca,
                     ),
                     decoration: InputDecoration(
                       filled: true,

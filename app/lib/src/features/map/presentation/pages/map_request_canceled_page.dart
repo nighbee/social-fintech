@@ -41,7 +41,7 @@ class MapRequestCanceledPage extends StatelessWidget {
                   Assets.icons.requestCancel.svg(
                     width: 110,
                     height: 110,
-                    color: AppColors.whiteBackground,
+                    color: AppColors.colorffffffff,
                   ),
                   const Gap(16),
                   Text(

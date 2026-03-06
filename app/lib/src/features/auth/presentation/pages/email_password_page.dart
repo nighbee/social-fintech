@@ -114,7 +114,7 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                           Text(
                             widget.email,
                             style: TextStyles.bodyLarge.copyWith(
-                              color: AppColors.blueText1,
+                              color: AppColors.colorff74afe3,
                             ),
                           ),
                           Gap(40),
@@ -139,7 +139,7 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                                         width: 20,
                                         height: 20,
                                         colorFilter: ColorFilter.mode(
-                                          AppColors.blueText1,
+                                          AppColors.colorff74afe3,
                                           BlendMode.srcIn,
                                         ),
                                       )
@@ -147,7 +147,7 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                                         width: 20,
                                         height: 20,
                                         colorFilter: ColorFilter.mode(
-                                          AppColors.textGray2,
+                                          AppColors.colorff838383,
                                           BlendMode.srcIn,
                                         ),
                                       ),
@@ -176,7 +176,7 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                                           width: 20,
                                           height: 20,
                                           colorFilter: ColorFilter.mode(
-                                            AppColors.blueText1,
+                                            AppColors.colorff74afe3,
                                             BlendMode.srcIn,
                                           ),
                                         )
@@ -184,7 +184,7 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                                           width: 20,
                                           height: 20,
                                           colorFilter: ColorFilter.mode(
-                                            AppColors.textGray2,
+                                            AppColors.colorff838383,
                                             BlendMode.srcIn,
                                           ),
                                         ),

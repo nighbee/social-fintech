@@ -252,6 +252,16 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 },
               ),
 
+              // Notifications route (protected by auth guard)
+              GoRoute(
+                path: RoutePaths.notifications,
+                name: RouteNames.notifications,
+                redirect: AuthGuard,
+                pageBuilder: (context, state) {
+                  return const NoTransitionPage(child: NotificationsPage());
+                },
+              ),
+
               // Profile route (protected by auth guard)
               GoRoute(
                 path: RoutePaths.profile,

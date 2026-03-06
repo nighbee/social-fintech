@@ -15,10 +15,10 @@ class DatePickerHelper {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: AppColors.blueText1,
-              onPrimary: AppColors.whiteBackground,
-              surface: AppColors.mainBackground,
-              onSurface: AppColors.whiteBackground,
+              primary: AppColors.colorff74afe3,
+              onPrimary: AppColors.colorffffffff,
+              surface: AppColors.colorff19191A,
+              onSurface: AppColors.colorffffffff,
             ),
           ),
           child: child!,

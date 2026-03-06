@@ -281,7 +281,7 @@ class PostCommentItem extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
+                  color: AppColors.colorff2A2A2B,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 alignment: Alignment.center,
@@ -290,7 +290,7 @@ class PostCommentItem extends StatelessWidget {
                       ? comment.username[0].toUpperCase()
                       : '?',
                   style: TextStyles.bodyMain.copyWith(
-                    color: AppColors.textPrimary,
+                    color: AppColors.colorffE5E5E5,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -149,7 +149,7 @@ class _InfoPageState extends State<InfoPage> {
                           width: 20,
                           height: 20,
                           colorFilter: const ColorFilter.mode(
-                            AppColors.whiteBackground,
+                            AppColors.colorffffffff,
                             BlendMode.srcIn,
                           ),
                         ),

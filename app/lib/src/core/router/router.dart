@@ -29,6 +29,7 @@ import 'package:app/src/features/map/presentation/pages/map_request_completed_pa
 import 'package:app/src/features/map/presentation/pages/map_page.dart';
 import 'package:app/src/features/rating/presentation/pages/rating_page.dart';
 import 'package:app/src/features/chats/presentation/pages/chats_page.dart';
+import 'package:app/src/features/home/presentation/pages/notifications_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/developer_features_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/widget_book_page.dart';
 import 'package:app/src/features/profile/presentation/pages/ranks_page.dart';

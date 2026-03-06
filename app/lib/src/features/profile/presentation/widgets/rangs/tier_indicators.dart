@@ -23,7 +23,7 @@ class TierIndicators extends StatelessWidget {
             Text(
               tier,
               style: TextStyles.titleTag.copyWith(
-                color: AppColors.whiteBackground,
+                color: AppColors.colorffffffff,
                 fontWeight: FontWeight.w500,
               ),
             ),

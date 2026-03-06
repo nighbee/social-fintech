@@ -24,9 +24,9 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.colorff2A2A2B,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: AppColors.colorff3F3F40, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,13 +52,13 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
                       post.username,
                       style: TextStyles.titleHeadline.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: AppColors.colorffE5E5E5,
                       ),
                     ),
                     Text(
                       timeago.format(post.createdAt),
                       style: TextStyles.bodySecondary.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColors.colorff9CA3AF,
                       ),
                     ),
                   ],
@@ -74,7 +74,7 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
           // Content
           Text(
             post.content,
-            style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
+            style: TextStyles.bodyMain.copyWith(color: AppColors.colorffE5E5E5),
           ),
           if (hasImages) ...[
             const Gap(12),
@@ -136,7 +136,7 @@ class PostActionButton extends StatelessWidget {
           const Gap(4),
           Text(
             count.toString(),
-            style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
+            style: TextStyles.bodyMain.copyWith(color: AppColors.colorffE5E5E5),
           ),
         ],
       ),
@@ -199,7 +199,7 @@ class PostLikeButton extends StatelessWidget {
                     width: 20,
                     height: 20,
                     colorFilter: ColorFilter.mode(
-                      currentlyLiked ? Colors.red : AppColors.textPrimary,
+                      currentlyLiked ? Colors.red : AppColors.colorffE5E5E5,
                       BlendMode.srcIn,
                     ),
                   ),
@@ -207,7 +207,7 @@ class PostLikeButton extends StatelessWidget {
                   Text(
                     currentCount.toString(),
                     style: TextStyles.bodyMain.copyWith(
-                      color: currentlyLiked ? Colors.red : AppColors.textPrimary,
+                      color: currentlyLiked ? Colors.red : AppColors.colorffE5E5E5,
                     ),
                   ),
                 ],
@@ -226,7 +226,7 @@ class PostLikeButton extends StatelessWidget {
                   width: 20,
                   height: 20,
                   colorFilter: ColorFilter.mode(
-                    AppColors.textPrimary,
+                    AppColors.colorffE5E5E5,
                     BlendMode.srcIn,
                   ),
                 ),
@@ -234,7 +234,7 @@ class PostLikeButton extends StatelessWidget {
                 Text(
                   count.toString(),
                   style: TextStyles.bodyMain.copyWith(
-                    color: AppColors.textPrimary,
+                    color: AppColors.colorffE5E5E5,
                   ),
                 ),
               ],

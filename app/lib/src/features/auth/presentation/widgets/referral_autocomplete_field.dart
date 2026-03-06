@@ -118,7 +118,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
             width: 30,
             height: 30,
             colorFilter: const ColorFilter.mode(
-              AppColors.whiteBackground,
+              AppColors.colorffffffff,
               BlendMode.srcIn,
             ),
           ),
@@ -145,7 +145,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                         width: 16,
                         height: 16,
                         colorFilter: const ColorFilter.mode(
-                          AppColors.textGray2,
+                          AppColors.colorff838383,
                           BlendMode.srcIn,
                         ),
                       ),
@@ -179,7 +179,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                   color: context.theme.mainBackground,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.textGray2.withOpacity(0.25),
+                    color: AppColors.colorff838383.withOpacity(0.25),
                   ),
                   boxShadow: const [
                     BoxShadow(
@@ -197,7 +197,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                         child: Text(
                           'No users found',
                           style: TextStyles.bodyLarge.copyWith(
-                            color: AppColors.whiteBackground,
+                            color: AppColors.colorffffffff,
                           ),
                         ),
                       )
@@ -207,7 +207,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                         itemCount: options.length,
                         separatorBuilder: (_, __) => Divider(
                           height: 1,
-                          color: AppColors.textGray2.withOpacity(0.2),
+                          color: AppColors.colorff838383.withOpacity(0.2),
                         ),
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);
@@ -221,7 +221,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                               child: Text(
                                 "${option.firstName} ${option.lastName}",
                                 style: TextStyles.bodyLarge.copyWith(
-                                  color: AppColors.whiteBackground,
+                                  color: AppColors.colorffffffff,
                                 ),
                               ),
                             ),

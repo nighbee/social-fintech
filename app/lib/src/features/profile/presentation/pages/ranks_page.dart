@@ -10,7 +10,7 @@ class RangsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.mainBackground,
+      backgroundColor: AppColors.colorff19191A,
       appBar: const CustomAppBar(title: 'Rang'),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 33, vertical: 16),

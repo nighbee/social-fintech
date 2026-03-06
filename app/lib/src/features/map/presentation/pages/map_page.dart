@@ -105,7 +105,7 @@ class _MapPageState extends State<MapPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.mainBackground,
+      backgroundColor: AppColors.colorff19191A,
       bottomNavigationBar: const CustomNavBar(currentTab: RoutePaths.map),
       body: BlocListener<MapBloc, MapState>(
         bloc: _controller.mapBloc,

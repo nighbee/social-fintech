@@ -32,4 +32,5 @@ class HomeEvent with _$HomeEvent {
   ) = _AddPostPhoto;
   const factory HomeEvent.removePostPhoto(String fileName) = _RemovePostPhoto;
   const factory HomeEvent.clearPostPhotos() = _ClearPostPhotos;
+  const factory HomeEvent.loadNotifications() = _LoadNotifications;
 }

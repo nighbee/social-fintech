@@ -37,7 +37,7 @@ class RankCard extends StatelessWidget {
               Text(
                 '${rank.name} | ${rank.tier}',
                 style: TextStyles.titleTag.copyWith(
-                  color: AppColors.blueText1,
+                  color: AppColors.colorff74afe3,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
@@ -54,7 +54,7 @@ class RankCard extends StatelessWidget {
                 child: Text(
                   rank.description,
                   style: TextStyles.bodyLarge.copyWith(
-                    color: AppColors.textSecondary,
+                    color: AppColors.colorff9CA3AF,
                     height: 1.5,
                   ),
                   textAlign: TextAlign.center,
@@ -69,14 +69,14 @@ class RankCard extends StatelessWidget {
                   Text(
                     'Required: ${rank.requiredExp} ',
                     style: TextStyles.bodyMain.copyWith(
-                      color: AppColors.whiteBackground,
+                      color: AppColors.colorffffffff,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
                     'seals',
                     style: TextStyles.bodyMain.copyWith(
-                      color: AppColors.textSecondary,
+                      color: AppColors.colorff9CA3AF,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

@@ -143,9 +143,9 @@ class _CustomTextFieldState extends State<CustomTextField> {
           decoration: BoxDecoration(
             border: widget.showBorder
                 ? (_hasValidationError
-                    ? Border.all(color: AppColors.error, width: 1)
+                    ? Border.all(color: AppColors.colorffEF4444, width: 1)
                     : (widget.customBorder ??
-                        Border.all(color: AppColors.whiteBackground, width: 1)))
+                        Border.all(color: AppColors.colorffffffff, width: 1)))
                 : null,
             borderRadius: BorderRadius.circular(6),
             color: widget.backgroundColor ?? context.theme.mainBackground,
@@ -217,7 +217,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             padding: const EdgeInsets.only(top: 6, left: 2),
             child: Text(
               _errorText!,
-              style: TextStyles.titleTag.copyWith(color: AppColors.error),
+              style: TextStyles.titleTag.copyWith(color: AppColors.colorffEF4444),
             ),
           ),
       ],

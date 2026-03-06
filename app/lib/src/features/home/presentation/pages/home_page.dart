@@ -16,7 +16,7 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.mainBackground,
+      backgroundColor: AppColors.colorff19191A,
       appBar: FeedAppBar(
         onCreatePostTap: () => context.push(RoutePaths.createPost),
       ),
@@ -38,13 +38,13 @@ class HomePage extends StatelessWidget {
                         Icon(
                           Icons.article_outlined,
                           size: 64,
-                          color: AppColors.textSecondary,
+                          color: AppColors.colorff9CA3AF,
                         ),
                         const Gap(16),
                         Text(
                           'No posts yet',
                           style: TextStyles.titleHeadline.copyWith(
-                            color: AppColors.textSecondary,
+                            color: AppColors.colorff9CA3AF,
                           ),
                         ),
                       ],
@@ -66,19 +66,19 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                    Icon(Icons.error_outline, size: 64, color: AppColors.colorffEF4444),
                     const Gap(16),
                     Text(
                       'Error loading posts',
                       style: TextStyles.titleHeadline.copyWith(
-                        color: AppColors.error,
+                        color: AppColors.colorffEF4444,
                       ),
                     ),
                     const Gap(8),
                     Text(
                       message,
                       style: TextStyles.bodyMain.copyWith(
-                        color: AppColors.textSecondary,
+                        color: AppColors.colorff9CA3AF,
                       ),
                       textAlign: TextAlign.center,
                     ),

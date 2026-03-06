@@ -41,9 +41,9 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.blackBackground,
+      backgroundColor: AppColors.colorff000000,
       appBar: AppBar(
-        backgroundColor: AppColors.blackBackground,
+        backgroundColor: AppColors.colorff000000,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.pop(),

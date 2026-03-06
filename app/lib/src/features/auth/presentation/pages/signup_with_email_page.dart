@@ -154,7 +154,7 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                               Text("or", style: TextStyles.titleTag),
@@ -162,7 +162,7 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                                 child: Container(
                                   width: double.infinity,
                                   height: 1,
-                                  color: AppColors.textGray2,
+                                  color: AppColors.colorff838383,
                                 ),
                               ),
                             ],

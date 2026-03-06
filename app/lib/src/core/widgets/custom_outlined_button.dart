@@ -35,11 +35,11 @@ class CustomOutlinedButton extends StatelessWidget {
           textStyle ??
           TextStyles.titleMain.copyWith(
             fontSize: 17,
-            color: AppColors.whiteBackground,
+            color: AppColors.colorffffffff,
           ),
       padding: padding ?? const EdgeInsets.symmetric(vertical: 10),
       borderRadius: borderRadius,
-      border: Border.all(color: borderColor ?? AppColors.textGray2),
+      border: Border.all(color: borderColor ?? AppColors.colorff838383),
     );
   }
 }
