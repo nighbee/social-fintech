@@ -1,8 +1,10 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 
 abstract class IHomeRepository {
   Future<Either<DomainException, List<PostEntity>>> getPosts();
@@ -26,4 +28,8 @@ abstract class IHomeRepository {
       String commentId);
 
   Future<Either<DomainException, List<NotificationEntity>>> getNotifications();
+  Future<Either<DomainException, FeedStateEntity>> getFeedState();
+  Future<Either<DomainException, FeedStateEntity>> syncFeedState(
+    FeedStateSyncRequest request,
+  );
 }

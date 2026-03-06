@@ -29,6 +29,7 @@ class HomeViewModel with _$HomeViewModel {
     String? replyingToCommentId,
     String? currentlyViewingPostId,
     @Default([]) List<NotificationEntity> notifications,
+    @Default(FeedStateEntity.empty()) FeedStateEntity feedState,
   }) = _HomeViewModel;
 
   List<CommentEntity>? getCommentsForPost(String postId) {

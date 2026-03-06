@@ -1,5 +1,7 @@
 import 'package:app/src/features/home/data/models/notification_dto.dart';
+import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -7,6 +9,7 @@ import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/sources/remote/home_remote_impl.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 
 @named
@@ -117,6 +120,26 @@ class HomeRepositoryImpl implements IHomeRepository {
         final entities = dtoList.map((dto) => dto.toEntity()).toList();
         return Right(entities);
       },
+    );
+  }
+
+  @override
+  Future<Either<DomainException, FeedStateEntity>> getFeedState() async {
+    final result = await _remote.getFeedState();
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, FeedStateEntity>> syncFeedState(
+    FeedStateSyncRequest request,
+  ) async {
+    final result = await _remote.syncFeedState(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
     );
   }
 }

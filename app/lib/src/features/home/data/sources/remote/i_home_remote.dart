@@ -1,8 +1,10 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/models/comment_dto.dart';
+import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/post_dto.dart';
+import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 
 abstract class IHomeRemote {
   Future<Either<DomainException, List<PostDto>>> getPosts();
@@ -24,4 +26,10 @@ abstract class IHomeRemote {
 
   // Notifications
   Future<Either<DomainException, List<NotificationDto>>> getNotifications();
+
+  // Feed state
+  Future<Either<DomainException, FeedStateDto>> getFeedState();
+  Future<Either<DomainException, FeedStateDto>> syncFeedState(
+    FeedStateSyncRequest request,
+  );
 }

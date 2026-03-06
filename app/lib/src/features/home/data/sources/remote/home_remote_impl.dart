@@ -1,10 +1,13 @@
 import 'package:app/src/core/api/client/dio/dio_client.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
+import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/models/comment_dto.dart';
+import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/data/models/post_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
+import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 
@@ -467,6 +470,61 @@ class HomeRemoteImpl implements IHomeRemote {
       getNotifications() async {
     await Future.delayed(const Duration(milliseconds: 500));
     return Right(List<NotificationDto>.from(_mockNotifications));
+  }
+
+  @override
+  Future<Either<DomainException, FeedStateDto>> getFeedState() async {
+    try {
+      final response = await _restClient.get(EndPoints.feedState);
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(UnknownException(message: 'Invalid feed state response'));
+          }
+          final dto = FeedStateDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, FeedStateDto>> syncFeedState(
+    FeedStateSyncRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.feedStateSync,
+        data: request.toJson(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid feed state sync response'),
+            );
+          }
+          final dto = FeedStateDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
   }
 
 

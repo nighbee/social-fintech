@@ -25,6 +25,8 @@ class EndPoints {
 
   //* Feed
   static const String feed = '/feed';
+  static const String feedState = '/feed/state';
+  static const String feedStateSync = '/feed/state/sync';
 
   //* Gamification
   static const String gamificationRank = '/gamification/rank';

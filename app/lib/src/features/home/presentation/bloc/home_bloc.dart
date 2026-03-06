@@ -8,8 +8,10 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
+import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 
 part 'home_bloc.freezed.dart';
@@ -53,6 +55,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       clearPostPhotos: () => _clearPostPhotos(emit),
       loadNotifications: () =>
           _loadNotifications(event as _LoadNotifications, emit),
+      loadFeedState: () => _loadFeedState(event as _LoadFeedState, emit),
+      syncFeedState: (_) => _syncFeedState(event as _SyncFeedState, emit),
     );
   }
 
@@ -380,6 +384,29 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     } catch (e) {
       emit(HomeState.loadingError(e.toString()));
     }
+  }
+
+  Future<void> _loadFeedState(_LoadFeedState event, Emitter emit) async {
+    final result = await _repository.getFeedState();
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (feedState) {
+        _viewModel = _viewModel.copyWith(feedState: feedState);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _syncFeedState(_SyncFeedState event, Emitter emit) async {
+    final request = FeedStateSyncRequest(deltaSeconds: event.deltaSeconds);
+    final result = await _repository.syncFeedState(request);
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (feedState) {
+        _viewModel = _viewModel.copyWith(feedState: feedState);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
   }
 
   @override
