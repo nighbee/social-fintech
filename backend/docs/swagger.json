@@ -1,4 +1,4 @@
-﻿{
+{
     "swagger": "2.0",
     "info": {
         "description": "API for the BrightBund social platform with economy, maps, chat, and gamification",
@@ -17,534 +17,6 @@
     "host": "localhost:8081",
     "basePath": "/api/v1",
     "paths": {
-        "/feed": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Fetch mixed feed (Allies + Local Geo + World)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Get mixed feed",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Pagination cursor",
-                        "name": "cursor",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Max results",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/feed.FeedResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/feed/state": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Returns accumulated active seconds, cooldown status, and break_seconds_remaining (0-300). Applies the hard break/reset state machine: if a 5-min break has expired the state is fully reset; if the user was away ≥ 5 min during an active phase the timer resets to 0.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Fetch current feed fatigue state",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/feed.FeedStateResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/feed/state/sync": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Pings the server with DeltaSeconds. Evaluated by anti-cheat engine.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Sync active feed time",
-                "parameters": [
-                    {
-                        "description": "Sync payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/feed.SyncFeedStateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/feed.FeedStateResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/posts": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Create a post containing text, media attachments, and privacy controls",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Create a new feed post",
-                "parameters": [
-                    {
-                        "description": "Post creation payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/feed.CreatePostRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Success",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/posts/{post_id}/comments": {
-            "get": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Fetch threaded comments for a specific post. Pass parent_id to get replies for a specific comment.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Get post comments",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post UUID",
-                        "name": "post_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Optional comment UUID to fetch replies for",
-                        "name": "parent_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Pagination cursor",
-                        "name": "cursor",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Max results",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/feed.ThreadedCommentsResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Comment or reply on a specific post",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed"
-                ],
-                "summary": "Comment on a post",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post UUID",
-                        "name": "post_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Comment payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/feed.CreateCommentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Success",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Commenting disabled or restricted",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/posts/{post_id}/likes": {
-            "get": {
-                "description": "Fetch paginated list of users who liked the post",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed Interactions"
-                ],
-                "summary": "Fetch post likes",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post UUID",
-                        "name": "post_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/feed.InteractionListResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Queues a like interaction through the Redis write-behind worker",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed Interactions"
-                ],
-                "summary": "Like a post",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post UUID",
-                        "name": "post_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "202": {
-                        "description": "Accepted for processing",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/posts/{post_id}/seals": {
-            "get": {
-                "description": "Fetch all users who contributed Silver Seals and their messages",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed Interactions"
-                ],
-                "summary": "Fetch post seals",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post UUID",
-                        "name": "post_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/feed.SealListResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Deducts silver from the viewer and credits the post author. Validates balance, cooldown, and self-seal rules via the Economy module.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Feed Interactions"
-                ],
-                "summary": "Give Silver Seal to post (Economy)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Post UUID",
-                        "name": "post_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Seal Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/feed.SendSealRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Seal sent вЂ” returns ledger_entry_id and new sender balance",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "402": {
-                        "description": "insufficient_balance",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "429": {
-                        "description": "cooldown active",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/auth/check-email": {
             "post": {
                 "description": "Check if an email is already registered in the system",
@@ -1687,6 +1159,164 @@
                 }
             }
         },
+        "/feed": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Fetch mixed feed (Allies + Local Geo + World)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get mixed feed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Max results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/state": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns accumulated active seconds, cooldown status, and break_seconds_remaining (0-300). Applies the hard break/reset state machine: if a 5-min break has expired the state is fully reset; if the user was away ≥ 5 min during an active phase the timer resets to 0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Fetch current feed fatigue state",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedStateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/state/sync": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Pings the server with DeltaSeconds. Evaluated by anti-cheat engine.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Sync active feed time",
+                "parameters": [
+                    {
+                        "description": "Sync payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.SyncFeedStateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedStateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/map/champions": {
             "get": {
                 "security": [
@@ -1826,6 +1456,376 @@
                     },
                     "500": {
                         "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Create a post containing text, media attachments, and privacy controls",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Create a new feed post",
+                "parameters": [
+                    {
+                        "description": "Post creation payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.CreatePostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/comments": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Fetch threaded comments for a specific post. Pass parent_id to get replies for a specific comment.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get post comments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional comment UUID to fetch replies for",
+                        "name": "parent_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.ThreadedCommentsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Comment or reply on a specific post",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Comment on a post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.CreateCommentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Commenting disabled or restricted",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/likes": {
+            "get": {
+                "description": "Fetch paginated list of users who liked the post",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Fetch post likes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.InteractionListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Queues a like interaction through the Redis write-behind worker",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Like a post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted for processing",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/seals": {
+            "get": {
+                "description": "Fetch all users who contributed Silver Seals and their messages",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Fetch post seals",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.SealListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deducts silver from the viewer and credits the post author. Validates balance, cooldown, and self-seal rules via the Economy module.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Give Silver Seal to post (Economy)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Seal Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.SendSealRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Seal sent вЂ” returns ledger_entry_id and new sender balance",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "insufficient_balance",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "cooldown active",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2810,7 +2810,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "Creates a task at the given coordinates. Charges 1вЂ“3 Silver Seals upfront.\nThe response includes `verification_code` which is shown ONLY to the creator\nand must be shared with helpers out-of-band (via chat) to verify completion.\nA 7-day cooldown applies between task creations per user.",
+                "description": "Creates a task at the given coordinates. Charges 1–3 Silver Seals upfront.\nThe response includes `verification_code` which is shown ONLY to the creator\nand must be shared with helpers out-of-band (via chat) to verify completion.\nA 7-day cooldown applies between task creations per user.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2867,7 +2867,7 @@
                         }
                     },
                     "429": {
-                        "description": "Cooldown active вЂ” must wait 7 days",
+                        "description": "Cooldown active — must wait 7 days",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4859,7 +4859,7 @@
                     "type": "string"
                 },
                 "is_own_post": {
-                    "description": "IsOwnPost lets the client show/hide the В·В·В· edit/delete options menu",
+                    "description": "IsOwnPost lets the client show/hide the ··· edit/delete options menu",
                     "type": "boolean"
                 },
                 "media_attachments": {
@@ -4881,11 +4881,11 @@
                     "type": "string"
                 },
                 "viewer_has_liked": {
-                    "description": "ViewerHasLiked lets the client render the вќ¤пёЏ heart as filled immediately",
+                    "description": "ViewerHasLiked lets the client render the ❤️ heart as filled immediately",
                     "type": "boolean"
                 },
                 "visibility": {
-                    "description": "Visibility is returned so the client can show the globe рџЊђ or allies рџ‘Ґ icon",
+                    "description": "Visibility is returned so the client can show the globe 🌐 or allies 👥 icon",
                     "type": "string"
                 }
             }
@@ -5672,4 +5672,3 @@
         }
     }
 }
-
