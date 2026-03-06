@@ -69,7 +69,7 @@ func requireUserID(c *fiber.Ctx) (uuid.UUID, bool) {
 
 // GetFeedState godoc
 // @Summary Fetch current feed fatigue state
-// @Description Calculates background decay and returns the current fatigue seconds
+// @Description Returns accumulated active seconds, cooldown status, and break_seconds_remaining (0-300). Applies the hard break/reset state machine: if a 5-min break has expired the state is fully reset; if the user was away ≥ 5 min during an active phase the timer resets to 0.
 // @Tags Feed
 // @Produce json
 // @Security Bearer

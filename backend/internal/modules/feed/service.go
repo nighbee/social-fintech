@@ -13,8 +13,11 @@ import (
 const (
 	// DefaultMaxAllowedActiveSeconds is the fallback limit (20 minutes)
 	DefaultMaxAllowedActiveSeconds = 1200
-	DecayRatioDivider              = 6 // 1 sec decay per 6 sec offline
-	NetworkBufferSeconds           = 5.0
+	// BreakDurationSeconds is the mandatory break after the active phase (5 minutes)
+	BreakDurationSeconds = 300
+	// AwayResetThreshold is how long a user can be away (in active phase) before their timer resets
+	AwayResetThreshold   = 300
+	NetworkBufferSeconds = 5.0
 )
 
 type Service struct {
@@ -52,15 +55,18 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 		return nil, err
 	}
 
-	state = s.applyDecay(state, time.Now())
-	state.LastSyncTimestamp = time.Now()
+	now := time.Now()
+	state = s.applyStateTransitions(state, now)
+	state.LastSyncTimestamp = now
 	_ = s.cache.SetFatigueState(ctx, state)
+	_ = s.cache.MarkUserDirty(ctx, userID) // Ensure transition (e.g. reset) is flushed to Postgres
 
 	return &FeedStateResponse{
 		AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 		IsInCooldown:             state.IsInCooldown,
+		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
-		ServerTimestamp:          time.Now().UTC(),
+		ServerTimestamp:          now.UTC(),
 	}, nil
 }
 
@@ -75,7 +81,25 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 		return nil, err
 	}
 
-	// 1. Anti-Cheat Engine
+	// 1. Apply state transitions (break expiry or away-reset)
+	state = s.applyStateTransitions(state, now)
+
+	// 2. If in break, return current state without accumulating time
+	if state.IsInCooldown {
+		state.LastSyncTimestamp = now
+		_ = s.cache.SetFatigueState(ctx, state)
+		_ = s.cache.MarkUserDirty(ctx, userID)
+		return &FeedStateResponse{
+			AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
+			IsInCooldown:             true,
+			BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
+			MaxAllowedSeconds:        state.MaxAllowedSeconds,
+			ServerTimestamp:          now.UTC(),
+			ActionRequired:           "enforce_cooldown",
+		}, nil
+	}
+
+	// 3. Anti-Cheat Engine
 	realElapsed := now.Sub(state.LastSyncTimestamp).Seconds()
 	if realElapsed < 0 {
 		realElapsed = 0
@@ -85,31 +109,30 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 	deltaSec := float64(req.DeltaSeconds)
 
 	if deltaSec > maxPossibleDelta {
-		// Cheat detected or clock jumped: Cap the delta to real elapsed time
+		// Cheat detected or clock jumped: cap the delta to real elapsed time
 		deltaSec = math.Floor(realElapsed)
 	}
 
-	// 2. Add accumulated
-	// First apply any decay if they were totally offline for a bit
-	state = s.applyDecay(state, now)
-
+	// 4. Accumulate active time
 	state.AccumulatedActiveSeconds += int(deltaSec)
 	state.LastSyncTimestamp = now
 
-	// 3. Cooldown check — skip if user set no limit (maxSeconds == 0)
-	actionRequired := "none"
+	// 5. Cooldown check — skip if user set no limit (maxSeconds == 0)
+	actionRequired := ""
 	if state.MaxAllowedSeconds > 0 && state.AccumulatedActiveSeconds >= state.MaxAllowedSeconds {
 		state.IsInCooldown = true
+		state.BreakStartedAt = &now
 		actionRequired = "trigger_friction"
 	}
 
-	// 4. Save to Cache and Mark Dirty for Async Postgres Flush
+	// 6. Save to cache and mark dirty for async Postgres flush
 	_ = s.cache.SetFatigueState(ctx, state)
 	_ = s.cache.MarkUserDirty(ctx, userID)
 
 	return &FeedStateResponse{
 		AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 		IsInCooldown:             state.IsInCooldown,
+		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
 		ServerTimestamp:          now.UTC(),
 		ActionRequired:           actionRequired,
@@ -141,21 +164,50 @@ func (s *Service) getOrInitState(ctx context.Context, userID uuid.UUID) (*FeedFa
 	return state, nil
 }
 
-func (s *Service) applyDecay(state *FeedFatigueState, now time.Time) *FeedFatigueState {
-	tOffline := now.Sub(state.LastSyncTimestamp).Seconds()
-	if tOffline > 0 {
-		decayAmount := int(math.Floor(tOffline / DecayRatioDivider))
-		state.AccumulatedActiveSeconds -= decayAmount
-
-		if state.AccumulatedActiveSeconds <= 0 {
+// applyStateTransitions implements the hard break/reset state machine.
+// Called on every GetFeedState / SyncFeedState to advance the state.
+//
+// Active phase: if the user has been away ≥ AwayResetThreshold → full reset.
+// Break phase:  if break duration ≥ BreakDurationSeconds → full reset back to active.
+func (s *Service) applyStateTransitions(state *FeedFatigueState, now time.Time) *FeedFatigueState {
+	if state.IsInCooldown {
+		// Break is running — check if it has expired.
+		// If BreakStartedAt is nil (e.g. data gap from pre-migration rows), fall back
+		// to LastSyncTimestamp so the break can still expire rather than getting stuck.
+		breakStart := state.BreakStartedAt
+		if breakStart == nil {
+			breakStart = &state.LastSyncTimestamp
+			state.BreakStartedAt = breakStart // recover: persist so calcBreakSecondsRemaining works
+		}
+		elapsed := now.Sub(*breakStart).Seconds()
+		if elapsed >= float64(BreakDurationSeconds) {
+			// Break expired → full reset
 			state.AccumulatedActiveSeconds = 0
-			// Once fatigue drops to zero, lift cooldown
-			if state.IsInCooldown {
-				state.IsInCooldown = false
-			}
+			state.IsInCooldown = false
+			state.BreakStartedAt = nil
+		}
+	} else {
+		// Active phase — if user was away long enough, reset the timer
+		awaySeconds := now.Sub(state.LastSyncTimestamp).Seconds()
+		if awaySeconds >= float64(AwayResetThreshold) {
+			state.AccumulatedActiveSeconds = 0
+			state.IsInCooldown = false
 		}
 	}
 	return state
+}
+
+// calcBreakSecondsRemaining returns seconds left in the current break (0 if not in break).
+func (s *Service) calcBreakSecondsRemaining(state *FeedFatigueState, now time.Time) int {
+	if !state.IsInCooldown || state.BreakStartedAt == nil {
+		return 0
+	}
+	elapsed := int(now.Sub(*state.BreakStartedAt).Seconds())
+	remaining := BreakDurationSeconds - elapsed
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
 }
 
 // ---------------- Content System ----------------

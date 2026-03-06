@@ -57,7 +57,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedResponse"
+                            "$ref": "#/definitions/feed.FeedResponse"
                         }
                     },
                     "401": {
@@ -79,7 +79,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Calculates background decay and returns the current fatigue seconds",
+                "description": "Returns accumulated active seconds, cooldown status, and break_seconds_remaining (0-300). Applies the hard break/reset state machine: if a 5-min break has expired the state is fully reset; if the user was away ≥ 5 min during an active phase the timer resets to 0.",
                 "produces": [
                     "application/json"
                 ],
@@ -91,7 +91,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedStateResponse"
+                            "$ref": "#/definitions/feed.FeedStateResponse"
                         }
                     },
                     "401": {
@@ -140,7 +140,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.SyncFeedStateRequest"
+                            "$ref": "#/definitions/feed.SyncFeedStateRequest"
                         }
                     }
                 ],
@@ -148,7 +148,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedStateResponse"
+                            "$ref": "#/definitions/feed.FeedStateResponse"
                         }
                     },
                     "400": {
@@ -206,7 +206,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.CreatePostRequest"
+                            "$ref": "#/definitions/feed.CreatePostRequest"
                         }
                     }
                 ],
@@ -288,7 +288,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.ThreadedCommentsResponse"
+                            "$ref": "#/definitions/feed.ThreadedCommentsResponse"
                         }
                     },
                     "401": {
@@ -333,7 +333,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.CreateCommentRequest"
+                            "$ref": "#/definitions/feed.CreateCommentRequest"
                         }
                     }
                 ],
@@ -400,7 +400,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.InteractionListResponse"
+                            "$ref": "#/definitions/feed.InteractionListResponse"
                         }
                     }
                 }
@@ -473,7 +473,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.SealListResponse"
+                            "$ref": "#/definitions/feed.SealListResponse"
                         }
                     }
                 }
@@ -509,7 +509,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.SendSealRequest"
+                            "$ref": "#/definitions/feed.SendSealRequest"
                         }
                     }
                 ],
@@ -571,7 +571,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailRequest"
+                            "$ref": "#/definitions/auth.CheckEmailRequest"
                         }
                     }
                 ],
@@ -579,19 +579,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailResponse"
+                            "$ref": "#/definitions/auth.CheckEmailResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -617,7 +617,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneAuthRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneAuthRequest"
                         }
                     }
                 ],
@@ -625,31 +625,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -675,7 +675,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneRegisterRequest"
                         }
                     }
                 ],
@@ -683,31 +683,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -733,7 +733,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
@@ -741,25 +741,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -785,7 +785,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailLoginRequest"
+                            "$ref": "#/definitions/auth.EmailLoginRequest"
                         }
                     }
                 ],
@@ -793,25 +793,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -842,13 +842,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -874,7 +874,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeRequest"
+                            "$ref": "#/definitions/auth.PhoneCodeRequest"
                         }
                     }
                 ],
@@ -882,31 +882,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeResponse"
+                            "$ref": "#/definitions/auth.PhoneCodeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -932,7 +932,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyRequest"
+                            "$ref": "#/definitions/auth.PhoneVerifyRequest"
                         }
                     }
                 ],
@@ -940,25 +940,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyResponse"
+                            "$ref": "#/definitions/auth.PhoneVerifyResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -984,7 +984,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.RefreshRequest"
+                            "$ref": "#/definitions/auth.RefreshRequest"
                         }
                     }
                 ],
@@ -992,25 +992,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -1036,7 +1036,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailRegisterRequest"
+                            "$ref": "#/definitions/auth.EmailRegisterRequest"
                         }
                     }
                 ],
@@ -1044,25 +1044,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -1088,7 +1088,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.PhoneRegisterRequest"
                         }
                     }
                 ],
@@ -1096,25 +1096,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -1144,7 +1144,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ClaimDailyAccrualRequest"
+                            "$ref": "#/definitions/economy.ClaimDailyAccrualRequest"
                         }
                     }
                 ],
@@ -1152,25 +1152,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AccrualResponse"
+                            "$ref": "#/definitions/economy.AccrualResponse"
                         }
                     },
                     "400": {
                         "description": "Already claimed today or cap reached",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1201,7 +1201,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AdjustBalanceRequest"
+                            "$ref": "#/definitions/economy.AdjustBalanceRequest"
                         }
                     }
                 ],
@@ -1209,31 +1209,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1284,31 +1284,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ViolationLogsResponse"
+                            "$ref": "#/definitions/economy.ViolationLogsResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1336,19 +1336,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1398,25 +1398,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransactionHistoryResponse"
+                            "$ref": "#/definitions/economy.TransactionHistoryResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1444,19 +1444,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.LimitsResponse"
+                            "$ref": "#/definitions/economy.LimitsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1494,7 +1494,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToPostRequest"
+                            "$ref": "#/definitions/economy.GiveSealToPostRequest"
                         }
                     }
                 ],
@@ -1502,25 +1502,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1548,19 +1548,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ReferralStatsResponse"
+                            "$ref": "#/definitions/economy.ReferralStatsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1591,7 +1591,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferRequest"
+                            "$ref": "#/definitions/economy.TransferRequest"
                         }
                     }
                 ],
@@ -1599,31 +1599,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "429": {
                         "description": "Transfer limit exceeded",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1661,7 +1661,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToUserRequest"
+                            "$ref": "#/definitions/economy.GiveSealToUserRequest"
                         }
                     }
                 ],
@@ -1669,25 +1669,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1742,7 +1742,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_map.ChampionPin"
+                                "$ref": "#/definitions/mapmodule.ChampionPin"
                             }
                         }
                     },
@@ -1801,7 +1801,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.RegionAssignmentRequest"
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentRequest"
                         }
                     }
                 ],
@@ -1809,7 +1809,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.RegionAssignmentResponse"
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentResponse"
                         }
                     },
                     "400": {
@@ -1864,7 +1864,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "401": {
@@ -1952,7 +1952,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.UpdateProfileRequest"
+                            "$ref": "#/definitions/profiles.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -1960,7 +1960,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -2011,7 +2011,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -2055,7 +2055,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated profile with new avatar URL",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -2110,7 +2110,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User's current rank",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse"
+                            "$ref": "#/definitions/ranks.CurrentRankResponse"
                         }
                     },
                     "401": {
@@ -2156,7 +2156,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "401": {
@@ -2197,7 +2197,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of all ranks",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankListResponse"
+                            "$ref": "#/definitions/ranks.RankListResponse"
                         }
                     },
                     "500": {
@@ -2259,7 +2259,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.ProfileSearchResult"
+                                "$ref": "#/definitions/profiles.ProfileSearchResult"
                             }
                         }
                     },
@@ -2315,7 +2315,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Public profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.PublicProfileResponse"
+                            "$ref": "#/definitions/profiles.PublicProfileResponse"
                         }
                     },
                     "400": {
@@ -2384,7 +2384,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -2579,7 +2579,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Relationship status",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.RelationshipStatus"
+                            "$ref": "#/definitions/profiles.RelationshipStatus"
                         }
                     },
                     "400": {
@@ -2638,7 +2638,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ReportRequest"
+                            "$ref": "#/definitions/profiles.ReportRequest"
                         }
                     }
                 ],
@@ -2767,7 +2767,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "400": {
@@ -2834,7 +2834,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CreateTaskRequest"
+                            "$ref": "#/definitions/mapmodule.CreateTaskRequest"
                         }
                     }
                 ],
@@ -2842,7 +2842,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CreateTaskResponse"
+                            "$ref": "#/definitions/mapmodule.CreateTaskResponse"
                         }
                     },
                     "400": {
@@ -2912,7 +2912,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.AppliedTasksResponse"
+                            "$ref": "#/definitions/mapmodule.AppliedTasksResponse"
                         }
                     },
                     "401": {
@@ -2955,7 +2955,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.AppliedTasksResponse"
+                            "$ref": "#/definitions/mapmodule.AppliedTasksResponse"
                         }
                     },
                     "401": {
@@ -3028,7 +3028,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.NearbyTasksResponse"
+                            "$ref": "#/definitions/mapmodule.NearbyTasksResponse"
                         }
                     },
                     "400": {
@@ -3089,7 +3089,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.TaskResponse"
+                            "$ref": "#/definitions/mapmodule.TaskResponse"
                         }
                     },
                     "401": {
@@ -3148,7 +3148,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CancelTaskResponse"
+                            "$ref": "#/definitions/mapmodule.CancelTaskResponse"
                         }
                     },
                     "401": {
@@ -3229,7 +3229,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_map.ApplicationResponse"
+                                "$ref": "#/definitions/mapmodule.ApplicationResponse"
                             }
                         }
                     },
@@ -3494,7 +3494,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.ConfirmCompletionResponse"
+                            "$ref": "#/definitions/mapmodule.ConfirmCompletionResponse"
                         }
                     },
                     "400": {
@@ -3682,7 +3682,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.SubmitVerificationCodeRequest"
+                            "$ref": "#/definitions/mapmodule.SubmitVerificationCodeRequest"
                         }
                     }
                 ],
@@ -3690,7 +3690,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.VerifyCodeResponse"
+                            "$ref": "#/definitions/mapmodule.VerifyCodeResponse"
                         }
                     },
                     "400": {
@@ -3778,7 +3778,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.ApplyToTaskResponse"
+                            "$ref": "#/definitions/mapmodule.ApplyToTaskResponse"
                         }
                     },
                     "400": {
@@ -3870,7 +3870,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.UserSearchResult"
+                                "$ref": "#/definitions/profiles.UserSearchResult"
                             }
                         }
                     }
@@ -3879,123 +3879,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse": {
-            "type": "object",
-            "properties": {
-                "current_seals": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "full_title": {
-                    "type": "string"
-                },
-                "icon_url": {
-                    "type": "string"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "level_max_seals": {
-                    "type": "integer"
-                },
-                "level_min_seals": {
-                    "type": "integer"
-                },
-                "next_level": {
-                    "type": "string"
-                },
-                "next_rank": {
-                    "type": "string"
-                },
-                "progress_in_rank": {
-                    "type": "number"
-                },
-                "progress_to_next_level": {
-                    "type": "number"
-                },
-                "quality_name": {
-                    "type": "string"
-                },
-                "rank_max_seals": {
-                    "type": "integer"
-                },
-                "rank_min_seals": {
-                    "type": "integer"
-                },
-                "rank_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.RankListResponse": {
-            "type": "object",
-            "properties": {
-                "ranks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankWithLevels"
-                    }
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.RankWithLevels": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "icon_url": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "levels": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "max_seals": {
-                    "type": "integer"
-                },
-                "min_seals": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "quality": {
-                    "type": "string"
-                },
-                "sub_levels": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo"
-                    }
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo": {
-            "type": "object",
-            "properties": {
-                "level": {
-                    "type": "string"
-                },
-                "max_seals": {
-                    "type": "integer"
-                },
-                "min_seals": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_modules_auth.CheckEmailRequest": {
+        "auth.CheckEmailRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -4004,7 +3888,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.CheckEmailResponse": {
+        "auth.CheckEmailResponse": {
             "type": "object",
             "properties": {
                 "exists": {
@@ -4013,7 +3897,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.EmailLoginRequest": {
+        "auth.EmailLoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -4038,7 +3922,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.EmailRegisterRequest": {
+        "auth.EmailRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -4080,7 +3964,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.ErrorResponse": {
+        "auth.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -4093,7 +3977,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.FirebasePhoneAuthRequest": {
+        "auth.FirebasePhoneAuthRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -4110,7 +3994,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.FirebasePhoneRegisterRequest": {
+        "auth.FirebasePhoneRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -4140,7 +4024,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.LoginRequest": {
+        "auth.LoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -4153,14 +4037,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "provider_type": {
-                    "$ref": "#/definitions/internal_modules_auth.ProviderType"
+                    "$ref": "#/definitions/auth.ProviderType"
                 },
                 "user_agent": {
                     "type": "string"
                 }
             }
         },
-        "internal_modules_auth.LoginResponse": {
+        "auth.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -4170,11 +4054,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeRequest": {
+        "auth.PhoneCodeRequest": {
             "type": "object",
             "properties": {
                 "country_code": {
@@ -4192,7 +4076,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeResponse": {
+        "auth.PhoneCodeResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -4203,7 +4087,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneRegisterRequest": {
+        "auth.PhoneRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -4233,7 +4117,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyRequest": {
+        "auth.PhoneVerifyRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -4253,7 +4137,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyResponse": {
+        "auth.PhoneVerifyResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -4263,7 +4147,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 },
                 "verification_id": {
                     "type": "string"
@@ -4273,7 +4157,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.ProviderType": {
+        "auth.ProviderType": {
             "type": "string",
             "enum": [
                 "apple",
@@ -4288,7 +4172,7 @@ const docTemplate = `{
                 "ProviderPhone"
             ]
         },
-        "internal_modules_auth.RefreshRequest": {
+        "auth.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -4296,7 +4180,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_auth.User": {
+        "auth.User": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -4358,7 +4242,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.AccrualResponse": {
+        "economy.AccrualResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -4375,7 +4259,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.AdjustBalanceRequest": {
+        "economy.AdjustBalanceRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -4388,7 +4272,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
+                    "$ref": "#/definitions/economy.CurrencyCode"
                 },
                 "reason": {
                     "type": "string",
@@ -4399,7 +4283,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.BalanceResponse": {
+        "economy.BalanceResponse": {
             "type": "object",
             "properties": {
                 "gold_balance": {
@@ -4419,7 +4303,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.ClaimDailyAccrualRequest": {
+        "economy.ClaimDailyAccrualRequest": {
             "type": "object",
             "properties": {
                 "idempotency_key": {
@@ -4427,7 +4311,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.CurrencyCode": {
+        "economy.CurrencyCode": {
             "type": "string",
             "enum": [
                 "SILVER_SEAL",
@@ -4438,7 +4322,7 @@ const docTemplate = `{
                 "CurrencyGoldSeal"
             ]
         },
-        "internal_modules_economy.ErrorResponse": {
+        "economy.ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -4455,7 +4339,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.GiveSealToPostRequest": {
+        "economy.GiveSealToPostRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -4483,7 +4367,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.GiveSealToUserRequest": {
+        "economy.GiveSealToUserRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -4509,7 +4393,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.LimitsResponse": {
+        "economy.LimitsResponse": {
             "type": "object",
             "properties": {
                 "daily_accrual_claimed": {
@@ -4532,7 +4416,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.Referral": {
+        "economy.Referral": {
             "type": "object",
             "properties": {
                 "bonus_ledger_entry_id": {
@@ -4555,7 +4439,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.ReferralStatsResponse": {
+        "economy.ReferralStatsResponse": {
             "type": "object",
             "properties": {
                 "active_referrals": {
@@ -4564,7 +4448,7 @@ const docTemplate = `{
                 "referrals": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.Referral"
+                        "$ref": "#/definitions/economy.Referral"
                     }
                 },
                 "total_earned": {
@@ -4575,7 +4459,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.TransactionCategory": {
+        "economy.TransactionCategory": {
             "type": "string",
             "enum": [
                 "DAILY_ACCRUAL",
@@ -4600,7 +4484,7 @@ const docTemplate = `{
                 "CategoryPostSeal"
             ]
         },
-        "internal_modules_economy.TransactionHistoryResponse": {
+        "economy.TransactionHistoryResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -4615,28 +4499,28 @@ const docTemplate = `{
                 "transactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.TransactionItem"
+                        "$ref": "#/definitions/economy.TransactionItem"
                     }
                 }
             }
         },
-        "internal_modules_economy.TransactionItem": {
+        "economy.TransactionItem": {
             "type": "object",
             "properties": {
                 "amount": {
                     "type": "number"
                 },
                 "category": {
-                    "$ref": "#/definitions/internal_modules_economy.TransactionCategory"
+                    "$ref": "#/definitions/economy.TransactionCategory"
                 },
                 "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
+                    "$ref": "#/definitions/economy.CurrencyCode"
                 },
                 "id": {
                     "type": "string"
                 },
                 "other_user": {
-                    "$ref": "#/definitions/internal_modules_economy.UserInfo"
+                    "$ref": "#/definitions/economy.UserInfo"
                 },
                 "reference": {
                     "type": "string"
@@ -4649,7 +4533,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.TransferRequest": {
+        "economy.TransferRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -4683,7 +4567,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.TransferResponse": {
+        "economy.TransferResponse": {
             "type": "object",
             "properties": {
                 "ledger_entry_id": {
@@ -4703,7 +4587,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.UserInfo": {
+        "economy.UserInfo": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -4717,7 +4601,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_economy.ViolationLog": {
+        "economy.ViolationLog": {
             "type": "object",
             "properties": {
                 "amount_attempted": {
@@ -4742,11 +4626,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "violation_type": {
-                    "$ref": "#/definitions/internal_modules_economy.ViolationType"
+                    "$ref": "#/definitions/economy.ViolationType"
                 }
             }
         },
-        "internal_modules_economy.ViolationLogsResponse": {
+        "economy.ViolationLogsResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -4761,12 +4645,12 @@ const docTemplate = `{
                 "violations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.ViolationLog"
+                        "$ref": "#/definitions/economy.ViolationLog"
                     }
                 }
             }
         },
-        "internal_modules_economy.ViolationType": {
+        "economy.ViolationType": {
             "type": "string",
             "enum": [
                 "COOLDOWN_BREACH",
@@ -4785,7 +4669,7 @@ const docTemplate = `{
                 "ViolationRepeatTransferPattern"
             ]
         },
-        "internal_modules_feed.AuthorInfo": {
+        "feed.AuthorInfo": {
             "type": "object",
             "properties": {
                 "full_name": {
@@ -4809,11 +4693,11 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.CommentResponse": {
+        "feed.CommentResponse": {
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 },
                 "comment_id": {
                     "type": "string"
@@ -4822,7 +4706,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "media_attachment": {
-                    "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                    "$ref": "#/definitions/feed.MediaAttachment"
                 },
                 "reply_count": {
                     "description": "Only \u003e 0 for root comments",
@@ -4833,21 +4717,21 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.CreateCommentRequest": {
+        "feed.CreateCommentRequest": {
             "type": "object",
             "properties": {
                 "content_text": {
                     "type": "string"
                 },
                 "media_attachment": {
-                    "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                    "$ref": "#/definitions/feed.MediaAttachment"
                 },
                 "parent_id": {
                     "type": "string"
                 }
             }
         },
-        "internal_modules_feed.CreatePostRequest": {
+        "feed.CreatePostRequest": {
             "type": "object",
             "properties": {
                 "caption": {
@@ -4859,7 +4743,7 @@ const docTemplate = `{
                 "media_attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                        "$ref": "#/definitions/feed.MediaAttachment"
                     }
                 },
                 "visibility": {
@@ -4867,13 +4751,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.FeedResponse": {
+        "feed.FeedResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.PostResponse"
+                        "$ref": "#/definitions/feed.PostResponse"
                     }
                 },
                 "next_cursor": {
@@ -4881,15 +4765,19 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.FeedStateResponse": {
+        "feed.FeedStateResponse": {
             "type": "object",
             "properties": {
                 "accumulated_active_seconds": {
                     "type": "integer"
                 },
                 "action_required": {
-                    "description": "\"trigger_friction\", \"enforce_cooldown\" or none",
+                    "description": "\"trigger_friction\" or omitted",
                     "type": "string"
+                },
+                "break_seconds_remaining": {
+                    "description": "0-300; 0 = not in break",
+                    "type": "integer"
                 },
                 "is_in_cooldown": {
                     "type": "boolean"
@@ -4902,13 +4790,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.InteractionListResponse": {
+        "feed.InteractionListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.InteractionResponse"
+                        "$ref": "#/definitions/feed.InteractionResponse"
                     }
                 },
                 "next_cursor": {
@@ -4916,18 +4804,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.InteractionResponse": {
+        "feed.InteractionResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 }
             }
         },
-        "internal_modules_feed.MediaAttachment": {
+        "feed.MediaAttachment": {
             "type": "object",
             "properties": {
                 "thumbnail_url": {
@@ -4942,7 +4830,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.Permissions": {
+        "feed.Permissions": {
             "type": "object",
             "properties": {
                 "can_comment": {
@@ -4950,7 +4838,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.PostMetrics": {
+        "feed.PostMetrics": {
             "type": "object",
             "properties": {
                 "comments": {
@@ -4967,11 +4855,11 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.PostResponse": {
+        "feed.PostResponse": {
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 },
                 "content_text": {
                     "type": "string"
@@ -4983,14 +4871,14 @@ const docTemplate = `{
                 "media_attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                        "$ref": "#/definitions/feed.MediaAttachment"
                     }
                 },
                 "metrics": {
-                    "$ref": "#/definitions/internal_modules_feed.PostMetrics"
+                    "$ref": "#/definitions/feed.PostMetrics"
                 },
                 "permissions": {
-                    "$ref": "#/definitions/internal_modules_feed.Permissions"
+                    "$ref": "#/definitions/feed.Permissions"
                 },
                 "post_id": {
                     "type": "string"
@@ -5008,13 +4896,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.SealListResponse": {
+        "feed.SealListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.SealResponse"
+                        "$ref": "#/definitions/feed.SealResponse"
                     }
                 },
                 "next_cursor": {
@@ -5022,7 +4910,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.SealResponse": {
+        "feed.SealResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -5035,11 +4923,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 }
             }
         },
-        "internal_modules_feed.SendSealRequest": {
+        "feed.SendSealRequest": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -5050,7 +4938,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.SyncFeedStateRequest": {
+        "feed.SyncFeedStateRequest": {
             "type": "object",
             "properties": {
                 "delta_seconds": {
@@ -5058,13 +4946,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_feed.ThreadedCommentsResponse": {
+        "feed.ThreadedCommentsResponse": {
             "type": "object",
             "properties": {
                 "comments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.CommentResponse"
+                        "$ref": "#/definitions/feed.CommentResponse"
                     }
                 },
                 "next_cursor": {
@@ -5072,7 +4960,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.ApplicationResponse": {
+        "mapmodule.ApplicationResponse": {
             "type": "object",
             "properties": {
                 "applicant_id": {
@@ -5092,18 +4980,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.AppliedTasksResponse": {
+        "mapmodule.AppliedTasksResponse": {
             "type": "object",
             "properties": {
                 "tasks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_map.TaskResponse"
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
                     }
                 }
             }
         },
-        "internal_modules_map.ApplyToTaskResponse": {
+        "mapmodule.ApplyToTaskResponse": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -5118,7 +5006,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.CancelTaskResponse": {
+        "mapmodule.CancelTaskResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -5129,7 +5017,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.ChampionPin": {
+        "mapmodule.ChampionPin": {
             "type": "object",
             "properties": {
                 "h3_index": {
@@ -5146,7 +5034,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.ConfirmCompletionResponse": {
+        "mapmodule.ConfirmCompletionResponse": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -5164,7 +5052,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.CreateTaskRequest": {
+        "mapmodule.CreateTaskRequest": {
             "type": "object",
             "properties": {
                 "auto_shutdown": {
@@ -5197,7 +5085,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.CreateTaskResponse": {
+        "mapmodule.CreateTaskResponse": {
             "type": "object",
             "properties": {
                 "auto_shutdown_at": {
@@ -5239,18 +5127,18 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.NearbyTasksResponse": {
+        "mapmodule.NearbyTasksResponse": {
             "type": "object",
             "properties": {
                 "tasks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_map.TaskResponse"
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
                     }
                 }
             }
         },
-        "internal_modules_map.RegionAssignmentRequest": {
+        "mapmodule.RegionAssignmentRequest": {
             "type": "object",
             "properties": {
                 "latitude": {
@@ -5271,7 +5159,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.RegionAssignmentResponse": {
+        "mapmodule.RegionAssignmentResponse": {
             "type": "object",
             "properties": {
                 "h3_res2": {
@@ -5294,7 +5182,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.SubmitVerificationCodeRequest": {
+        "mapmodule.SubmitVerificationCodeRequest": {
             "type": "object",
             "properties": {
                 "code": {
@@ -5303,7 +5191,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.TaskResponse": {
+        "mapmodule.TaskResponse": {
             "type": "object",
             "properties": {
                 "auto_shutdown_at": {
@@ -5342,7 +5230,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_map.VerifyCodeResponse": {
+        "mapmodule.VerifyCodeResponse": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -5354,7 +5242,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.AllyProfile": {
+        "profiles.AllyProfile": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -5375,7 +5263,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.Profile": {
+        "profiles.Profile": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -5441,7 +5329,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.ProfileSearchResult": {
+        "profiles.ProfileSearchResult": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -5466,7 +5354,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.ProfileStats": {
+        "profiles.ProfileStats": {
             "type": "object",
             "properties": {
                 "gold_balance": {
@@ -5495,7 +5383,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.PublicProfileResponse": {
+        "profiles.PublicProfileResponse": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -5540,7 +5428,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.RelationshipStatus": {
+        "profiles.RelationshipStatus": {
             "type": "object",
             "properties": {
                 "i_blocked_them": {
@@ -5569,7 +5457,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.ReportRequest": {
+        "profiles.ReportRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -5592,7 +5480,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.UpdateProfileRequest": {
+        "profiles.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -5639,7 +5527,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_modules_profiles.UserSearchResult": {
+        "profiles.UserSearchResult": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -5661,6 +5549,122 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "ranks.CurrentRankResponse": {
+            "type": "object",
+            "properties": {
+                "current_seals": {
+                    "type": "integer"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "full_title": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "level": {
+                    "type": "string"
+                },
+                "level_max_seals": {
+                    "type": "integer"
+                },
+                "level_min_seals": {
+                    "type": "integer"
+                },
+                "next_level": {
+                    "type": "string"
+                },
+                "next_rank": {
+                    "type": "string"
+                },
+                "progress_in_rank": {
+                    "type": "number"
+                },
+                "progress_to_next_level": {
+                    "type": "number"
+                },
+                "quality_name": {
+                    "type": "string"
+                },
+                "rank_max_seals": {
+                    "type": "integer"
+                },
+                "rank_min_seals": {
+                    "type": "integer"
+                },
+                "rank_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "ranks.RankListResponse": {
+            "type": "object",
+            "properties": {
+                "ranks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ranks.RankWithLevels"
+                    }
+                }
+            }
+        },
+        "ranks.RankWithLevels": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "icon_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "levels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "max_seals": {
+                    "type": "integer"
+                },
+                "min_seals": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "quality": {
+                    "type": "string"
+                },
+                "sub_levels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ranks.SubLevelInfo"
+                    }
+                }
+            }
+        },
+        "ranks.SubLevelInfo": {
+            "type": "object",
+            "properties": {
+                "level": {
+                    "type": "string"
+                },
+                "max_seals": {
+                    "type": "integer"
+                },
+                "min_seals": {
+                    "type": "integer"
                 }
             }
         }

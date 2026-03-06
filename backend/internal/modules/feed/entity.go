@@ -17,11 +17,12 @@ const (
 )
 
 type FeedFatigueState struct {
-	UserID                   uuid.UUID `json:"user_id" db:"user_id"`
-	AccumulatedActiveSeconds int       `json:"accumulated_active_seconds" db:"accumulated_active_seconds"`
-	LastSyncTimestamp        time.Time `json:"last_sync_timestamp" db:"last_sync_timestamp"`
-	IsInCooldown             bool      `json:"is_in_cooldown" db:"is_in_cooldown"`
-	MaxAllowedSeconds        int       `json:"max_allowed_seconds"` // Cached locally to avoid profile DB hits
+	UserID                   uuid.UUID  `json:"user_id" db:"user_id"`
+	AccumulatedActiveSeconds int        `json:"accumulated_active_seconds" db:"accumulated_active_seconds"`
+	LastSyncTimestamp        time.Time  `json:"last_sync_timestamp" db:"last_sync_timestamp"`
+	IsInCooldown             bool       `json:"is_in_cooldown" db:"is_in_cooldown"`
+	BreakStartedAt           *time.Time `json:"break_start_at,omitempty" db:"break_start_at"`
+	MaxAllowedSeconds        int        `json:"max_allowed_seconds"` // Cached locally to avoid profile DB hits
 }
 
 type MediaAttachment struct {
@@ -85,9 +86,10 @@ type SyncFeedStateRequest struct {
 type FeedStateResponse struct {
 	AccumulatedActiveSeconds int       `json:"accumulated_active_seconds"`
 	IsInCooldown             bool      `json:"is_in_cooldown"`
+	BreakSecondsRemaining    int       `json:"break_seconds_remaining"` // 0-300; 0 = not in break
 	MaxAllowedSeconds        int       `json:"max_allowed_seconds"`
 	ServerTimestamp          time.Time `json:"server_timestamp"`
-	ActionRequired           string    `json:"action_required,omitempty"` // "trigger_friction", "enforce_cooldown" or none
+	ActionRequired           string    `json:"action_required,omitempty"` // "trigger_friction" or omitted
 }
 
 type AuthorInfo struct {

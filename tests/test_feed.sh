@@ -12,8 +12,10 @@
 #    SendSeal            – happy path, self-seal 400, no-funds 402,
 #                          zero-amount 400, duplicate/idempotent 201
 #    GetSeals            – happy path
-#    SyncFeedState       – happy path, delta=0 400, delta too large 400
-#    GetFeedState        – happy path
+#    SyncFeedState       – happy path, delta=0 400, large delta capped,
+#                          break_seconds_remaining field, sync-during-break
+#    GetFeedState        – happy path + new fields (break_seconds_remaining)
+#    Anti-doomscroll     – cooldown triggers, break phase, full reset cycle
 #    Auth guard          – unauthenticated 401 on a protected endpoint
 # ======================================================================
 
@@ -686,10 +688,10 @@ assert_status "SyncFeedState rejects delta=0 with 400" "400" "$HTTP_CODE"
 echo ""
 
 # ======================================================================
-# TEST 22 – SyncFeedState: delta too large → 400 (ErrDeltaTooLarge)
+# TEST 22 – SyncFeedState: large delta is capped by anti-cheat (not 400)
 # ======================================================================
 
-echo -e "${GREEN}=== TEST 22: SyncFeedState – Delta Too Large ===${NC}"
+echo -e "${GREEN}=== TEST 22: SyncFeedState – Large Delta Capped by Anti-Cheat ===${NC}"
 
 BODY="{\"delta_seconds\":99999}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${FEED_URL}/state/sync" \
@@ -700,15 +702,15 @@ HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 log_request "SyncFeedState delta=99999" "POST" "${FEED_URL}/state/sync" "$BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
-# Anti-cheat caps delta to real elapsed time (does NOT return 400 for large deltas)
-assert_ok "SyncFeedState caps excessive delta via anti-cheat and returns 200" "$HTTP_CODE"
+# Anti-cheat caps delta to real elapsed — NOT an error, returns 200 with capped value
+assert_ok "SyncFeedState caps excessive delta and returns 200" "$HTTP_CODE"
 echo ""
 
 # ======================================================================
-# TEST 23 – SyncFeedState: happy path
+# TEST 23 – SyncFeedState: happy path — response has all new fields
 # ======================================================================
 
-echo -e "${GREEN}=== TEST 23: SyncFeedState – Happy Path ===${NC}"
+echo -e "${GREEN}=== TEST 23: SyncFeedState – Happy Path + New Fields ===${NC}"
 
 SYNC_BODY="{\"delta_seconds\":45}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${FEED_URL}/state/sync" \
@@ -720,13 +722,23 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 log_request "User1 Syncs Feed Time (45s)" "POST" "${FEED_URL}/state/sync" "$SYNC_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
 assert_ok "User1 syncs active feed time successfully" "$HTTP_CODE"
+
+# Verify new field: break_seconds_remaining (should be 0 – not in break)
+BREAK_REM=$(get_json_number "$HTTP_BODY" "break_seconds_remaining")
+echo -e "${CYAN}  break_seconds_remaining: ${BREAK_REM}${NC}"
+assert_eq "break_seconds_remaining is 0 during active phase" "0" "$BREAK_REM"
+
+# Verify existing field: is_in_cooldown (should be false = 0 in JSON sense)
+IS_COOLDOWN=$(echo "$HTTP_BODY" | grep -o '"is_in_cooldown": *[a-z]*' | head -1 | grep -o '[a-z]*$')
+echo -e "${CYAN}  is_in_cooldown: ${IS_COOLDOWN}${NC}"
+assert_eq "is_in_cooldown is false during active phase" "false" "$IS_COOLDOWN"
 echo ""
 
 # ======================================================================
-# TEST 24 – GetFeedState: happy path
+# TEST 24 – GetFeedState: happy path + new fields in response
 # ======================================================================
 
-echo -e "${GREEN}=== TEST 24: GetFeedState – Happy Path ===${NC}"
+echo -e "${GREEN}=== TEST 24: GetFeedState – Happy Path + New Fields ===${NC}"
 
 RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${FEED_URL}/state" \
     -H "Authorization: Bearer $USER1_TOKEN")
@@ -736,10 +748,9 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 log_request "User1 Gets Feed State" "GET" "${FEED_URL}/state" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
 assert_ok "User1 retrieves feed fatigue state" "$HTTP_CODE"
 
+# accumulated_active_seconds must be numeric
 ACCUM=$(get_json_number "$HTTP_BODY" "accumulated_active_seconds")
 echo -e "${CYAN}  accumulated_active_seconds: ${ACCUM}${NC}"
-# Anti-cheat caps delta to real elapsed time; for a fresh test session value may be 0.
-# Just assert the field is present (numeric) in the response.
 if [[ "$ACCUM" =~ ^[0-9]+$ ]]; then
     echo -e "${GREEN}✓ PASS: accumulated_active_seconds is numeric (${ACCUM})${NC}"
     PASS=$((PASS + 1))
@@ -747,6 +758,174 @@ else
     echo -e "${RED}✗ FAIL: expected numeric accumulated_active_seconds, got '${ACCUM}'${NC}"
     FAIL=$((FAIL + 1))
 fi
+
+# break_seconds_remaining must be present and numeric (0 = not in break)
+BREAK_REM=$(get_json_number "$HTTP_BODY" "break_seconds_remaining")
+echo -e "${CYAN}  break_seconds_remaining: ${BREAK_REM}${NC}"
+if [[ "$BREAK_REM" =~ ^[0-9]+$ ]]; then
+    echo -e "${GREEN}✓ PASS: break_seconds_remaining is present and numeric (${BREAK_REM})${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: break_seconds_remaining missing or non-numeric: '${BREAK_REM}'${NC}"
+    FAIL=$((FAIL + 1))
+fi
+
+# max_allowed_seconds must be numeric
+MAX_SEC=$(get_json_number "$HTTP_BODY" "max_allowed_seconds")
+echo -e "${CYAN}  max_allowed_seconds: ${MAX_SEC}${NC}"
+if [[ "$MAX_SEC" =~ ^[0-9]+$ ]]; then
+    echo -e "${GREEN}✓ PASS: max_allowed_seconds is present and numeric (${MAX_SEC})${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: max_allowed_seconds missing or non-numeric: '${MAX_SEC}'${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 25 – Anti-Doomscroll: simulate cooldown by direct DB injection,
+#           then verify SyncFeedState returns enforce_cooldown + break
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 25: Anti-Doomscroll – Break Phase via DB Injection ===${NC}"
+echo -e "${CYAN}  Injecting an in-cooldown fatigue state into the DB for User1…${NC}"
+
+NOW_UTC=$(date -u +"%Y-%m-%d %H:%M:%S")
+
+# Force User1 into break: set accumulated=1200 (at limit), is_in_cooldown=true,
+# break_start_at = 120 seconds ago (2 min into a 5-min break → ~180s remaining)
+BREAK_START=$(date -u -d "120 seconds ago" +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
+    || date -u -v-120S +"%Y-%m-%d %H:%M:%S")  # macOS fallback
+
+docker exec brightbund-db psql -U user -d brightbund -c \
+    "INSERT INTO feed_fatigue_states
+        (user_id, accumulated_active_seconds, last_sync_timestamp, is_in_cooldown, break_start_at)
+     VALUES
+        ('$USER1_ID', 1200, NOW(), true, '$BREAK_START')
+     ON CONFLICT (user_id) DO UPDATE SET
+        accumulated_active_seconds = 1200,
+        last_sync_timestamp        = NOW(),
+        is_in_cooldown             = true,
+        break_start_at             = '$BREAK_START';" > /dev/null 2>&1
+
+# Also clear Redis cache so server reads from DB
+docker exec brightbund-redis redis-cli DEL "feed_state:$USER1_ID" > /dev/null 2>&1
+
+if [[ $? -eq 0 ]]; then
+    echo -e "${GREEN}  ✓ DB state injected (User1 in break, started 2 min ago)${NC}"
+else
+    echo -e "${YELLOW}  ! DB injection may have failed – Redis flush failed, test results may not be reliable${NC}"
+fi
+
+# Now hit SyncFeedState — should return is_in_cooldown=true, action_required=enforce_cooldown
+SYNC_BODY="{\"delta_seconds\":30}"
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${FEED_URL}/state/sync" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$SYNC_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "SyncFeedState during break" "POST" "${FEED_URL}/state/sync" "$SYNC_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "SyncFeedState during break returns 200 (not error)" "$HTTP_CODE"
+
+# is_in_cooldown must be true
+COOLDOWN=$(echo "$HTTP_BODY" | grep -o '"is_in_cooldown": *[a-z]*' | head -1 | grep -o '[a-z]*$')
+assert_eq "SyncFeedState during break: is_in_cooldown=true" "true" "$COOLDOWN"
+
+# action_required must be "enforce_cooldown"
+ACTION=$(get_json_string "$HTTP_BODY" "action_required")
+assert_eq "SyncFeedState during break: action_required=enforce_cooldown" "enforce_cooldown" "$ACTION"
+
+# break_seconds_remaining should be approximately 180 (300 - 120)
+BREAK_REM=$(get_json_number "$HTTP_BODY" "break_seconds_remaining")
+echo -e "${CYAN}  break_seconds_remaining: ${BREAK_REM} (expect ~180)${NC}"
+if [[ "$BREAK_REM" =~ ^[0-9]+$ && "$BREAK_REM" -ge 170 && "$BREAK_REM" -le 190 ]]; then
+    echo -e "${GREEN}✓ PASS: break_seconds_remaining is ~180 (${BREAK_REM})${NC}"
+    PASS=$((PASS + 1))
+else
+    echo -e "${RED}✗ FAIL: expected break_seconds_remaining ~180, got '${BREAK_REM}'${NC}"
+    FAIL=$((FAIL + 1))
+fi
+echo ""
+
+# ======================================================================
+# TEST 26 – Anti-Doomscroll: break expiry → full reset
+#           Inject an expired break (6 min ago), then GetFeedState
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 26: Anti-Doomscroll – Break Expiry → Full Reset ===${NC}"
+echo -e "${CYAN}  Injecting an expired break (started 6 minutes ago)…${NC}"
+
+EXPIRED_BREAK=$(date -u -d "360 seconds ago" +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
+    || date -u -v-360S +"%Y-%m-%d %H:%M:%S")
+
+docker exec brightbund-db psql -U user -d brightbund -c \
+    "UPDATE feed_fatigue_states SET
+        accumulated_active_seconds = 1200,
+        is_in_cooldown             = true,
+        break_start_at             = '$EXPIRED_BREAK'
+     WHERE user_id = '$USER1_ID';" > /dev/null 2>&1
+
+docker exec brightbund-redis redis-cli DEL "feed_state:$USER1_ID" > /dev/null 2>&1
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${FEED_URL}/state" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "GetFeedState after expired break" "GET" "${FEED_URL}/state" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "GetFeedState after break expiry returns 200" "$HTTP_CODE"
+
+# After expiry: is_in_cooldown must be false
+COOLDOWN=$(echo "$HTTP_BODY" | grep -o '"is_in_cooldown": *[a-z]*' | head -1 | grep -o '[a-z]*$')
+assert_eq "After break expiry: is_in_cooldown=false" "false" "$COOLDOWN"
+
+# accumulated_active_seconds must be 0 (full reset)
+ACCUM=$(get_json_number "$HTTP_BODY" "accumulated_active_seconds")
+assert_eq "After break expiry: accumulated_active_seconds reset to 0" "0" "$ACCUM"
+
+# break_seconds_remaining must be 0
+BREAK_REM=$(get_json_number "$HTTP_BODY" "break_seconds_remaining")
+assert_eq "After break expiry: break_seconds_remaining=0" "0" "$BREAK_REM"
+echo ""
+
+# ======================================================================
+# TEST 27 – Anti-Doomscroll: away-reset
+#           Inject an active state with last_sync 6 min ago (> AwayResetThreshold=300s)
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 27: Anti-Doomscroll – Away Reset (> 5 min inactive) ===${NC}"
+echo -e "${CYAN}  Injecting active state with last_sync 6 minutes ago…${NC}"
+
+OLD_SYNC=$(date -u -d "360 seconds ago" +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
+    || date -u -v-360S +"%Y-%m-%d %H:%M:%S")
+
+docker exec brightbund-db psql -U user -d brightbund -c \
+    "UPDATE feed_fatigue_states SET
+        accumulated_active_seconds = 900,
+        is_in_cooldown             = false,
+        break_start_at             = NULL,
+        last_sync_timestamp        = '$OLD_SYNC'
+     WHERE user_id = '$USER1_ID';" > /dev/null 2>&1
+
+docker exec brightbund-redis redis-cli DEL "feed_state:$USER1_ID" > /dev/null 2>&1
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X GET "${FEED_URL}/state" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "GetFeedState after long away" "GET" "${FEED_URL}/state" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "GetFeedState after long away returns 200" "$HTTP_CODE"
+
+# Accumulated must reset to 0 (away reset rule)
+ACCUM=$(get_json_number "$HTTP_BODY" "accumulated_active_seconds")
+assert_eq "Away ≥300s resets accumulated_active_seconds to 0" "0" "$ACCUM"
+
+# is_in_cooldown must be false
+COOLDOWN=$(echo "$HTTP_BODY" | grep -o '"is_in_cooldown": *[a-z]*' | head -1 | grep -o '[a-z]*$')
+assert_eq "Away reset: is_in_cooldown stays false" "false" "$COOLDOWN"
 echo ""
 
 # ======================================================================
