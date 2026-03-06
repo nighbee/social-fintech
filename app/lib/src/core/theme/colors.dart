@@ -32,6 +32,32 @@ class AppColors {
   static const colorff232324 = Color(0xff232324);
   static const colorff7E8086 = Color(0xff7E8086);
   static const colorff2C2D31 = Color(0xff2C2D31);
+
+  // Compatibility aliases for existing semantic usage
+  static const backgroundGray = colorffd9d9;
+  static const whiteBackground = colorffffffff;
+  static const blackBackground = colorff000000;
+  static const mainBackground = colorff19191A;
+
+  static const textGray1 = colorffcacaca;
+  static const textGray2 = colorff838383;
+  static const textGray3 = colorff87898f;
+
+  static const btnGray1 = colorffdbdbdb;
+  static const btnGray2 = colorffa9a9a9;
+  static const redText = colorffa43337;
+
+  static const blueText1 = colorff74afe3;
+  static const blueText2 = colorff819dff;
+
+  static const yellowText = colorffb39600;
+  static const greenText = colorff028a66;
+
+  static const textPrimary = colorffE5E5E5;
+  static const textSecondary = colorff9CA3AF;
+  static const surface = colorff2A2A2B;
+  static const border = colorff3F3F40;
+  static const error = colorffEF4444;
 }
 
 extension ColorThemeDataExtension on ThemeData {

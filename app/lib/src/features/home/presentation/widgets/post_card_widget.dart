@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -11,15 +13,31 @@ import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
 
-class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
+class PostCardWidget extends StatefulWidget {
+  const PostCardWidget({super.key, required this.post});
+
   final PostEntity post;
 
-  const PostCardWidget({super.key, required this.post});
+  @override
+  State<PostCardWidget> createState() => _PostCardWidgetState();
+}
+
+class _PostCardWidgetState extends State<PostCardWidget>
+    with ShowPostCommentsBottomSheet, ShowPostReportBottomSheet {
+  bool _isReportOverlayVisible = false;
+
+  void _onReportSubmitted(PostReportReason _) {
+    if (!mounted) return;
+    setState(() {
+      _isReportOverlayVisible = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    final hasImages = post.imageUrls.isNotEmpty;
+    final hasImages = widget.post.imageUrls.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -31,13 +49,22 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: User info and menu
+          if (_isReportOverlayVisible) ...[
+            _ReportSubmittedOverlayCard(
+              onClose: () {
+                setState(() {
+                  _isReportOverlayVisible = false;
+                });
+              },
+            ),
+            const Gap(12),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (hasImages) ...[
                 CustomNetworkImage(
-                  imageUrl: post.imageUrls.first,
+                  imageUrl: widget.post.imageUrls.first,
                   width: 40,
                   height: 40,
                   borderRadius: BorderRadius.circular(4),
@@ -49,14 +76,14 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      post.username,
+                      widget.post.username,
                       style: TextStyles.titleHeadline.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.colorffE5E5E5,
                       ),
                     ),
                     Text(
-                      timeago.format(post.createdAt),
+                      timeago.format(widget.post.createdAt),
                       style: TextStyles.bodySecondary.copyWith(
                         color: AppColors.colorff9CA3AF,
                       ),
@@ -65,35 +92,37 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
                 ),
               ),
               GestureDetector(
-                onTap: () {},
+                onTap: () => showPostReportBottomSheet(
+                  context,
+                  onSubmitted: _onReportSubmitted,
+                ),
                 child: Assets.icons.more.svg(width: 16, height: 16),
               ),
             ],
           ),
           const Gap(12),
-          // Content
           Text(
-            post.content,
+            widget.post.content,
             style: TextStyles.bodyMain.copyWith(color: AppColors.colorffE5E5E5),
           ),
           if (hasImages) ...[
             const Gap(12),
-            PostImageGrid(imageUrls: post.imageUrls),
+            PostImageGrid(imageUrls: widget.post.imageUrls),
           ],
           const Gap(12),
-          // Actions: Like, Comment, Share
           Row(
             children: [
               PostLikeButton(
-                postId: post.id,
-                isLiked: post.isLiked,
-                count: post.likesCount,
+                postId: widget.post.id,
+                isLiked: widget.post.isLiked,
+                count: widget.post.likesCount,
               ),
               const Gap(16),
               PostActionButton(
                 icon: Assets.icons.message.svg(width: 20, height: 20),
-                count: post.commentsCount,
-                onTap: () => showPostCommentsBottomSheet(context, post: post),
+                count: widget.post.commentsCount,
+                onTap: () =>
+                    showPostCommentsBottomSheet(context, post: widget.post),
               ),
               const Gap(16),
               GestureDetector(
@@ -108,6 +137,93 @@ class PostCardWidget extends StatelessWidget with ShowPostCommentsBottomSheet {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReportSubmittedOverlayCard extends StatelessWidget {
+  const _ReportSubmittedOverlayCard({required this.onClose});
+
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(16, 14, 12, 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF202020).withOpacity(0.26),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.white.withOpacity(0.12),
+                blurRadius: 10,
+                offset: const Offset(0, -2),
+              ),
+              BoxShadow(
+                color: Colors.black.withOpacity(0.35),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: onClose,
+                  behavior: HitTestBehavior.opaque,
+                  child: const Padding(
+                    padding: EdgeInsets.all(2),
+                    child: Icon(
+                      Icons.close,
+                      size: 18,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                  ),
+                ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline,
+                    size: 20,
+                    color: Colors.white,
+                  ),
+                  const Gap(10),
+                  Text(
+                    'Thanks for reporting this post',
+                    style: TextStyles.titleTag.copyWith(
+                      color: AppColors.whiteBackground,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const Gap(8),
+                  Text(
+                    'Your feedback is important in helping us keep the BrightBud community safe.',
+                    style: TextStyles.bodyMain.copyWith(
+                      color: AppColors.textGray2,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
