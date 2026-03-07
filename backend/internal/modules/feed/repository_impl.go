@@ -21,16 +21,14 @@ func NewRepository(db *sqlx.DB) Repository {
 
 func (r *repository) GetFatigueState(ctx context.Context, userID uuid.UUID) (*FeedFatigueState, error) {
 	query := `
-		SELECT user_id, accumulated_active_seconds, last_sync_timestamp, is_in_cooldown, break_start_at
+		SELECT user_id, accumulated_active_seconds, accumulated_break_seconds, last_sync_timestamp, is_in_cooldown, break_start_at
 		FROM feed_fatigue_states
 		WHERE user_id = $1
 	`
-	// Use a local scan struct to properly handle the nullable break_start_at column.
-	// Scanning a TIMESTAMPTZ NULL column directly into *time.Time via sqlx/lib/pq can leave
-	// the pointer nil even when the column has a value; sql.NullTime is the safe alternative.
 	var row struct {
 		UserID                   uuid.UUID    `db:"user_id"`
 		AccumulatedActiveSeconds int          `db:"accumulated_active_seconds"`
+		AccumulatedBreakSeconds  int          `db:"accumulated_break_seconds"`
 		LastSyncTimestamp        time.Time    `db:"last_sync_timestamp"`
 		IsInCooldown             bool         `db:"is_in_cooldown"`
 		BreakStartedAt           sql.NullTime `db:"break_start_at"`
@@ -46,6 +44,7 @@ func (r *repository) GetFatigueState(ctx context.Context, userID uuid.UUID) (*Fe
 	state := &FeedFatigueState{
 		UserID:                   row.UserID,
 		AccumulatedActiveSeconds: row.AccumulatedActiveSeconds,
+		AccumulatedBreakSeconds:  row.AccumulatedBreakSeconds,
 		LastSyncTimestamp:        row.LastSyncTimestamp,
 		IsInCooldown:             row.IsInCooldown,
 	}
@@ -58,15 +57,16 @@ func (r *repository) GetFatigueState(ctx context.Context, userID uuid.UUID) (*Fe
 
 func (r *repository) UpsertFatigueState(ctx context.Context, state *FeedFatigueState) error {
 	query := `
-		INSERT INTO feed_fatigue_states (user_id, accumulated_active_seconds, last_sync_timestamp, is_in_cooldown, break_start_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO feed_fatigue_states (user_id, accumulated_active_seconds, accumulated_break_seconds, last_sync_timestamp, is_in_cooldown, break_start_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (user_id) DO UPDATE SET
 			accumulated_active_seconds = EXCLUDED.accumulated_active_seconds,
+			accumulated_break_seconds  = EXCLUDED.accumulated_break_seconds,
 			last_sync_timestamp = EXCLUDED.last_sync_timestamp,
 			is_in_cooldown = EXCLUDED.is_in_cooldown,
 			break_start_at = EXCLUDED.break_start_at
 	`
-	_, err := r.db.ExecContext(ctx, query, state.UserID, state.AccumulatedActiveSeconds, state.LastSyncTimestamp, state.IsInCooldown, state.BreakStartedAt)
+	_, err := r.db.ExecContext(ctx, query, state.UserID, state.AccumulatedActiveSeconds, state.AccumulatedBreakSeconds, state.LastSyncTimestamp, state.IsInCooldown, state.BreakStartedAt)
 	return err
 }
 

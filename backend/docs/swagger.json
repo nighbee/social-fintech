@@ -4765,6 +4765,10 @@
                 "accumulated_active_seconds": {
                     "type": "integer"
                 },
+                "accumulated_break_seconds": {
+                    "description": "AccumulatedBreakSeconds exposes how many off-feed seconds have been served so far.\nClient can use this to animate the break countdown even between sync calls.",
+                    "type": "integer"
+                },
                 "action_required": {
                     "description": "\"trigger_friction\" or omitted",
                     "type": "string"

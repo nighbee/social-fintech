@@ -56,7 +56,8 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 	}
 
 	now := time.Now()
-	state = s.applyStateTransitions(state, now)
+	// calledFromSync=false: gap since LastSyncTimestamp is off-feed time; counts toward break.
+	state = s.applyStateTransitions(state, now, false)
 	state.LastSyncTimestamp = now
 	_ = s.cache.SetFatigueState(ctx, state)
 	_ = s.cache.MarkUserDirty(ctx, userID) // Ensure transition (e.g. reset) is flushed to Postgres
@@ -64,7 +65,8 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 	return &FeedStateResponse{
 		AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 		IsInCooldown:             state.IsInCooldown,
-		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
+		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state),
+		AccumulatedBreakSeconds:  state.AccumulatedBreakSeconds,
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
 		ServerTimestamp:          now.UTC(),
 	}, nil
@@ -81,10 +83,12 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 		return nil, err
 	}
 
-	// 1. Apply state transitions (break expiry or away-reset)
-	state = s.applyStateTransitions(state, now)
+	// 1. Apply state transitions.
+	// calledFromSync=true: user IS on the feed — off-feed gap must NOT count toward break.
+	state = s.applyStateTransitions(state, now, true)
 
-	// 2. If in break, return current state without accumulating time
+	// 2. If in break, return current state without accumulating time.
+	// The break countdown only advances when the user is AWAY from the feed (handled in GetFeedState).
 	if state.IsInCooldown {
 		state.LastSyncTimestamp = now
 		_ = s.cache.SetFatigueState(ctx, state)
@@ -92,7 +96,8 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 		return &FeedStateResponse{
 			AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 			IsInCooldown:             true,
-			BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
+			BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state),
+			AccumulatedBreakSeconds:  state.AccumulatedBreakSeconds,
 			MaxAllowedSeconds:        state.MaxAllowedSeconds,
 			ServerTimestamp:          now.UTC(),
 			ActionRequired:           "enforce_cooldown",
@@ -122,6 +127,7 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 	if state.MaxAllowedSeconds > 0 && state.AccumulatedActiveSeconds >= state.MaxAllowedSeconds {
 		state.IsInCooldown = true
 		state.BreakStartedAt = &now
+		state.AccumulatedBreakSeconds = 0 // break timer starts at 0; only counts off-feed time
 		actionRequired = "trigger_friction"
 	}
 
@@ -132,7 +138,8 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 	return &FeedStateResponse{
 		AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 		IsInCooldown:             state.IsInCooldown,
-		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
+		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state),
+		AccumulatedBreakSeconds:  state.AccumulatedBreakSeconds,
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
 		ServerTimestamp:          now.UTC(),
 		ActionRequired:           actionRequired,
@@ -164,46 +171,57 @@ func (s *Service) getOrInitState(ctx context.Context, userID uuid.UUID) (*FeedFa
 	return state, nil
 }
 
-// applyStateTransitions implements the hard break/reset state machine.
+// applyStateTransitions implements the break/reset state machine.
 // Called on every GetFeedState / SyncFeedState to advance the state.
 //
-// Active phase: if the user has been away ≥ AwayResetThreshold → full reset.
-// Break phase:  if break duration ≥ BreakDurationSeconds → full reset back to active.
-func (s *Service) applyStateTransitions(state *FeedFatigueState, now time.Time) *FeedFatigueState {
+// calledFromSync=true  → caller is SyncFeedState (user IS on the feed).
+//   - Active phase: accumulate time via SyncFeedState delta, no away-reset here.
+//   - Break phase:  break countdown does NOT advance — the user is still on the feed.
+//
+// calledFromSync=false → caller is GetFeedState (user just opened / re-entered the feed).
+//   - Active phase: gap since LastSyncTimestamp is off-feed time; if ≥ AwayResetThreshold, reset.
+//   - Break phase:  gap since LastSyncTimestamp is off-feed time; add to AccumulatedBreakSeconds.
+//     Once AccumulatedBreakSeconds ≥ BreakDurationSeconds the break is resolved.
+func (s *Service) applyStateTransitions(state *FeedFatigueState, now time.Time, calledFromSync bool) *FeedFatigueState {
 	if state.IsInCooldown {
-		// Break is running — check if it has expired.
-		// If BreakStartedAt is nil (e.g. data gap from pre-migration rows), fall back
-		// to LastSyncTimestamp so the break can still expire rather than getting stuck.
-		breakStart := state.BreakStartedAt
-		if breakStart == nil {
-			breakStart = &state.LastSyncTimestamp
-			state.BreakStartedAt = breakStart // recover: persist so calcBreakSecondsRemaining works
+		if !calledFromSync {
+			// User just entered / re-entered the feed. The gap since LastSyncTimestamp
+			// represents time spent OFF the feed — count it toward break resolution.
+			offFeedSecs := int(now.Sub(state.LastSyncTimestamp).Seconds())
+			if offFeedSecs > 0 {
+				state.AccumulatedBreakSeconds += offFeedSecs
+			}
+			if state.AccumulatedBreakSeconds >= BreakDurationSeconds {
+				// Break requirement met (5 min off-feed accumulated) → full reset.
+				state.AccumulatedActiveSeconds = 0
+				state.AccumulatedBreakSeconds = 0
+				state.IsInCooldown = false
+				state.BreakStartedAt = nil
+			}
 		}
-		elapsed := now.Sub(*breakStart).Seconds()
-		if elapsed >= float64(BreakDurationSeconds) {
-			// Break expired → full reset
-			state.AccumulatedActiveSeconds = 0
-			state.IsInCooldown = false
-			state.BreakStartedAt = nil
-		}
+		// calledFromSync=true: user is on the feed during break — break timer does not advance.
 	} else {
-		// Active phase — if user was away long enough, reset the timer
-		awaySeconds := now.Sub(state.LastSyncTimestamp).Seconds()
-		if awaySeconds >= float64(AwayResetThreshold) {
-			state.AccumulatedActiveSeconds = 0
-			state.IsInCooldown = false
+		// Active phase — away-reset only fires when coming from outside the feed (GetFeedState).
+		// While actively syncing, LastSyncTimestamp is always fresh, so awaySeconds stays small.
+		if !calledFromSync {
+			awaySeconds := now.Sub(state.LastSyncTimestamp).Seconds()
+			if awaySeconds >= float64(AwayResetThreshold) {
+				state.AccumulatedActiveSeconds = 0
+				state.IsInCooldown = false
+			}
 		}
 	}
 	return state
 }
 
-// calcBreakSecondsRemaining returns seconds left in the current break (0 if not in break).
-func (s *Service) calcBreakSecondsRemaining(state *FeedFatigueState, now time.Time) int {
-	if !state.IsInCooldown || state.BreakStartedAt == nil {
+// calcBreakSecondsRemaining returns off-feed seconds the user still needs to wait
+// before the break resolves. Uses AccumulatedBreakSeconds (off-feed time only)
+// so the countdown only ticks while the user is away from the feed.
+func (s *Service) calcBreakSecondsRemaining(state *FeedFatigueState) int {
+	if !state.IsInCooldown {
 		return 0
 	}
-	elapsed := int(now.Sub(*state.BreakStartedAt).Seconds())
-	remaining := BreakDurationSeconds - elapsed
+	remaining := BreakDurationSeconds - state.AccumulatedBreakSeconds
 	if remaining < 0 {
 		return 0
 	}
