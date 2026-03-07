@@ -80,20 +80,19 @@ func TestApplyStateTransitions_ActivePhase_ExactThresholdDoesReset(t *testing.T)
 func TestApplyStateTransitions_BreakPhase_StillRunning(t *testing.T) {
 	svc := newTestService()
 	now := time.Now()
-	breakStart := now.Add(-240 * time.Second) // informational only
+	// BreakStartedAt is the authoritative clock. 240s have elapsed since the break began.
+	breakStart := now.Add(-240 * time.Second)
 
-	// User has been in break for 240s total, but LastSyncTimestamp reflects
-	// they were last on feed 120s ago (meaning 120s off-feed this visit).
 	state := &FeedFatigueState{
 		UserID:                   uuid.New(),
 		AccumulatedActiveSeconds: 1200,
-		AccumulatedBreakSeconds:  120,                         // already served 120s of break off-feed
-		LastSyncTimestamp:        now.Add(-120 * time.Second), // 120s since last on-feed
+		AccumulatedBreakSeconds:  0,                         // will be overwritten from BreakStartedAt anchor
+		LastSyncTimestamp:        now.Add(-5 * time.Second), // irrelevant for break phase now
 		IsInCooldown:             true,
 		BreakStartedAt:           &breakStart,
 	}
 
-	// calledFromSync=false: adds the 120s gap → AccumulatedBreakSeconds = 240, still < 300
+	// calledFromSync=false: elapsed from BreakStartedAt = 240s → still < 300, no resolve
 	result := svc.applyStateTransitions(state, now, false)
 
 	if !result.IsInCooldown {
@@ -102,54 +101,55 @@ func TestApplyStateTransitions_BreakPhase_StillRunning(t *testing.T) {
 	if result.AccumulatedActiveSeconds != 1200 {
 		t.Error("accumulated active should not change during break")
 	}
+	// AccumulatedBreakSeconds is SET (not added) from BreakStartedAt elapsed
 	if result.AccumulatedBreakSeconds != 240 {
-		t.Errorf("expected AccumulatedBreakSeconds=240, got %d", result.AccumulatedBreakSeconds)
+		t.Errorf("expected AccumulatedBreakSeconds=240 (from BreakStartedAt anchor), got %d", result.AccumulatedBreakSeconds)
 	}
 }
 
-func TestApplyStateTransitions_BreakPhase_NotAdvancedWhileOnFeed(t *testing.T) {
+func TestApplyStateTransitions_BreakPhase_ElapsedRefreshedDuringSync(t *testing.T) {
 	svc := newTestService()
 	now := time.Now()
+	// 60s have elapsed since break started.
 	breakStart := now.Add(-60 * time.Second)
 
-	// User is in break and actively on the feed (SyncFeedState calls).
-	// AccumulatedBreakSeconds should NOT increase while syncing.
 	state := &FeedFatigueState{
 		UserID:                   uuid.New(),
 		AccumulatedActiveSeconds: 1200,
-		AccumulatedBreakSeconds:  60,
-		LastSyncTimestamp:        now.Add(-15 * time.Second), // small gap — on-feed sync interval
+		AccumulatedBreakSeconds:  0, // will be overwritten
+		LastSyncTimestamp:        now.Add(-15 * time.Second),
 		IsInCooldown:             true,
 		BreakStartedAt:           &breakStart,
 	}
 
-	// calledFromSync=true: user is on feed, break timer must NOT advance
+	// calledFromSync=true: AccumulatedBreakSeconds is refreshed from anchor (60s) so the
+	// client gets an accurate countdown, but the break is NOT resolved (user still on feed).
 	result := svc.applyStateTransitions(state, now, true)
 
 	if !result.IsInCooldown {
-		t.Error("expected IsInCooldown=true — user still on feed")
+		t.Error("expected IsInCooldown=true — break must not resolve during a sync call")
 	}
 	if result.AccumulatedBreakSeconds != 60 {
-		t.Errorf("expected AccumulatedBreakSeconds unchanged at 60, got %d", result.AccumulatedBreakSeconds)
+		t.Errorf("expected AccumulatedBreakSeconds=60 from anchor, got %d", result.AccumulatedBreakSeconds)
 	}
 }
 
 func TestApplyStateTransitions_BreakPhase_Expired(t *testing.T) {
 	svc := newTestService()
 	now := time.Now()
-	breakStart := now.Add(-600 * time.Second) // informational only
+	// 600s (10 min) have elapsed since break started — well past the 300s requirement.
+	breakStart := now.Add(-600 * time.Second)
 
-	// Simulate: user served the full 300s break off-feed already.
 	state := &FeedFatigueState{
 		UserID:                   uuid.New(),
 		AccumulatedActiveSeconds: 1200,
-		AccumulatedBreakSeconds:  250,                        // 250s already accumulated
-		LastSyncTimestamp:        now.Add(-60 * time.Second), // 60s off-feed gap
+		AccumulatedBreakSeconds:  0,                         // will be set to 600 from anchor, triggering reset
+		LastSyncTimestamp:        now.Add(-5 * time.Second), // irrelevant for break resolution
 		IsInCooldown:             true,
 		BreakStartedAt:           &breakStart,
 	}
 
-	// calledFromSync=false: adds 60s → AccumulatedBreakSeconds = 310 ≥ 300 → reset
+	// calledFromSync=false: elapsed = 600 ≥ 300 → full reset
 	result := svc.applyStateTransitions(state, now, false)
 
 	if result.IsInCooldown {
@@ -203,6 +203,76 @@ func TestCalcBreakSecondsRemaining_BreakOverdue(t *testing.T) {
 	rem := svc.calcBreakSecondsRemaining(state)
 	if rem != 0 {
 		t.Errorf("expected 0 for overdue break, got %d", rem)
+	}
+}
+
+// ─── Multi-device exploit: secondary device cannot suppress break ─────────────
+
+// TestBreakProgress_ImmutableToSecondaryDeviceSyncs verifies the core fix:
+// a secondary device calling SyncFeedState (calledFromSync=true) repeatedly
+// cannot freeze the break countdown, because AccumulatedBreakSeconds is computed
+// from the immutable BreakStartedAt anchor — not from LastSyncTimestamp.
+func TestBreakProgress_ImmutableToSecondaryDeviceSyncs(t *testing.T) {
+	svc := newTestService()
+	now := time.Now()
+	// Break started 150s ago on Device A.
+	breakStart := now.Add(-150 * time.Second)
+
+	// Device B has been keeping LastSyncTimestamp fresh every few seconds.
+	// In the old implementation this would cap offFeedSecs near 0, freezing the break.
+	state := &FeedFatigueState{
+		UserID:                   uuid.New(),
+		AccumulatedActiveSeconds: 1200,
+		AccumulatedBreakSeconds:  0,
+		LastSyncTimestamp:        now.Add(-2 * time.Second), // Device B just synced 2s ago
+		IsInCooldown:             true,
+		BreakStartedAt:           &breakStart,
+	}
+
+	// Simulate Device B calling SyncFeedState (calledFromSync=true).
+	result := svc.applyStateTransitions(state, now, true)
+
+	// Break progress must reflect wall-clock elapsed since BreakStartedAt (150s),
+	// NOT the tiny LastSyncTimestamp gap (2s) that Device B would cause in the old code.
+	if result.AccumulatedBreakSeconds != 150 {
+		t.Errorf("expected AccumulatedBreakSeconds=150 (device-agnostic), got %d — secondary device sync must not suppress break", result.AccumulatedBreakSeconds)
+	}
+	if !result.IsInCooldown {
+		t.Error("break should not yet resolve at 150s (need 300s)")
+	}
+}
+
+// TestBreakProgress_ResolvesRegardlessOfLastSyncTimestamp proves that even when
+// LastSyncTimestamp is very recent (Device B was active), the break resolves
+// correctly once 300s have elapsed from BreakStartedAt.
+func TestBreakProgress_ResolvesRegardlessOfLastSyncTimestamp(t *testing.T) {
+	svc := newTestService()
+	now := time.Now()
+	// 350s have elapsed since break started (past the 300s requirement).
+	breakStart := now.Add(-350 * time.Second)
+
+	// Device B kept LastSyncTimestamp almost live — in the old code this would
+	// have prevented the break from ever resolving.
+	state := &FeedFatigueState{
+		UserID:                   uuid.New(),
+		AccumulatedActiveSeconds: 1200,
+		AccumulatedBreakSeconds:  0,
+		LastSyncTimestamp:        now.Add(-1 * time.Second), // Device B was active 1s ago
+		IsInCooldown:             true,
+		BreakStartedAt:           &breakStart,
+	}
+
+	// calledFromSync=false: GetFeedState on return to feed — must resolve.
+	result := svc.applyStateTransitions(state, now, false)
+
+	if result.IsInCooldown {
+		t.Error("break must resolve after 350s regardless of LastSyncTimestamp")
+	}
+	if result.AccumulatedActiveSeconds != 0 {
+		t.Errorf("expected full active reset to 0, got %d", result.AccumulatedActiveSeconds)
+	}
+	if result.BreakStartedAt != nil {
+		t.Error("BreakStartedAt must be nil after reset")
 	}
 }
 

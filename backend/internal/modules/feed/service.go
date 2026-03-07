@@ -88,9 +88,9 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 	state = s.applyStateTransitions(state, now, true)
 
 	// 2. If in break, return current state without accumulating time.
-	// The break countdown only advances when the user is AWAY from the feed (handled in GetFeedState).
+	// The break countdown is anchored to BreakStartedAt (immutable) so no device interaction
+	// can suppress it — we do NOT update LastSyncTimestamp here.
 	if state.IsInCooldown {
-		state.LastSyncTimestamp = now
 		_ = s.cache.SetFatigueState(ctx, state)
 		_ = s.cache.MarkUserDirty(ctx, userID)
 		return &FeedStateResponse{
@@ -180,26 +180,30 @@ func (s *Service) getOrInitState(ctx context.Context, userID uuid.UUID) (*FeedFa
 //
 // calledFromSync=false → caller is GetFeedState (user just opened / re-entered the feed).
 //   - Active phase: gap since LastSyncTimestamp is off-feed time; if ≥ AwayResetThreshold, reset.
-//   - Break phase:  gap since LastSyncTimestamp is off-feed time; add to AccumulatedBreakSeconds.
-//     Once AccumulatedBreakSeconds ≥ BreakDurationSeconds the break is resolved.
+//   - Break phase:  elapsed wall-clock time since BreakStartedAt is the authoritative break
+//     progress. This is device-agnostic — no secondary device can suppress it by calling
+//     SyncFeedState, because BreakStartedAt is an immutable anchor set once at cooldown entry.
 func (s *Service) applyStateTransitions(state *FeedFatigueState, now time.Time, calledFromSync bool) *FeedFatigueState {
 	if state.IsInCooldown {
-		if !calledFromSync {
-			// User just entered / re-entered the feed. The gap since LastSyncTimestamp
-			// represents time spent OFF the feed — count it toward break resolution.
-			offFeedSecs := int(now.Sub(state.LastSyncTimestamp).Seconds())
-			if offFeedSecs > 0 {
-				state.AccumulatedBreakSeconds += offFeedSecs
+		// Recompute break progress from the immutable BreakStartedAt anchor.
+		// This runs on every call (sync or get) so the value is always fresh,
+		// and no device interaction can reset it.
+		if state.BreakStartedAt != nil {
+			elapsed := int(now.Sub(*state.BreakStartedAt).Seconds())
+			if elapsed < 0 {
+				elapsed = 0
 			}
-			if state.AccumulatedBreakSeconds >= BreakDurationSeconds {
-				// Break requirement met (5 min off-feed accumulated) → full reset.
-				state.AccumulatedActiveSeconds = 0
-				state.AccumulatedBreakSeconds = 0
-				state.IsInCooldown = false
-				state.BreakStartedAt = nil
-			}
+			state.AccumulatedBreakSeconds = elapsed
 		}
-		// calledFromSync=true: user is on the feed during break — break timer does not advance.
+		if !calledFromSync && state.AccumulatedBreakSeconds >= BreakDurationSeconds {
+			// Break requirement met → full reset.
+			state.AccumulatedActiveSeconds = 0
+			state.AccumulatedBreakSeconds = 0
+			state.IsInCooldown = false
+			state.BreakStartedAt = nil
+		}
+		// calledFromSync=true: we still recomputed AccumulatedBreakSeconds above so the
+		// client gets an accurate countdown, but we do not resolve the break mid-sync.
 	} else {
 		// Active phase — away-reset only fires when coming from outside the feed (GetFeedState).
 		// While actively syncing, LastSyncTimestamp is always fresh, so awaySeconds stays small.

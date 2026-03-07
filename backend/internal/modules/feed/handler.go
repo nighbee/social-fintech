@@ -442,4 +442,3 @@ func (h *Handler) GetSeals(c *fiber.Ctx) error {
 	}
 	return c.JSON(resp)
 }
-
