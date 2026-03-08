@@ -17,6 +17,11 @@ type Repository interface {
 	CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error
 	GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, cursor time.Time, limit int) ([]PostResponse, string, error)
 
+	// Profile Posts Grid / List
+	GetUserPostsGrid(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error)
+	GetUserPostsList(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error)
+	GetPostCreatedAt(ctx context.Context, postID uuid.UUID) (time.Time, error)
+
 	// Comments
 	CreateComment(ctx context.Context, comment *PostComment) error
 	GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error)

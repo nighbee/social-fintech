@@ -140,6 +140,21 @@ type FeedResponse struct {
 	NextCursor string         `json:"next_cursor,omitempty"`
 }
 
+// PostGridItem is a lightweight thumbnail entry for the 3×3 profile grid.
+type PostGridItem struct {
+	PostID           uuid.UUID `json:"post_id"`
+	ThumbnailURL     string    `json:"thumbnail_url,omitempty"`
+	MediaType        string    `json:"media_type,omitempty"` // "image" | "video" | ""
+	HasMultipleMedia bool      `json:"has_multiple_media"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+// UserPostsGridResponse is the paginated response for the profile posts grid.
+type UserPostsGridResponse struct {
+	Items      []PostGridItem `json:"items"`
+	NextCursor string         `json:"next_cursor,omitempty"`
+}
+
 type CommentResponse struct {
 	CommentID       uuid.UUID        `json:"comment_id"`
 	Author          AuthorInfo       `json:"author"`

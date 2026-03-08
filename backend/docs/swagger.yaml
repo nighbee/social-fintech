@@ -662,6 +662,20 @@ definitions:
       can_comment:
         type: boolean
     type: object
+  feed.PostGridItem:
+    properties:
+      created_at:
+        type: string
+      has_multiple_media:
+        type: boolean
+      media_type:
+        description: '"image" | "video" | ""'
+        type: string
+      post_id:
+        type: string
+      thumbnail_url:
+        type: string
+    type: object
   feed.PostMetrics:
     properties:
       comments:
@@ -741,6 +755,15 @@ definitions:
       comments:
         items:
           $ref: '#/definitions/feed.CommentResponse'
+        type: array
+      next_cursor:
+        type: string
+    type: object
+  feed.UserPostsGridResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/feed.PostGridItem'
         type: array
       next_cursor:
         type: string
@@ -2611,6 +2634,108 @@ paths:
       summary: Block a user
       tags:
       - Profiles
+  /profiles/{user_id}/posts:
+    get:
+      description: Returns a paginated grid of a user's public (or ally-visible) posts.
+        Viewer must be authenticated.
+      parameters:
+      - description: Author UUID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Pagination cursor (RFC3339Nano timestamp)
+        in: query
+        name: cursor
+        type: string
+      - default: 18
+        description: Items per page (max 30)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.UserPostsGridResponse'
+        "400":
+          description: Invalid user_id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get another user's profile posts grid
+      tags:
+      - Profiles
+  /profiles/{user_id}/posts/list:
+    get:
+      description: Returns full PostResponse entries for a user's visible posts. Pass
+        anchor_post_id to start at a specific post (inclusive).
+      parameters:
+      - description: Author UUID
+        in: path
+        name: user_id
+        required: true
+        type: string
+      - description: Start list at this post ID (inclusive)
+        in: query
+        name: anchor_post_id
+        type: string
+      - description: Pagination cursor (RFC3339Nano timestamp)
+        in: query
+        name: cursor
+        type: string
+      - default: 10
+        description: Items per page (max 30)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.FeedResponse'
+        "400":
+          description: Invalid user_id
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get another user's profile posts list
+      tags:
+      - Profiles
   /profiles/{user_id}/relationship:
     get:
       description: Get the relationship status between the authenticated user and
@@ -2936,6 +3061,87 @@ paths:
       security:
       - Bearer: []
       summary: Upload avatar image
+      tags:
+      - Profiles
+  /profiles/me/posts:
+    get:
+      description: Returns a paginated 3x3-style grid of the authenticated user's
+        posts (thumbnails only). Use next_cursor to paginate. Default limit is 18.
+      parameters:
+      - description: Pagination cursor (RFC3339Nano timestamp)
+        in: query
+        name: cursor
+        type: string
+      - default: 18
+        description: Items per page (max 30)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.UserPostsGridResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get own profile posts grid
+      tags:
+      - Profiles
+  /profiles/me/posts/list:
+    get:
+      description: Returns full PostResponse entries for the authenticated user's
+        posts. Pass anchor_post_id to start the list at a specific post (inclusive),
+        or use cursor for standard pagination.
+      parameters:
+      - description: Start list at this post ID (inclusive)
+        in: query
+        name: anchor_post_id
+        type: string
+      - description: Pagination cursor (RFC3339Nano timestamp)
+        in: query
+        name: cursor
+        type: string
+      - default: 10
+        description: Items per page (max 30)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.FeedResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get own profile posts list
       tags:
       - Profiles
   /profiles/me/rank:

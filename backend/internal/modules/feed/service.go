@@ -358,3 +358,49 @@ func (s *Service) GetSeals(ctx context.Context, postID uuid.UUID, cursor string,
 	}
 	return &SealListResponse{Items: items, NextCursor: next}, nil
 }
+
+// ---------------- Profile Posts ----------------
+
+// GetUserPostsGrid returns a paginated grid of thumbnail items for a user's profile.
+func (s *Service) GetUserPostsGrid(ctx context.Context, authorID, viewerID uuid.UUID, cursorStr string, limit int) (*UserPostsGridResponse, error) {
+	if limit <= 0 || limit > 30 {
+		limit = 18
+	}
+	cursor := time.Now()
+	if cursorStr != "" {
+		if t, err := time.Parse(time.RFC3339Nano, cursorStr); err == nil {
+			cursor = t
+		}
+	}
+	items, nextCursor, err := s.repo.GetUserPostsGrid(ctx, authorID, viewerID, cursor, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &UserPostsGridResponse{Items: items, NextCursor: nextCursor}, nil
+}
+
+// GetUserPostsList returns a paginated full-PostResponse list for a user's profile.
+// If anchorPostID is set, the list starts at (and includes) that post.
+// Otherwise cursorStr is used as the exclusive upper bound.
+func (s *Service) GetUserPostsList(ctx context.Context, authorID, viewerID uuid.UUID, anchorPostID *uuid.UUID, cursorStr string, limit int) (*FeedResponse, error) {
+	if limit <= 0 || limit > 30 {
+		limit = 10
+	}
+	cursor := time.Now()
+	if anchorPostID != nil {
+		anchorTime, err := s.repo.GetPostCreatedAt(ctx, *anchorPostID)
+		if err == nil {
+			// Add 1ns so the anchor post itself satisfies created_at < cursor.
+			cursor = anchorTime.Add(time.Nanosecond)
+		}
+	} else if cursorStr != "" {
+		if t, err := time.Parse(time.RFC3339Nano, cursorStr); err == nil {
+			cursor = t
+		}
+	}
+	items, nextCursor, err := s.repo.GetUserPostsList(ctx, authorID, viewerID, cursor, limit)
+	if err != nil {
+		return nil, err
+	}
+	return &FeedResponse{Items: items, NextCursor: nextCursor}, nil
+}

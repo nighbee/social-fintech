@@ -442,3 +442,131 @@ func (h *Handler) GetSeals(c *fiber.Ctx) error {
 	}
 	return c.JSON(resp)
 }
+
+// GetMyPostsGrid godoc
+// @Summary Get own profile posts grid
+// @Description Returns a paginated 3x3-style grid of the authenticated user's posts (thumbnails only). Use next_cursor to paginate. Default limit is 18.
+// @Tags Profiles
+// @Produce json
+// @Security Bearer
+// @Param cursor query string false "Pagination cursor (RFC3339Nano timestamp)"
+// @Param limit  query int    false "Items per page (max 30)" default(18)
+// @Success 200 {object} UserPostsGridResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /profiles/me/posts [get]
+func (h *Handler) GetMyPostsGrid(c *fiber.Ctx) error {
+userID, ok := requireUserID(c)
+if !ok {
+return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+}
+resp, err := h.service.GetUserPostsGrid(c.Context(), userID, userID, c.Query("cursor"), c.QueryInt("limit", 18))
+if err != nil {
+logger.Error("GetMyPostsGrid failed", zap.String("user_id", userID.String()), zap.Error(err))
+return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+}
+return c.JSON(resp)
+}
+
+// GetUserPostsGrid godoc
+// @Summary Get another user's profile posts grid
+// @Description Returns a paginated grid of a user's public (or ally-visible) posts. Viewer must be authenticated.
+// @Tags Profiles
+// @Produce json
+// @Security Bearer
+// @Param user_id path  string true  "Author UUID"
+// @Param cursor  query string false "Pagination cursor (RFC3339Nano timestamp)"
+// @Param limit   query int    false "Items per page (max 30)" default(18)
+// @Success 200 {object} UserPostsGridResponse
+// @Failure 400 {object} map[string]string "Invalid user_id"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /profiles/{user_id}/posts [get]
+func (h *Handler) GetUserPostsGrid(c *fiber.Ctx) error {
+viewerID, ok := requireUserID(c)
+if !ok {
+return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+}
+authorID, err := uuid.Parse(c.Params("user_id"))
+if err != nil {
+return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+}
+resp, err := h.service.GetUserPostsGrid(c.Context(), authorID, viewerID, c.Query("cursor"), c.QueryInt("limit", 18))
+if err != nil {
+logger.Error("GetUserPostsGrid failed", zap.String("author_id", authorID.String()), zap.Error(err))
+return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+}
+return c.JSON(resp)
+}
+
+// GetMyPostsList godoc
+// @Summary Get own profile posts list
+// @Description Returns full PostResponse entries for the authenticated user's posts. Pass anchor_post_id to start the list at a specific post (inclusive), or use cursor for standard pagination.
+// @Tags Profiles
+// @Produce json
+// @Security Bearer
+// @Param anchor_post_id query string false "Start list at this post ID (inclusive)"
+// @Param cursor         query string false "Pagination cursor (RFC3339Nano timestamp)"
+// @Param limit          query int    false "Items per page (max 30)" default(10)
+// @Success 200 {object} FeedResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /profiles/me/posts/list [get]
+func (h *Handler) GetMyPostsList(c *fiber.Ctx) error {
+userID, ok := requireUserID(c)
+if !ok {
+return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+}
+anchor := parseOptionalUUID(c.Query("anchor_post_id"))
+resp, err := h.service.GetUserPostsList(c.Context(), userID, userID, anchor, c.Query("cursor"), c.QueryInt("limit", 10))
+if err != nil {
+logger.Error("GetMyPostsList failed", zap.String("user_id", userID.String()), zap.Error(err))
+return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+}
+return c.JSON(resp)
+}
+
+// GetUserPostsList godoc
+// @Summary Get another user's profile posts list
+// @Description Returns full PostResponse entries for a user's visible posts. Pass anchor_post_id to start at a specific post (inclusive).
+// @Tags Profiles
+// @Produce json
+// @Security Bearer
+// @Param user_id        path  string true  "Author UUID"
+// @Param anchor_post_id query string false "Start list at this post ID (inclusive)"
+// @Param cursor         query string false "Pagination cursor (RFC3339Nano timestamp)"
+// @Param limit          query int    false "Items per page (max 30)" default(10)
+// @Success 200 {object} FeedResponse
+// @Failure 400 {object} map[string]string "Invalid user_id"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /profiles/{user_id}/posts/list [get]
+func (h *Handler) GetUserPostsList(c *fiber.Ctx) error {
+viewerID, ok := requireUserID(c)
+if !ok {
+return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+}
+authorID, err := uuid.Parse(c.Params("user_id"))
+if err != nil {
+return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+}
+anchor := parseOptionalUUID(c.Query("anchor_post_id"))
+resp, err := h.service.GetUserPostsList(c.Context(), authorID, viewerID, anchor, c.Query("cursor"), c.QueryInt("limit", 10))
+if err != nil {
+logger.Error("GetUserPostsList failed", zap.String("author_id", authorID.String()), zap.Error(err))
+return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+}
+return c.JSON(resp)
+}
+
+// parseOptionalUUID parses a UUID string, returning nil on empty or invalid input.
+func parseOptionalUUID(s string) *uuid.UUID {
+if s == "" {
+return nil
+}
+id, err := uuid.Parse(s)
+if err != nil {
+return nil
+}
+return &id
+}
