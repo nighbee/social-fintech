@@ -74,8 +74,8 @@ func (w *InteractionWorker) eventLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			w.flushLikes(ctx)
-			// w.flushSeals(ctx)
-			// w.flushFatigueStates(ctx)
+			w.flushSeals(ctx)
+			w.flushFatigueStates(ctx)
 		}
 	}
 }
@@ -93,7 +93,7 @@ func (w *InteractionWorker) flushLikes(ctx context.Context) {
 	}
 
 	for _, postIDStr := range posts {
-		_ /*postID*/, err := uuid.Parse(postIDStr)
+		postID, err := uuid.Parse(postIDStr)
 		if err != nil {
 			continue
 		}
@@ -121,12 +121,16 @@ func (w *InteractionWorker) flushLikes(ctx context.Context) {
 		}
 
 		// Write Batch to PostgreSQL
-		// if err := w.dbRepo.BatchFlushLikes(ctx, postID, userIDs); err != nil {
-		// 	logger.Error("failed to bulk flush likes to db", zap.Error(err), zap.String("post_id", postIDStr))
-		//     // Put back in queue if Postgres failed
-		// 	w.redisCli.Client.SAdd(ctx, activePostsKey, postIDStr)
-		//  w.redisCli.Client.SAdd(ctx, postSetKey, userIDsStr)
-		// }
+		if err := w.dbRepo.BatchFlushLikes(ctx, postID, userIDs); err != nil {
+			logger.Error("failed to bulk flush likes to db", zap.Error(err), zap.String("post_id", postIDStr))
+			// Put back in queue so the next tick retries.
+			members := make([]interface{}, len(userIDsStr))
+			for i, s := range userIDsStr {
+				members[i] = s
+			}
+			w.redisCli.Client.SAdd(ctx, activePostsKey, postIDStr)
+			w.redisCli.Client.SAdd(ctx, postSetKey, members...)
+		}
 	}
 }
 
@@ -140,6 +144,97 @@ func (w *InteractionWorker) QueueLike(ctx context.Context, postID, userID uuid.U
 	pipe.SAdd(ctx, activePostsKey, postID.String())
 	_, err := pipe.Exec(ctx)
 	return err
+}
+
+// flushFatigueStates reads the set of user IDs marked dirty in Redis and
+// upserts each user's fatigue state into PostgreSQL. This ensures state
+// survives Redis eviction or restarts and is visible from any device.
+func (w *InteractionWorker) flushFatigueStates(ctx context.Context) {
+	dirtyKey := "feed_state:dirty_users"
+
+	userIDStrs, err := w.redisCli.Client.SMembers(ctx, dirtyKey).Result()
+	if err == redis.Nil || len(userIDStrs) == 0 {
+		return
+	}
+	if err != nil {
+		logger.Error("flushFatigueStates: failed to read dirty users", zap.Error(err))
+		return
+	}
+
+	// Clear the dirty set before processing — stragglers will be re-added on
+	// the next sync, so we won't lose any writes.
+	w.redisCli.Client.Del(ctx, dirtyKey)
+
+	cacheRepo := w.cache
+	for _, uidStr := range userIDStrs {
+		userID, err := uuid.Parse(uidStr)
+		if err != nil {
+			continue
+		}
+
+		state, err := cacheRepo.GetFatigueState(ctx, userID)
+		if err != nil {
+			// Cache miss — state already expired; nothing to flush.
+			continue
+		}
+
+		if err := w.dbRepo.UpsertFatigueState(ctx, state); err != nil {
+			logger.Error("flushFatigueStates: failed to upsert state",
+				zap.String("user_id", uidStr),
+				zap.Error(err),
+			)
+			// Re-mark dirty so the next tick retries.
+			w.redisCli.Client.SAdd(ctx, dirtyKey, uidStr)
+		}
+	}
+}
+
+// flushSeals reads pending seal counts/amounts from Redis and batch-updates
+// posts.seals_count and posts.seals_amount in PostgreSQL.
+func (w *InteractionWorker) flushSeals(ctx context.Context) {
+	dirtyKey := "feed_interactions:dirty_posts:seals"
+
+	postIDStrs, err := w.redisCli.Client.SPopN(ctx, dirtyKey, 100).Result()
+	if err != nil && err != redis.Nil {
+		logger.Error("flushSeals: failed to pop dirty posts", zap.Error(err))
+		return
+	}
+
+	for _, postIDStr := range postIDStrs {
+		postID, err := uuid.Parse(postIDStr)
+		if err != nil {
+			continue
+		}
+
+		countKey := fmt.Sprintf("post:%s:seals_count_pending", postIDStr)
+		amountKey := fmt.Sprintf("post:%s:seals_amount_pending", postIDStr)
+
+		// Atomically get-and-delete both counters.
+		pipe := w.redisCli.Client.Pipeline()
+		countCmd := pipe.GetDel(ctx, countKey)
+		amountCmd := pipe.GetDel(ctx, amountKey)
+		if _, err := pipe.Exec(ctx); err != nil && err != redis.Nil {
+			logger.Error("flushSeals: failed to read pending seals", zap.Error(err), zap.String("post_id", postIDStr))
+			w.redisCli.Client.SAdd(ctx, dirtyKey, postIDStr)
+			continue
+		}
+
+		count, _ := countCmd.Int()
+		totalAmount, _ := amountCmd.Int64()
+		if count == 0 {
+			continue
+		}
+
+		if err := w.dbRepo.BatchFlushSeals(ctx, postID, count, totalAmount); err != nil {
+			logger.Error("flushSeals: failed to flush to db", zap.Error(err), zap.String("post_id", postIDStr))
+			// Restore counts so they are not lost.
+			pipe := w.redisCli.Client.Pipeline()
+			pipe.IncrBy(ctx, countKey, int64(count))
+			pipe.IncrBy(ctx, amountKey, totalAmount)
+			pipe.SAdd(ctx, dirtyKey, postIDStr)
+			pipe.Exec(ctx)
+		}
+	}
 }
 
 // QueueSeal is called by the HTTP Handler after the Economy module confirms the deduction.
