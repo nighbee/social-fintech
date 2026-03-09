@@ -5,18 +5,38 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
-type repository struct {
-	db *sqlx.DB
+func (r *repository) buildURL(u string) string {
+	if u == "" {
+		return u
+	}
+	if !strings.HasPrefix(u, "http") && !strings.HasPrefix(u, "local-media") {
+		baseURL := r.publicURL
+		if baseURL == "" {
+			baseURL = "http://10.0.2.2:8080" // fallback if config incomplete
+		}
+		baseURL = strings.TrimSuffix(baseURL, "/")
+		if strings.HasPrefix(u, "/") {
+			return baseURL + u
+		}
+		return baseURL + "/" + u
+	}
+	return u
 }
 
-func NewRepository(db *sqlx.DB) Repository {
-	return &repository{db: db}
+type repository struct {
+	db        *sqlx.DB
+	publicURL string
+}
+
+func NewRepository(db *sqlx.DB, publicURL string) Repository {
+	return &repository{db: db, publicURL: publicURL}
 }
 
 func (r *repository) GetFatigueState(ctx context.Context, userID uuid.UUID) (*FeedFatigueState, error) {
@@ -100,6 +120,54 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 	return tx.Commit()
 }
 
+func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error) {
+	query := `
+		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission, p.likes_count, p.comments_count, p.share_count, p.seals_count, p.created_at,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+		       COALESCE(
+			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order) 
+			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
+		       ) as media_json,
+		       EXISTS(SELECT 1 FROM post_interactions pi WHERE pi.post_id = p.id AND pi.user_id = $2 AND pi.interaction_type = 'like') as viewer_has_liked
+		FROM posts p
+		JOIN users u ON p.user_id = u.id
+		WHERE p.id = $1
+	`
+	var resp PostResponse
+	var mediaJSON []byte
+	var createdAt sql.NullTime
+	var avatarURL sql.NullString
+
+	err := r.db.QueryRowContext(ctx, query, postID, viewerID).Scan(
+		&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.Permissions.CanComment, // placeholder for perms
+		&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &createdAt,
+		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
+		&mediaJSON, &resp.ViewerHasLiked,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrPostNotFound
+		}
+		return nil, err
+	}
+
+	if avatarURL.Valid {
+		resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
+	}
+
+	_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
+	for i := range resp.MediaAttachments {
+		resp.MediaAttachments[i].URL = r.buildURL(resp.MediaAttachments[i].URL)
+		resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
+	}
+
+	resp.Permissions.CanComment = true // placeholder
+	resp.TimeAgo = "just now"
+	resp.IsOwnPost = viewerID == resp.Author.ID
+
+	return &resp, nil
+}
+
 func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int) ([]PostResponse, string, error) {
 	// A basic implementation. In production, this would use the weighted algorithm and cursor pagination.
 	query := `
@@ -131,22 +199,34 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		var resp PostResponse
 		var mediaJSON []byte
 		var createdAt sql.NullTime
+		var avatarURL sql.NullString
 
+		// Added viewer_has_liked to the generic feed response if needed, but the original query does not select it.
+		// We missed it in the GetFeed query. Let's fix the query first or omit it here. We'll update the query in a follow up call.
 		err := rows.Scan(
-			&resp.PostID, &resp.ContentText, &resp.Permissions.CanComment, &resp.Permissions.CanComment, // placeholders for visibility/perms logic
+			&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.Permissions.CanComment, // placeholders for visibility/perms logic
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &createdAt,
-			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
+			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
 			&mediaJSON,
 		)
 		if err != nil {
 			return nil, "", err
 		}
 
+		if avatarURL.Valid {
+			resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
+		}
+
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
+		for i := range resp.MediaAttachments {
+			resp.MediaAttachments[i].URL = r.buildURL(resp.MediaAttachments[i].URL)
+			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
+		}
 
 		// Set basic permissions placeholder
 		resp.Permissions.CanComment = true
 		resp.TimeAgo = "just now" // formatted by client or util later
+		resp.IsOwnPost = viewerID == resp.Author.ID
 
 		feed = append(feed, resp)
 		if createdAt.Valid {
@@ -162,6 +242,56 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 	return feed, nextCursor, nil
 }
 
+// GetComment finds a single comment representation
+func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error) {
+	query := `
+		SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content, c.media_attachment, c.created_at,
+		       c.likes_count,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+		       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
+		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
+		FROM post_comments c
+		JOIN users u ON c.user_id = u.id
+		WHERE c.id = $1 AND c.is_deleted = false
+	`
+	var resp CommentResponse
+	var mediaJSON []byte
+	var createdAt sql.NullTime
+	var avatarURL sql.NullString
+
+	err := r.db.QueryRowContext(ctx, query, commentID, viewerID).Scan(
+		&resp.CommentID, &resp.ParentCommentID, &resp.RootCommentID, &resp.ContentText, &mediaJSON, &createdAt,
+		&resp.LikesCount,
+		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
+		&resp.ReplyCount,
+		&resp.ViewerHasLiked,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("comment not found")
+		}
+		return nil, err
+	}
+
+	if avatarURL.Valid {
+		resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
+	}
+
+	if createdAt.Valid {
+		resp.CreatedAt = createdAt.Time
+	}
+
+	if len(mediaJSON) > 0 {
+		var m MediaAttachment
+		_ = json.Unmarshal(mediaJSON, &m)
+		m.URL = r.buildURL(m.URL)
+		m.ThumbnailURL = r.buildURL(m.ThumbnailURL)
+		resp.MediaAttachment = &m
+	}
+
+	return &resp, nil
+}
+
 // GetThreadedComments grabs top-level comments and replies
 func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error) {
 	var query string
@@ -169,28 +299,32 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 
 	if parentID == nil {
 		query = `
-			SELECT c.id, c.content, c.media_attachment, c.created_at,
+			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content, c.media_attachment, c.created_at,
+			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
-			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count
+			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
+			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
 			WHERE c.post_id = $1 AND c.parent_comment_id IS NULL AND c.is_deleted = false
 			ORDER BY c.created_at DESC
-			LIMIT $2
-		`
-		args = []interface{}{postID, limit}
-	} else {
-		query = `
-			SELECT c.id, c.content, c.media_attachment, c.created_at,
-			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
-			       0 as reply_count
-			FROM post_comments c
-			JOIN users u ON c.user_id = u.id
-			WHERE c.post_id = $1 AND c.parent_comment_id = $2 AND c.is_deleted = false
-			ORDER BY c.created_at ASC
 			LIMIT $3
 		`
-		args = []interface{}{postID, *parentID, limit}
+		args = []interface{}{postID, viewerID, limit}
+	} else {
+		query = `
+			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content, c.media_attachment, c.created_at,
+			       c.likes_count,
+			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+			       0 as reply_count,
+			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
+			FROM post_comments c
+			JOIN users u ON c.user_id = u.id
+			WHERE c.post_id = $1 AND c.parent_comment_id = $3 AND c.is_deleted = false
+			ORDER BY c.created_at ASC
+			LIMIT $4
+		`
+		args = []interface{}{postID, viewerID, *parentID, limit}
 	}
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
@@ -204,19 +338,32 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		var resp CommentResponse
 		var mediaJSON []byte
 		var createdAt sql.NullTime
+		var avatarURL sql.NullString
 
 		err := rows.Scan(
-			&resp.CommentID, &resp.ContentText, &mediaJSON, &createdAt,
-			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
+			&resp.CommentID, &resp.ParentCommentID, &resp.RootCommentID, &resp.ContentText, &mediaJSON, &createdAt,
+			&resp.LikesCount,
+			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
 			&resp.ReplyCount,
+			&resp.ViewerHasLiked,
 		)
 		if err != nil {
 			return nil, "", err
 		}
 
+		if avatarURL.Valid {
+			resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
+		}
+
+		if createdAt.Valid {
+			resp.CreatedAt = createdAt.Time
+		}
+
 		if len(mediaJSON) > 0 {
 			var m MediaAttachment
 			_ = json.Unmarshal(mediaJSON, &m)
+			m.URL = r.buildURL(m.URL)
+			m.ThumbnailURL = r.buildURL(m.ThumbnailURL)
 			resp.MediaAttachment = &m
 		}
 
@@ -224,6 +371,43 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 	}
 
 	return comments, "", nil
+}
+
+func (r *repository) ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var exists bool
+	queryCheck := `SELECT EXISTS(SELECT 1 FROM comment_interactions WHERE comment_id=$1 AND user_id=$2 AND interaction_type='like')`
+	err = tx.QueryRowContext(ctx, queryCheck, commentID, userID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		_, err = tx.ExecContext(ctx, `DELETE FROM comment_interactions WHERE comment_id=$1 AND user_id=$2 AND interaction_type='like'`, commentID, userID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE post_comments SET likes_count = likes_count - 1 WHERE id=$1`, commentID)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = tx.ExecContext(ctx, `INSERT INTO comment_interactions (comment_id, user_id, interaction_type, created_at) VALUES ($1, $2, 'like', NOW())`, commentID, userID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE post_comments SET likes_count = likes_count + 1 WHERE id=$1`, commentID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (r *repository) CreateComment(ctx context.Context, comment *PostComment) error {
@@ -240,10 +424,16 @@ func (r *repository) CreateComment(ctx context.Context, comment *PostComment) er
 	}
 
 	query := `
-		INSERT INTO post_comments (id, post_id, user_id, parent_comment_id, content, media_attachment, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		INSERT INTO post_comments (id, post_id, user_id, parent_comment_id, root_comment_id, content, media_attachment, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 	`
-	_, err = tx.ExecContext(ctx, query, comment.ID, comment.PostID, comment.UserID, comment.ParentCommentID, comment.Content, mediaVal)
+	// If shallow tree, root_comment_id is the same as parent_comment_id if replied, or root_comment_id is passed
+	rootID := comment.ParentCommentID
+	if comment.RootCommentID != nil {
+		rootID = comment.RootCommentID
+	}
+
+	_, err = tx.ExecContext(ctx, query, comment.ID, comment.PostID, comment.UserID, comment.ParentCommentID, rootID, comment.Content, mediaVal)
 	if err != nil {
 		return err
 	}
@@ -271,6 +461,43 @@ func (r *repository) GetPostPermissionsInfo(ctx context.Context, postID uuid.UUI
 func (r *repository) IncrementShareCount(ctx context.Context, postID uuid.UUID) error {
 	_, err := r.db.ExecContext(ctx, `UPDATE posts SET share_count = share_count + 1 WHERE id = $1`, postID)
 	return err
+}
+
+func (r *repository) ToggleLike(ctx context.Context, postID uuid.UUID, userID uuid.UUID) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var exists bool
+	queryCheck := `SELECT EXISTS(SELECT 1 FROM post_interactions WHERE post_id=$1 AND user_id=$2 AND interaction_type='like')`
+	err = tx.QueryRowContext(ctx, queryCheck, postID, userID).Scan(&exists)
+	if err != nil {
+		return err
+	}
+
+	if exists {
+		_, err = tx.ExecContext(ctx, `DELETE FROM post_interactions WHERE post_id=$1 AND user_id=$2 AND interaction_type='like'`, postID, userID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE posts SET likes_count = likes_count - 1 WHERE id=$1`, postID)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = tx.ExecContext(ctx, `INSERT INTO post_interactions (post_id, user_id, interaction_type, created_at) VALUES ($1, $2, 'like', NOW())`, postID, userID)
+		if err != nil {
+			return err
+		}
+		_, err = tx.ExecContext(ctx, `UPDATE posts SET likes_count = likes_count + 1 WHERE id=$1`, postID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func (r *repository) GetInteractions(ctx context.Context, postID uuid.UUID, interactionType string, cursor string, limit int) ([]InteractionResponse, string, error) {

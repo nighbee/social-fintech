@@ -2,6 +2,11 @@
 
 import (
 	"errors"
+	"fmt"
+	"os"
+
+	"path/filepath"
+	"strings"
 
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -11,25 +16,85 @@ import (
 )
 
 type Handler struct {
-	service *Service
-	worker  *InteractionWorker
-	economy economy.Service
+	service   *Service
+	worker    *InteractionWorker
+	economy   economy.Service
+	publicURL string
 }
 
-func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service) *Handler {
-	return &Handler{service: service, worker: worker, economy: economyService}
+func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, publicURL string) *Handler {
+	return &Handler{service: service, worker: worker, economy: economyService, publicURL: publicURL}
+}
+
+// UploadMedia godoc
+// @Summary Upload media
+// @Description Uploads an image or video and returns its URL
+// @Tags Feed
+// @Accept multipart/form-data
+// @Produce json
+// @Security Bearer
+// @Param file formData file true "Media file"
+// @Success 201 {object} map[string]string "Success"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /feed/media/upload [post]
+func (h *Handler) UploadMedia(c *fiber.Ctx) error {
+	_, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "missing_file"})
+	}
+
+	// Make sure directory exists
+	// Using generic './uploads/media' or similar
+	err = os.MkdirAll("./uploads/media", os.ModePerm)
+	if err != nil {
+		logger.Error("failed to create upload directory", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "internal_error"})
+	}
+
+	filename := uuid.New().String() + filepath.Ext(file.Filename)
+	savePath := filepath.Join("./uploads/media", filename)
+
+	if err := c.SaveFile(file, savePath); err != nil {
+		logger.Error("failed to save file", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
+	}
+
+	contentType := file.Header.Get("Content-Type")
+	mediaType := "image"
+	if strings.HasPrefix(contentType, "video/") {
+		mediaType = "video"
+	}
+
+	// Handle host resolution with public_url
+	baseURL := h.publicURL
+	if baseURL == "" {
+		baseURL = "http://localhost:8080"
+	}
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
+	publicURL := fmt.Sprintf("%s/uploads/media/%s", baseURL, filename)
+
+	return c.Status(201).JSON(fiber.Map{
+		"url":  publicURL,
+		"type": mediaType,
+	})
 }
 
 // ... unchanged intermediate ...
 
 // ToggleLike godoc
 // @Summary Like a post
-// @Description Queues a like interaction through the Redis write-behind worker
+// @Description Toggles like interaction synchronously and returns updated state
 // @Tags Feed Interactions
 // @Produce json
 // @Security Bearer
 // @Param post_id path string true "Post UUID"
-// @Success 202 {object} map[string]string "Accepted for processing"
+// @Success 200 {object} PostResponse
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /posts/{post_id}/likes [post]
 func (h *Handler) ToggleLike(c *fiber.Ctx) error {
@@ -43,12 +108,13 @@ func (h *Handler) ToggleLike(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_post_id"})
 	}
 
-	if err := h.worker.QueueLike(c.Context(), postID, userID); err != nil {
-		logger.Error("failed queuing like", zap.Error(err))
+	postResp, err := h.service.ToggleLike(c.Context(), postID, userID)
+	if err != nil {
+		logger.Error("failed to toggle like", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": "processing_failed"})
 	}
 
-	return c.Status(202).JSON(fiber.Map{"status": "queued"})
+	return c.JSON(postResp)
 }
 
 func validationErr(c *fiber.Ctx, msg string) error {
@@ -165,7 +231,8 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 		return validationErr(c, "invalid comment_permission")
 	}
 
-	if err := h.service.CreatePost(c.Context(), userID, &req); err != nil {
+	postResp, err := h.service.CreatePost(c.Context(), userID, &req)
+	if err != nil {
 		if err == ErrPostRequiresMedia {
 			return validationErr(c, err.Error())
 		}
@@ -176,7 +243,7 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "post_create_failed"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"status": "success"})
+	return c.Status(201).JSON(postResp)
 }
 
 // GetFeed godoc
@@ -239,7 +306,8 @@ func (h *Handler) CreateComment(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
 	}
 
-	if err := h.service.CreateComment(c.Context(), userID, postID, &req); err != nil {
+	commentResp, err := h.service.CreateComment(c.Context(), userID, postID, &req)
+	if err != nil {
 		if err == ErrCommentRequiresText {
 			return validationErr(c, err.Error())
 		}
@@ -253,7 +321,37 @@ func (h *Handler) CreateComment(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "comment_create_failed"})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"status": "success"})
+	return c.Status(201).JSON(commentResp)
+}
+
+// ToggleCommentLike godoc
+// @Summary Like a comment
+// @Description Toggles like interaction on a comment synchronously
+// @Tags Feed Interactions
+// @Produce json
+// @Security Bearer
+// @Param comment_id path string true "Comment UUID"
+// @Success 200 {object} CommentResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /comments/{comment_id}/likes [post]
+func (h *Handler) ToggleCommentLike(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	commentID, err := uuid.Parse(c.Params("comment_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_comment_id"})
+	}
+
+	commentResp, err := h.service.ToggleCommentLike(c.Context(), commentID, userID)
+	if err != nil {
+		logger.Error("failed to toggle comment like", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "processing_failed"})
+	}
+
+	return c.JSON(commentResp)
 }
 
 // GetThreadedComments godoc
@@ -456,16 +554,16 @@ func (h *Handler) GetSeals(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /profiles/me/posts [get]
 func (h *Handler) GetMyPostsGrid(c *fiber.Ctx) error {
-userID, ok := requireUserID(c)
-if !ok {
-return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
-}
-resp, err := h.service.GetUserPostsGrid(c.Context(), userID, userID, c.Query("cursor"), c.QueryInt("limit", 18))
-if err != nil {
-logger.Error("GetMyPostsGrid failed", zap.String("user_id", userID.String()), zap.Error(err))
-return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
-}
-return c.JSON(resp)
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	resp, err := h.service.GetUserPostsGrid(c.Context(), userID, userID, c.Query("cursor"), c.QueryInt("limit", 18))
+	if err != nil {
+		logger.Error("GetMyPostsGrid failed", zap.String("user_id", userID.String()), zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+	}
+	return c.JSON(resp)
 }
 
 // GetUserPostsGrid godoc
@@ -483,20 +581,20 @@ return c.JSON(resp)
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /profiles/{user_id}/posts [get]
 func (h *Handler) GetUserPostsGrid(c *fiber.Ctx) error {
-viewerID, ok := requireUserID(c)
-if !ok {
-return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
-}
-authorID, err := uuid.Parse(c.Params("user_id"))
-if err != nil {
-return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
-}
-resp, err := h.service.GetUserPostsGrid(c.Context(), authorID, viewerID, c.Query("cursor"), c.QueryInt("limit", 18))
-if err != nil {
-logger.Error("GetUserPostsGrid failed", zap.String("author_id", authorID.String()), zap.Error(err))
-return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
-}
-return c.JSON(resp)
+	viewerID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	authorID, err := uuid.Parse(c.Params("user_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	}
+	resp, err := h.service.GetUserPostsGrid(c.Context(), authorID, viewerID, c.Query("cursor"), c.QueryInt("limit", 18))
+	if err != nil {
+		logger.Error("GetUserPostsGrid failed", zap.String("author_id", authorID.String()), zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+	}
+	return c.JSON(resp)
 }
 
 // GetMyPostsList godoc
@@ -513,17 +611,17 @@ return c.JSON(resp)
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /profiles/me/posts/list [get]
 func (h *Handler) GetMyPostsList(c *fiber.Ctx) error {
-userID, ok := requireUserID(c)
-if !ok {
-return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
-}
-anchor := parseOptionalUUID(c.Query("anchor_post_id"))
-resp, err := h.service.GetUserPostsList(c.Context(), userID, userID, anchor, c.Query("cursor"), c.QueryInt("limit", 10))
-if err != nil {
-logger.Error("GetMyPostsList failed", zap.String("user_id", userID.String()), zap.Error(err))
-return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
-}
-return c.JSON(resp)
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	anchor := parseOptionalUUID(c.Query("anchor_post_id"))
+	resp, err := h.service.GetUserPostsList(c.Context(), userID, userID, anchor, c.Query("cursor"), c.QueryInt("limit", 10))
+	if err != nil {
+		logger.Error("GetMyPostsList failed", zap.String("user_id", userID.String()), zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+	}
+	return c.JSON(resp)
 }
 
 // GetUserPostsList godoc
@@ -542,31 +640,31 @@ return c.JSON(resp)
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /profiles/{user_id}/posts/list [get]
 func (h *Handler) GetUserPostsList(c *fiber.Ctx) error {
-viewerID, ok := requireUserID(c)
-if !ok {
-return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
-}
-authorID, err := uuid.Parse(c.Params("user_id"))
-if err != nil {
-return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
-}
-anchor := parseOptionalUUID(c.Query("anchor_post_id"))
-resp, err := h.service.GetUserPostsList(c.Context(), authorID, viewerID, anchor, c.Query("cursor"), c.QueryInt("limit", 10))
-if err != nil {
-logger.Error("GetUserPostsList failed", zap.String("author_id", authorID.String()), zap.Error(err))
-return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
-}
-return c.JSON(resp)
+	viewerID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	authorID, err := uuid.Parse(c.Params("user_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	}
+	anchor := parseOptionalUUID(c.Query("anchor_post_id"))
+	resp, err := h.service.GetUserPostsList(c.Context(), authorID, viewerID, anchor, c.Query("cursor"), c.QueryInt("limit", 10))
+	if err != nil {
+		logger.Error("GetUserPostsList failed", zap.String("author_id", authorID.String()), zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+	}
+	return c.JSON(resp)
 }
 
 // parseOptionalUUID parses a UUID string, returning nil on empty or invalid input.
 func parseOptionalUUID(s string) *uuid.UUID {
-if s == "" {
-return nil
-}
-id, err := uuid.Parse(s)
-if err != nil {
-return nil
-}
-return &id
+	if s == "" {
+		return nil
+	}
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return nil
+	}
+	return &id
 }

@@ -79,7 +79,7 @@ func main() {
 	mapRepo := mapmodule.NewRepository(db.DB)
 	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo)
 
-	feedRepo := feed.NewRepository(db.DB)
+	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
 
 	// Start workers

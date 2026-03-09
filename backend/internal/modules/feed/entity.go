@@ -60,8 +60,10 @@ type PostComment struct {
 	PostID          uuid.UUID        `json:"post_id" db:"post_id"`
 	UserID          uuid.UUID        `json:"user_id" db:"user_id"`
 	ParentCommentID *uuid.UUID       `json:"parent_comment_id,omitempty" db:"parent_comment_id"`
+	RootCommentID   *uuid.UUID       `json:"root_comment_id,omitempty" db:"root_comment_id"`
 	Content         string           `json:"content" db:"content"`
 	MediaAttachment *MediaAttachment `json:"media_attachment,omitempty" db:"media_attachment"`
+	LikesCount      int              `json:"likes_count" db:"likes_count"`
 	IsDeleted       bool             `json:"is_deleted" db:"is_deleted"`
 	CreatedAt       time.Time        `json:"created_at" db:"created_at"`
 	UpdatedAt       time.Time        `json:"updated_at" db:"updated_at"`
@@ -157,11 +159,16 @@ type UserPostsGridResponse struct {
 
 type CommentResponse struct {
 	CommentID       uuid.UUID        `json:"comment_id"`
+	ParentCommentID *uuid.UUID       `json:"parent_comment_id"`
+	RootCommentID   *uuid.UUID       `json:"root_comment_id"`
 	Author          AuthorInfo       `json:"author"`
 	TimeAgo         string           `json:"time_ago"`
+	CreatedAt       time.Time        `json:"created_at"`
 	ContentText     string           `json:"content_text"`
 	MediaAttachment *MediaAttachment `json:"media_attachment,omitempty"`
 	ReplyCount      int              `json:"reply_count"` // Only > 0 for root comments
+	LikesCount      int              `json:"likes_count"`
+	ViewerHasLiked  bool             `json:"viewer_has_liked"`
 }
 
 type ThreadedCommentsResponse struct {

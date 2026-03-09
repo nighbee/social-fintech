@@ -592,6 +592,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/comments/{comment_id}/likes": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Toggles like interaction on a comment synchronously",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Like a comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comment UUID",
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.CommentResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/economy/accrual/claim": {
             "post": {
                 "security": [
@@ -1214,6 +1257,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/feed/media/upload": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Uploads an image or video and returns its URL",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Upload media",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Media file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/feed/state": {
             "get": {
                 "security": [
@@ -1702,7 +1794,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Queues a like interaction through the Redis write-behind worker",
+                "description": "Toggles like interaction synchronously and returns updated state",
                 "produces": [
                     "application/json"
                 ],
@@ -1720,13 +1812,10 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "202": {
-                        "description": "Accepted for processing",
+                    "200": {
+                        "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "401": {
@@ -4981,15 +5070,30 @@ const docTemplate = `{
                 "content_text": {
                     "type": "string"
                 },
+                "created_at": {
+                    "type": "string"
+                },
+                "likes_count": {
+                    "type": "integer"
+                },
                 "media_attachment": {
                     "$ref": "#/definitions/feed.MediaAttachment"
+                },
+                "parent_comment_id": {
+                    "type": "string"
                 },
                 "reply_count": {
                     "description": "Only \u003e 0 for root comments",
                     "type": "integer"
                 },
+                "root_comment_id": {
+                    "type": "string"
+                },
                 "time_ago": {
                     "type": "string"
+                },
+                "viewer_has_liked": {
+                    "type": "boolean"
                 }
             }
         },

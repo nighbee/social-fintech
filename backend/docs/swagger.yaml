@@ -570,13 +570,23 @@ definitions:
         type: string
       content_text:
         type: string
+      created_at:
+        type: string
+      likes_count:
+        type: integer
       media_attachment:
         $ref: '#/definitions/feed.MediaAttachment'
+      parent_comment_id:
+        type: string
       reply_count:
         description: Only > 0 for root comments
         type: integer
+      root_comment_id:
+        type: string
       time_ago:
         type: string
+      viewer_has_liked:
+        type: boolean
     type: object
   feed.CreateCommentRequest:
     properties:
@@ -1653,6 +1663,33 @@ paths:
       summary: Complete Phone Registration (Step 3)
       tags:
       - Auth
+  /comments/{comment_id}/likes:
+    post:
+      description: Toggles like interaction on a comment synchronously
+      parameters:
+      - description: Comment UUID
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.CommentResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Like a comment
+      tags:
+      - Feed Interactions
   /economy/accrual/claim:
     post:
       consumes:
@@ -2050,6 +2087,37 @@ paths:
       summary: Get mixed feed
       tags:
       - Feed
+  /feed/media/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads an image or video and returns its URL
+      parameters:
+      - description: Media file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Success
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Upload media
+      tags:
+      - Feed
   /feed/state:
     get:
       description: 'Returns accumulated active seconds, cooldown status, and break_seconds_remaining
@@ -2369,7 +2437,7 @@ paths:
       tags:
       - Feed Interactions
     post:
-      description: Queues a like interaction through the Redis write-behind worker
+      description: Toggles like interaction synchronously and returns updated state
       parameters:
       - description: Post UUID
         in: path
@@ -2379,12 +2447,10 @@ paths:
       produces:
       - application/json
       responses:
-        "202":
-          description: Accepted for processing
+        "200":
+          description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/feed.PostResponse'
         "401":
           description: Unauthorized
           schema:

@@ -234,9 +234,9 @@ func (s *Service) calcBreakSecondsRemaining(state *FeedFatigueState) int {
 
 // ---------------- Content System ----------------
 
-func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreatePostRequest) error {
+func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreatePostRequest) (*PostResponse, error) {
 	if req.Caption == "" && len(req.MediaAttachments) == 0 {
-		return ErrPostRequiresMedia
+		return nil, ErrPostRequiresMedia
 	}
 
 	// Normalize media type to lowercase to match DB check constraint (image/video).
@@ -253,7 +253,12 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 		IsPublic:          req.Visibility == VisibilityAnyone,
 	}
 
-	return s.repo.CreatePost(ctx, post, req.MediaAttachments)
+	err := s.repo.CreatePost(ctx, post, req.MediaAttachments)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repo.GetPost(ctx, post.ID, userID)
 }
 
 func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int) (*FeedResponse, error) {
@@ -279,21 +284,21 @@ func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string
 	}, nil
 }
 
-func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, req *CreateCommentRequest) error {
+func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, req *CreateCommentRequest) (*CommentResponse, error) {
 	if req.ContentText == "" && req.MediaAttachment == nil {
-		return ErrCommentRequiresText
+		return nil, ErrCommentRequiresText
 	}
 
 	permission, authorID, err := s.repo.GetPostPermissionsInfo(ctx, postID)
 	if err != nil {
-		return err // ErrPostNotFound usually
+		return nil, err // ErrPostNotFound usually
 	}
 
 	// Fast path check
 	if permission == CommentPermNoOne {
 		// Only author can comment if set to NoOne, or nobody. Assuming nobody for NoOne.
 		if userID != authorID {
-			return ErrCommentNotAllowed
+			return nil, ErrCommentNotAllowed
 		}
 	}
 
@@ -302,7 +307,7 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 		// Assuming repo validates graph relation if not author
 		if userID != authorID {
 			// Placeholder: check real ally relation here
-			// return ErrCommentNotAllowed
+			// return nil, ErrCommentNotAllowed
 		} // else Author can always comment on their own Allies-only post
 	}
 
@@ -315,7 +320,12 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 		MediaAttachment: req.MediaAttachment,
 	}
 
-	return s.repo.CreateComment(ctx, comment)
+	err = s.repo.CreateComment(ctx, comment)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.repo.GetComment(ctx, comment.ID, userID)
 }
 
 func (s *Service) GetThreadedComments(ctx context.Context, viewerID, postID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) (*ThreadedCommentsResponse, error) {
@@ -336,6 +346,22 @@ func (s *Service) GetThreadedComments(ctx context.Context, viewerID, postID uuid
 }
 
 // ---------------- Interactions System ----------------
+
+func (s *Service) ToggleCommentLike(ctx context.Context, commentID, userID uuid.UUID) (*CommentResponse, error) {
+	err := s.repo.ToggleCommentLike(ctx, commentID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetComment(ctx, commentID, userID)
+}
+
+func (s *Service) ToggleLike(ctx context.Context, postID, userID uuid.UUID) (*PostResponse, error) {
+	err := s.repo.ToggleLike(ctx, postID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.GetPost(ctx, postID, userID)
+}
 
 func (s *Service) GetInteractions(ctx context.Context, postID uuid.UUID, iType string, cursor string, limit int) (*InteractionListResponse, error) {
 	if limit <= 0 || limit > 100 {

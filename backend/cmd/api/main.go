@@ -202,7 +202,7 @@ func main() {
 	logger.Info("map module initialized")
 
 	// Feed Module Initialization
-	feedRepo := feed.NewRepository(db.DB)
+	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
 	feedCache := feed.NewCacheRepository(redisCache)
 	feedService := feed.NewService(feedRepo, feedCache, profilesRepo)
 
@@ -213,7 +213,7 @@ func main() {
 	// but for now we'll rely on the existing worker initialization for interface compliance if needed, just without .Start())
 
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
-	feedHandler := feed.NewHandler(feedService, feedWorker, economyService)
+	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, cfg.Storage.PublicURL)
 	logger.Info("feed module initialized")
 
 	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, jwtManager, authRepo, logger.Get())

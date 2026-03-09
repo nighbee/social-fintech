@@ -8,9 +8,9 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profilesRepo *profiles.Repository, economyService economy.Service, authMiddleware fiber.Handler) {
+func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profilesRepo *profiles.Repository, economyService economy.Service, publicURL string, authMiddleware fiber.Handler) {
 	// Initialize layers
-	repo := NewRepository(db)
+	repo := NewRepository(db, publicURL)
 	cacheRepo := NewCacheRepository(redisClient)
 	service := NewService(repo, cacheRepo, profilesRepo)
 	// Start Background Workers
@@ -18,14 +18,20 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 	interactionWorker.Start()
 
 	// Initialize layers
-	handler := NewHandler(service, interactionWorker, economyService)
+	handler := NewHandler(service, interactionWorker, economyService, publicURL)
 
 	// API Grouping
 	api := app.Group("/api/v1/feed", authMiddleware)
 
+	// Serve Media
+	app.Static("/uploads", "./uploads")
+
 	// --- Anti-Doomscroll Endpoints ---
 	api.Get("/state", handler.GetFeedState)
 	api.Post("/state/sync", handler.SyncFeedState)
+
+	// --- Media Management ----
+	api.Post("/media/upload", handler.UploadMedia)
 
 	// --- Feed Retrieval Endpoints ---
 	api.Get("/", handler.GetFeed)
@@ -42,4 +48,7 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 	postGroup.Post("/:post_id/likes", handler.ToggleLike)
 	postGroup.Get("/:post_id/seals", handler.GetSeals)
 	postGroup.Post("/:post_id/seals", handler.SendSeal)
+
+	// In API group for generic ID
+	api.Post("/comments/:comment_id/likes", handler.ToggleCommentLike)
 }

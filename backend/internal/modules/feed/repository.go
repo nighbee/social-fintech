@@ -16,6 +16,7 @@ type Repository interface {
 	// Posts
 	CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error
 	GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, cursor time.Time, limit int) ([]PostResponse, string, error)
+	GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
 
 	// Profile Posts Grid / List
 	GetUserPostsGrid(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error)
@@ -24,12 +25,15 @@ type Repository interface {
 
 	// Comments
 	CreateComment(ctx context.Context, comment *PostComment) error
+	GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error)
 	GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error)
 	GetPostPermissionsInfo(ctx context.Context, postID uuid.UUID) (string, uuid.UUID, error) // Returns (CommentPermission, AuthorID)
+	ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error
 
 	// Interactions
 	GetInteractions(ctx context.Context, postID uuid.UUID, interactionType string, cursor string, limit int) ([]InteractionResponse, string, error)
 	GetSeals(ctx context.Context, postID uuid.UUID, cursor string, limit int) ([]SealResponse, string, error)
+	ToggleLike(ctx context.Context, postID uuid.UUID, userID uuid.UUID) error
 	BatchFlushLikes(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 	BatchFlushSeals(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
 }
