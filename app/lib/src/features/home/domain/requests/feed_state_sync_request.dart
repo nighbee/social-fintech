@@ -8,6 +8,7 @@ part 'feed_state_sync_request.g.dart';
 class FeedStateSyncRequest extends BaseRequest with _$FeedStateSyncRequest {
   const factory FeedStateSyncRequest({
     @JsonKey(name: 'delta_seconds') required int deltaSeconds,
+    @JsonKey(name: 'device_id') required String deviceId,
   }) = _FeedStateSyncRequest;
 
   factory FeedStateSyncRequest.fromJson(Map<String, dynamic> json) =>

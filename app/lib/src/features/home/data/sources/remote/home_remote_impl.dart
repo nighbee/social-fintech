@@ -162,6 +162,46 @@ class HomeRemoteImpl implements IHomeRemote {
             .subtract(const Duration(hours: 12))
             .toIso8601String(),
       ),
+      ...List.generate(16, (index) {
+        final seed = index + 5;
+        final imageSets = <List<String>>[
+          const [],
+          [
+            'https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=400',
+          ],
+          [
+            'https://images.unsplash.com/photo-1455885666463-9b3f9f36e099?w=400',
+            'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=400',
+          ],
+        ];
+        final contents = <String>[
+          'Starting this week with 20 pages a day.',
+          'Any recommendations for short classic novels?',
+          'Today I highlighted 12 quotes from one chapter.',
+          'Reading with tea is still the best combo.',
+        ];
+        final names = <String>[
+          'Emma Storyline',
+          'David Chapters',
+          'Nora Bookmark',
+          'Leo Novelist',
+        ];
+
+        return PostDto(
+          id: 'post-$seed',
+          userId: 'user-$seed',
+          username: names[index % names.length],
+          userAvatar: 'https://i.pravatar.cc/150?img=${(index % 60) + 10}',
+          content: contents[index % contents.length],
+          imageUrls: imageSets[index % imageSets.length],
+          likesCount: 15 + (index * 7),
+          commentsCount: 4 + (index * 3),
+          isLiked: index % 3 == 0,
+          createdAt: DateTime.now()
+              .subtract(Duration(hours: 13 + index))
+              .toIso8601String(),
+        );
+      }),
     ];
   }
 

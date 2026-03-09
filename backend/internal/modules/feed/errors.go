@@ -6,6 +6,8 @@ var (
 	// ── Feed State / Anti-Doomscroll ─────────────────────────────────────
 	// ErrInvalidDelta is returned when the client reports a non-positive delta_seconds.
 	ErrInvalidDelta = errors.New("delta_seconds must be greater than 0")
+	// ErrInvalidDeviceID is returned when the client does not provide device_id.
+	ErrInvalidDeviceID = errors.New("device_id is required")
 
 	// ErrDeltaTooLarge is returned when the reported delta exceeds the server-side
 	// anti-cheat ceiling (real elapsed + NetworkBufferSeconds).

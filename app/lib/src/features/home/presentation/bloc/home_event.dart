@@ -36,5 +36,6 @@ class HomeEvent with _$HomeEvent {
   const factory HomeEvent.loadFeedState() = _LoadFeedState;
   const factory HomeEvent.syncFeedState({
     required int deltaSeconds,
+    required String deviceId,
   }) = _SyncFeedState;
 }

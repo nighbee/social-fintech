@@ -56,7 +56,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       loadNotifications: () =>
           _loadNotifications(event as _LoadNotifications, emit),
       loadFeedState: () => _loadFeedState(event as _LoadFeedState, emit),
-      syncFeedState: (_) => _syncFeedState(event as _SyncFeedState, emit),
+      syncFeedState: (_, __) => _syncFeedState(event as _SyncFeedState, emit),
     );
   }
 
@@ -398,7 +398,10 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   }
 
   Future<void> _syncFeedState(_SyncFeedState event, Emitter emit) async {
-    final request = FeedStateSyncRequest(deltaSeconds: event.deltaSeconds);
+    final request = FeedStateSyncRequest(
+      deltaSeconds: event.deltaSeconds,
+      deviceId: event.deviceId,
+    );
     final result = await _repository.syncFeedState(request);
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
