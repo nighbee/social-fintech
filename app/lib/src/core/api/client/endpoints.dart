@@ -27,6 +27,9 @@ class EndPoints {
   static const String feed = '/feed';
   static const String feedState = '/feed/state';
   static const String feedStateSync = '/feed/state/sync';
+  static const String posts = '/posts';
+  static String postComments(String postId) => '/posts/$postId/comments';
+  static String postLikes(String postId) => '/posts/$postId/likes';
 
   //* Gamification
   static const String gamificationRank = '/gamification/rank';

@@ -3,11 +3,20 @@ import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/models/comment_dto.dart';
+import 'package:app/src/features/home/data/models/feed_dto.dart';
 import 'package:app/src/features/home/data/models/feed_state_dto.dart';
-import 'package:app/src/features/home/data/models/post_dto.dart';
+import 'package:app/src/features/home/data/models/interaction_list_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
+import 'package:app/src/features/home/data/models/post_dto.dart';
+import 'package:app/src/features/home/data/models/status_response_dto.dart';
+import 'package:app/src/features/home/data/models/threaded_comments_dto.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
+import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
+import 'package:app/src/features/home/domain/requests/create_post_request.dart';
+import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 
@@ -210,6 +219,186 @@ class HomeRemoteImpl implements IHomeRemote {
     await Future.delayed(const Duration(milliseconds: 500));
     await _ensureMockPostsLoaded();
     return Right(List<PostDto>.from(_mockPosts!));
+  }
+
+  @override
+  Future<Either<DomainException, FeedDto>> getFeed(FeedRequest request) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.feed,
+        queryParameters: request.toQuery(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(UnknownException(message: 'Invalid feed response'));
+          }
+          final dto = FeedDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, StatusResponseDto>> createFeedPost(
+    CreatePostRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.posts,
+        data: request.toJson(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid create feed post response'),
+            );
+          }
+          final dto = StatusResponseDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ThreadedCommentsDto>> getPostComments(
+    GetPostCommentsRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.postComments(request.postId),
+        queryParameters: request.toQuery(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid get post comments response'),
+            );
+          }
+          final dto = ThreadedCommentsDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, StatusResponseDto>> createPostComment(
+    String postId,
+    CreateCommentRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.postComments(postId),
+        data: request.toJson(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid create post comment response'),
+            );
+          }
+          final dto = StatusResponseDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, InteractionListDto>> getPostLikes(
+    GetPostLikesRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.postLikes(request.postId),
+        queryParameters: request.toQuery(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid get post likes response'),
+            );
+          }
+          final dto = InteractionListDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, StatusResponseDto>> togglePostLike(
+    String postId,
+  ) async {
+    try {
+      final response = await _restClient.post(EndPoints.postLikes(postId));
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid toggle post like response'),
+            );
+          }
+          final dto = StatusResponseDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
   }
 
   @override

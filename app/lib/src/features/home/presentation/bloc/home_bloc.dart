@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
@@ -8,11 +9,21 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
+import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
+import 'package:app/src/features/home/domain/entities/status_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
+import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
+import 'package:app/src/features/home/domain/requests/create_post_request.dart';
+import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
+import 'package:fpdart/fpdart.dart';
 
 part 'home_bloc.freezed.dart';
 part 'home_event.dart';
@@ -57,6 +68,15 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
           _loadNotifications(event as _LoadNotifications, emit),
       loadFeedState: () => _loadFeedState(event as _LoadFeedState, emit),
       syncFeedState: (_, __) => _syncFeedState(event as _SyncFeedState, emit),
+      createFeedPostV2: (_) =>
+          _createFeedPostV2(event as _CreateFeedPostV2, emit),
+      getPostCommentsV2: (_) =>
+          _getPostCommentsV2(event as _GetPostCommentsV2, emit),
+      createPostCommentV2: (_, __) =>
+          _createPostCommentV2(event as _CreatePostCommentV2, emit),
+      getPostLikesV2: (_) => _getPostLikesV2(event as _GetPostLikesV2, emit),
+      togglePostLikeV2: (_) =>
+          _togglePostLikeV2(event as _TogglePostLikeV2, emit),
     );
   }
 
@@ -409,6 +429,72 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
         _viewModel = _viewModel.copyWith(feedState: feedState);
         emit(HomeState.loaded(viewModel: _viewModel));
       },
+    );
+  }
+
+  Future<Either<DomainException, FeedEntity>> getFeed(
+    FeedRequest request,
+  ) async {
+    return _repository.getFeed(request);
+  }
+
+  Future<Either<DomainException, FeedEntity>> getInitialFeed({
+    int limit = 20,
+  }) async {
+    return _repository.getFeed(FeedRequest(limit: limit));
+  }
+
+  Future<void> _createFeedPostV2(_CreateFeedPostV2 event, Emitter emit) async {
+    final Either<DomainException, StatusResponseEntity> result =
+        await _repository.createFeedPost(event.request);
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+    );
+  }
+
+  Future<void> _getPostCommentsV2(
+    _GetPostCommentsV2 event,
+    Emitter emit,
+  ) async {
+    final Either<DomainException, ThreadedCommentsEntity> result =
+        await _repository.getPostComments(event.request);
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+    );
+  }
+
+  Future<void> _createPostCommentV2(
+    _CreatePostCommentV2 event,
+    Emitter emit,
+  ) async {
+    final Either<DomainException, StatusResponseEntity> result =
+        await _repository.createPostComment(event.postId, event.request);
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+    );
+  }
+
+  Future<void> _getPostLikesV2(_GetPostLikesV2 event, Emitter emit) async {
+    final Either<DomainException, InteractionListEntity> result =
+        await _repository.getPostLikes(event.request);
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+    );
+  }
+
+  Future<void> _togglePostLikeV2(
+    _TogglePostLikeV2 event,
+    Emitter emit,
+  ) async {
+    final Either<DomainException, StatusResponseEntity> result =
+        await _repository.togglePostLike(event.postId);
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
     );
   }
 

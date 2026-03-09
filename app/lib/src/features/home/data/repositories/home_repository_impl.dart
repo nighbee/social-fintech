@@ -1,15 +1,24 @@
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
+import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
+import 'package:app/src/features/home/domain/entities/status_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/sources/remote/home_remote_impl.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
+import 'package:app/src/features/home/domain/requests/create_post_request.dart';
+import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 
 @named
@@ -25,6 +34,73 @@ class HomeRepositoryImpl implements IHomeRepository {
     return result.fold(
       (error) => Left(error),
       (dtos) => Right(dtos.map((dto) => dto.toEntity()).toList()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, FeedEntity>> getFeed(
+    FeedRequest request,
+  ) async {
+    final result = await _remote.getFeed(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, StatusResponseEntity>> createFeedPost(
+    CreatePostRequest request,
+  ) async {
+    final result = await _remote.createFeedPost(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, ThreadedCommentsEntity>> getPostComments(
+    GetPostCommentsRequest request,
+  ) async {
+    final result = await _remote.getPostComments(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, StatusResponseEntity>> createPostComment(
+    String postId,
+    CreateCommentRequest request,
+  ) async {
+    final result = await _remote.createPostComment(postId, request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, InteractionListEntity>> getPostLikes(
+    GetPostLikesRequest request,
+  ) async {
+    final result = await _remote.getPostLikes(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, StatusResponseEntity>> togglePostLike(
+    String postId,
+  ) async {
+    final result = await _remote.togglePostLike(postId);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
     );
   }
 
