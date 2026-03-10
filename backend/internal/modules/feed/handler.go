@@ -184,10 +184,13 @@ func (h *Handler) SyncFeedState(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
 	}
+	if req.DeviceID == "" {
+		return validationErr(c, ErrInvalidDeviceID.Error())
+	}
 
 	state, err := h.service.SyncFeedState(c.Context(), userID, &req)
 	if err != nil {
-		if err == ErrInvalidDelta {
+		if err == ErrInvalidDelta || err == ErrInvalidDeviceID {
 			return validationErr(c, err.Error())
 		}
 		logger.Error("failed to sync feed state",

@@ -43,4 +43,6 @@ type CacheRepository interface {
 	GetFatigueState(ctx context.Context, userID uuid.UUID) (*FeedFatigueState, error)
 	SetFatigueState(ctx context.Context, state *FeedFatigueState) error
 	MarkUserDirty(ctx context.Context, userID uuid.UUID) error
+	MarkDeviceOnFeed(ctx context.Context, userID uuid.UUID, deviceID string, ttl time.Duration) error
+	AnyDeviceOnFeed(ctx context.Context, userID uuid.UUID) (bool, error)
 }

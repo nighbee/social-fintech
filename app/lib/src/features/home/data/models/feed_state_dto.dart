@@ -9,7 +9,12 @@ class FeedStateDto with _$FeedStateDto {
   const factory FeedStateDto({
     @JsonKey(name: 'accumulated_active_seconds')
     required int accumulatedActiveSeconds,
-    @JsonKey(name: 'action_required') required String actionRequired,
+    @JsonKey(name: 'accumulated_break_seconds', defaultValue: 0)
+    @Default(0)
+    int accumulatedBreakSeconds,
+    @JsonKey(name: 'action_required') String? actionRequired,
+    @JsonKey(name: 'break_seconds_remaining')
+    required int breakSecondsRemaining,
     @JsonKey(name: 'is_in_cooldown') required bool isInCooldown,
     @JsonKey(name: 'max_allowed_seconds') required int maxAllowedSeconds,
     @JsonKey(name: 'server_timestamp') required String serverTimestamp,
@@ -22,7 +27,9 @@ class FeedStateDto with _$FeedStateDto {
 extension FeedStateDtoX on FeedStateDto {
   FeedStateEntity toEntity() => FeedStateEntity(
         accumulatedActiveSeconds: accumulatedActiveSeconds,
-        actionRequired: actionRequired,
+        accumulatedBreakSeconds: accumulatedBreakSeconds,
+        actionRequired: actionRequired ?? '',
+        breakSecondsRemaining: breakSecondsRemaining,
         isInCooldown: isInCooldown,
         maxAllowedSeconds: maxAllowedSeconds,
         serverTimestamp: serverTimestamp,

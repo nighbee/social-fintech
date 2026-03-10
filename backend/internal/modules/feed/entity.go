@@ -85,7 +85,8 @@ type CreateCommentRequest struct {
 }
 
 type SyncFeedStateRequest struct {
-	DeltaSeconds int `json:"delta_seconds"`
+	DeltaSeconds int    `json:"delta_seconds"`
+	DeviceID     string `json:"device_id"`
 }
 
 type FeedStateResponse struct {

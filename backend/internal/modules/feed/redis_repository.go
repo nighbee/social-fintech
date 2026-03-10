@@ -53,3 +53,30 @@ func (c *cacheRepo) MarkUserDirty(ctx context.Context, userID uuid.UUID) error {
 	key := "feed_state:dirty_users"
 	return c.redis.Client.SAdd(ctx, key, userID.String()).Err()
 }
+
+func (c *cacheRepo) MarkDeviceOnFeed(ctx context.Context, userID uuid.UUID, deviceID string, ttl time.Duration) error {
+	key := fmt.Sprintf("feed_presence:%s", userID.String())
+	expireAt := time.Now().Add(ttl).Unix()
+
+	pipe := c.redis.Client.TxPipeline()
+	pipe.ZAdd(ctx, key, redis.Z{Score: float64(expireAt), Member: deviceID})
+	pipe.ZRemRangeByScore(ctx, key, "-inf", fmt.Sprintf("%d", time.Now().Unix()))
+	pipe.Expire(ctx, key, 24*time.Hour)
+	_, err := pipe.Exec(ctx)
+	return err
+}
+
+func (c *cacheRepo) AnyDeviceOnFeed(ctx context.Context, userID uuid.UUID) (bool, error) {
+	key := fmt.Sprintf("feed_presence:%s", userID.String())
+	nowUnix := time.Now().Unix()
+
+	pipe := c.redis.Client.TxPipeline()
+	pipe.ZRemRangeByScore(ctx, key, "-inf", fmt.Sprintf("%d", nowUnix))
+	countCmd := pipe.ZCard(ctx, key)
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return countCmd.Val() > 0, nil
+}

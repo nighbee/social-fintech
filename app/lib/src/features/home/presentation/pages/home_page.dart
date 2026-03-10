@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/utils/device_id.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
-import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_app_bar.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_soft_limit_scroll_physics.dart';
 import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
@@ -23,9 +23,12 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   final HomeBloc _bloc = getIt<HomeBloc>();
+  final DeviceId _deviceId = DeviceId();
   Timer? _feedSyncTimer;
   DateTime? _lastSyncAt;
+  String? _currentDeviceId;
   bool _isAppActive = true;
+  bool _wasOnFeedRoute = false;
 
   @override
   void initState() {
@@ -33,6 +36,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _bloc.add(const HomeEvent.loadPosts());
     _bloc.add(const HomeEvent.loadFeedState());
+    _initDeviceId();
     _startFeedSyncTimer();
   }
 
@@ -49,6 +53,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _isAppActive = isResumed;
 
     if (isResumed) {
+      _wasOnFeedRoute = false;
       _bloc.add(const HomeEvent.loadFeedState());
       _startFeedSyncTimer();
     } else {
@@ -58,13 +63,36 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _initDeviceId() async {
+    try {
+      final id = await _deviceId.getDeviceId();
+      if (!mounted) return;
+      setState(() {
+        _currentDeviceId = id;
+      });
+    } catch (_) {
+      // If device id lookup fails, sync will remain paused.
+    }
+  }
+
   void _startFeedSyncTimer() {
     _feedSyncTimer?.cancel();
     _lastSyncAt = DateTime.now();
     _feedSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       if (!mounted || !_isAppActive) return;
       final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
+
+      if (isCurrentRoute && !_wasOnFeedRoute) {
+        // Re-entering the feed should pull server state so off-feed break
+        // accumulation is applied before resuming sync.
+        _wasOnFeedRoute = true;
+        _lastSyncAt = DateTime.now();
+        _bloc.add(const HomeEvent.loadFeedState());
+        return;
+      }
+
       if (!isCurrentRoute) {
+        _wasOnFeedRoute = false;
         _lastSyncAt = DateTime.now();
         return;
       }
@@ -73,9 +101,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final previous = _lastSyncAt ?? now;
       final deltaSeconds = now.difference(previous).inSeconds;
       _lastSyncAt = now;
+      final deviceId = _currentDeviceId;
 
-      if (deltaSeconds <= 0) return;
-      _bloc.add(HomeEvent.syncFeedState(deltaSeconds: deltaSeconds));
+      if (deltaSeconds <= 0 || deviceId == null || deviceId.isEmpty) return;
+      _bloc.add(
+        HomeEvent.syncFeedState(
+          deltaSeconds: deltaSeconds,
+          deviceId: deviceId,
+        ),
+      );
     });
   }
 
@@ -85,111 +119,128 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       bloc: _bloc,
       builder: (context, state) {
         return state.when(
-          initial: () => _buildScaffold(
-            context,
-            const Center(child: CircularProgressIndicator()),
+          initial: () => Scaffold(
+            backgroundColor: AppColors.colorff19191A,
+            appBar: FeedAppBar(
+              onCreatePostTap: () => context.push(RoutePaths.createPost),
+            ),
+            bottomNavigationBar:
+                const CustomNavBar(currentTab: RoutePaths.home),
+            body: const SafeArea(
+                child: Center(child: CircularProgressIndicator())),
           ),
-          loading: (viewModel) => _buildScaffold(
-            context,
-            const Center(child: CircularProgressIndicator()),
-            feedState: viewModel.feedState,
+          loading: (viewModel) => Scaffold(
+            backgroundColor: AppColors.colorff19191A,
+            appBar: FeedAppBar(
+              onCreatePostTap: () => context.push(RoutePaths.createPost),
+              feedState: viewModel.feedState,
+            ),
+            bottomNavigationBar:
+                const CustomNavBar(currentTab: RoutePaths.home),
+            body: const SafeArea(
+                child: Center(child: CircularProgressIndicator())),
           ),
           loaded: (viewModel) {
+            final feedState = viewModel.feedState;
+
             if (viewModel.posts.isEmpty) {
-              return _buildScaffold(
-                context,
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.article_outlined,
-                        size: 64,
-                        color: AppColors.colorff9CA3AF,
-                      ),
-                      const Gap(16),
-                      Text(
-                        'No posts yet',
-                        style: TextStyles.titleHeadline.copyWith(
+              return Scaffold(
+                backgroundColor: AppColors.colorff19191A,
+                appBar: FeedAppBar(
+                  onCreatePostTap: () => context.push(RoutePaths.createPost),
+                  feedState: feedState,
+                ),
+                bottomNavigationBar:
+                    const CustomNavBar(currentTab: RoutePaths.home),
+                body: SafeArea(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.article_outlined,
+                          size: 64,
                           color: AppColors.colorff9CA3AF,
                         ),
-                      ),
-                    ],
+                        const Gap(16),
+                        Text(
+                          'No posts yet',
+                          style: TextStyles.titleHeadline.copyWith(
+                            color: AppColors.colorff9CA3AF,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                feedState: viewModel.feedState,
               );
             }
 
-            final maxAllowedSeconds = viewModel.feedState.maxAllowedSeconds > 0
-                ? viewModel.feedState.maxAllowedSeconds
-                : 20 * 60;
             final ScrollPhysics physics = FeedSoftLimitScrollPhysics(
-              accumulatedActiveSeconds:
-                  viewModel.feedState.accumulatedActiveSeconds,
-              maxAllowedSeconds: maxAllowedSeconds,
+              accumulatedActiveSeconds: feedState.accumulatedActiveSeconds,
+              maxAllowedSeconds: feedState.maxAllowedSeconds,
+              isInCooldown: feedState.shouldEnforceCooldown,
+              breakSecondsRemaining: feedState.safeBreakSecondsRemaining,
             );
 
-            return _buildScaffold(
-              context,
-              ListView.separated(
-                physics: physics,
-                separatorBuilder: (context, index) => const Gap(18),
-                padding: const EdgeInsets.all(16),
-                itemCount: viewModel.posts.length,
-                itemBuilder: (context, index) {
-                  final post = viewModel.posts[index];
-                  return PostCardWidget(post: post);
-                },
+            return Scaffold(
+              backgroundColor: AppColors.colorff19191A,
+              appBar: FeedAppBar(
+                onCreatePostTap: () => context.push(RoutePaths.createPost),
+                feedState: feedState,
               ),
-              feedState: viewModel.feedState,
+              bottomNavigationBar:
+                  const CustomNavBar(currentTab: RoutePaths.home),
+              body: SafeArea(
+                child: ListView.separated(
+                  physics: physics,
+                  separatorBuilder: (context, index) => const Gap(18),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: viewModel.posts.length,
+                  itemBuilder: (context, index) {
+                    final post = viewModel.posts[index];
+                    return PostCardWidget(post: post);
+                  },
+                ),
+              ),
             );
           },
-          loadingError: (message) => _buildScaffold(
-            context,
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline,
-                      size: 64, color: AppColors.colorffEF4444),
-                  const Gap(16),
-                  Text(
-                    'Error loading posts',
-                    style: TextStyles.titleHeadline.copyWith(
-                      color: AppColors.colorffEF4444,
+          loadingError: (message) => Scaffold(
+            backgroundColor: AppColors.colorff19191A,
+            appBar: FeedAppBar(
+              onCreatePostTap: () => context.push(RoutePaths.createPost),
+            ),
+            bottomNavigationBar:
+                const CustomNavBar(currentTab: RoutePaths.home),
+            body: SafeArea(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline,
+                        size: 64, color: AppColors.colorffEF4444),
+                    const Gap(16),
+                    Text(
+                      'Error loading posts',
+                      style: TextStyles.titleHeadline.copyWith(
+                        color: AppColors.colorffEF4444,
+                      ),
                     ),
-                  ),
-                  const Gap(8),
-                  Text(
-                    message,
-                    style: TextStyles.bodyMain.copyWith(
-                      color: AppColors.colorff9CA3AF,
+                    const Gap(8),
+                    Text(
+                      message,
+                      style: TextStyles.bodyMain.copyWith(
+                        color: AppColors.colorff9CA3AF,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildScaffold(
-    BuildContext context,
-    Widget body, {
-    FeedStateEntity feedState = const FeedStateEntity.empty(),
-  }) {
-    return Scaffold(
-      backgroundColor: AppColors.colorff19191A,
-      appBar: FeedAppBar(
-        onCreatePostTap: () => context.push(RoutePaths.createPost),
-        feedState: feedState,
-      ),
-      bottomNavigationBar: const CustomNavBar(currentTab: RoutePaths.home),
-      body: SafeArea(child: body),
     );
   }
 }

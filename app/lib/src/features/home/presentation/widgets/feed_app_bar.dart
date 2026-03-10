@@ -1,4 +1,4 @@
-﻿import 'package:app/gen/assets.gen.dart';
+import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
@@ -30,16 +30,15 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
       maxAllowedSeconds,
     );
     final remainingMinutes = (remainingSeconds / 60).ceil();
-    final isBreak = feedState.isInCooldown;
+    final isBreak = feedState.shouldEnforceCooldown;
     final isTimeEnding = !isBreak && remainingSeconds <= 60;
-    final breakRemainingSeconds =
-        (maxAllowedSeconds - feedState.accumulatedActiveSeconds).clamp(
-      0,
-      maxAllowedSeconds,
-    );
-    final breakRemainingMinutes = (breakRemainingSeconds / 60).ceil();
+    final breakRemainingSeconds = feedState.safeBreakSecondsRemaining;
+    final breakMinutesRaw = breakRemainingSeconds ~/ 60;
+    final breakMinutes = breakRemainingSeconds > 0
+        ? (breakMinutesRaw == 0 ? 1 : breakMinutesRaw)
+        : 0;
     final timerLabel = isBreak
-        ? '${breakRemainingMinutes <= 0 ? 1 : breakRemainingMinutes} min break'
+        ? '$breakMinutes min break'
         : '${remainingMinutes <= 0 ? 1 : remainingMinutes} min';
 
     final endingGradient = const LinearGradient(
@@ -142,7 +141,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
         GestureDetector(
           onTap: onCreatePostTap,
           child: Container(
-            padding: EdgeInsets.all(6),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: AppColors.colorff2A2A2B,
               border: Border.all(color: AppColors.colorff3F3F40, width: 1),
@@ -165,7 +164,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
         GestureDetector(
           onTap: () {},
           child: Container(
-            padding: EdgeInsets.all(6),
+            padding: const EdgeInsets.all(6),
             child: Assets.icons.search.svg(width: 24, height: 24),
           ),
         ),

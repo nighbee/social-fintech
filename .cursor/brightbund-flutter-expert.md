@@ -175,6 +175,36 @@ flutter clean
 - **Error Handling**: Return Either<Failure, Result> from repositories
 - **DI**: Constructor injection, register services via Injectable annotations
 
+### DTO / Entity / API Extension Style (BrightBund)
+
+- **DTO style (Freezed only)**:
+  - DTOs must use `@freezed`, extend `BaseDto`, and include `fromJson`.
+  - API fields should follow backend naming with `@JsonKey(name: ...)`.
+  - Keep backend contract in DTOs: field can be nullable in DTO when backend may omit it.
+  - Every DTO must provide `toEntity()`.
+
+- **Entity style (Freezed only)**:
+  - Entities must use `@freezed` and include `fromJson`.
+  - Prefer non-null entity fields with `@Default(...)` instead of nullable fields.
+  - Add `empty` constructor for each new entity.
+  - If DTO field is nullable, map fallback in `toEntity()` (for example `?? ''`, `?? 0`, `?? false`, empty object).
+
+- **Request style**:
+  - Requests must live in domain layer and use `@freezed` + `BaseRequest`.
+  - Add helper methods like `toQuery()` when endpoint uses query params.
+
+- **Datasource / Repository extension style**:
+  - When adding new backend flow, add new methods in parallel to existing ones.
+  - Do not replace or mutate existing mock-based methods unless explicitly requested.
+  - `IHomeRemote` and `IHomeRepository` must expose new methods first; implementation maps DTO -> Entity only.
+  - Preserve old behavior while introducing new API contract types.
+
+- **BLoC event extension style**:
+  - Add new events as separate `V2`/new-flow events when introducing backend-aligned APIs.
+  - Wire handlers in bloc, but do not attach to UI until explicitly requested.
+  - Keep existing events and current user flow untouched.
+  - For interaction endpoints with queued/toggle backend semantics (e.g. `POST /posts/{post_id}/likes`), prefer `toggleX` naming over forcing separate like/unlike names.
+
 ### BLoC Best Practices
 
 #### Event Pattern

@@ -36,5 +36,22 @@ class HomeEvent with _$HomeEvent {
   const factory HomeEvent.loadFeedState() = _LoadFeedState;
   const factory HomeEvent.syncFeedState({
     required int deltaSeconds,
+    required String deviceId,
   }) = _SyncFeedState;
+  const factory HomeEvent.createFeedPostV2({
+    required CreatePostRequest request,
+  }) = _CreateFeedPostV2;
+  const factory HomeEvent.getPostCommentsV2({
+    required GetPostCommentsRequest request,
+  }) = _GetPostCommentsV2;
+  const factory HomeEvent.createPostCommentV2({
+    required String postId,
+    required CreateCommentRequest request,
+  }) = _CreatePostCommentV2;
+  const factory HomeEvent.getPostLikesV2({
+    required GetPostLikesRequest request,
+  }) = _GetPostLikesV2;
+  const factory HomeEvent.togglePostLikeV2({
+    required String postId,
+  }) = _TogglePostLikeV2;
 }
