@@ -15,7 +15,7 @@ type Repository interface {
 
 	// Posts
 	CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error
-	GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, cursor time.Time, limit int) ([]PostResponse, string, error)
+	GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error)
 	GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
 
 	// Profile Posts Grid / List

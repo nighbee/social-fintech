@@ -1,12 +1,12 @@
-﻿package feed
+package feed
 
 import (
 	"errors"
 	"fmt"
 	"net/url"
 	"os"
-
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/brightbund-backend/internal/modules/economy"
@@ -274,6 +274,8 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 // @Security Bearer
 // @Param cursor query string false "Pagination cursor"
 // @Param limit query int false "Max results" default(20)
+// @Param lat query number false "Viewer latitude for local feed mixing"
+// @Param lon query number false "Viewer longitude for local feed mixing"
 // @Success 200 {object} FeedResponse
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /feed [get]
@@ -286,7 +288,23 @@ func (h *Handler) GetFeed(c *fiber.Ctx) error {
 	cursor := c.Query("cursor")
 	limit := c.QueryInt("limit", 20)
 
-	resp, err := h.service.GetFeed(c.Context(), userID, cursor, limit)
+	latStr := c.Query("lat")
+	lonStr := c.Query("lon")
+	hasLocation := false
+	lat := 0.0
+	lon := 0.0
+	if latStr != "" || lonStr != "" {
+		parsedLat, errLat := strconv.ParseFloat(latStr, 64)
+		parsedLon, errLon := strconv.ParseFloat(lonStr, 64)
+		if errLat != nil || errLon != nil {
+			return validationErr(c, "invalid lat/lon")
+		}
+		lat = parsedLat
+		lon = parsedLon
+		hasLocation = true
+	}
+
+	resp, err := h.service.GetFeed(c.Context(), userID, cursor, limit, lat, lon, hasLocation)
 	if err != nil {
 		logger.Error("failed to fetch feed", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": "feed_fetch_failed"})

@@ -98,10 +98,26 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 	defer tx.Rollback()
 
 	queryPost := `
-		INSERT INTO posts (id, user_id, caption, visibility, comment_permission, is_public, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		INSERT INTO posts (
+			id, user_id, caption, visibility, comment_permission, is_public,
+			location_city, location_country, location_lat, location_lon,
+			created_at, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
 	`
-	_, err = tx.ExecContext(ctx, queryPost, post.ID, post.UserID, post.Caption, post.Visibility, post.CommentPermission, post.IsPublic)
+	_, err = tx.ExecContext(
+		ctx,
+		queryPost,
+		post.ID,
+		post.UserID,
+		post.Caption,
+		post.Visibility,
+		post.CommentPermission,
+		post.IsPublic,
+		post.LocationCity,
+		post.LocationCountry,
+		post.LocationLat,
+		post.LocationLon,
+	)
 	if err != nil {
 		return err
 	}

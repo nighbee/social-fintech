@@ -19,7 +19,7 @@ import (
 // BatchFlushLikes(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 
 // GetSmartFeed implements the Allies (80%) + Local (Geo) + World (10%) weighted blending.
-func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, cursor time.Time, limit int) ([]PostResponse, string, error) {
+func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error) {
 	// 1. Fetch Candidates (Limit 100 to sort and blend in memory)
 	// CTEs:
 	// - Allies: users we follow
@@ -27,19 +27,22 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 	// - World: fallback
 	query := `
 		WITH allies AS (
-			SELECT id as following_id FROM users WHERE id = $1 -- Stub for MVP
+			SELECT target_user_id AS ally_id
+			FROM user_relationships
+			WHERE user_id = $1
+			  AND relationship_type = 'ally'
 		),
 		base_posts AS (
 			SELECT p.id, p.user_id, p.caption, p.visibility, p.comment_permission,
 				p.likes_count, p.comments_count, p.share_count, p.seals_count,
 				p.created_at, p.location_lat, p.location_lon,
-				(p.user_id IN (SELECT following_id FROM allies)) AS is_ally
+				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
 			FROM posts p
 			WHERE p.is_archived = false
-			  AND p.created_at < $4
-			  AND (p.visibility = 'ANYONE' OR p.user_id = $1 OR p.user_id IN (SELECT following_id FROM allies))
+			  AND p.created_at < $5
+			  AND (p.visibility = 'ANYONE' OR p.user_id = $1 OR p.user_id IN (SELECT ally_id FROM allies))
 			ORDER BY p.created_at DESC
-			LIMIT 100
+			LIMIT 200
 		)
 		SELECT
 			p.id, p.caption, p.visibility, p.comment_permission,
@@ -62,11 +65,17 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			) AS viewer_has_liked,
 
 			p.is_ally,
-			(p.location_lat IS NOT NULL AND ST_DWithin(
-			    ST_SetSRID(ST_MakePoint(p.location_lon, p.location_lat), 4326)::geography,
-			    ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
-			    50000 -- 50km radius
-			)) AS is_local
+			CASE
+			    WHEN $4 THEN (
+			        p.location_lat IS NOT NULL AND p.location_lon IS NOT NULL AND
+			        ST_DWithin(
+			            ST_SetSRID(ST_MakePoint(p.location_lon, p.location_lat), 4326)::geography,
+			            ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography,
+			            50000
+			        )
+			    )
+			    ELSE false
+			END AS is_local
 		FROM base_posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
@@ -86,7 +95,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		cursor = time.Now()
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, viewerID, lon, lat, cursor)
+	rows, err := r.db.QueryContext(ctx, query, viewerID, lat, lon, hasLocation, cursor)
 	if err != nil {
 		return nil, "", err
 	}
@@ -94,6 +103,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 
 	var alliesLocal []PostResponse
 	var world []PostResponse
+	createdAtMap := make(map[uuid.UUID]time.Time)
 
 	for rows.Next() {
 		var resp PostResponse
@@ -124,6 +134,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 
 		// time_ago is computed from createdAt
 		if createdAt.Valid {
+			createdAtMap[resp.PostID] = createdAt.Time
 			elapsed := time.Since(createdAt.Time)
 			switch {
 			case elapsed < time.Hour:
@@ -163,8 +174,19 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 	// Next cursor is the oldest created_at from the returned set
 	nextCursorStr := ""
 	if len(blended) > 0 {
-		// Just returning a simple ISO time formatter string backwards for standard cursor offset
-		nextCursorStr = cursor.Add(-24 * time.Hour).Format(time.RFC3339Nano)
+		var oldest time.Time
+		for _, item := range blended {
+			createdAt, ok := createdAtMap[item.PostID]
+			if !ok {
+				continue
+			}
+			if oldest.IsZero() || createdAt.Before(oldest) {
+				oldest = createdAt
+			}
+		}
+		if !oldest.IsZero() {
+			nextCursorStr = oldest.Format(time.RFC3339Nano)
+		}
 	}
 
 	return blended, nextCursorStr, nil

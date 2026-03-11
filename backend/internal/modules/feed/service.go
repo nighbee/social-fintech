@@ -262,6 +262,10 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 		Visibility:        req.Visibility,
 		CommentPermission: req.CommentPermission,
 		IsPublic:          req.Visibility == VisibilityAnyone,
+		LocationCity:      req.LocationCity,
+		LocationCountry:   req.LocationCountry,
+		LocationLat:       req.LocationLat,
+		LocationLon:       req.LocationLon,
 	}
 
 	err := s.repo.CreatePost(ctx, post, req.MediaAttachments)
@@ -272,7 +276,7 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 	return s.repo.GetPost(ctx, post.ID, userID)
 }
 
-func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int) (*FeedResponse, error) {
+func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int, lat, lon float64, hasLocation bool) (*FeedResponse, error) {
 	// Default to current time if cursor is empty
 	cursorTime := time.Now()
 	if cursor != "" {
@@ -281,10 +285,7 @@ func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string
 		}
 	}
 
-	// Assuming requester's lat/lon is available in context or req (hardcoded for MVP stub)
-	lat, lon := 0.0, 0.0
-
-	items, nextCursor, err := s.repo.GetSmartFeed(ctx, viewerID, lat, lon, cursorTime, limit)
+	items, nextCursor, err := s.repo.GetSmartFeed(ctx, viewerID, lat, lon, hasLocation, cursorTime, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -338,11 +339,11 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 	}
 
 	comment := &PostComment{
-		ID:              uuid.New(),
-		PostID:          postID,
-		UserID:          userID,
-		ParentCommentID: req.ParentID,
-		Content:         req.ContentText,
+		ID:               uuid.New(),
+		PostID:           postID,
+		UserID:           userID,
+		ParentCommentID:  req.ParentID,
+		Content:          req.ContentText,
 		MediaAttachments: mediaAttachments,
 	}
 
