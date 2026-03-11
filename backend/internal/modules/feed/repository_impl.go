@@ -122,7 +122,9 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 
 func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error) {
 	query := `
-		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission, p.likes_count, p.comments_count, p.share_count, p.seals_count, p.created_at,
+		SELECT p.id as post_id, p.caption, p.visibility,
+		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
+		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order) 
@@ -161,7 +163,6 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
 	}
 
-	resp.Permissions.CanComment = true // placeholder
 	resp.TimeAgo = "just now"
 	resp.IsOwnPost = viewerID == resp.Author.ID
 
@@ -171,7 +172,9 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int) ([]PostResponse, string, error) {
 	// A basic implementation. In production, this would use the weighted algorithm and cursor pagination.
 	query := `
-		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission, p.likes_count, p.comments_count, p.share_count, p.seals_count, p.created_at,
+		SELECT p.id as post_id, p.caption, p.visibility,
+		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
+		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order) 
@@ -223,8 +226,6 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
 		}
 
-		// Set basic permissions placeholder
-		resp.Permissions.CanComment = true
 		resp.TimeAgo = "just now" // formatted by client or util later
 		resp.IsOwnPost = viewerID == resp.Author.ID
 
@@ -245,7 +246,9 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 // GetComment finds a single comment representation
 func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error) {
 	query := `
-		SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content, c.media_attachment, c.created_at,
+		SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
+		       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+		       c.created_at,
 		       c.likes_count,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
 		       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
@@ -282,14 +285,38 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 	}
 
 	if len(mediaJSON) > 0 {
-		var m MediaAttachment
-		_ = json.Unmarshal(mediaJSON, &m)
-		m.URL = r.buildURL(m.URL)
-		m.ThumbnailURL = r.buildURL(m.ThumbnailURL)
-		resp.MediaAttachment = &m
+		var list []MediaAttachment
+		_ = json.Unmarshal(mediaJSON, &list)
+		for i := range list {
+			list[i].URL = r.buildURL(list[i].URL)
+			list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
+		}
+		resp.MediaAttachments = list
 	}
 
 	return &resp, nil
+}
+
+func (r *repository) GetCommentThreadParent(ctx context.Context, commentID uuid.UUID) (*CommentThreadParent, error) {
+	query := `
+		SELECT id, post_id, parent_comment_id, root_comment_id
+		FROM post_comments
+		WHERE id = $1 AND is_deleted = false
+	`
+	var info CommentThreadParent
+	err := r.db.QueryRowContext(ctx, query, commentID).Scan(
+		&info.CommentID,
+		&info.PostID,
+		&info.ParentID,
+		&info.RootCommentID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, ErrCommentNotFound
+		}
+		return nil, err
+	}
+	return &info, nil
 }
 
 // GetThreadedComments grabs top-level comments and replies
@@ -299,7 +326,9 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 
 	if parentID == nil {
 		query = `
-			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content, c.media_attachment, c.created_at,
+			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
+			       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
@@ -313,10 +342,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		args = []interface{}{postID, viewerID, limit}
 	} else {
 		query = `
-			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content, c.media_attachment, c.created_at,
+			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
+			       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
-			       0 as reply_count,
+			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
@@ -360,11 +391,13 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		}
 
 		if len(mediaJSON) > 0 {
-			var m MediaAttachment
-			_ = json.Unmarshal(mediaJSON, &m)
-			m.URL = r.buildURL(m.URL)
-			m.ThumbnailURL = r.buildURL(m.ThumbnailURL)
-			resp.MediaAttachment = &m
+			var list []MediaAttachment
+			_ = json.Unmarshal(mediaJSON, &list)
+			for i := range list {
+				list[i].URL = r.buildURL(list[i].URL)
+				list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
+			}
+			resp.MediaAttachments = list
 		}
 
 		comments = append(comments, resp)
@@ -417,23 +450,22 @@ func (r *repository) CreateComment(ctx context.Context, comment *PostComment) er
 	}
 	defer tx.Rollback()
 
-	var mediaVal interface{}
-	if comment.MediaAttachment != nil {
-		b, _ := json.Marshal(comment.MediaAttachment)
-		mediaVal = string(b)
+	var mediaListVal interface{}
+	if len(comment.MediaAttachments) > 0 {
+		b, _ := json.Marshal(comment.MediaAttachments)
+		mediaListVal = string(b)
 	}
 
 	query := `
-		INSERT INTO post_comments (id, post_id, user_id, parent_comment_id, root_comment_id, content, media_attachment, created_at, updated_at)
+		INSERT INTO post_comments (id, post_id, user_id, parent_comment_id, root_comment_id, content, media_attachments, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 	`
-	// If shallow tree, root_comment_id is the same as parent_comment_id if replied, or root_comment_id is passed
 	rootID := comment.ParentCommentID
 	if comment.RootCommentID != nil {
 		rootID = comment.RootCommentID
 	}
 
-	_, err = tx.ExecContext(ctx, query, comment.ID, comment.PostID, comment.UserID, comment.ParentCommentID, rootID, comment.Content, mediaVal)
+	_, err = tx.ExecContext(ctx, query, comment.ID, comment.PostID, comment.UserID, comment.ParentCommentID, rootID, comment.Content, mediaListVal)
 	if err != nil {
 		return err
 	}

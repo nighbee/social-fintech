@@ -10,6 +10,8 @@ class CustomNetworkImage extends StatelessWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius,
+    this.cacheWidth,
+    this.cacheHeight,
   });
 
   final String imageUrl;
@@ -17,6 +19,8 @@ class CustomNetworkImage extends StatelessWidget {
   final double? height;
   final BoxFit fit;
   final BorderRadius? borderRadius;
+  final int? cacheWidth;
+  final int? cacheHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +31,9 @@ class CustomNetworkImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
+        filterQuality: FilterQuality.low,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(

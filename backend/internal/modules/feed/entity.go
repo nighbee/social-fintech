@@ -62,7 +62,7 @@ type PostComment struct {
 	ParentCommentID *uuid.UUID       `json:"parent_comment_id,omitempty" db:"parent_comment_id"`
 	RootCommentID   *uuid.UUID       `json:"root_comment_id,omitempty" db:"root_comment_id"`
 	Content         string           `json:"content" db:"content"`
-	MediaAttachment *MediaAttachment `json:"media_attachment,omitempty" db:"media_attachment"`
+	MediaAttachments []MediaAttachment `json:"media_attachments,omitempty" db:"media_attachments"`
 	LikesCount      int              `json:"likes_count" db:"likes_count"`
 	IsDeleted       bool             `json:"is_deleted" db:"is_deleted"`
 	CreatedAt       time.Time        `json:"created_at" db:"created_at"`
@@ -81,7 +81,7 @@ type CreatePostRequest struct {
 type CreateCommentRequest struct {
 	ParentID        *uuid.UUID       `json:"parent_id,omitempty"`
 	ContentText     string           `json:"content_text"`
-	MediaAttachment *MediaAttachment `json:"media_attachment,omitempty"`
+	MediaAttachments []MediaAttachment `json:"media_attachments,omitempty"`
 }
 
 type SyncFeedStateRequest struct {
@@ -166,10 +166,17 @@ type CommentResponse struct {
 	TimeAgo         string           `json:"time_ago"`
 	CreatedAt       time.Time        `json:"created_at"`
 	ContentText     string           `json:"content_text"`
-	MediaAttachment *MediaAttachment `json:"media_attachment,omitempty"`
-	ReplyCount      int              `json:"reply_count"` // Only > 0 for root comments
+	MediaAttachments []MediaAttachment `json:"media_attachments,omitempty"`
+	ReplyCount      int              `json:"reply_count"` // Number of direct child replies
 	LikesCount      int              `json:"likes_count"`
 	ViewerHasLiked  bool             `json:"viewer_has_liked"`
+}
+
+type CommentThreadParent struct {
+	CommentID     uuid.UUID
+	PostID        uuid.UUID
+	ParentID      *uuid.UUID
+	RootCommentID *uuid.UUID
 }
 
 type ThreadedCommentsResponse struct {

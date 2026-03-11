@@ -10,7 +10,7 @@ part 'feed_dto.g.dart';
 class FeedDto extends BaseDto with _$FeedDto {
   const FeedDto._();
   const factory FeedDto({
-    @Default([]) List<PostResponseDto> items,
+    List<PostResponseDto>? items,
     @JsonKey(name: 'next_cursor') String? nextCursor,
   }) = _FeedDto;
 
@@ -18,7 +18,9 @@ class FeedDto extends BaseDto with _$FeedDto {
       _$FeedDtoFromJson(json);
 
   FeedEntity toEntity() => FeedEntity(
-        items: items.map((e) => e.toEntity()).toList(),
+        items: (items ?? const <PostResponseDto>[])
+            .map((e) => e.toEntity())
+            .toList(),
         nextCursor: nextCursor ?? '',
       );
 }

@@ -26,6 +26,7 @@ type Repository interface {
 	// Comments
 	CreateComment(ctx context.Context, comment *PostComment) error
 	GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error)
+	GetCommentThreadParent(ctx context.Context, commentID uuid.UUID) (*CommentThreadParent, error)
 	GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error)
 	GetPostPermissionsInfo(ctx context.Context, postID uuid.UUID) (string, uuid.UUID, error) // Returns (CommentPermission, AuthorID)
 	ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error

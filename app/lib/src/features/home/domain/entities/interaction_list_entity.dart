@@ -7,7 +7,7 @@ part 'interaction_list_entity.g.dart';
 @freezed
 class InteractionListEntity with _$InteractionListEntity {
   const factory InteractionListEntity({
-    @Default([]) List<InteractionResponseEntity> items,
+    required List<InteractionResponseEntity> items,
     @Default('') String nextCursor,
   }) = _InteractionListEntity;
 

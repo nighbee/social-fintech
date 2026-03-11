@@ -25,11 +25,14 @@ class EndPoints {
 
   //* Feed
   static const String feed = '/feed';
+  static const String feedMediaUpload = '/feed/media/upload';
   static const String feedState = '/feed/state';
   static const String feedStateSync = '/feed/state/sync';
   static const String posts = '/posts';
   static String postComments(String postId) => '/posts/$postId/comments';
   static String postLikes(String postId) => '/posts/$postId/likes';
+  static String commentLikes(String commentId) =>
+      '/feed/comments/$commentId/likes';
 
   //* Gamification
   static const String gamificationRank = '/gamification/rank';
@@ -48,19 +51,23 @@ class EndPoints {
   static const String mapTasksMy = '/tasks/my';
   static String mapTaskById(String taskId) => '/tasks/$taskId';
   static String mapApplyToTask(String taskId) => '/tasks/$taskId/apply';
-  static String mapTaskApplications(String taskId) => '/tasks/$taskId/applications';
-  static String mapWithdrawTaskApplication(String taskId, String applicationId) =>
+  static String mapTaskApplications(String taskId) =>
+      '/tasks/$taskId/applications';
+  static String mapWithdrawTaskApplication(
+          String taskId, String applicationId) =>
       '/tasks/$taskId/applications/$applicationId';
   static String mapAcceptTaskApplication(String taskId, String applicationId) =>
       '/tasks/$taskId/applications/$applicationId/accept';
   static String mapRejectTaskApplication(String taskId, String applicationId) =>
       '/tasks/$taskId/applications/$applicationId/reject';
-  static String mapConfirmTaskApplication(String taskId, String applicationId) =>
+  static String mapConfirmTaskApplication(
+          String taskId, String applicationId) =>
       '/tasks/$taskId/applications/$applicationId/confirm';
   static String mapVerifyTaskApplicationCode(
     String taskId,
     String applicationId,
-  ) => '/tasks/$taskId/applications/$applicationId/verify-code';
+  ) =>
+      '/tasks/$taskId/applications/$applicationId/verify-code';
   static const String mapRegion = '/map/region';
   static const String mapChampions = '/map/champions';
 
@@ -73,6 +80,7 @@ class EndPoints {
   //* Profile
   static const String profiles = '/profiles';
   static const String profileMe = '/profiles/me';
+  static const String profileMePosts = '/profiles/me/posts';
   static const String profileUpdate = '/profiles/me';
   static String profileById(String userId) => '/profiles/$userId';
   static const String profileMeStats = '/profiles/me/stats';

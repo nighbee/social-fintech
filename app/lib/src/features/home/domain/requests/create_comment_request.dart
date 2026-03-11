@@ -10,7 +10,8 @@ class CreateCommentRequest extends BaseRequest with _$CreateCommentRequest {
   const factory CreateCommentRequest({
     @JsonKey(name: 'parent_id') String? parentId,
     @JsonKey(name: 'content_text') required String contentText,
-    @JsonKey(name: 'media_attachment') MediaAttachmentRequest? mediaAttachment,
+    @JsonKey(name: 'media_attachments')
+    required List<MediaAttachmentRequest> mediaAttachments,
   }) = _CreateCommentRequest;
 
   factory CreateCommentRequest.fromJson(Map<String, dynamic> json) =>

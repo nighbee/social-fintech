@@ -7,7 +7,7 @@ part 'feed_entity.g.dart';
 @freezed
 class FeedEntity with _$FeedEntity {
   const factory FeedEntity({
-    required List<PostResponseEntity> items,
+    @Default([]) List<PostResponseEntity> items,
     @Default('') String nextCursor,
   }) = _FeedEntity;
 

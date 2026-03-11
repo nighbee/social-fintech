@@ -58,9 +58,8 @@ var (
 	// when the requester is not an ally).
 	ErrCommentNotAllowed = errors.New("comment_not_allowed")
 
-	// ErrCommentNestingTooDeep is returned when a reply is attempted on an
-	// existing reply (we only allow 1 level of threading).
-	ErrCommentNestingTooDeep = errors.New("comment_nesting_too_deep: replies to replies are not allowed")
+	// ErrCommentNestingTooDeep is reserved for optional depth limits in threaded comments.
+	ErrCommentNestingTooDeep = errors.New("comment_nesting_too_deep")
 
 	// ErrNotCommentAuthor is returned when a delete is attempted by a user
 	// who is not the comment author.

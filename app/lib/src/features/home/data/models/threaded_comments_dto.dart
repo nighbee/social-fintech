@@ -10,7 +10,7 @@ part 'threaded_comments_dto.g.dart';
 class ThreadedCommentsDto extends BaseDto with _$ThreadedCommentsDto {
   const ThreadedCommentsDto._();
   const factory ThreadedCommentsDto({
-    @Default([]) List<CommentResponseDto> comments,
+    required List<CommentResponseDto> comments,
     @JsonKey(name: 'next_cursor') String? nextCursor,
   }) = _ThreadedCommentsDto;
 

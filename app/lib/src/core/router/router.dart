@@ -56,3 +56,4 @@ GoRouter routerProvider(AppFlavor flavor) {
   );
   return goRouter;
 }
+

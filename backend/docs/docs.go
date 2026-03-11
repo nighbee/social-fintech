@@ -1288,10 +1288,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Success",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "401": {
@@ -1597,10 +1594,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Success",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "400": {
@@ -1724,10 +1718,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Success",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/feed.CommentResponse"
                         }
                     },
                     "400": {

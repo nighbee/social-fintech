@@ -19,8 +19,7 @@ class PostResponseDto extends BaseDto with _$PostResponseDto {
     required String visibility,
     @JsonKey(name: 'content_text') required String contentText,
     @JsonKey(name: 'media_attachments')
-    @Default([])
-    List<MediaAttachmentDto> mediaAttachments,
+    required List<MediaAttachmentDto> mediaAttachments,
     required PostMetricsDto metrics,
     required PermissionsDto permissions,
     @JsonKey(name: 'is_own_post') required bool isOwnPost,

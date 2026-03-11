@@ -2104,9 +2104,7 @@ paths:
         "201":
           description: Success
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/feed.PostResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2308,9 +2306,7 @@ paths:
         "201":
           description: Success
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/feed.PostResponse'
         "400":
           description: Validation error
           schema:
@@ -2391,9 +2387,7 @@ paths:
         "201":
           description: Success
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/feed.CommentResponse'
         "400":
           description: Validation error
           schema:

@@ -8,20 +8,25 @@ import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
-import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
-import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:app/src/features/home/domain/entities/status_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
+import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
+import 'package:app/src/features/home/domain/requests/comment_id_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
+import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -39,28 +44,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   @override
   Future<void> onEventHandler(HomeEvent event, Emitter emit) async {
     await event.when(
-      loadPosts: () => _loadPosts(event as _LoadPosts, emit),
-      createPost: (_) => _createPost(event as _CreatePost, emit),
-      likePost: (_) => _likePost(event as _LikePost, emit),
-      unlikePost: (_) => _unlikePost(event as _UnlikePost, emit),
-      loadComments: (_) => _loadComments(event as _LoadComments, emit),
-      addComment: (_, __, ___) => _addComment(event as _AddComment, emit),
-      likeComment: (_) => _likeComment(event as _LikeComment, emit),
-      unlikeComment: (_) => _unlikeComment(event as _UnlikeComment, emit),
-      setReplyTarget: (_) => _setReplyTarget(event as _SetReplyTarget, emit),
-      toggleRepliesVisibility: (_) => _toggleRepliesVisibility(
-        event as _ToggleRepliesVisibility,
-        emit,
-      ),
-      addCommentPhoto: (_, __) => _addCommentPhoto(
-        event as _AddCommentPhoto,
-        emit,
-      ),
-      removeCommentPhoto: (_) => _removeCommentPhoto(
-        event as _RemoveCommentPhoto,
-        emit,
-      ),
-      clearCommentPhotos: () => _clearCommentPhotos(emit),
+      loadFeed: (_) => _loadFeed(event as _LoadFeed, emit),
       addPostPhoto: (_, __) => _addPostPhoto(event as _AddPostPhoto, emit),
       removePostPhoto: (_) => _removePostPhoto(event as _RemovePostPhoto, emit),
       clearPostPhotos: () => _clearPostPhotos(emit),
@@ -68,309 +52,16 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
           _loadNotifications(event as _LoadNotifications, emit),
       loadFeedState: () => _loadFeedState(event as _LoadFeedState, emit),
       syncFeedState: (_, __) => _syncFeedState(event as _SyncFeedState, emit),
-      createFeedPostV2: (_) =>
-          _createFeedPostV2(event as _CreateFeedPostV2, emit),
-      getPostCommentsV2: (_) =>
-          _getPostCommentsV2(event as _GetPostCommentsV2, emit),
-      createPostCommentV2: (_, __) =>
-          _createPostCommentV2(event as _CreatePostCommentV2, emit),
-      getPostLikesV2: (_) => _getPostLikesV2(event as _GetPostLikesV2, emit),
-      togglePostLikeV2: (_) =>
-          _togglePostLikeV2(event as _TogglePostLikeV2, emit),
+      createFeedPost: (_, __) =>
+          _createFeedPost(event as _CreateFeedPost, emit),
+      getPostComments: (_) =>
+          _getPostComments(event as _GetPostComments, emit),
+      createPostComment: (_, __) =>
+          _createPostComment(event as _CreatePostComment, emit),
+      getPostLikes: (_) => _getPostLikes(event as _GetPostLikes, emit),
+      togglePostLike: (_) =>
+          _togglePostLike(event as _TogglePostLike, emit),
     );
-  }
-
-  Future<void> _loadPosts(_LoadPosts event, Emitter emit) async {
-    try {
-      emit(HomeState.loading(viewModel: _viewModel));
-      final result = await _repository.getPosts();
-
-      result.fold(
-        (error) => emit(HomeState.loadingError(error.message)),
-        (posts) {
-          _viewModel = _viewModel.copyWith(posts: posts);
-          emit(HomeState.loaded(viewModel: _viewModel));
-        },
-      );
-    } catch (e) {
-      emit(HomeState.loadingError(e.toString()));
-    }
-  }
-
-  Future<void> _likePost(_LikePost event, Emitter emit) async {
-    final postIndex = _viewModel.posts.indexWhere((p) => p.id == event.postId);
-    if (postIndex == -1) {
-      emit(HomeState.loadingError('Post not found: ${event.postId}'));
-      return;
-    }
-
-    // Optimistic update
-    final post = _viewModel.posts[postIndex];
-    final updatedPost = post.copyWith(
-      isLiked: true,
-      likesCount: post.likesCount + 1,
-    );
-    _viewModel = _viewModel.copyWithPost(updatedPost);
-    emit(HomeState.loaded(viewModel: _viewModel));
-
-    // Actual API call
-    final result = await _repository.likePost(event.postId);
-    result.fold(
-      (error) {
-        // Rollback on error
-        final revertedPost = post.copyWith(
-          isLiked: false,
-          likesCount: post.likesCount,
-        );
-        _viewModel = _viewModel.copyWithPost(revertedPost);
-        emit(HomeState.loadingError(error.message));
-      },
-      (actualPost) {
-        // Update with actual data from server
-        _viewModel = _viewModel.copyWithPost(actualPost);
-        emit(HomeState.loaded(viewModel: _viewModel));
-      },
-    );
-  }
-
-  Future<void> _createPost(_CreatePost event, Emitter emit) async {
-    final hasContent = event.content.trim().isNotEmpty;
-    final hasPhotos = _viewModel.postComposerPhotos.isNotEmpty;
-    if (!hasContent && !hasPhotos) {
-      emit(const HomeState.loadingError('Post content is empty'));
-      return;
-    }
-
-    final result = await _repository.createPost(
-      event.content.trim(),
-      _viewModel.postComposerPhotos.map((photo) => photo.fileName).toList(),
-    );
-
-    result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
-      (post) {
-        _viewModel = _viewModel.prependPost(post).copyWith(
-          postComposerPhotos: const [],
-        );
-        emit(HomeState.loaded(viewModel: _viewModel));
-      },
-    );
-  }
-
-  Future<void> _unlikePost(_UnlikePost event, Emitter emit) async {
-    final postIndex = _viewModel.posts.indexWhere((p) => p.id == event.postId);
-    if (postIndex == -1) {
-      emit(HomeState.loadingError('Post not found: ${event.postId}'));
-      return;
-    }
-
-    // Optimistic update
-    final post = _viewModel.posts[postIndex];
-    final updatedPost = post.copyWith(
-      isLiked: false,
-      likesCount: post.likesCount > 0 ? post.likesCount - 1 : 0,
-    );
-    _viewModel = _viewModel.copyWithPost(updatedPost);
-    emit(HomeState.loaded(viewModel: _viewModel));
-
-    // Actual API call
-    final result = await _repository.unlikePost(event.postId);
-    result.fold(
-      (error) {
-        // Rollback on error
-        final revertedPost = post.copyWith(
-          isLiked: true,
-          likesCount: post.likesCount,
-        );
-        _viewModel = _viewModel.copyWithPost(revertedPost);
-        emit(HomeState.loadingError(error.message));
-      },
-      (actualPost) {
-        // Update with actual data from server
-        _viewModel = _viewModel.copyWithPost(actualPost);
-        emit(HomeState.loaded(viewModel: _viewModel));
-      },
-    );
-  }
-
-  Future<void> _loadComments(_LoadComments event, Emitter emit) async {
-    emit(HomeState.loading(viewModel: _viewModel));
-
-    final result = await _repository.getComments(event.postId);
-    result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
-      (comments) {
-        _viewModel = _viewModel.copyWith(
-          commentsByPost: {
-            ..._viewModel.commentsByPost,
-            event.postId: comments
-          },
-          currentlyViewingPostId: event.postId,
-        );
-        emit(HomeState.loaded(viewModel: _viewModel));
-      },
-    );
-  }
-
-  Future<void> _addComment(_AddComment event, Emitter emit) async {
-    final result = await _repository.addComment(
-      event.postId,
-      event.content,
-      event.parentCommentId,
-      _viewModel.composerPhotos.map((photo) => photo.fileName).toList(),
-    );
-    result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
-      (newComment) {
-        // Add comment to state
-        _viewModel = _viewModel.addCommentToPost(
-          newComment,
-          event.postId,
-          parentCommentId: event.parentCommentId,
-        );
-
-        if (event.parentCommentId != null) {
-          _viewModel = _viewModel.incrementRepliesCount(
-            event.postId,
-            event.parentCommentId!,
-          );
-        }
-
-        // Update post's comment count only if post is present in state.
-        final postIndex = _viewModel.posts.indexWhere(
-          (p) => p.id == event.postId,
-        );
-        if (postIndex != -1) {
-          final post = _viewModel.posts[postIndex];
-          final updatedPost = post.copyWith(
-            commentsCount: post.commentsCount + 1,
-          );
-          _viewModel = _viewModel.copyWithPost(updatedPost);
-        }
-
-        _viewModel = _viewModel.copyWith(replyingToCommentId: null);
-        _viewModel = _viewModel.copyWith(composerPhotos: const []);
-        emit(HomeState.loaded(viewModel: _viewModel));
-      },
-    );
-  }
-
-  Future<void> _likeComment(_LikeComment event, Emitter emit) async {
-    // Find the comment and post
-    CommentEntity? targetComment;
-    String? targetPostId;
-
-    for (final entry in _viewModel.commentsByPost.entries) {
-      try {
-        final comment = entry.value.firstWhere((c) => c.id == event.commentId);
-        targetComment = comment;
-        targetPostId = entry.key;
-        break;
-      } catch (e) {
-        continue;
-      }
-    }
-
-    if (targetComment == null || targetPostId == null) return;
-
-    // Optimistic update
-    final updatedComment = targetComment.copyWith(
-      isLiked: true,
-      likesCount: targetComment.likesCount + 1,
-    );
-    _viewModel = _viewModel.copyWithComment(updatedComment, targetPostId);
-    emit(HomeState.loaded(viewModel: _viewModel));
-
-    // Actual API call
-    final result = await _repository.likeComment(event.commentId);
-    result.fold(
-      (error) {
-        // Rollback on error
-        _viewModel = _viewModel.copyWithComment(targetComment!, targetPostId!);
-        emit(HomeState.loadingError(error.message));
-      },
-      (actualComment) {
-        // Update with actual data from server
-        _viewModel = _viewModel.copyWithComment(actualComment, targetPostId!);
-        emit(HomeState.loaded(viewModel: _viewModel));
-      },
-    );
-  }
-
-  Future<void> _unlikeComment(_UnlikeComment event, Emitter emit) async {
-    // Find the comment and post
-    CommentEntity? targetComment;
-    String? targetPostId;
-
-    for (final entry in _viewModel.commentsByPost.entries) {
-      try {
-        final comment = entry.value.firstWhere((c) => c.id == event.commentId);
-        targetComment = comment;
-        targetPostId = entry.key;
-        break;
-      } catch (e) {
-        continue;
-      }
-    }
-
-    if (targetComment == null || targetPostId == null) return;
-
-    // Optimistic update
-    final updatedComment = targetComment.copyWith(
-      isLiked: false,
-      likesCount:
-          targetComment.likesCount > 0 ? targetComment.likesCount - 1 : 0,
-    );
-    _viewModel = _viewModel.copyWithComment(updatedComment, targetPostId);
-    emit(HomeState.loaded(viewModel: _viewModel));
-
-    // Actual API call
-    final result = await _repository.unlikeComment(event.commentId);
-    result.fold(
-      (error) {
-        // Rollback on error
-        _viewModel = _viewModel.copyWithComment(targetComment!, targetPostId!);
-        emit(HomeState.loadingError(error.message));
-      },
-      (actualComment) {
-        // Update with actual data from server
-        _viewModel = _viewModel.copyWithComment(actualComment, targetPostId!);
-        emit(HomeState.loaded(viewModel: _viewModel));
-      },
-    );
-  }
-
-  Future<void> _setReplyTarget(_SetReplyTarget event, Emitter emit) async {
-    _viewModel = _viewModel.copyWith(replyingToCommentId: event.commentId);
-    emit(HomeState.loaded(viewModel: _viewModel));
-  }
-
-  Future<void> _toggleRepliesVisibility(
-    _ToggleRepliesVisibility event,
-    Emitter emit,
-  ) async {
-    _viewModel = _viewModel.toggleRepliesVisibility(event.commentId);
-    emit(HomeState.loaded(viewModel: _viewModel));
-  }
-
-  Future<void> _addCommentPhoto(_AddCommentPhoto event, Emitter emit) async {
-    _viewModel = _viewModel.addComposerPhoto(
-      CommentComposerPhoto(bytes: event.bytes, fileName: event.fileName),
-    );
-    emit(HomeState.loaded(viewModel: _viewModel));
-  }
-
-  Future<void> _removeCommentPhoto(
-    _RemoveCommentPhoto event,
-    Emitter emit,
-  ) async {
-    _viewModel = _viewModel.removeComposerPhoto(event.fileName);
-    emit(HomeState.loaded(viewModel: _viewModel));
-  }
-
-  Future<void> _clearCommentPhotos(Emitter emit) async {
-    _viewModel = _viewModel.copyWith(composerPhotos: const []);
-    emit(HomeState.loaded(viewModel: _viewModel));
   }
 
   Future<void> _addPostPhoto(_AddPostPhoto event, Emitter emit) async {
@@ -404,6 +95,18 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     } catch (e) {
       emit(HomeState.loadingError(e.toString()));
     }
+  }
+
+  Future<void> _loadFeed(_LoadFeed event, Emitter emit) async {
+    emit(HomeState.loading(viewModel: _viewModel));
+    final result = await _repository.getFeed(event.request);
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (feed) {
+        _viewModel = _viewModel.copyWith(feed: feed);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
   }
 
   Future<void> _loadFeedState(_LoadFeedState event, Emitter emit) async {
@@ -444,57 +147,267 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     return _repository.getFeed(FeedRequest(limit: limit));
   }
 
-  Future<void> _createFeedPostV2(_CreateFeedPostV2 event, Emitter emit) async {
-    final Either<DomainException, StatusResponseEntity> result =
-        await _repository.createFeedPost(event.request);
-    result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
-      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+  Future<Either<DomainException, CommentResponseEntity>>
+      toggleCommentLikeDirect(String commentId) async {
+    final result = await _repository.toggleCommentLike(
+      CommentIdRequest(commentId: commentId),
     );
+    result.fold(
+      (_) {},
+      (updatedComment) {
+        final updatedComments = _viewModel.comments.comments.map((comment) {
+          if (comment.commentId != updatedComment.commentId) {
+            return comment;
+          }
+          return updatedComment;
+        }).toList();
+
+        _viewModel = _viewModel.copyWith(
+          comments: _viewModel.comments.copyWith(comments: updatedComments),
+        );
+      },
+    );
+    return result;
   }
 
-  Future<void> _getPostCommentsV2(
-    _GetPostCommentsV2 event,
+  Future<Either<DomainException, MediaAttachmentRequest>>
+      uploadCommentMediaDirect(
+    UploadFeedMediaRequest request,
+  ) async {
+    return _repository.uploadFeedMedia(request);
+  }
+
+  Future<Either<DomainException, CommentResponseEntity>> createPostCommentDirect(
+    String postId,
+    CreateCommentRequest request,
+  ) async {
+    if (postId.startsWith('local-')) {
+      return Right(const CommentResponseEntity.empty());
+    }
+
+    final result = await _repository.createPostComment(
+      PostIdRequest(postId: postId),
+      request,
+    );
+    result.fold(
+      (_) {},
+      (createdComment) {
+        _applyCreatedCommentToViewModel(
+          postId: postId,
+          parentId: request.parentId,
+          createdComment: createdComment,
+        );
+      },
+    );
+    return result;
+  }
+
+  Future<void> _createFeedPost(_CreateFeedPost event, Emitter emit) async {
+    final Either<DomainException, PostResponseEntity> result =
+        await _repository.createFeedPost(
+          event.request,
+          event.localMediaPayloads,
+        );
+    if (result.isLeft()) {
+      result.fold(
+        (error) => emit(HomeState.loadingError(error.message)),
+        (_) {},
+      );
+      return;
+    }
+
+    result.fold(
+      (_) {},
+      (createdPost) {
+        final mergedLocalMediaPayloads = <LocalMediaPayload>[
+          ..._viewModel.localMediaPayloads,
+        ];
+        for (final payload in event.localMediaPayloads) {
+          final exists = mergedLocalMediaPayloads.any(
+            (item) => item.localUrl == payload.localUrl,
+          );
+          if (!exists) {
+            mergedLocalMediaPayloads.add(payload);
+          }
+        }
+        _viewModel = _viewModel.copyWith(
+          lastAction: const StatusResponseEntity(status: 'success'),
+          localMediaPayloads: mergedLocalMediaPayloads,
+          feed: _viewModel.feed.copyWith(
+            items: [createdPost, ..._viewModel.feed.items],
+          ),
+        );
+      },
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _getPostComments(
+    _GetPostComments event,
     Emitter emit,
   ) async {
+    if (event.request.postId.startsWith('local-')) {
+      _viewModel = _viewModel.copyWith(
+        comments: const ThreadedCommentsEntity.empty(),
+      );
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+
     final Either<DomainException, ThreadedCommentsEntity> result =
         await _repository.getPostComments(event.request);
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
-      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+      (comments) {
+        _viewModel = _viewModel.copyWith(comments: comments);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
     );
   }
 
-  Future<void> _createPostCommentV2(
-    _CreatePostCommentV2 event,
+  Future<void> _createPostComment(
+    _CreatePostComment event,
     Emitter emit,
   ) async {
-    final Either<DomainException, StatusResponseEntity> result =
-        await _repository.createPostComment(event.postId, event.request);
+    if (event.postId.startsWith('local-')) {
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+
+    final Either<DomainException, CommentResponseEntity> result =
+        await _repository.createPostComment(
+          PostIdRequest(postId: event.postId),
+          event.request,
+        );
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
-      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+      (createdComment) {
+        _applyCreatedCommentToViewModel(
+          postId: event.postId,
+          parentId: event.request.parentId,
+          createdComment: createdComment,
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
     );
   }
 
-  Future<void> _getPostLikesV2(_GetPostLikesV2 event, Emitter emit) async {
+  void _applyCreatedCommentToViewModel({
+    required String postId,
+    required String? parentId,
+    required CommentResponseEntity createdComment,
+  }) {
+    List<CommentResponseEntity> updatedComments;
+    if (parentId == null) {
+      updatedComments = _prependUniqueComment(
+        createdComment,
+        _viewModel.comments.comments,
+      );
+    } else {
+      final withParentReplyCount = _viewModel.comments.comments
+          .map((comment) {
+            if (comment.commentId != parentId) {
+              return comment;
+            }
+            return comment.copyWith(replyCount: comment.replyCount + 1);
+          })
+          .toList();
+      updatedComments = _prependUniqueComment(
+        createdComment,
+        withParentReplyCount,
+      );
+    }
+
+    final updatedPosts = _viewModel.feed.items.map((post) {
+      if (post.postId != postId) return post;
+      return post.copyWith(
+        metrics: post.metrics.copyWith(
+          comments: post.metrics.comments + 1,
+        ),
+      );
+    }).toList();
+
+    _viewModel = _viewModel.copyWith(
+      lastAction: const StatusResponseEntity(status: 'success'),
+      comments: _viewModel.comments.copyWith(
+        comments: updatedComments,
+      ),
+      feed: _viewModel.feed.copyWith(items: updatedPosts),
+    );
+  }
+
+  List<CommentResponseEntity> _prependUniqueComment(
+    CommentResponseEntity comment,
+    List<CommentResponseEntity> source,
+  ) {
+    final exists = source.any((item) => item.commentId == comment.commentId);
+    if (exists) return source;
+    return [comment, ...source];
+  }
+
+  Future<void> _getPostLikes(_GetPostLikes event, Emitter emit) async {
+    if (event.request.postId.startsWith('local-')) {
+      _viewModel = _viewModel.copyWith(
+        likes: const InteractionListEntity.empty(),
+      );
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+
     final Either<DomainException, InteractionListEntity> result =
         await _repository.getPostLikes(event.request);
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
-      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+      (likes) {
+        _viewModel = _viewModel.copyWith(likes: likes);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
     );
   }
 
-  Future<void> _togglePostLikeV2(
-    _TogglePostLikeV2 event,
+  Future<void> _togglePostLike(
+    _TogglePostLike event,
     Emitter emit,
   ) async {
-    final Either<DomainException, StatusResponseEntity> result =
-        await _repository.togglePostLike(event.postId);
+    if (event.postId.startsWith('local-')) {
+      final items = _viewModel.feed.items.map((item) {
+        if (item.postId != event.postId) return item;
+        final isLiked = item.viewerHasLiked;
+        final currentLikes = item.metrics.likes;
+        final nextLikes = isLiked
+            ? (currentLikes > 0 ? currentLikes - 1 : 0)
+            : currentLikes + 1;
+        return item.copyWith(
+          viewerHasLiked: !isLiked,
+          metrics: item.metrics.copyWith(likes: nextLikes),
+        );
+      }).toList();
+
+      _viewModel = _viewModel.copyWith(
+        feed: _viewModel.feed.copyWith(items: items),
+      );
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+
+    final Either<DomainException, PostResponseEntity> result =
+        await _repository.togglePostLike(
+          PostIdRequest(postId: event.postId),
+        );
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
-      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
+      (updatedPost) {
+        final items = _viewModel.feed.items.map((item) {
+          if (item.postId != event.postId) return item;
+          return updatedPost;
+        }).toList();
+
+        _viewModel = _viewModel.copyWith(
+          lastAction: const StatusResponseEntity(status: 'success'),
+          feed: _viewModel.feed.copyWith(items: items),
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
     );
   }
 

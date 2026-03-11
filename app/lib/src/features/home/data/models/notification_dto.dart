@@ -1,3 +1,4 @@
+import 'package:app/src/core/base/base_models/base_dto.dart';
 import 'package:app/src/core/enums/notification_type.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
@@ -6,7 +7,8 @@ part 'notification_dto.freezed.dart';
 part 'notification_dto.g.dart';
 
 @freezed
-class NotificationDto with _$NotificationDto {
+class NotificationDto extends BaseDto with _$NotificationDto {
+  const NotificationDto._();
   const factory NotificationDto({
     required String id,
     // Action status/raw backend kind (e.g. like, follow, rejected, approved).
@@ -29,9 +31,7 @@ class NotificationDto with _$NotificationDto {
 
   factory NotificationDto.fromJson(Map<String, dynamic> json) =>
       _$NotificationDtoFromJson(json);
-}
 
-extension NotificationDtoX on NotificationDto {
   NotificationEntity toEntity() => NotificationEntity(
         id: id,
         type: type,

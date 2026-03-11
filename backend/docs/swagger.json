@@ -1282,10 +1282,7 @@
                     "201": {
                         "description": "Success",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "401": {
@@ -1591,10 +1588,7 @@
                     "201": {
                         "description": "Success",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "400": {
@@ -1718,10 +1712,7 @@
                     "201": {
                         "description": "Success",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/feed.CommentResponse"
                         }
                     },
                     "400": {

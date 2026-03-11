@@ -9,8 +9,8 @@ class FeedStateEntity with _$FeedStateEntity {
 
   const factory FeedStateEntity({
     required int accumulatedActiveSeconds,
-    @Default(0) int accumulatedBreakSeconds,
-    required String actionRequired,
+    required int accumulatedBreakSeconds,
+    @Default('') String actionRequired,
     required int breakSecondsRemaining,
     required bool isInCooldown,
     required int maxAllowedSeconds,
@@ -35,7 +35,8 @@ class FeedStateEntity with _$FeedStateEntity {
     return value.replaceAll('_', '').replaceAll(' ', '');
   }
 
-  bool get shouldTriggerFriction => normalizedActionRequired == 'triggerfriction';
+  bool get shouldTriggerFriction =>
+      normalizedActionRequired == 'triggerfriction';
 
   bool get shouldEnforceCooldown =>
       isInCooldown || normalizedActionRequired == 'enforcecooldown';

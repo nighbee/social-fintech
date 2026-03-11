@@ -18,8 +18,8 @@ class MediaAttachmentDto extends BaseDto with _$MediaAttachmentDto {
       _$MediaAttachmentDtoFromJson(json);
 
   MediaAttachmentEntity toEntity() => MediaAttachmentEntity(
-      type: type,
-      url: url,
-      thumbnailUrl: thumbnailUrl ?? '',
-    );
+        type: type,
+        url: url,
+        thumbnailUrl: thumbnailUrl ?? '',
+      );
 }

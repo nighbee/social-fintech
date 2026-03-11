@@ -7,7 +7,7 @@ part 'threaded_comments_entity.g.dart';
 @freezed
 class ThreadedCommentsEntity with _$ThreadedCommentsEntity {
   const factory ThreadedCommentsEntity({
-    @Default([]) List<CommentResponseEntity> comments,
+    required List<CommentResponseEntity> comments,
     @Default('') String nextCursor,
   }) = _ThreadedCommentsEntity;
 

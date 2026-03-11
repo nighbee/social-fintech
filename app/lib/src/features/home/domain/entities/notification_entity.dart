@@ -25,6 +25,25 @@ class NotificationEntity with _$NotificationEntity {
     required DateTime createdAt,
     required bool isRead,
   }) = _NotificationEntity;
+  
+
+  const factory NotificationEntity.empty({
+    @Default('') String id,
+    @Default('') String type,
+    @Default(NotificationType.all) NotificationType notificationType,
+    @Default('') String userId,
+    @Default('') String userName,
+    @Default('') String userAvatarUrl,
+    @Default('') String userMeta,
+    @Default('') String message,
+    @Default('') String accentText,
+    @Default('') String ctaLabel,
+    @Default('') String ctaValue,
+    @Default('') String rightImageUrl,
+    @Default('') String postId,
+    required DateTime createdAt,
+    @Default(false) bool isRead,
+  }) = _NotificationEntityEmpty;
 
   factory NotificationEntity.fromJson(Map<String, dynamic> json) =>
       _$NotificationEntityFromJson(json);

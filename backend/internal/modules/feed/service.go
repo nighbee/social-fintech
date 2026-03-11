@@ -296,8 +296,23 @@ func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string
 }
 
 func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, req *CreateCommentRequest) (*CommentResponse, error) {
-	if req.ContentText == "" && req.MediaAttachment == nil {
+	if req.ContentText == "" && len(req.MediaAttachments) == 0 {
 		return nil, ErrCommentRequiresText
+	}
+
+	mediaAttachments := make([]MediaAttachment, 0, len(req.MediaAttachments))
+	seen := make(map[string]struct{}, len(req.MediaAttachments))
+	for _, item := range req.MediaAttachments {
+		item.Type = strings.ToLower(item.Type)
+		key := item.Type + "|" + item.URL + "|" + item.ThumbnailURL
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		mediaAttachments = append(mediaAttachments, item)
+	}
+	if len(mediaAttachments) > 10 {
+		return nil, ErrTooManyMediaAttachments
 	}
 
 	permission, authorID, err := s.repo.GetPostPermissionsInfo(ctx, postID)
@@ -328,7 +343,23 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 		UserID:          userID,
 		ParentCommentID: req.ParentID,
 		Content:         req.ContentText,
-		MediaAttachment: req.MediaAttachment,
+		MediaAttachments: mediaAttachments,
+	}
+
+	if req.ParentID != nil {
+		parentInfo, err := s.repo.GetCommentThreadParent(ctx, *req.ParentID)
+		if err != nil {
+			return nil, err
+		}
+		if parentInfo.PostID != postID {
+			return nil, ErrCommentNotFound
+		}
+
+		rootID := *req.ParentID
+		if parentInfo.RootCommentID != nil {
+			rootID = *parentInfo.RootCommentID
+		}
+		comment.RootCommentID = &rootID
 	}
 
 	err = s.repo.CreateComment(ctx, comment)
@@ -348,6 +379,9 @@ func (s *Service) GetThreadedComments(ctx context.Context, viewerID, postID uuid
 	comments, nextCursor, err := s.repo.GetThreadedComments(ctx, postID, viewerID, parentID, cursor, limit)
 	if err != nil {
 		return nil, err
+	}
+	if comments == nil {
+		comments = []CommentResponse{}
 	}
 
 	return &ThreadedCommentsResponse{

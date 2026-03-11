@@ -7,8 +7,8 @@ part 'interaction_response_entity.g.dart';
 @freezed
 class InteractionResponseEntity with _$InteractionResponseEntity {
   const factory InteractionResponseEntity({
-    @Default(AuthorInfoEntity.empty()) AuthorInfoEntity user,
-    @Default('') String createdAt,
+    required AuthorInfoEntity user,
+    required String createdAt,
   }) = _InteractionResponseEntity;
 
   const factory InteractionResponseEntity.empty({

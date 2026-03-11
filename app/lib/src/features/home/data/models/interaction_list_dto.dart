@@ -10,7 +10,7 @@ part 'interaction_list_dto.g.dart';
 class InteractionListDto extends BaseDto with _$InteractionListDto {
   const InteractionListDto._();
   const factory InteractionListDto({
-    @Default([]) List<InteractionResponseDto> items,
+    required List<InteractionResponseDto> items,
     @JsonKey(name: 'next_cursor') String? nextCursor,
   }) = _InteractionListDto;
 

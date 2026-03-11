@@ -1,4 +1,6 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/api/client/dio/rest_client.dart';
+import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/widgets/list_item/custom_list_item.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +12,7 @@ import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
-import 'package:app/src/features/profile/presentation/utils/mock_data.dart';
+import 'package:app/src/features/profile/presentation/models/profile_post_item.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_post_grid.dart';
 import 'package:flutter/material.dart';
@@ -33,6 +35,10 @@ class _ProfilePageContent extends StatefulWidget {
 }
 
 class _ProfilePageContentState extends State<_ProfilePageContent> {
+  List<ProfilePostItem> _myPosts = const [];
+  bool _isPostsLoading = false;
+  String? _postsError;
+
   @override
   void initState() {
     super.initState();
@@ -46,7 +52,58 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       if (shouldLoad) {
         bloc.add(const ProfileEvent.loadProfile());
       }
+      _loadMyPosts();
     });
+  }
+
+  Future<void> _loadMyPosts() async {
+    if (_isPostsLoading) return;
+    setState(() {
+      _isPostsLoading = true;
+      _postsError = null;
+    });
+
+    final restClient = getIt<RestClient>(instanceName: 'DioClient');
+    final response = await restClient.get(
+      EndPoints.profileMePosts,
+      queryParameters: <String, dynamic>{'limit': 60},
+    );
+
+    if (!mounted) return;
+
+    response.fold(
+      (error) {
+        setState(() {
+          _isPostsLoading = false;
+          _postsError = error.message;
+        });
+      },
+      (result) {
+        final payload = result.data;
+        final items =
+            payload is Map<String, dynamic> ? payload['items'] : null;
+        final mapped = <ProfilePostItem>[];
+        if (items is List) {
+          for (final item in items) {
+            if (item is! Map<String, dynamic>) continue;
+            final postId = (item['post_id'] ?? '').toString();
+            final thumbnail = (item['thumbnail_url'] ?? '').toString();
+            if (postId.isEmpty) continue;
+            mapped.add(
+              ProfilePostItem(
+                id: postId,
+                imageUrls: thumbnail.isEmpty ? const <String>[] : [thumbnail],
+              ),
+            );
+          }
+        }
+
+        setState(() {
+          _myPosts = mapped;
+          _isPostsLoading = false;
+        });
+      },
+    );
   }
 
   @override
@@ -158,7 +215,33 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                           ),
                         ),
                         // Posts Grid
-                        ProfilePostGrid(posts: mockPosts),
+                        if (_isPostsLoading)
+                          const SliverToBoxAdapter(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(vertical: 48),
+                              child: Center(child: CircularProgressIndicator()),
+                            ),
+                          )
+                        else if (_postsError != null)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 32,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _postsError!,
+                                  style: TextStyles.bodyMain.copyWith(
+                                    color: Colors.white70,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          ProfilePostGrid(posts: _myPosts),
                       ],
                     );
                   },

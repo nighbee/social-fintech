@@ -51,6 +51,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	app.Get("/swagger/*", swagger.FiberWrapHandler())
 
 	api := app.Group("/api/v1")
+	app.Static("/uploads", "./uploads")
 	authGroup := api.Group("/auth")
 
 	// Use Redis for rate limiter storage rather than in-memory
@@ -145,7 +146,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 
 	feedGroup.Get("/state", feedHandler.GetFeedState)
 	feedGroup.Post("/state/sync", feedHandler.SyncFeedState)
+	feedGroup.Post("/media/upload", feedHandler.UploadMedia)
 	feedGroup.Get("/", feedHandler.GetFeed)
+	feedGroup.Post("/comments/:comment_id/likes", feedHandler.ToggleCommentLike)
 
 	// Notice: for Post creations and interactions, they typically fall under /posts
 	// To keep RESTful:

@@ -1,13 +1,13 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
-import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/profile/presentation/models/profile_post_item.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePostGrid extends StatelessWidget {
   const ProfilePostGrid({required this.posts, super.key});
 
-  final List<PostEntity> posts;
+  final List<ProfilePostItem> posts;
 
   @override
   Widget build(BuildContext context) {

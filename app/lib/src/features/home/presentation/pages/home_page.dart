@@ -5,6 +5,7 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/device_id.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
+import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_app_bar.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_soft_limit_scroll_physics.dart';
@@ -34,7 +35,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _bloc.add(const HomeEvent.loadPosts());
+    _bloc.add(const HomeEvent.loadFeed(request: FeedRequest()));
     _bloc.add(const HomeEvent.loadFeedState());
     _initDeviceId();
     _startFeedSyncTimer();
@@ -70,9 +71,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       setState(() {
         _currentDeviceId = id;
       });
-    } catch (_) {
-      // If device id lookup fails, sync will remain paused.
-    }
+    } catch (_) {}
   }
 
   void _startFeedSyncTimer() {
@@ -83,8 +82,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? true;
 
       if (isCurrentRoute && !_wasOnFeedRoute) {
-        // Re-entering the feed should pull server state so off-feed break
-        // accumulation is applied before resuming sync.
         _wasOnFeedRoute = true;
         _lastSyncAt = DateTime.now();
         _bloc.add(const HomeEvent.loadFeedState());
@@ -142,8 +139,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
           loaded: (viewModel) {
             final feedState = viewModel.feedState;
+            final posts = viewModel.feed.items;
 
-            if (viewModel.posts.isEmpty) {
+            if (posts.isEmpty) {
               return Scaffold(
                 backgroundColor: AppColors.colorff19191A,
                 appBar: FeedAppBar(
@@ -196,9 +194,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   physics: physics,
                   separatorBuilder: (context, index) => const Gap(18),
                   padding: const EdgeInsets.all(16),
-                  itemCount: viewModel.posts.length,
+                  itemCount: posts.length,
                   itemBuilder: (context, index) {
-                    final post = viewModel.posts[index];
+                    final post = posts[index];
                     return PostCardWidget(post: post);
                   },
                 ),
@@ -244,3 +242,4 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 }
+

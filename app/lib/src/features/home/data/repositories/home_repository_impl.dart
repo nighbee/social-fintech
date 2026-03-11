@@ -1,24 +1,28 @@
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/feed_state_dto.dart';
-import 'package:app/src/features/home/domain/entities/comment_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
-import 'package:app/src/features/home/domain/entities/status_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
+import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/home/data/sources/remote/home_remote_impl.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
-import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
+import 'package:app/src/features/home/domain/requests/comment_id_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
+import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 
 @named
@@ -27,15 +31,6 @@ class HomeRepositoryImpl implements IHomeRepository {
   HomeRepositoryImpl(@Named.from(HomeRemoteImpl) this._remote);
 
   final IHomeRemote _remote;
-
-  @override
-  Future<Either<DomainException, List<PostEntity>>> getPosts() async {
-    final result = await _remote.getPosts();
-    return result.fold(
-      (error) => Left(error),
-      (dtos) => Right(dtos.map((dto) => dto.toEntity()).toList()),
-    );
-  }
 
   @override
   Future<Either<DomainException, FeedEntity>> getFeed(
@@ -49,10 +44,14 @@ class HomeRepositoryImpl implements IHomeRepository {
   }
 
   @override
-  Future<Either<DomainException, StatusResponseEntity>> createFeedPost(
+  Future<Either<DomainException, PostResponseEntity>> createFeedPost(
     CreatePostRequest request,
+    List<LocalMediaPayload> localMediaPayloads,
   ) async {
-    final result = await _remote.createFeedPost(request);
+    final result = await _remote.createFeedPost(
+      request,
+      localMediaPayloads: localMediaPayloads,
+    );
     return result.fold(
       (error) => Left(error),
       (dto) => Right(dto.toEntity()),
@@ -71,15 +70,22 @@ class HomeRepositoryImpl implements IHomeRepository {
   }
 
   @override
-  Future<Either<DomainException, StatusResponseEntity>> createPostComment(
-    String postId,
+  Future<Either<DomainException, CommentResponseEntity>> createPostComment(
+    PostIdRequest requestId,
     CreateCommentRequest request,
   ) async {
-    final result = await _remote.createPostComment(postId, request);
+    final result = await _remote.createPostComment(requestId, request);
     return result.fold(
       (error) => Left(error),
       (dto) => Right(dto.toEntity()),
     );
+  }
+
+  @override
+  Future<Either<DomainException, MediaAttachmentRequest>> uploadFeedMedia(
+    UploadFeedMediaRequest request,
+  ) async {
+    return _remote.uploadFeedMedia(request);
   }
 
   @override
@@ -94,10 +100,10 @@ class HomeRepositoryImpl implements IHomeRepository {
   }
 
   @override
-  Future<Either<DomainException, StatusResponseEntity>> togglePostLike(
-    String postId,
+  Future<Either<DomainException, PostResponseEntity>> togglePostLike(
+    PostIdRequest request,
   ) async {
-    final result = await _remote.togglePostLike(postId);
+    final result = await _remote.togglePostLike(request);
     return result.fold(
       (error) => Left(error),
       (dto) => Right(dto.toEntity()),
@@ -105,81 +111,10 @@ class HomeRepositoryImpl implements IHomeRepository {
   }
 
   @override
-  Future<Either<DomainException, PostEntity>> createPost(
-    String content,
-    List<String> imageFileNames,
+  Future<Either<DomainException, CommentResponseEntity>> toggleCommentLike(
+    CommentIdRequest request,
   ) async {
-    final result = await _remote.createPost(content, imageFileNames);
-    return result.fold(
-      (error) => Left(error),
-      (dto) => Right(dto.toEntity()),
-    );
-  }
-
-  @override
-  Future<Either<DomainException, PostEntity>> likePost(String postId) async {
-    final result = await _remote.likePost(postId);
-    return result.fold(
-      (error) => Left(error),
-      (dto) => Right(dto.toEntity()),
-    );
-  }
-
-  @override
-  Future<Either<DomainException, PostEntity>> unlikePost(String postId) async {
-    final result = await _remote.unlikePost(postId);
-    return result.fold(
-      (error) => Left(error),
-      (dto) => Right(dto.toEntity()),
-    );
-  }
-
-  @override
-  Future<Either<DomainException, List<CommentEntity>>> getComments(
-    String postId,
-  ) async {
-    final result = await _remote.getComments(postId);
-    return result.fold(
-      (error) => Left(error),
-      (dtos) => Right(dtos.map((dto) => dto.toEntity()).toList()),
-    );
-  }
-
-  @override
-  Future<Either<DomainException, CommentEntity>> addComment(
-    String postId,
-    String content,
-    String? parentCommentId,
-    List<String> imageFileNames,
-  ) async {
-    final result = await _remote.addComment(
-      postId,
-      content,
-      parentCommentId,
-      imageFileNames,
-    );
-    return result.fold(
-      (error) => Left(error),
-      (dto) => Right(dto.toEntity()),
-    );
-  }
-
-  @override
-  Future<Either<DomainException, CommentEntity>> likeComment(
-    String commentId,
-  ) async {
-    final result = await _remote.likeComment(commentId);
-    return result.fold(
-      (error) => Left(error),
-      (dto) => Right(dto.toEntity()),
-    );
-  }
-
-  @override
-  Future<Either<DomainException, CommentEntity>> unlikeComment(
-    String commentId,
-  ) async {
-    final result = await _remote.unlikeComment(commentId);
+    final result = await _remote.toggleCommentLike(request);
     return result.fold(
       (error) => Left(error),
       (dto) => Right(dto.toEntity()),

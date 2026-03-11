@@ -3,6 +3,7 @@
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 
 	"path/filepath"
@@ -34,7 +35,7 @@ func NewHandler(service *Service, worker *InteractionWorker, economyService econ
 // @Produce json
 // @Security Bearer
 // @Param file formData file true "Media file"
-// @Success 201 {object} map[string]string "Success"
+// @Success 201 {object} PostResponse
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /feed/media/upload [post]
 func (h *Handler) UploadMedia(c *fiber.Ctx) error {
@@ -70,12 +71,7 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 		mediaType = "video"
 	}
 
-	// Handle host resolution with public_url
-	baseURL := h.publicURL
-	if baseURL == "" {
-		baseURL = "http://localhost:8080"
-	}
-	baseURL = strings.TrimSuffix(baseURL, "/")
+	baseURL := resolvePublicBaseURL(h.publicURL, c.BaseURL())
 
 	publicURL := fmt.Sprintf("%s/uploads/media/%s", baseURL, filename)
 
@@ -83,6 +79,27 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 		"url":  publicURL,
 		"type": mediaType,
 	})
+}
+
+func resolvePublicBaseURL(configured, requestBase string) string {
+	candidate := strings.TrimSuffix(configured, "/")
+	fallback := strings.TrimSuffix(requestBase, "/")
+	if fallback == "" {
+		fallback = "http://localhost:8080"
+	}
+	if candidate == "" {
+		return fallback
+	}
+
+	u, err := url.Parse(candidate)
+	if err != nil {
+		return fallback
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "localhost" || host == "127.0.0.1" {
+		return fallback
+	}
+	return candidate
 }
 
 // ... unchanged intermediate ...
@@ -211,7 +228,7 @@ func (h *Handler) SyncFeedState(c *fiber.Ctx) error {
 // @Produce json
 // @Security Bearer
 // @Param request body CreatePostRequest true "Post creation payload"
-// @Success 201 {object} map[string]string "Success"
+// @Success 201 {object} PostResponse
 // @Failure 400 {object} map[string]string "Validation error"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /posts [post]
@@ -287,7 +304,7 @@ func (h *Handler) GetFeed(c *fiber.Ctx) error {
 // @Security Bearer
 // @Param post_id path string true "Post UUID"
 // @Param request body CreateCommentRequest true "Comment payload"
-// @Success 201 {object} map[string]string "Success"
+// @Success 201 {object} CommentResponse
 // @Failure 400 {object} map[string]string "Validation error"
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Failure 403 {object} map[string]string "Commenting disabled or restricted"

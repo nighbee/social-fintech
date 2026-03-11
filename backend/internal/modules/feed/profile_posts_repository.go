@@ -53,8 +53,11 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 		        $1 = $2
 		        OR p.visibility = 'ANYONE'
 		        OR EXISTS (
-		            SELECT 1 FROM user_allies
-		            WHERE follower_id = $2 AND following_id = $1
+		            SELECT 1
+		            FROM user_relationships ur
+		            WHERE ur.user_id = $2
+		              AND ur.target_user_id = $1
+		              AND ur.relationship_type = 'ally'
 		          )
 		      )
 		ORDER BY p.created_at DESC
@@ -136,8 +139,11 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		        $1 = $2
 		        OR p.visibility = 'ANYONE'
 		        OR EXISTS (
-		            SELECT 1 FROM user_allies
-		            WHERE follower_id = $2 AND following_id = $1
+		            SELECT 1
+		            FROM user_relationships ur
+		            WHERE ur.user_id = $2
+		              AND ur.target_user_id = $1
+		              AND ur.relationship_type = 'ally'
 		          )
 		      )
 		ORDER BY p.created_at DESC

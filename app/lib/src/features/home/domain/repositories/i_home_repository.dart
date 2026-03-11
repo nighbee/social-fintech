@@ -1,57 +1,49 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
-import 'package:app/src/features/home/domain/entities/comment_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
-import 'package:app/src/features/home/domain/entities/post_entity.dart';
-import 'package:app/src/features/home/domain/entities/status_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
+import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
+import 'package:app/src/features/home/domain/requests/comment_id_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
+import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 
 abstract class IHomeRepository {
-  Future<Either<DomainException, List<PostEntity>>> getPosts();
   Future<Either<DomainException, FeedEntity>> getFeed(FeedRequest request);
-  Future<Either<DomainException, StatusResponseEntity>> createFeedPost(
+  Future<Either<DomainException, PostResponseEntity>> createFeedPost(
     CreatePostRequest request,
+    List<LocalMediaPayload> localMediaPayloads,
   );
   Future<Either<DomainException, ThreadedCommentsEntity>> getPostComments(
     GetPostCommentsRequest request,
   );
-  Future<Either<DomainException, StatusResponseEntity>> createPostComment(
-    String postId,
+  Future<Either<DomainException, CommentResponseEntity>> createPostComment(
+    PostIdRequest requestId,
     CreateCommentRequest request,
+  );
+  Future<Either<DomainException, MediaAttachmentRequest>> uploadFeedMedia(
+    UploadFeedMediaRequest request,
   );
   Future<Either<DomainException, InteractionListEntity>> getPostLikes(
     GetPostLikesRequest request,
   );
-  Future<Either<DomainException, StatusResponseEntity>> togglePostLike(
-    String postId,
+  Future<Either<DomainException, PostResponseEntity>> togglePostLike(
+    PostIdRequest request,
   );
-  Future<Either<DomainException, PostEntity>> createPost(
-    String content,
-    List<String> imageFileNames,
+  Future<Either<DomainException, CommentResponseEntity>> toggleCommentLike(
+    CommentIdRequest request,
   );
-  Future<Either<DomainException, PostEntity>> likePost(String postId);
-  Future<Either<DomainException, PostEntity>> unlikePost(String postId);
-  Future<Either<DomainException, List<CommentEntity>>> getComments(
-    String postId,
-  );
-  Future<Either<DomainException, CommentEntity>> addComment(
-    String postId,
-    String content,
-    String? parentCommentId,
-    List<String> imageFileNames,
-  );
-  Future<Either<DomainException, CommentEntity>> likeComment(String commentId);
-  Future<Either<DomainException, CommentEntity>> unlikeComment(
-      String commentId);
 
   Future<Either<DomainException, List<NotificationEntity>>> getNotifications();
   Future<Either<DomainException, FeedStateEntity>> getFeedState();
