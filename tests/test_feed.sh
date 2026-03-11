@@ -675,7 +675,7 @@ fi  # end if POST_ID
 
 echo -e "${GREEN}=== TEST 21: SyncFeedState – Zero Delta ===${NC}"
 
-BODY="{\"delta_seconds\":0}"
+BODY="{\"delta_seconds\":0,\"device_id\":\"feed-device1\"}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${FEED_URL}/state/sync" \
     -H "Authorization: Bearer $USER1_TOKEN" \
     -H "Content-Type: application/json" \
@@ -693,7 +693,7 @@ echo ""
 
 echo -e "${GREEN}=== TEST 22: SyncFeedState – Large Delta Capped by Anti-Cheat ===${NC}"
 
-BODY="{\"delta_seconds\":99999}"
+BODY="{\"delta_seconds\":99999,\"device_id\":\"feed-device1\"}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${FEED_URL}/state/sync" \
     -H "Authorization: Bearer $USER1_TOKEN" \
     -H "Content-Type: application/json" \
@@ -712,7 +712,7 @@ echo ""
 
 echo -e "${GREEN}=== TEST 23: SyncFeedState – Happy Path + New Fields ===${NC}"
 
-SYNC_BODY="{\"delta_seconds\":45}"
+SYNC_BODY="{\"delta_seconds\":45,\"device_id\":\"feed-device1\"}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${FEED_URL}/state/sync" \
     -H "Authorization: Bearer $USER1_TOKEN" \
     -H "Content-Type: application/json" \
@@ -799,11 +799,12 @@ BREAK_START=$(date -u -d "120 seconds ago" +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
 
 docker exec brightbund-db psql -U user -d brightbund -c \
     "INSERT INTO feed_fatigue_states
-        (user_id, accumulated_active_seconds, last_sync_timestamp, is_in_cooldown, break_start_at)
+        (user_id, accumulated_active_seconds, accumulated_break_seconds, last_sync_timestamp, is_in_cooldown, break_start_at)
      VALUES
-        ('$USER1_ID', 1200, NOW(), true, '$BREAK_START')
+        ('$USER1_ID', 1200, 120, NOW(), true, '$BREAK_START')
      ON CONFLICT (user_id) DO UPDATE SET
         accumulated_active_seconds = 1200,
+        accumulated_break_seconds  = 120,
         last_sync_timestamp        = NOW(),
         is_in_cooldown             = true,
         break_start_at             = '$BREAK_START';" > /dev/null 2>&1
@@ -818,7 +819,7 @@ else
 fi
 
 # Now hit SyncFeedState — should return is_in_cooldown=true, action_required=enforce_cooldown
-SYNC_BODY="{\"delta_seconds\":30}"
+SYNC_BODY="{\"delta_seconds\":30,\"device_id\":\"feed-device1\"}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${FEED_URL}/state/sync" \
     -H "Authorization: Bearer $USER1_TOKEN" \
     -H "Content-Type: application/json" \
@@ -863,6 +864,7 @@ EXPIRED_BREAK=$(date -u -d "360 seconds ago" +"%Y-%m-%d %H:%M:%S" 2>/dev/null \
 docker exec brightbund-db psql -U user -d brightbund -c \
     "UPDATE feed_fatigue_states SET
         accumulated_active_seconds = 1200,
+        accumulated_break_seconds  = 360,
         is_in_cooldown             = true,
         break_start_at             = '$EXPIRED_BREAK'
      WHERE user_id = '$USER1_ID';" > /dev/null 2>&1
