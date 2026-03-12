@@ -574,12 +574,14 @@ definitions:
         type: string
       likes_count:
         type: integer
-      media_attachment:
-        $ref: '#/definitions/feed.MediaAttachment'
+      media_attachments:
+        items:
+          $ref: '#/definitions/feed.MediaAttachment'
+        type: array
       parent_comment_id:
         type: string
       reply_count:
-        description: Only > 0 for root comments
+        description: Number of direct child replies
         type: integer
       root_comment_id:
         type: string
@@ -592,8 +594,10 @@ definitions:
     properties:
       content_text:
         type: string
-      media_attachment:
-        $ref: '#/definitions/feed.MediaAttachment'
+      media_attachments:
+        items:
+          $ref: '#/definitions/feed.MediaAttachment'
+        type: array
       parent_id:
         type: string
     type: object
@@ -603,6 +607,14 @@ definitions:
         type: string
       comment_permission:
         type: string
+      location_city:
+        type: string
+      location_country:
+        type: string
+      location_lat:
+        type: number
+      location_lon:
+        type: number
       media_attachments:
         items:
           $ref: '#/definitions/feed.MediaAttachment'
@@ -759,6 +771,8 @@ definitions:
     properties:
       delta_seconds:
         type: integer
+      device_id:
+        type: string
     type: object
   feed.ThreadedCommentsResponse:
     properties:
@@ -2069,6 +2083,14 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: Viewer latitude for local feed mixing
+        in: query
+        name: lat
+        type: number
+      - description: Viewer longitude for local feed mixing
+        in: query
+        name: lon
+        type: number
       produces:
       - application/json
       responses:
@@ -2102,7 +2124,7 @@ paths:
       - application/json
       responses:
         "201":
-          description: Success
+          description: Created
           schema:
             $ref: '#/definitions/feed.PostResponse'
         "401":
@@ -2304,7 +2326,7 @@ paths:
       - application/json
       responses:
         "201":
-          description: Success
+          description: Created
           schema:
             $ref: '#/definitions/feed.PostResponse'
         "400":
@@ -2385,7 +2407,7 @@ paths:
       - application/json
       responses:
         "201":
-          description: Success
+          description: Created
           schema:
             $ref: '#/definitions/feed.CommentResponse'
         "400":

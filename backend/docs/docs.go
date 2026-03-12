@@ -1236,6 +1236,18 @@ const docTemplate = `{
                         "description": "Max results",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Viewer latitude for local feed mixing",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Viewer longitude for local feed mixing",
+                        "name": "lon",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -1286,7 +1298,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Success",
+                        "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/feed.PostResponse"
                         }
@@ -1592,7 +1604,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Success",
+                        "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/feed.PostResponse"
                         }
@@ -1716,7 +1728,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Success",
+                        "description": "Created",
                         "schema": {
                             "$ref": "#/definitions/feed.CommentResponse"
                         }
@@ -5067,14 +5079,17 @@ const docTemplate = `{
                 "likes_count": {
                     "type": "integer"
                 },
-                "media_attachment": {
-                    "$ref": "#/definitions/feed.MediaAttachment"
+                "media_attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.MediaAttachment"
+                    }
                 },
                 "parent_comment_id": {
                     "type": "string"
                 },
                 "reply_count": {
-                    "description": "Only \u003e 0 for root comments",
+                    "description": "Number of direct child replies",
                     "type": "integer"
                 },
                 "root_comment_id": {
@@ -5094,8 +5109,11 @@ const docTemplate = `{
                 "content_text": {
                     "type": "string"
                 },
-                "media_attachment": {
-                    "$ref": "#/definitions/feed.MediaAttachment"
+                "media_attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.MediaAttachment"
+                    }
                 },
                 "parent_id": {
                     "type": "string"
@@ -5110,6 +5128,18 @@ const docTemplate = `{
                 },
                 "comment_permission": {
                     "type": "string"
+                },
+                "location_city": {
+                    "type": "string"
+                },
+                "location_country": {
+                    "type": "string"
+                },
+                "location_lat": {
+                    "type": "number"
+                },
+                "location_lon": {
+                    "type": "number"
                 },
                 "media_attachments": {
                     "type": "array",
@@ -5339,6 +5369,9 @@ const docTemplate = `{
             "properties": {
                 "delta_seconds": {
                     "type": "integer"
+                },
+                "device_id": {
+                    "type": "string"
                 }
             }
         },
