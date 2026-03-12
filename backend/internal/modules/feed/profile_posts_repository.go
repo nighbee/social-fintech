@@ -48,6 +48,9 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 		FROM posts p
 		WHERE p.user_id    = $1
 		  AND p.is_archived = false
+		  AND EXISTS (
+		        SELECT 1 FROM post_media pm WHERE pm.post_id = p.id
+		      )
 		  AND p.created_at  < $3
 		  AND (
 		        $1 = $2

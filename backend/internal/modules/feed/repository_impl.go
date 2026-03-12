@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
@@ -554,6 +555,66 @@ func (r *repository) GetInteractions(ctx context.Context, postID uuid.UUID, inte
 }
 
 func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor string, limit int) ([]SealResponse, string, error) {
-	// Query seals connected via economy module joins or interaction metadata. Placeholder.
-	return []SealResponse{}, "", nil
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	cursorTime := time.Now()
+	if cursor != "" {
+		if t, err := time.Parse(time.RFC3339Nano, cursor); err == nil {
+			cursorTime = t
+		}
+	}
+
+	query := `
+		SELECT
+			le.amount,
+			le.created_at,
+			u.id,
+			COALESCE(u.username, '') AS username,
+			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') AS full_name,
+			COALESCE(p.avatar_url, '') AS profile_pic_url
+		FROM ledger_entries le
+		JOIN wallets sw ON sw.id = le.sender_wallet_id
+		JOIN users u ON u.id = sw.user_id
+		LEFT JOIN profiles p ON p.user_id = u.id
+		WHERE le.category = $1
+		  AND le.currency = $2
+		  AND le.metadata->>'post_id' = $3
+		  AND le.created_at < $4
+		ORDER BY le.created_at DESC
+		LIMIT $5
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, economy.CategoryPostSeal, economy.CurrencySilverSeal, postID.String(), cursorTime, limit)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	items := make([]SealResponse, 0, limit)
+	var lastCreatedAt time.Time
+	for rows.Next() {
+		var resp SealResponse
+		var amount int64
+		var createdAt time.Time
+		var avatarURL sql.NullString
+
+		if err := rows.Scan(&amount, &createdAt, &resp.User.ID, &resp.User.Username, &resp.User.FullName, &avatarURL); err != nil {
+			return nil, "", err
+		}
+		resp.Amount = amount / economy.CentinelsPerSeal
+		resp.CreatedAt = createdAt
+		resp.User.ProfilePicURL = r.buildURL(avatarURL.String)
+
+		items = append(items, resp)
+		lastCreatedAt = createdAt
+	}
+
+	nextCursor := ""
+	if len(items) == limit && !lastCreatedAt.IsZero() {
+		nextCursor = lastCreatedAt.Format(time.RFC3339Nano)
+	}
+
+	return items, nextCursor, nil
 }
