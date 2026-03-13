@@ -20,11 +20,14 @@ class CommentComposerPhoto with _$CommentComposerPhoto {
 @freezed
 class HomeViewModel with _$HomeViewModel {
   const HomeViewModel._();
-factory HomeViewModel({
+  factory HomeViewModel({
     @Default(FeedEntity.empty()) FeedEntity feed,
     @Default(ThreadedCommentsEntity.empty()) ThreadedCommentsEntity comments,
     @Default(InteractionListEntity.empty()) InteractionListEntity likes,
     @Default(StatusResponseEntity.empty()) StatusResponseEntity lastAction,
+    @Default(StoreSummaryEntity.empty()) StoreSummaryEntity storeSummary,
+    @Default(ClaimDailyAccrualResultEntity.empty())
+    ClaimDailyAccrualResultEntity lastStoreAccrualResult,
     @Default(<LocalMediaPayload>[]) List<LocalMediaPayload> localMediaPayloads,
     @Default([]) List<CommentComposerPhoto> postComposerPhotos,
     @Default([]) List<NotificationEntity> notifications,

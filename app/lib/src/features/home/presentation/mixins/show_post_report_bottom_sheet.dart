@@ -33,7 +33,7 @@ mixin ShowPostReportBottomSheet on ShowPostReportFeedbackBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.78,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         child: _PostReportSheet(
           onSubmitted: (reason) {
             onSubmitted(reason);

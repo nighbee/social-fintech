@@ -23,20 +23,20 @@ class ReportedPostCardWidget extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(16, 14, 12, 16),
           decoration: BoxDecoration(
-            color: const Color(0xFF202020).withOpacity(0.26),
+            color: const Color(0xFF202020).withValues(alpha: 0.26),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: Colors.white.withOpacity(0.10),
+              color: Colors.white.withValues(alpha: 0.10),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withOpacity(0.10),
+                color: Colors.white.withValues(alpha: 0.10),
                 blurRadius: 10,
                 offset: const Offset(0, -2),
               ),
               BoxShadow(
-                color: Colors.black.withOpacity(0.35),
+                color: Colors.black.withValues(alpha: 0.35),
                 blurRadius: 24,
                 offset: const Offset(0, 10),
               ),

@@ -269,7 +269,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                               ),
                               CustomButton(
                                 text: "Continue with Apple",
-                                icon: Assets.icons.appleLogo.svg(),
+                                prefixIcon: Assets.icons.appleLogo.svg(),
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
@@ -283,7 +283,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                               ),
                               CustomButton(
                                 text: "Continue with Google",
-                                icon: Assets.icons.googleLogo.svg(),
+                                prefixIcon: Assets.icons.googleLogo.svg(),
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
@@ -321,3 +321,4 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
     );
   }
 }
+

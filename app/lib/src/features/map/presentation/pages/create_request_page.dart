@@ -4,6 +4,7 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
+import 'package:app/src/core/widgets/silver_balance_chip.dart';
 import 'package:app/src/features/map/domain/requests/map_create_task_request.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
 import 'package:flutter/material.dart';
@@ -59,29 +60,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
       appBar: CustomAppBar(
         title: "Create a request",
         actions: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.colorff2A2A2B,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.colorff3F3F40, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Assets.icons.silverCoin.svg(width: 24, height: 24),
-                const Gap(4),
-                Text(
-                  '27',
-                  style: TextStyles.titleTag.copyWith(
-                    color: AppColors.colorffE5E5E5,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SilverBalanceChip(count: 27),
           const Gap(15),
         ],
       ),

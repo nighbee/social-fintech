@@ -60,7 +60,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
               CustomButton(
                 text: 'Button with Icon',
                 onTap: () {},
-                icon: const Icon(Icons.add, color: Colors.white),
+                prefixIcon: const Icon(Icons.add, color: Colors.white),
               ),
               Gap(16),
               CustomButton(
@@ -266,3 +266,4 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
     );
   }
 }
+

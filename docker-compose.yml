@@ -75,6 +75,45 @@ services:
     networks:
       - brightbund-network
 
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: brightbund-worker
+    restart: unless-stopped
+    command: ["/entrypoint.worker.dev.sh"]
+    volumes:
+      - ./backend:/app
+      - /app/tmp
+      - /app/bin
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=brightbund
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_SSLMODE=disable
+      - GIN_MODE=debug
+      - JWT_SECRET=dev-secret-key-change-in-production-12345
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET=brightbund-media
+      - MINIO_PUBLIC_URL=http://localhost:9000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - brightbund-network
+
   minio:
     image: minio/minio:latest
     container_name: brightbund-minio

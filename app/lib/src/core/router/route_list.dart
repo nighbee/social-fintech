@@ -188,6 +188,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 redirect: AuthGuard,
                 builder: (context, state) => const CreatePostPage(),
               ),
+              GoRoute(
+                path: RoutePaths.store,
+                name: RouteNames.store,
+                redirect: AuthGuard,
+                pageBuilder: (context, state) {
+                  return const NoTransitionPage(child: StorePage());
+                },
+              ),
 
               // Map route (protected by auth guard)
               GoRoute(

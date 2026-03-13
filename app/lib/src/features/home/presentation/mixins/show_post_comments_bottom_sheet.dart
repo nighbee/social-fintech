@@ -29,7 +29,7 @@ mixin ShowPostCommentsBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.92,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         child: PostCommentsBottomSheet(
           bloc: bloc,
           post: post,
@@ -782,7 +782,9 @@ class _CommentInputBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 168, 168, 168).withOpacity(0.08),
+        color: const Color.fromARGB(255, 168, 168, 168).withValues(
+          alpha: 0.08,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

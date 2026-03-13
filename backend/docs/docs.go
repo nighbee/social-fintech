@@ -2106,6 +2106,11 @@ const docTemplate = `{
         },
         "/posts/{post_id}/seals": {
             "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "description": "Fetch all users who contributed Silver Seals and their messages",
                 "produces": [
                     "application/json"
@@ -2128,6 +2133,15 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/feed.SealListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -4991,6 +5005,10 @@ const docTemplate = `{
                     "maximum": 10,
                     "minimum": 1
                 },
+                "comment": {
+                    "type": "string",
+                    "maxLength": 500
+                },
                 "currency": {
                     "type": "string",
                     "enum": [
@@ -5209,6 +5227,9 @@ const docTemplate = `{
         "economy.TransferResponse": {
             "type": "object",
             "properties": {
+                "created_new": {
+                    "type": "boolean"
+                },
                 "ledger_entry_id": {
                     "type": "string",
                     "example": "123e4567-e89b-12d3-a456-426614174000"
@@ -5702,6 +5723,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "comment": {
+                    "type": "string"
+                },
+                "idempotency_key": {
                     "type": "string"
                 }
             }

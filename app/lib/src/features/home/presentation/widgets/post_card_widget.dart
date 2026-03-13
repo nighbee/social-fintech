@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -8,6 +6,10 @@ import 'package:app/src/features/home/domain/entities/media_attachment_entity.da
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_feedback_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_silver_honor_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/widgets/reported_post_card_widget.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -24,9 +26,27 @@ class PostCardWidget extends StatefulWidget {
 }
 
 class _PostCardWidgetState extends State<PostCardWidget>
-    with ShowPostCommentsBottomSheet {
+    with
+        ShowPostCommentsBottomSheet,
+        ShowPostReportFeedbackBottomSheet,
+        ShowPostReportBottomSheet,
+        ShowPostSilverHonorBottomSheet {
+  bool _showReportedPostCard = false;
+
+  void _onReportSubmitted(PostReportReason _) {}
+
   @override
   Widget build(BuildContext context) {
+    if (_showReportedPostCard) {
+      return ReportedPostCardWidget(
+        onClose: () {
+          setState(() {
+            _showReportedPostCard = false;
+          });
+        },
+      );
+    }
+
     final bloc = getIt<HomeBloc>();
 
     return BlocBuilder<HomeBloc, HomeState>(
@@ -38,7 +58,7 @@ class _PostCardWidgetState extends State<PostCardWidget>
           orElse: HomeViewModel.new,
         );
         final currentPost = viewModel.feed.items.firstWhere(
-          (p) => p.postId == widget.post.postId,
+          (item) => item.postId == widget.post.postId,
           orElse: () => widget.post,
         );
 
@@ -48,8 +68,10 @@ class _PostCardWidgetState extends State<PostCardWidget>
             payload.localUrl: payload.bytes,
         };
         final hasMedia = mediaItems.isNotEmpty;
-        final currentLiked = currentPost.viewerHasLiked;
-        final currentCount = currentPost.metrics.likes;
+        final hasContent = currentPost.contentText.trim().isNotEmpty;
+        final authorName = currentPost.author.username.trim().isNotEmpty
+            ? currentPost.author.username
+            : currentPost.author.fullName;
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -71,7 +93,7 @@ class _PostCardWidgetState extends State<PostCardWidget>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          currentPost.author.username,
+                          authorName,
                           style: TextStyles.titleHeadline.copyWith(
                             fontWeight: FontWeight.w600,
                             color: AppColors.colorffE5E5E5,
@@ -88,15 +110,32 @@ class _PostCardWidgetState extends State<PostCardWidget>
                       ],
                     ),
                   ),
-                  Assets.icons.more.svg(width: 16, height: 16),
+                  GestureDetector(
+                    onTap: () => showPostReportBottomSheet(
+                      context,
+                      onSubmitted: _onReportSubmitted,
+                      reportTargetName:
+                          authorName.isNotEmpty ? authorName : 'User',
+                      onFeedbackDone: () {
+                        if (!mounted) return;
+                        setState(() {
+                          _showReportedPostCard = true;
+                        });
+                      },
+                    ),
+                    child: Assets.icons.more.svg(width: 16, height: 16),
+                  ),
                 ],
               ),
-              const Gap(12),
-              Text(
-                currentPost.contentText,
-                style: TextStyles.bodyMain
-                    .copyWith(color: AppColors.colorffE5E5E5),
-              ),
+              if (hasContent) ...[
+                const Gap(12),
+                Text(
+                  currentPost.contentText,
+                  style: TextStyles.bodyMain.copyWith(
+                    color: AppColors.colorffE5E5E5,
+                  ),
+                ),
+              ],
               if (hasMedia) ...[
                 const Gap(12),
                 _PostMediaGrid(
@@ -115,19 +154,23 @@ class _PostCardWidgetState extends State<PostCardWidget>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SvgPicture.string(
-                          currentLiked ? _filledLikeIcon : _outlineLikeIcon,
+                          currentPost.viewerHasLiked
+                              ? _filledLikeIcon
+                              : _outlineLikeIcon,
                           width: 20,
                           height: 20,
                           colorFilter: ColorFilter.mode(
-                            currentLiked ? Colors.red : AppColors.colorffE5E5E5,
+                            currentPost.viewerHasLiked
+                                ? Colors.red
+                                : AppColors.colorffE5E5E5,
                             BlendMode.srcIn,
                           ),
                         ),
                         const Gap(4),
                         Text(
-                          currentCount.toString(),
+                          currentPost.metrics.likes.toString(),
                           style: TextStyles.bodyMain.copyWith(
-                            color: currentLiked
+                            color: currentPost.viewerHasLiked
                                 ? Colors.red
                                 : AppColors.colorffE5E5E5,
                           ),
@@ -136,39 +179,30 @@ class _PostCardWidgetState extends State<PostCardWidget>
                     ),
                   ),
                   const Gap(16),
-                  InkWell(
+                  PostActionButton(
+                    icon: Assets.icons.message.svg(width: 20, height: 20),
+                    count: currentPost.metrics.comments,
                     onTap: () => showPostCommentsBottomSheet(
                       context,
                       bloc: bloc,
                       post: currentPost,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Assets.icons.message.svg(width: 20, height: 20),
-                        const Gap(4),
-                        Text(
-                          currentPost.metrics.comments.toString(),
-                          style: TextStyles.bodyMain
-                              .copyWith(color: AppColors.colorffE5E5E5),
-                        ),
-                      ],
-                    ),
                   ),
                   const Gap(16),
-                  Assets.icons.share.svg(width: 20, height: 20),
+                  PostActionButton(
+                    icon: Assets.icons.share.svg(width: 20, height: 20),
+                    count: currentPost.metrics.shares,
+                    onTap: () {},
+                  ),
                   const Spacer(),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Assets.icons.silverCoin.svg(width: 25, height: 25),
-                      const Gap(4),
-                      Text(
-                        currentPost.metrics.silvers.toString(),
-                        style: TextStyles.bodyMain
-                            .copyWith(color: AppColors.colorffE5E5E5),
-                      ),
-                    ],
+                  PostActionButton(
+                    icon: Assets.icons.silverCoin.svg(width: 25, height: 25),
+                    count: currentPost.metrics.silvers,
+                    onTap: () => showPostSilverHonorBottomSheet(
+                      context,
+                      bloc: bloc,
+                      post: currentPost,
+                    ),
                   ),
                 ],
               ),
@@ -176,6 +210,37 @@ class _PostCardWidgetState extends State<PostCardWidget>
           ),
         );
       },
+    );
+  }
+}
+
+class PostActionButton extends StatelessWidget {
+  const PostActionButton({
+    super.key,
+    required this.icon,
+    required this.count,
+    this.onTap,
+  });
+
+  final Widget icon;
+  final int count;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          icon,
+          const Gap(4),
+          Text(
+            count.toString(),
+            style: TextStyles.bodyMain.copyWith(color: AppColors.colorffE5E5E5),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -467,4 +532,3 @@ const String _filledLikeIcon = '''
   <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
 </svg>
 ''';
-

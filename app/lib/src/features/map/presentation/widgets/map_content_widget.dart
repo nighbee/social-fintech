@@ -441,7 +441,7 @@ class _MapContent extends StatelessWidget {
                             ? Colors.white54
                             : Colors.white,
                       ),
-                      icon:
+                      prefixIcon:
                           const Icon(Icons.add, color: Colors.white, size: 18),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),

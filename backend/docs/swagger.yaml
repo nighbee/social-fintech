@@ -320,6 +320,9 @@ definitions:
         maximum: 10
         minimum: 1
         type: integer
+      comment:
+        maxLength: 500
+        type: stringbut
       currency:
         enum:
         - SILVER_SEAL
@@ -476,6 +479,8 @@ definitions:
     type: object
   economy.TransferResponse:
     properties:
+      created_new:
+        type: boolean
       ledger_entry_id:
         example: 123e4567-e89b-12d3-a456-426614174000
         type: string
@@ -811,6 +816,8 @@ definitions:
       amount:
         type: integer
       comment:
+        type: string
+      idempotency_key:
         type: string
     type: object
   feed.SyncFeedStateRequest:
@@ -2715,6 +2722,14 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/feed.SealListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
       summary: Fetch post seals
       tags:
       - Feed Interactions

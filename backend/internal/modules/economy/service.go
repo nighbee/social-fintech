@@ -173,6 +173,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 					LedgerEntryID:   existing.ID,
 					SenderBalance:   0,
 					ReceiverBalance: 0,
+					CreatedNew:      false,
 					Timestamp:       existing.CreatedAt,
 				}
 				return nil
@@ -287,6 +288,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 				LedgerEntryID:   existing.ID,
 				SenderBalance:   CentinelsToSeals(senderWallet.Balance),
 				ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
+				CreatedNew:      false,
 				Timestamp:       existing.CreatedAt,
 			}
 			return nil
@@ -368,6 +370,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 			LedgerEntryID:   entry.ID,
 			SenderBalance:   CentinelsToSeals(senderWallet.Balance),
 			ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
+			CreatedNew:      true,
 			Timestamp:       entry.CreatedAt,
 		}
 		return nil
@@ -385,6 +388,9 @@ func (s *service) GiveSealToPost(ctx context.Context, userID, postID string, req
 	metadata := map[string]interface{}{
 		"post_id": postID,
 		"context": "post_seal",
+	}
+	if comment := strings.TrimSpace(req.Comment); comment != "" {
+		metadata["comment"] = comment
 	}
 
 	return s.processSealTransfer(ctx, userID, req.ReceiverUserID, req.Amount*CentinelsPerSeal, currency, CategoryPostSeal, req.IdempotencyKey, metadata)
@@ -1167,6 +1173,7 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			response = &TransferResponse{
 				LedgerEntryID: existing.ID,
 				SenderBalance: CentinelsToSeals(senderWalletCheck.Balance),
+				CreatedNew:    false,
 				Timestamp:     existing.CreatedAt,
 			}
 			return nil
@@ -1284,6 +1291,7 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			LedgerEntryID:   entry.ID,
 			SenderBalance:   CentinelsToSeals(wallet.Balance),
 			ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
+			CreatedNew:      true,
 			Timestamp:       entry.CreatedAt,
 		}
 

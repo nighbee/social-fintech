@@ -1,6 +1,7 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/widgets/silver_balance_chip.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -11,19 +12,20 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     this.onCreatePostTap,
     this.feedState = const FeedStateEntity.empty(),
+    this.silverHonorCount = 0,
   });
 
   final VoidCallback? onCreatePostTap;
   final FeedStateEntity feedState;
+  final int silverHonorCount;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
-    final maxAllowedSeconds = feedState.maxAllowedSeconds > 0
-        ? feedState.maxAllowedSeconds
-        : 20 * 60;
+    final maxAllowedSeconds =
+        feedState.maxAllowedSeconds > 0 ? feedState.maxAllowedSeconds : 20 * 60;
     final remainingSeconds =
         (maxAllowedSeconds - feedState.accumulatedActiveSeconds).clamp(
       0,
@@ -65,28 +67,9 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       title: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.colorff2A2A2B,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.colorff3F3F40, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Assets.icons.silverCoin.svg(width: 24, height: 24),
-                const Gap(4),
-                Text(
-                  '27',
-                  style: TextStyles.titleTag.copyWith(
-                    color: AppColors.colorffE5E5E5,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
+          GestureDetector(
+            onTap: () => context.push(RoutePaths.store),
+            child: SilverBalanceChip(count: silverHonorCount),
           ),
           const Gap(12),
           Container(
@@ -95,8 +78,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ? ShaderMask(
                     blendMode: BlendMode.srcIn,
                     shaderCallback: (bounds) {
-                      final gradient =
-                          isBreak ? breakGradient : endingGradient;
+                      final gradient = isBreak ? breakGradient : endingGradient;
                       return gradient.createShader(
                         Rect.fromLTWH(0, 0, bounds.width, bounds.height),
                       );
