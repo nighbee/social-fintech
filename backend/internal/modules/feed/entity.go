@@ -88,6 +88,11 @@ type CreateCommentRequest struct {
 	MediaAttachments []MediaAttachment `json:"media_attachments,omitempty"`
 }
 
+type ReportCommentRequest struct {
+	Reason      string `json:"reason"`
+	Description string `json:"description,omitempty"`
+}
+
 type SyncFeedStateRequest struct {
 	DeltaSeconds int    `json:"delta_seconds"`
 	DeviceID     string `json:"device_id"`
@@ -143,8 +148,9 @@ type PostResponse struct {
 }
 
 type FeedResponse struct {
-	Items      []PostResponse `json:"items"`
-	NextCursor string         `json:"next_cursor,omitempty"`
+	Items        []PostResponse `json:"items"`
+	NextCursor   string         `json:"next_cursor,omitempty"`
+	FeedDegraded bool           `json:"feed_degraded"`
 }
 
 // PostGridItem is a lightweight thumbnail entry for the 3×3 profile grid.

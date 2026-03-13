@@ -277,6 +277,16 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 }
 
 func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int, lat, lon float64, hasLocation bool) (*FeedResponse, error) {
+	feedDegraded := false
+	if state, err := s.getOrInitState(ctx, viewerID); err == nil && state != nil {
+		now := time.Now()
+		state = s.applyStateTransitions(ctx, state, now, false)
+		state.LastSyncTimestamp = now
+		_ = s.cache.SetFatigueState(ctx, state)
+		_ = s.cache.MarkUserDirty(ctx, viewerID)
+		feedDegraded = state.IsInCooldown
+	}
+
 	// Default to current time if cursor is empty
 	cursorTime := time.Now()
 	if cursor != "" {
@@ -291,8 +301,9 @@ func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string
 	}
 
 	return &FeedResponse{
-		Items:      items,
-		NextCursor: nextCursor,
+		Items:        items,
+		NextCursor:   nextCursor,
+		FeedDegraded: feedDegraded,
 	}, nil
 }
 
@@ -330,12 +341,15 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 	}
 
 	if permission == CommentPermAlliesOnly {
-		// TODO: Inject Profiles dependency or Social Network validation layer to check ally status
-		// Assuming repo validates graph relation if not author
 		if userID != authorID {
-			// Placeholder: check real ally relation here
-			// return nil, ErrCommentNotAllowed
-		} // else Author can always comment on their own Allies-only post
+			isAlly, err := s.repo.IsAlly(ctx, userID, authorID)
+			if err != nil {
+				return nil, err
+			}
+			if !isAlly {
+				return nil, ErrCommentNotAllowed
+			}
+		}
 	}
 
 	comment := &PostComment{
@@ -389,6 +403,21 @@ func (s *Service) GetThreadedComments(ctx context.Context, viewerID, postID uuid
 		Comments:   comments,
 		NextCursor: nextCursor,
 	}, nil
+}
+
+func (s *Service) DeleteComment(ctx context.Context, actorID, commentID uuid.UUID) error {
+	isAdmin, err := s.repo.IsUserAdmin(ctx, actorID)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeleteComment(ctx, commentID, actorID, isAdmin)
+}
+
+func (s *Service) ReportComment(ctx context.Context, reporterID, commentID uuid.UUID, reason, description string) error {
+	if reason == "" {
+		return ErrInvalidReportReason
+	}
+	return s.repo.ReportComment(ctx, commentID, reporterID, reason, description)
 }
 
 // ---------------- Interactions System ----------------

@@ -64,6 +64,8 @@ var (
 	// ErrNotCommentAuthor is returned when a delete is attempted by a user
 	// who is not the comment author.
 	ErrNotCommentAuthor = errors.New("not_comment_author: only the original author can delete this comment")
+	// ErrInvalidReportReason is returned when comment report reason is empty.
+	ErrInvalidReportReason = errors.New("invalid_report_reason")
 
 	// ── Likes ─────────────────────────────────────────────────────────────
 	// ErrLikeQueueFull is returned when the Redis write-behind buffer for likes

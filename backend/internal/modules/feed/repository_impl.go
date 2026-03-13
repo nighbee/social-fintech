@@ -460,6 +460,76 @@ func (r *repository) ToggleCommentLike(ctx context.Context, commentID uuid.UUID,
 	return tx.Commit()
 }
 
+func (r *repository) IsAlly(ctx context.Context, userID, targetUserID uuid.UUID) (bool, error) {
+	const query = `
+		SELECT EXISTS(
+			SELECT 1
+			FROM user_relationships
+			WHERE user_id = $1
+			  AND target_user_id = $2
+			  AND relationship_type = 'ally'
+		)
+	`
+	var exists bool
+	if err := r.db.QueryRowContext(ctx, query, userID, targetUserID).Scan(&exists); err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
+func (r *repository) IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
+	var isAdmin bool
+	if err := r.db.QueryRowContext(ctx, `SELECT is_admin FROM users WHERE id = $1`, userID).Scan(&isAdmin); err != nil {
+		if err == sql.ErrNoRows {
+			return false, ErrCommentNotFound
+		}
+		return false, err
+	}
+	return isAdmin, nil
+}
+
+func (r *repository) DeleteComment(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var postID uuid.UUID
+	const query = `
+		UPDATE post_comments
+		SET is_deleted = true,
+		    content = '[deleted]',
+		    media_attachments = '[]'::jsonb,
+		    updated_at = NOW()
+		WHERE id = $1
+		  AND is_deleted = false
+		  AND (user_id = $2 OR $3 = true)
+		RETURNING post_id
+	`
+	if err := tx.QueryRowContext(ctx, query, commentID, actorID, isModerator).Scan(&postID); err != nil {
+		if err == sql.ErrNoRows {
+			return ErrNotCommentAuthor
+		}
+		return err
+	}
+
+	if _, err := tx.ExecContext(ctx, `UPDATE posts SET comments_count = GREATEST(comments_count - 1, 0) WHERE id = $1`, postID); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+func (r *repository) ReportComment(ctx context.Context, commentID, reporterID uuid.UUID, reason, description string) error {
+	const query = `
+		INSERT INTO comment_reports (id, comment_id, reporter_id, reason, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+	`
+	_, err := r.db.ExecContext(ctx, query, uuid.New(), commentID, reporterID, reason, description)
+	return err
+}
+
 func (r *repository) CreateComment(ctx context.Context, comment *PostComment) error {
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {

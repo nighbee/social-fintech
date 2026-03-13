@@ -30,6 +30,10 @@ type Repository interface {
 	GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error)
 	GetPostPermissionsInfo(ctx context.Context, postID uuid.UUID) (string, uuid.UUID, error) // Returns (CommentPermission, AuthorID)
 	ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error
+	DeleteComment(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error
+	ReportComment(ctx context.Context, commentID, reporterID uuid.UUID, reason, description string) error
+	IsAlly(ctx context.Context, userID, targetUserID uuid.UUID) (bool, error)
+	IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, error)
 
 	// Interactions
 	GetInteractions(ctx context.Context, postID uuid.UUID, interactionType string, cursor string, limit int) ([]InteractionResponse, string, error)

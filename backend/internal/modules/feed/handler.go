@@ -362,6 +362,81 @@ func (h *Handler) CreateComment(c *fiber.Ctx) error {
 	return c.Status(201).JSON(commentResp)
 }
 
+// DeleteComment godoc
+// @Summary Delete comment
+// @Description Soft-deletes a comment. Allowed for comment author or admin moderator.
+// @Tags Feed Moderation
+// @Produce json
+// @Security Bearer
+// @Param post_id path string true "Post UUID"
+// @Param comment_id path string true "Comment UUID"
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /posts/{post_id}/comments/{comment_id} [delete]
+func (h *Handler) DeleteComment(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	commentID, err := uuid.Parse(c.Params("comment_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_comment_id"})
+	}
+
+	if err := h.service.DeleteComment(c.Context(), userID, commentID); err != nil {
+		if errors.Is(err, ErrNotCommentAuthor) {
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		}
+		logger.Error("failed to delete comment", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "comment_delete_failed"})
+	}
+
+	return c.JSON(fiber.Map{"status": "deleted"})
+}
+
+// ReportComment godoc
+// @Summary Report comment
+// @Description Creates moderation report for a comment.
+// @Tags Feed Moderation
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param post_id path string true "Post UUID"
+// @Param comment_id path string true "Comment UUID"
+// @Param request body ReportCommentRequest true "Report reason and optional description"
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /posts/{post_id}/comments/{comment_id}/report [post]
+func (h *Handler) ReportComment(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	commentID, err := uuid.Parse(c.Params("comment_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_comment_id"})
+	}
+
+	var req ReportCommentRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+	}
+	if strings.TrimSpace(req.Reason) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": ErrInvalidReportReason.Error()})
+	}
+
+	if err := h.service.ReportComment(c.Context(), userID, commentID, req.Reason, req.Description); err != nil {
+		logger.Error("failed to report comment", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "report_failed"})
+	}
+
+	return c.Status(201).JSON(fiber.Map{"status": "reported"})
+}
+
 // ToggleCommentLike godoc
 // @Summary Like a comment
 // @Description Toggles like interaction on a comment synchronously

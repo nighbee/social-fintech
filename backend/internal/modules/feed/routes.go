@@ -42,6 +42,8 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 	postGroup.Post("/", handler.CreatePost)
 	postGroup.Get("/:post_id/comments", handler.GetThreadedComments)
 	postGroup.Post("/:post_id/comments", handler.CreateComment)
+	postGroup.Delete("/:post_id/comments/:comment_id", handler.DeleteComment)
+	postGroup.Post("/:post_id/comments/:comment_id/report", handler.ReportComment)
 
 	// --- Interaction Endpoints ---
 	postGroup.Get("/:post_id/likes", handler.GetLikes)
