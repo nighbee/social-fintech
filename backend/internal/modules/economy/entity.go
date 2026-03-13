@@ -213,12 +213,14 @@ type TransferResponse struct {
 	LedgerEntryID   string    `json:"ledger_entry_id" example:"123e4567-e89b-12d3-a456-426614174000"`
 	SenderBalance   float64   `json:"sender_balance" example:"3.50"`
 	ReceiverBalance float64   `json:"receiver_balance" example:"6.50"`
+	CreatedNew      bool      `json:"created_new"`
 	Timestamp       time.Time `json:"timestamp"`
 }
 
 type GiveSealToPostRequest struct {
 	ReceiverUserID string `json:"receiver_user_id" validate:"required,uuid"`
 	Amount         int64  `json:"amount" validate:"required,min=1,max=10"`
+	Comment        string `json:"comment,omitempty" validate:"omitempty,max=500"`
 	Currency       string `json:"currency" validate:"required,oneof=SILVER_SEAL GOLD_SEAL"`
 	IdempotencyKey string `json:"idempotency_key,omitempty" validate:"omitempty,uuid"`
 }

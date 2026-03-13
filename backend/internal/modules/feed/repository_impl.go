@@ -639,11 +639,13 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 	query := `
 		SELECT
 			le.amount,
+			COALESCE(le.metadata->>'comment', '') AS comment,
 			le.created_at,
 			u.id,
 			COALESCE(u.username, '') AS username,
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') AS full_name,
-			COALESCE(p.avatar_url, '') AS profile_pic_url
+			COALESCE(p.avatar_url, '') AS profile_pic_url,
+			COALESCE(p.current_rank_tier, '') AS rank
 		FROM ledger_entries le
 		JOIN wallets sw ON sw.id = le.sender_wallet_id
 		JOIN users u ON u.id = sw.user_id
@@ -667,15 +669,32 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 	for rows.Next() {
 		var resp SealResponse
 		var amount int64
+		var comment string
 		var createdAt time.Time
 		var avatarURL sql.NullString
+		var rank sql.NullString
 
-		if err := rows.Scan(&amount, &createdAt, &resp.User.ID, &resp.User.Username, &resp.User.FullName, &avatarURL); err != nil {
+		if err := rows.Scan(
+			&amount,
+			&comment,
+			&createdAt,
+			&resp.User.ID,
+			&resp.User.Username,
+			&resp.User.FullName,
+			&avatarURL,
+			&rank,
+		); err != nil {
 			return nil, "", err
 		}
 		resp.Amount = amount / economy.CentinelsPerSeal
+		resp.Comment = strings.TrimSpace(comment)
 		resp.CreatedAt = createdAt
-		resp.User.ProfilePicURL = r.buildURL(avatarURL.String)
+		if avatarURL.Valid {
+			resp.User.ProfilePicURL = r.buildURL(avatarURL.String)
+		}
+		if rank.Valid {
+			resp.User.Rank = rank.String
+		}
 
 		items = append(items, resp)
 		lastCreatedAt = createdAt

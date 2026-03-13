@@ -20,6 +20,7 @@ EXPOSE 8080
 # entrypoint.dev.sh runs migrations then starts air
 # It is copied outside /app so the source-code volume mount doesn't shadow it.
 COPY entrypoint.dev.sh /entrypoint.dev.sh
-RUN chmod +x /entrypoint.dev.sh
+COPY entrypoint.worker.dev.sh /entrypoint.worker.dev.sh
+RUN chmod +x /entrypoint.dev.sh /entrypoint.worker.dev.sh
 
 CMD ["/entrypoint.dev.sh"]

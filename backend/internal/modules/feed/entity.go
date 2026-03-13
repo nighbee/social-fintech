@@ -205,8 +205,9 @@ type InteractionListResponse struct {
 }
 
 type SendSealRequest struct {
-	Amount  int64  `json:"amount"`
-	Comment string `json:"comment,omitempty"`
+	Amount         int64  `json:"amount"`
+	Comment        string `json:"comment,omitempty"`
+	IdempotencyKey string `json:"idempotency_key,omitempty"`
 }
 
 type SealResponse struct {

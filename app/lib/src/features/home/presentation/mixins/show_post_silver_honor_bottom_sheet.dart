@@ -53,7 +53,8 @@ class PostSilverHonorBottomSheet extends StatefulWidget {
       _PostSilverHonorBottomSheetState();
 }
 
-class _PostSilverHonorBottomSheetState extends State<PostSilverHonorBottomSheet> {
+class _PostSilverHonorBottomSheetState
+    extends State<PostSilverHonorBottomSheet> {
   bool _isLoading = true;
   String? _loadError;
   List<SealResponseEntity> _seals = const [];
@@ -212,7 +213,8 @@ class _PostSilverHonorBottomSheetState extends State<PostSilverHonorBottomSheet>
               ),
               child: CustomButton(
                 text: 'Send a silver honor',
-                onTap: () => _showSilverHonorComposerDialog(context, currentPost),
+                onTap: () =>
+                    _showSilverHonorComposerDialog(context, currentPost),
                 backgroundColor: AppColors.colorff6D6D6Dop35,
                 borderRadius: 8,
                 border: Border.all(

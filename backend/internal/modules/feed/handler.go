@@ -568,6 +568,7 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	if req.Amount <= 0 {
 		return c.Status(400).JSON(fiber.Map{"error": ErrInvalidSealAmount.Error()})
 	}
+	req.Comment = strings.TrimSpace(req.Comment)
 
 	// Resolve the post author so Economy knows who receives the Silver.
 	// GetPostPermissionsInfo returns (commentPermission, authorID, error).
@@ -582,12 +583,19 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	}
 
 	// Build the idempotency key from viewer+post+comment so duplicate taps are safe.
-	idempotencyKey := uuid.NewSHA1(uuid.NameSpaceURL, []byte(userID.String()+":"+postID.String())).String()
+	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
+	if idempotencyKey == "" {
+		idempotencyKey = strings.TrimSpace(c.Get("Idempotency-Key"))
+	}
+	if idempotencyKey == "" {
+		idempotencyKey = uuid.New().String()
+	}
 
 	// Call Economy вЂ” handles wallet debit, ledger entry, cooldown, monthly limit.
 	txResp, err := h.economy.GiveSealToPost(c.Context(), userID.String(), postID.String(), &economy.GiveSealToPostRequest{
 		ReceiverUserID: authorID.String(),
 		Amount:         req.Amount,
+		Comment:        req.Comment,
 		Currency:       "SILVER_SEAL",
 		IdempotencyKey: idempotencyKey,
 	})
@@ -610,8 +618,10 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 		}
 	}
 
-	// Queue denormalization: increment seals_count and seals_amount on the post.
-	_ = h.worker.QueueSeal(postID, req.Amount)
+	// Queue denormalization only for a newly created ledger entry.
+	if txResp.CreatedNew {
+		_ = h.worker.QueueSeal(postID, req.Amount)
+	}
 
 	return c.Status(201).JSON(fiber.Map{
 		"status":          "seal_sent",
@@ -638,10 +648,16 @@ func contains(s, substr string) bool {
 // @Description Fetch all users who contributed Silver Seals and their messages
 // @Tags Feed Interactions
 // @Produce json
+// @Security Bearer
 // @Param post_id path string true "Post UUID"
 // @Success 200 {object} SealListResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /posts/{post_id}/seals [get]
 func (h *Handler) GetSeals(c *fiber.Ctx) error {
+	if _, ok := requireUserID(c); !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
 	postID, err := uuid.Parse(c.Params("post_id"))
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_post_id"})
