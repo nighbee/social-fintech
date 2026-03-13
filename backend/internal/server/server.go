@@ -159,6 +159,8 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	postGroup.Post("/", feedHandler.CreatePost)
 	postGroup.Get("/:post_id/comments", feedHandler.GetThreadedComments)
 	postGroup.Post("/:post_id/comments", feedHandler.CreateComment)
+	postGroup.Delete("/:post_id/comments/:comment_id", feedHandler.DeleteComment)
+	postGroup.Post("/:post_id/comments/:comment_id/report", feedHandler.ReportComment)
 	postGroup.Post("/:post_id/likes", feedHandler.ToggleLike)
 	postGroup.Get("/:post_id/likes", feedHandler.GetLikes)
 	postGroup.Get("/:post_id/seals", feedHandler.GetSeals)
