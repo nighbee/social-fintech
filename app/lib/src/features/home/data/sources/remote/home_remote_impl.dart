@@ -9,6 +9,7 @@ import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/data/models/interaction_list_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/post_response_dto.dart';
+import 'package:app/src/features/home/data/models/report_post_result_dto.dart';
 import 'package:app/src/features/home/data/models/comment_response_dto.dart';
 import 'package:app/src/features/home/data/models/claim_daily_accrual_result_dto.dart';
 import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
@@ -29,6 +30,7 @@ import 'package:app/src/features/home/domain/requests/get_post_likes_request.dar
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:dio/dio.dart';
@@ -446,6 +448,38 @@ class HomeRemoteImpl implements IHomeRemote {
             );
           }
           final dto = PostResponseDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ReportPostResultDto>> reportPost(
+    PostIdRequest requestId,
+    ReportPostRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.postReport(requestId.postId),
+        data: request.toPayload(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid report post response'),
+            );
+          }
+          final dto = ReportPostResultDto.fromJson(
             Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
           );
           return Right(dto);

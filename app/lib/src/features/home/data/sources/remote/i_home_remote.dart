@@ -5,6 +5,7 @@ import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/data/models/interaction_list_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/post_response_dto.dart';
+import 'package:app/src/features/home/data/models/report_post_result_dto.dart';
 import 'package:app/src/features/home/data/models/comment_response_dto.dart';
 import 'package:app/src/features/home/data/models/claim_daily_accrual_result_dto.dart';
 import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
@@ -24,6 +25,7 @@ import 'package:app/src/features/home/domain/requests/get_post_likes_request.dar
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:dio/dio.dart';
@@ -55,6 +57,10 @@ abstract class IHomeRemote {
   Future<Either<DomainException, EconomyLimitsDto>> getEconomyLimits();
   Future<Either<DomainException, PostResponseDto>> togglePostLike(
     PostIdRequest request,
+  );
+  Future<Either<DomainException, ReportPostResultDto>> reportPost(
+    PostIdRequest requestId,
+    ReportPostRequest request,
   );
   Future<Either<DomainException, SendPostSealResultDto>> sendPostSeal(
     PostIdRequest requestId,

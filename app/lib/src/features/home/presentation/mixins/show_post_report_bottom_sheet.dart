@@ -7,6 +7,10 @@ import 'package:app/src/features/home/presentation/mixins/show_post_report_feedb
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
+typedef PostReportSubmitCallback = Future<bool> Function(
+  PostReportReason reason,
+);
+
 enum PostReportReason {
   spam('Spam or scam'),
   hate('Hate, harassment'),
@@ -22,11 +26,38 @@ enum PostReportReason {
   final String label;
 }
 
+extension PostReportReasonApiValue on PostReportReason {
+  String get apiValue {
+    switch (this) {
+      case PostReportReason.spam:
+        return 'spam';
+      case PostReportReason.hate:
+        return 'hate';
+      case PostReportReason.nudity:
+        return 'nudity';
+      case PostReportReason.violence:
+        return 'violence';
+      case PostReportReason.illegal:
+        return 'illegal';
+      case PostReportReason.gambling:
+        return 'gambling';
+      case PostReportReason.copyright:
+        return 'copyright';
+      case PostReportReason.fake:
+        return 'fake_account';
+      case PostReportReason.manipulation:
+        return 'manipulation';
+    }
+  }
+}
+
 mixin ShowPostReportBottomSheet on ShowPostReportFeedbackBottomSheet {
   void showPostReportBottomSheet(
     BuildContext context, {
-    required ValueChanged<PostReportReason> onSubmitted,
+    required PostReportSubmitCallback onSubmitted,
     String reportTargetName = 'User',
+    VoidCallback? onBlock,
+    VoidCallback? onRestrict,
     VoidCallback? onFeedbackDone,
   }) {
     context.showRoundedModalBottomSheet(
@@ -35,12 +66,15 @@ mixin ShowPostReportBottomSheet on ShowPostReportFeedbackBottomSheet {
       child: ActionBottomSheet(
         backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         child: _PostReportSheet(
-          onSubmitted: (reason) {
-            onSubmitted(reason);
+          onSubmitted: onSubmitted,
+          onReportSucceeded: () {
             Future.microtask(() {
+              if (!context.mounted) return;
               showPostReportFeedbackBottomSheet(
                 context,
                 reportTargetName: reportTargetName,
+                onBlock: onBlock,
+                onRestrict: onRestrict,
                 onDone: onFeedbackDone,
               );
             });
@@ -52,9 +86,13 @@ mixin ShowPostReportBottomSheet on ShowPostReportFeedbackBottomSheet {
 }
 
 class _PostReportSheet extends StatelessWidget {
-  const _PostReportSheet({required this.onSubmitted});
+  const _PostReportSheet({
+    required this.onSubmitted,
+    required this.onReportSucceeded,
+  });
 
-  final ValueChanged<PostReportReason> onSubmitted;
+  final PostReportSubmitCallback onSubmitted;
+  final VoidCallback onReportSucceeded;
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +128,12 @@ class _PostReportSheet extends StatelessWidget {
                 return CustomActionListItem(
                   text: reason.label,
                   color: AppColors.colorffffffff,
-                  onTap: () {
+                  onTap: () async {
                     Navigator.of(context).pop();
-                    onSubmitted(reason);
+                    final shouldShowFeedback = await onSubmitted(reason);
+                    if (shouldShowFeedback) {
+                      onReportSucceeded();
+                    }
                   },
                 );
               },

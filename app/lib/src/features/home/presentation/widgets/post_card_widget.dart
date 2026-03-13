@@ -4,12 +4,15 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/media_attachment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
+import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_feedback_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_silver_honor_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/widgets/reported_post_card_widget.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -33,7 +36,27 @@ class _PostCardWidgetState extends State<PostCardWidget>
         ShowPostSilverHonorBottomSheet {
   bool _showReportedPostCard = false;
 
-  void _onReportSubmitted(PostReportReason _) {}
+  Future<bool> _onReportSubmitted(PostReportReason reason) async {
+    final bloc = getIt<HomeBloc>();
+    final result = await bloc.reportPostDirect(
+      PostIdRequest(postId: widget.post.postId),
+      ReportPostRequest(reason: reason.apiValue),
+    );
+
+    if (!mounted) {
+      return false;
+    }
+
+    return result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_reportPostErrorMessage(error.message))),
+        );
+        return false;
+      },
+      (_) => true,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,6 +139,12 @@ class _PostCardWidgetState extends State<PostCardWidget>
                       onSubmitted: _onReportSubmitted,
                       reportTargetName:
                           authorName.isNotEmpty ? authorName : 'User',
+                      onBlock: () => getIt<ProfileBloc>().add(
+                        ProfileEvent.blockUser(currentPost.author.id),
+                      ),
+                      onRestrict: () => getIt<ProfileBloc>().add(
+                        ProfileEvent.restrictUser(currentPost.author.id),
+                      ),
                       onFeedbackDone: () {
                         if (!mounted) return;
                         setState(() {
@@ -532,3 +561,18 @@ const String _filledLikeIcon = '''
   <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
 </svg>
 ''';
+
+String _reportPostErrorMessage(String errorMessage) {
+  switch (errorMessage.trim()) {
+    case 'duplicate_report':
+      return 'You have already reported this post.';
+    case 'report_rate_limited':
+      return 'Too many reports. Try again later.';
+    case 'invalid_report_reason':
+      return 'Invalid report reason.';
+    default:
+      return errorMessage.trim().isEmpty
+          ? 'Failed to report post.'
+          : errorMessage;
+  }
+}

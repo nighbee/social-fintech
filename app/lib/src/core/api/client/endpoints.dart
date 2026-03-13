@@ -33,6 +33,7 @@ class EndPoints {
   static const String feedStateSync = '/feed/state/sync';
   static const String posts = '/posts';
   static String postComments(String postId) => '/posts/$postId/comments';
+  static String postReport(String postId) => '/posts/$postId/report';
   static String postLikes(String postId) => '/posts/$postId/likes';
   static String postSeals(String postId) => '/posts/$postId/seals';
   static String commentLikes(String commentId) =>

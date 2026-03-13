@@ -22,6 +22,7 @@ import 'package:app/src/features/home/domain/entities/seal_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/send_post_seal_result_entity.dart';
 import 'package:app/src/features/home/domain/entities/status_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
+import 'package:app/src/features/home/domain/entities/report_post_result_entity.dart';
 import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
@@ -34,6 +35,7 @@ import 'package:app/src/features/home/domain/requests/get_post_likes_request.dar
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
@@ -257,6 +259,13 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       },
     );
     return result;
+  }
+
+  Future<Either<DomainException, ReportPostResultEntity>> reportPostDirect(
+    PostIdRequest requestId,
+    ReportPostRequest request,
+  ) async {
+    return _repository.reportPost(requestId, request);
   }
 
   Future<void> _applyPostSealResult(

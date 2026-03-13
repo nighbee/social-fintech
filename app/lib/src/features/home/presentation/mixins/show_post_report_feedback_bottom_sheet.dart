@@ -11,6 +11,8 @@ mixin ShowPostReportFeedbackBottomSheet {
   void showPostReportFeedbackBottomSheet(
     BuildContext context, {
     required String reportTargetName,
+    VoidCallback? onBlock,
+    VoidCallback? onRestrict,
     VoidCallback? onDone,
   }) {
     context.showRoundedModalBottomSheet(
@@ -20,6 +22,8 @@ mixin ShowPostReportFeedbackBottomSheet {
         backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         child: PostReportFeedbackSheet(
           reportTargetName: reportTargetName,
+          onBlock: onBlock,
+          onRestrict: onRestrict,
           onDone: onDone,
         ),
       ),
@@ -31,10 +35,14 @@ class PostReportFeedbackSheet extends StatelessWidget {
   const PostReportFeedbackSheet({
     super.key,
     required this.reportTargetName,
+    this.onBlock,
+    this.onRestrict,
     this.onDone,
   });
 
   final String reportTargetName;
+  final VoidCallback? onBlock;
+  final VoidCallback? onRestrict;
   final VoidCallback? onDone;
 
   @override
@@ -79,7 +87,11 @@ class PostReportFeedbackSheet extends StatelessWidget {
             ),
             text: 'Block $reportTargetName',
             color: const Color(0xFFE5484D),
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).pop();
+              onDone?.call();
+              onBlock?.call();
+            },
           ),
           const Gap(18),
           CustomActionListItem(
@@ -90,7 +102,11 @@ class PostReportFeedbackSheet extends StatelessWidget {
             ),
             text: 'Restrict $reportTargetName',
             color: AppColors.colorffffffff,
-            onTap: () {},
+            onTap: () {
+              Navigator.of(context).pop();
+              onDone?.call();
+              onRestrict?.call();
+            },
           ),
           const Gap(18),
           CustomActionListItem(

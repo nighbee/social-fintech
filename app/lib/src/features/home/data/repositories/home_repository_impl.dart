@@ -7,6 +7,7 @@ import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/report_post_result_entity.dart';
 import 'package:app/src/features/home/domain/entities/claim_daily_accrual_result_entity.dart';
 import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/seal_list_entity.dart';
@@ -30,6 +31,7 @@ import 'package:app/src/features/home/domain/requests/get_post_likes_request.dar
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
@@ -124,6 +126,18 @@ class HomeRepositoryImpl implements IHomeRepository {
     PostIdRequest request,
   ) async {
     final result = await _remote.togglePostLike(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, ReportPostResultEntity>> reportPost(
+    PostIdRequest requestId,
+    ReportPostRequest request,
+  ) async {
+    final result = await _remote.reportPost(requestId, request);
     return result.fold(
       (error) => Left(error),
       (dto) => Right(dto.toEntity()),
