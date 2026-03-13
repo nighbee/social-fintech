@@ -27,11 +27,27 @@ class AppColors {
   static const colorff2A2A2B = Color(0xff2A2A2B);
   static const colorff3F3F40 = Color(0xff3F3F40);
   static const colorffEF4444 = Color(0xffEF4444);
+  static const colorff202020 = Color(0xff202020);
+  static const colorff202020op80 = Color(0xcc202020);
+  static const colorff6D6D6D = Color(0xff6D6D6D);
+  static const colorff656565 = Color(0xff656565);
+  static const colorff6D6D6Dop35 = Color(0x596D6D6D);
+  static const colorff656565op25 = Color(0x40656565);
 
   // Additional colors for notifications page
   static const colorff232324 = Color(0xff232324);
   static const colorff7E8086 = Color(0xff7E8086);
   static const colorff2C2D31 = Color(0xff2C2D31);
+
+  // updated colors soon we will migrate to this
+
+  static const textBrand = Color(0xffe8e8e8);
+  static const backgroundNeutralSecondary = Color(0xff303030);
+  static const backgroundBrandLight = Color(0xffe8e8e8);
+  static const backgroundDisabledDefault = Color(0xff383838);
+  static const textDisabledDefault = Color(0xff757575);
+  static const textNeutral = Color(0xff242424);
+  static const borderDefault = Color(0xff444444);
 }
 
 extension ColorThemeDataExtension on ThemeData {

@@ -32,7 +32,7 @@ mixin ShowPostVisibilityBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.52,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
@@ -76,7 +76,7 @@ mixin ShowPostVisibilityBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.62,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         child: _CommentControlSheetBody(
           selected: selected,
           onSelected: onSelected,

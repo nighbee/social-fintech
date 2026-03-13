@@ -12,7 +12,8 @@ class CustomButton extends StatelessWidget {
     this.padding,
     this.borderRadius = 6,
     this.border,
-    this.icon,
+    this.prefixIcon,
+    this.suffixIcon,
     this.isDisabled = false,
   });
 
@@ -24,14 +25,15 @@ class CustomButton extends StatelessWidget {
   final EdgeInsets? padding;
   final double borderRadius;
   final Border? border;
-  final Widget? icon;
+  final Widget? prefixIcon;
+  final Widget? suffixIcon;
   final bool isDisabled;
 
   @override
   Widget build(BuildContext context) {
     final effectiveBackgroundColor = isDisabled
-        ? const Color.fromARGB(255, 111, 111, 111)
-        : (backgroundColor ?? AppColors.colorffdbdbdb);
+        ? AppColors.backgroundDisabledDefault
+        : (backgroundColor ?? AppColors.backgroundBrandLight);
 
     return Container(
       width: width ?? double.infinity,
@@ -53,8 +55,17 @@ class CustomButton extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   spacing: 10,
                   children: [
-                    if (icon != null) icon!,
-                    Text(text, style: textStyle ?? TextStyles.titleMain),
+                    if (prefixIcon != null) prefixIcon!,
+                    Text(
+                      text,
+                      style: textStyle ??
+                          TextStyles.titleMain.copyWith(
+                            color: isDisabled
+                                ? AppColors.textDisabledDefault
+                                : AppColors.textNeutral,
+                          ),
+                    ),
+                    if (suffixIcon != null) suffixIcon!,
                   ],
                 ),
               ),

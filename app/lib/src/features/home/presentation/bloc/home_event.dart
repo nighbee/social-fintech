@@ -34,5 +34,9 @@ class HomeEvent with _$HomeEvent {
   const factory HomeEvent.togglePostLike({
     required String postId,
   }) = _TogglePostLike;
+  const factory HomeEvent.applyPostSealResult({
+    required String postId,
+    required SendPostSealResultEntity result,
+  }) = _ApplyPostSealResult;
 }
 

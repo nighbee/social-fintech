@@ -37,12 +37,12 @@ class ActionBottomSheet extends StatelessWidget {
       borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
       child: BackdropFilter(
         filter: ImageFilter.blur(
-          sigmaX: enableGlassEffect ? 20 : 15,
-          sigmaY: enableGlassEffect ? 20 : 15,
+          sigmaX: enableGlassEffect ? 20 : 0,
+          sigmaY: enableGlassEffect ? 20 : 0,
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: backgroundColor.withOpacity(enableGlassEffect ? 0.4 : 0.3),
+            color: backgroundColor.withOpacity(enableGlassEffect ? 0.4 : 1),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             border: Border(
               top: BorderSide(

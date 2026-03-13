@@ -281,7 +281,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                               ),
                               CustomButton(
                                 text: "Continue with Apple",
-                                icon: Assets.icons.appleLogo.svg(),
+                                prefixIcon: Assets.icons.appleLogo.svg(),
                                 onTap: () {},
                                 padding: EdgeInsets.symmetric(vertical: 10),
                                 textStyle: TextStyles.titleMain.copyWith(
@@ -290,7 +290,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                               ),
                               CustomButton(
                                 text: "Continue with Google",
-                                icon: Assets.icons.googleLogo.svg(),
+                                prefixIcon: Assets.icons.googleLogo.svg(),
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
@@ -325,3 +325,4 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
     );
   }
 }
+

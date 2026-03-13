@@ -6,6 +6,8 @@ import 'package:app/src/features/home/data/models/interaction_list_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/post_response_dto.dart';
 import 'package:app/src/features/home/data/models/comment_response_dto.dart';
+import 'package:app/src/features/home/data/models/seal_list_dto.dart';
+import 'package:app/src/features/home/data/models/send_post_seal_result_dto.dart';
 import 'package:app/src/features/home/data/models/threaded_comments_dto.dart';
 import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
@@ -15,8 +17,10 @@ import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:dio/dio.dart';
 
@@ -40,8 +44,15 @@ abstract class IHomeRemote {
   Future<Either<DomainException, InteractionListDto>> getPostLikes(
     GetPostLikesRequest request,
   );
+  Future<Either<DomainException, SealListDto>> getPostSeals(
+    GetPostSealsRequest request,
+  );
   Future<Either<DomainException, PostResponseDto>> togglePostLike(
     PostIdRequest request,
+  );
+  Future<Either<DomainException, SendPostSealResultDto>> sendPostSeal(
+    PostIdRequest requestId,
+    SendPostSealRequest request,
   );
   Future<Either<DomainException, CommentResponseDto>> toggleCommentLike(
     CommentIdRequest request,

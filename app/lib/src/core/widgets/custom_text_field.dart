@@ -31,7 +31,13 @@ class CustomTextField extends StatefulWidget {
     this.maxLength,
     this.textAlign = TextAlign.start,
     this.textStyle,
+    this.hintStyle,
     this.contentPadding,
+    this.containerPadding,
+    this.borderRadius = 6,
+    this.expands = false,
+    this.textCapitalization = TextCapitalization.none,
+    this.footer,
   });
 
   final TextEditingController controller;
@@ -59,7 +65,13 @@ class CustomTextField extends StatefulWidget {
   final int? maxLength;
   final TextAlign textAlign;
   final TextStyle? textStyle;
+  final TextStyle? hintStyle;
   final EdgeInsetsGeometry? contentPadding;
+  final EdgeInsetsGeometry? containerPadding;
+  final double borderRadius;
+  final bool expands;
+  final TextCapitalization textCapitalization;
+  final Widget? footer;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
@@ -132,14 +144,78 @@ class _CustomTextFieldState extends State<CustomTextField> {
   Widget build(BuildContext context) {
     final hasText = widget.controller.text.isNotEmpty;
     final showLabel = _isLabelVisible(hasText);
-    final isMultiline = (widget.maxLines ?? 1) > 1;
+    final isMultiline =
+        widget.expands || (widget.maxLines ?? widget.minLines ?? 1) > 1;
+
+    final textField = TextFormField(
+      controller: widget.controller,
+      focusNode: widget.focusNode,
+      onChanged: (value) {
+        widget.onChanged?.call(value);
+      },
+      keyboardType: widget.keyboardType,
+      validator: _validate,
+      obscureText: widget.obscureText,
+      readOnly: widget.readOnly,
+      onTap: widget.onTap,
+      inputFormatters: widget.inputFormatters,
+      minLines: widget.expands ? null : widget.minLines,
+      maxLines: widget.expands ? null : widget.maxLines,
+      maxLength: widget.maxLength,
+      expands: widget.expands,
+      textAlign: widget.textAlign,
+      textAlignVertical: isMultiline || hasText
+          ? TextAlignVertical.top
+          : TextAlignVertical.center,
+      textCapitalization: widget.textCapitalization,
+      style: widget.textStyle ?? TextStyles.titleHeadline,
+      decoration: InputDecoration(
+        hintText: hasText ? null : (widget.hintText ?? widget.labelText),
+        hintStyle: widget.hintStyle ?? TextStyles.titleTag,
+        contentPadding: widget.contentPadding ??
+            (hasText
+                ? EdgeInsets.zero
+                : const EdgeInsets.symmetric(vertical: 0)),
+        filled: false,
+        isDense: true,
+        counterText: '',
+        border: InputBorder.none,
+        enabledBorder: InputBorder.none,
+        focusedBorder: InputBorder.none,
+        errorBorder: InputBorder.none,
+        focusedErrorBorder: InputBorder.none,
+        errorStyle: const TextStyle(fontSize: 0, height: 0),
+      ),
+    );
+
+    final inputContent = Row(
+      crossAxisAlignment:
+          isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        if (widget.prefixIcon != null) ...[widget.prefixIcon!, const Gap(12)],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: isMultiline
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
+            children: [
+              if (showLabel) Text(widget.labelText, style: TextStyles.bodyMain),
+              if (widget.expands) Expanded(child: textField) else textField,
+            ],
+          ),
+        ),
+        if (widget.suffixIcon != null) widget.suffixIcon!,
+      ],
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           height: widget.height ?? 64,
-          padding: const EdgeInsets.fromLTRB(16, 8, 0, 8.5),
+          padding: widget.containerPadding ??
+              const EdgeInsets.fromLTRB(16, 8, 0, 8.5),
           decoration: BoxDecoration(
             border: widget.showBorder
                 ? (_hasValidationError
@@ -147,77 +223,26 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     : (widget.customBorder ??
                         Border.all(color: AppColors.colorffffffff, width: 1)))
                 : null,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(widget.borderRadius),
             color: widget.backgroundColor ?? context.theme.mainBackground,
           ),
-          child: Row(
-            crossAxisAlignment: isMultiline
-                ? CrossAxisAlignment.start
-                : CrossAxisAlignment.center,
-            children: [
-              if (widget.prefixIcon != null) ...[widget.prefixIcon!, Gap(12)],
-              Expanded(
-                child: Column(
+          child: widget.footer == null
+              ? inputContent
+              : Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: isMultiline
-                      ? MainAxisAlignment.start
-                      : MainAxisAlignment.center,
                   children: [
-                    if (showLabel)
-                      Text(widget.labelText, style: TextStyles.bodyMain),
-                    TextFormField(
-                      controller: widget.controller,
-                      focusNode: widget.focusNode,
-                      onChanged: (value) {
-                        widget.onChanged?.call(value);
-                      },
-                      keyboardType: widget.keyboardType,
-                      validator: _validate,
-                      obscureText: widget.obscureText,
-                      readOnly: widget.readOnly,
-                      onTap: widget.onTap,
-                      inputFormatters: widget.inputFormatters,
-                      minLines: widget.minLines,
-                      maxLines: widget.maxLines,
-                      maxLength: widget.maxLength,
-                      textAlign: widget.textAlign,
-                      textAlignVertical: isMultiline || hasText
-                          ? TextAlignVertical.top
-                          : TextAlignVertical.center,
-                      style: widget.textStyle ?? TextStyles.titleHeadline,
-                      decoration: InputDecoration(
-                        hintText: hasText
-                            ? null
-                            : (widget.hintText ?? widget.labelText),
-                        hintStyle: TextStyles.titleTag,
-                        contentPadding: widget.contentPadding ??
-                            (hasText
-                                ? EdgeInsets.zero
-                                : const EdgeInsets.symmetric(vertical: 0)),
-                        filled: false,
-                        isDense: true,
-                        counterText: '',
-                        border: InputBorder.none,
-                        enabledBorder: InputBorder.none,
-                        focusedBorder: InputBorder.none,
-                        errorBorder: InputBorder.none,
-                        focusedErrorBorder: InputBorder.none,
-                        errorStyle: const TextStyle(fontSize: 0, height: 0),
-                      ),
-                    ),
+                    Expanded(child: inputContent),
+                    widget.footer!,
                   ],
                 ),
-              ),
-              if (widget.suffixIcon != null) widget.suffixIcon!,
-            ],
-          ),
         ),
         if ((_errorText ?? '').isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(top: 6, left: 2),
             child: Text(
               _errorText!,
-              style: TextStyles.titleTag.copyWith(color: AppColors.colorffEF4444),
+              style:
+                  TextStyles.titleTag.copyWith(color: AppColors.colorffEF4444),
             ),
           ),
       ],

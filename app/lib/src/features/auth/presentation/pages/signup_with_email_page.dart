@@ -179,7 +179,7 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                               ),
                               CustomButton(
                                 text: "Continue with Apple",
-                                icon: Assets.icons.appleLogo.svg(),
+                                prefixIcon: Assets.icons.appleLogo.svg(),
                                 onTap: () {},
                                 padding: EdgeInsets.symmetric(vertical: 10),
                                 textStyle: TextStyles.titleMain.copyWith(
@@ -188,7 +188,7 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                               ),
                               CustomButton(
                                 text: "Continue with Google",
-                                icon: Assets.icons.googleLogo.svg(),
+                                prefixIcon: Assets.icons.googleLogo.svg(),
                                 isDisabled: isLoading,
                                 onTap: () {
                                   getIt<AuthBloc>().add(
@@ -230,3 +230,4 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
     );
   }
 }
+

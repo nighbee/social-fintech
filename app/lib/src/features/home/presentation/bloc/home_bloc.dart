@@ -14,6 +14,8 @@ import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
+import 'package:app/src/features/home/domain/entities/seal_list_entity.dart';
+import 'package:app/src/features/home/domain/entities/send_post_seal_result_entity.dart';
 import 'package:app/src/features/home/domain/entities/status_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
 import 'package:app/src/features/home/domain/models/local_media_payload.dart';
@@ -24,8 +26,10 @@ import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 import 'package:fpdart/fpdart.dart';
@@ -61,6 +65,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       getPostLikes: (_) => _getPostLikes(event as _GetPostLikes, emit),
       togglePostLike: (_) =>
           _togglePostLike(event as _TogglePostLike, emit),
+      applyPostSealResult: (_, __) =>
+          _applyPostSealResult(event as _ApplyPostSealResult, emit),
     );
   }
 
@@ -145,6 +151,64 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     int limit = 20,
   }) async {
     return _repository.getFeed(FeedRequest(limit: limit));
+  }
+
+  Future<Either<DomainException, SealListEntity>> getPostSealsDirect(
+    GetPostSealsRequest request,
+  ) async {
+    if (request.postId.startsWith('local-')) {
+      return const Right(SealListEntity.empty());
+    }
+    return _repository.getPostSeals(request);
+  }
+
+  Future<Either<DomainException, SendPostSealResultEntity>> sendPostSealDirect(
+    String postId,
+    SendPostSealRequest request,
+  ) async {
+    if (postId.startsWith('local-')) {
+      return const Right(SendPostSealResultEntity.empty());
+    }
+
+    final result = await _repository.sendPostSeal(
+      PostIdRequest(postId: postId),
+      request,
+    );
+    result.fold(
+      (_) {},
+      (sendResult) {
+        add(
+          HomeEvent.applyPostSealResult(
+            postId: postId,
+            result: sendResult,
+          ),
+        );
+      },
+    );
+    return result;
+  }
+
+  Future<void> _applyPostSealResult(
+    _ApplyPostSealResult event,
+    Emitter emit,
+  ) async {
+    final updatedItems = _viewModel.feed.items.map((item) {
+      if (item.postId != event.postId) return item;
+      return item.copyWith(
+        metrics: item.metrics.copyWith(
+          silvers: item.metrics.silvers + 1,
+        ),
+      );
+    }).toList();
+
+    _viewModel = _viewModel.copyWith(
+      lastAction: StatusResponseEntity(
+        status: event.result.status,
+        message: event.result.ledgerEntryId,
+      ),
+      feed: _viewModel.feed.copyWith(items: updatedItems),
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
   }
 
   Future<Either<DomainException, CommentResponseEntity>>
