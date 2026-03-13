@@ -66,6 +66,10 @@ var (
 	ErrNotCommentAuthor = errors.New("not_comment_author: only the original author can delete this comment")
 	// ErrInvalidReportReason is returned when comment report reason is empty.
 	ErrInvalidReportReason = errors.New("invalid_report_reason")
+	// ErrDuplicateReport is returned when reporter already reported the same target.
+	ErrDuplicateReport = errors.New("duplicate_report")
+	// ErrReportRateLimited is returned when reporter exceeds allowed report rate.
+	ErrReportRateLimited = errors.New("report_rate_limited")
 
 	// ── Likes ─────────────────────────────────────────────────────────────
 	// ErrLikeQueueFull is returned when the Redis write-behind buffer for likes

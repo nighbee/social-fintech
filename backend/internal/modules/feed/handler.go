@@ -430,11 +430,99 @@ func (h *Handler) ReportComment(c *fiber.Ctx) error {
 	}
 
 	if err := h.service.ReportComment(c.Context(), userID, commentID, req.Reason, req.Description); err != nil {
+		if errors.Is(err, ErrInvalidReportReason) {
+			return c.Status(400).JSON(fiber.Map{"error": ErrInvalidReportReason.Error()})
+		}
+		if errors.Is(err, ErrDuplicateReport) {
+			return c.Status(409).JSON(fiber.Map{"error": ErrDuplicateReport.Error()})
+		}
+		if errors.Is(err, ErrReportRateLimited) {
+			return c.Status(429).JSON(fiber.Map{"error": ErrReportRateLimited.Error()})
+		}
 		logger.Error("failed to report comment", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": "report_failed"})
 	}
 
 	return c.Status(201).JSON(fiber.Map{"status": "reported"})
+}
+
+// ReportPost godoc
+// @Summary Report post
+// @Description Creates moderation report for a post.
+// @Tags Feed Moderation
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param post_id path string true "Post UUID"
+// @Param request body ReportPostRequest true "Report reason and optional description"
+// @Success 201 {object} map[string]string
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /posts/{post_id}/report [post]
+func (h *Handler) ReportPost(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	postID, err := uuid.Parse(c.Params("post_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_post_id"})
+	}
+
+	var req ReportPostRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+	}
+	if strings.TrimSpace(req.Reason) == "" {
+		return c.Status(400).JSON(fiber.Map{"error": ErrInvalidReportReason.Error()})
+	}
+
+	if err := h.service.ReportPost(c.Context(), userID, postID, req.Reason, req.Description); err != nil {
+		if errors.Is(err, ErrInvalidReportReason) {
+			return c.Status(400).JSON(fiber.Map{"error": ErrInvalidReportReason.Error()})
+		}
+		if errors.Is(err, ErrDuplicateReport) {
+			return c.Status(409).JSON(fiber.Map{"error": ErrDuplicateReport.Error()})
+		}
+		if errors.Is(err, ErrReportRateLimited) {
+			return c.Status(429).JSON(fiber.Map{"error": ErrReportRateLimited.Error()})
+		}
+		logger.Error("failed to report post", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "report_failed"})
+	}
+
+	return c.Status(201).JSON(fiber.Map{"status": "reported"})
+}
+
+// GetAdminReports godoc
+// @Summary List moderation reports
+// @Description Admin endpoint with filters by status/target_type/reason.
+// @Tags Feed Moderation
+// @Produce json
+// @Security Bearer
+// @Param status query string false "pending/reviewed"
+// @Param target_type query string false "post/comment"
+// @Param reason query string false "report reason"
+// @Param limit query int false "limit" default(50)
+// @Param offset query int false "offset" default(0)
+// @Success 200 {object} ReportsListResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /admin/reports [get]
+func (h *Handler) GetAdminReports(c *fiber.Ctx) error {
+	resp, err := h.service.ListReports(
+		c.Context(),
+		strings.TrimSpace(c.Query("status")),
+		strings.TrimSpace(c.Query("target_type")),
+		strings.TrimSpace(c.Query("reason")),
+		c.QueryInt("limit", 50),
+		c.QueryInt("offset", 0),
+	)
+	if err != nil {
+		logger.Error("failed to fetch reports", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+	}
+	return c.JSON(resp)
 }
 
 // ToggleCommentLike godoc

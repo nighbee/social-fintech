@@ -39,6 +39,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
 			FROM posts p
 			WHERE p.is_archived = false
+			  AND COALESCE(p.is_hidden_by_reports, false) = false
 			  AND p.created_at < $5
 			  AND (p.visibility = 'ANYONE' OR p.user_id = $1 OR p.user_id IN (SELECT ally_id FROM allies))
 			ORDER BY p.created_at DESC

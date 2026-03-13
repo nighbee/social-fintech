@@ -31,7 +31,11 @@ type Repository interface {
 	GetPostPermissionsInfo(ctx context.Context, postID uuid.UUID) (string, uuid.UUID, error) // Returns (CommentPermission, AuthorID)
 	ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error
 	DeleteComment(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error
-	ReportComment(ctx context.Context, commentID, reporterID uuid.UUID, reason, description string) error
+	CreateReport(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error
+	CountRecentReportsByUser(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error)
+	CountReportsForTarget(ctx context.Context, targetType string, targetID uuid.UUID) (int, error)
+	HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error
+	ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) ([]ReportItem, int, error)
 	IsAlly(ctx context.Context, userID, targetUserID uuid.UUID) (bool, error)
 	IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, error)
 
