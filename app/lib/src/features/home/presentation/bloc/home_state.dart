@@ -28,6 +28,13 @@ class HomeViewModel with _$HomeViewModel {
     @Default(StoreSummaryEntity.empty()) StoreSummaryEntity storeSummary,
     @Default(ClaimDailyAccrualResultEntity.empty())
     ClaimDailyAccrualResultEntity lastStoreAccrualResult,
+    @Default(<ProfileSearchResultEntity>[])
+    List<ProfileSearchResultEntity> profileSearchResults,
+    @Default(<ProfileSearchRecentItemEntity>[])
+    List<ProfileSearchRecentItemEntity> profileSearchRecentItems,
+    @Default(false) bool isProfileSearchLoading,
+    @Default('') String profileSearchQuery,
+    @Default('') String profileSearchError,
     @Default(<LocalMediaPayload>[]) List<LocalMediaPayload> localMediaPayloads,
     @Default([]) List<CommentComposerPhoto> postComposerPhotos,
     @Default([]) List<NotificationEntity> notifications,

@@ -11,11 +11,13 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
   const FeedAppBar({
     super.key,
     this.onCreatePostTap,
+    this.onSearchTap,
     this.feedState = const FeedStateEntity.empty(),
     this.silverHonorCount = 0,
   });
 
   final VoidCallback? onCreatePostTap;
+  final VoidCallback? onSearchTap;
   final FeedStateEntity feedState;
   final int silverHonorCount;
 
@@ -144,7 +146,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         const Gap(7),
         GestureDetector(
-          onTap: () {},
+          onTap: onSearchTap,
           child: Container(
             padding: const EdgeInsets.all(6),
             child: Assets.icons.search.svg(width: 24, height: 24),

@@ -2,9 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/models/ally_profile_dto.dart';
+import 'package:app/src/features/profile/data/models/profile_search_result_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_dto.dart';
 import 'package:app/src/features/profile/data/models/public_profile_dto.dart';
 import 'package:app/src/features/profile/data/models/relationship_status_dto.dart';
+import 'package:app/src/features/profile/domain/requests/search_profiles_request.dart';
 import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 
@@ -12,6 +14,10 @@ abstract interface class IProfileRemote {
   Future<Either<DomainException, ProfileDto>> getCurrentUser();
   Future<Either<DomainException, PublicProfileDto>> getPublicProfile(
     UserIdRequest request,
+  );
+
+  Future<Either<DomainException, List<ProfileSearchResultDto>>> searchProfiles(
+    SearchProfilesRequest request,
   );
 
   Future<Either<DomainException, void>> becomeAlly(UserIdRequest request);

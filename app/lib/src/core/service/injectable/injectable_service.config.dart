@@ -123,7 +123,9 @@ extension GetItInjectableX on _i174.GetIt {
       instanceName: 'ProfileRepositoryImpl',
     );
     gh.factory<_i84.HomeBloc>(() => _i84.HomeBloc(
-        gh<_i529.IHomeRepository>(instanceName: 'HomeRepositoryImpl')));
+          gh<_i529.IHomeRepository>(instanceName: 'HomeRepositoryImpl'),
+          gh<_i1037.IProfileRepository>(instanceName: 'ProfileRepositoryImpl'),
+        ));
     return this;
   }
 }

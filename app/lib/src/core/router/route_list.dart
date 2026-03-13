@@ -39,16 +39,6 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             name: RouteNames.rangs,
             builder: (context, state) => const RangsPage(),
           ),
-          // Public Profile route (protected by auth guard)
-          GoRoute(
-            path: RoutePaths.publicProfile,
-            name: RouteNames.publicProfile,
-            redirect: AuthGuard,
-            builder: (context, state) {
-              final userId = state.pathParameters['userId'] ?? '';
-              return PublicProfilePage(userId: userId);
-            },
-          ),
         ],
       ),
 
@@ -189,6 +179,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 builder: (context, state) => const CreatePostPage(),
               ),
               GoRoute(
+                path: RoutePaths.search,
+                name: RouteNames.search,
+                redirect: AuthGuard,
+                pageBuilder: (context, state) {
+                  return const NoTransitionPage(child: SearchPage());
+                },
+              ),
+              GoRoute(
                 path: RoutePaths.store,
                 name: RouteNames.store,
                 redirect: AuthGuard,
@@ -267,6 +265,15 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 redirect: AuthGuard,
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: NotificationsPage());
+                },
+              ),
+              GoRoute(
+                path: RoutePaths.publicProfile,
+                name: RouteNames.publicProfile,
+                redirect: AuthGuard,
+                builder: (context, state) {
+                  final userId = state.pathParameters['userId'] ?? '';
+                  return PublicProfilePage(userId: userId);
                 },
               ),
 

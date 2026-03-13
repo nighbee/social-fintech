@@ -8,8 +8,10 @@ import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
+import 'package:app/src/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:app/src/features/home/domain/entities/claim_daily_accrual_result_entity.dart';
 import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/profile_search_recent_item_entity.dart';
 import 'package:app/src/features/home/domain/entities/store_summary_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
@@ -35,6 +37,9 @@ import 'package:app/src/features/home/domain/requests/post_id_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
+import 'package:app/src/features/profile/domain/entities/profile_search_result_entity.dart';
+import 'package:app/src/features/profile/domain/repositories/i_profile_repository.dart';
+import 'package:app/src/features/profile/domain/requests/search_profiles_request.dart';
 import 'package:fpdart/fpdart.dart';
 
 part 'home_bloc.freezed.dart';
@@ -43,10 +48,14 @@ part 'home_state.dart';
 
 @injectable
 class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
-  HomeBloc(@Named.from(HomeRepositoryImpl) this._repository)
+  HomeBloc(
+    @Named.from(HomeRepositoryImpl) this._repository,
+    @Named.from(ProfileRepositoryImpl) this._profileRepository,
+  )
       : super(const _Initial());
 
   final IHomeRepository _repository;
+  final IProfileRepository _profileRepository;
   HomeViewModel _viewModel = HomeViewModel();
   @override
   Future<void> onEventHandler(HomeEvent event, Emitter emit) async {
@@ -70,14 +79,28 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
           _togglePostLike(event as _TogglePostLike, emit),
       applyPostSealResult: (_, __) =>
           _applyPostSealResult(event as _ApplyPostSealResult, emit),
-      loadStoreSummaryV2: () =>
-          _loadStoreSummaryV2(event as _LoadStoreSummaryV2, emit),
-      claimStoreDailyAccrualV2: (_) => _claimStoreDailyAccrualV2(
-        event as _ClaimStoreDailyAccrualV2,
+      loadStoreSummary: () =>
+          _loadStoreSummary(event as _LoadStoreSummary, emit),
+      claimStoreDailyAccrual: (_) => _claimStoreDailyAccrual(
+        event as _ClaimStoreDailyAccrual,
         emit,
       ),
-      applyStoreSummaryV2: (_) =>
-          _applyStoreSummaryV2(event as _ApplyStoreSummaryV2, emit),
+      applyStoreSummary: (_) =>
+          _applyStoreSummary(event as _ApplyStoreSummary, emit),
+      searchProfiles: (_) =>
+          _searchProfiles(event as _SearchProfiles, emit),
+      clearProfileSearch: () => _clearProfileSearch(emit),
+      addProfileSearchRecent: (_) =>
+          _addProfileSearchRecent(event as _AddProfileSearchRecent, emit),
+      removeProfileSearchRecent: (_) => _removeProfileSearchRecent(
+        event as _RemoveProfileSearchRecent,
+        emit,
+      ),
+      clearProfileSearchRecent: () => _clearProfileSearchRecent(emit),
+      applyProfileSearchResults: (_) => _applyProfileSearchResults(
+        event as _ApplyProfileSearchResults,
+        emit,
+      ),
     );
   }
 
@@ -170,7 +193,32 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     result.fold(
       (_) {},
       (storeSummary) {
-        add(HomeEvent.applyStoreSummaryV2(storeSummary: storeSummary));
+        add(HomeEvent.applyStoreSummary(storeSummary: storeSummary));
+      },
+    );
+    return result;
+  }
+
+  Future<Either<DomainException, List<ProfileSearchResultEntity>>>
+      searchProfilesDirect(
+    SearchProfilesRequest request,
+  ) async {
+    final trimmedQuery = request.query.trim();
+    if (trimmedQuery.isEmpty) {
+      const emptyResults = <ProfileSearchResultEntity>[];
+      add(
+        const HomeEvent.applyProfileSearchResults(
+          results: emptyResults,
+        ),
+      );
+      return const Right(emptyResults);
+    }
+
+    final result = await _profileRepository.searchProfiles(request);
+    result.fold(
+      (_) {},
+      (results) {
+        add(HomeEvent.applyProfileSearchResults(results: results));
       },
     );
     return result;
@@ -234,8 +282,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     emit(HomeState.loaded(viewModel: _viewModel));
   }
 
-  Future<void> _loadStoreSummaryV2(
-    _LoadStoreSummaryV2 event,
+  Future<void> _loadStoreSummary(
+    _LoadStoreSummary event,
     Emitter emit,
   ) async {
     final result = await _repository.getStoreSummary();
@@ -248,8 +296,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     );
   }
 
-  Future<void> _claimStoreDailyAccrualV2(
-    _ClaimStoreDailyAccrualV2 event,
+  Future<void> _claimStoreDailyAccrual(
+    _ClaimStoreDailyAccrual event,
     Emitter emit,
   ) async {
     final result = await _repository.claimStoreDailyAccrual(event.request);
@@ -280,11 +328,117 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     );
   }
 
-  Future<void> _applyStoreSummaryV2(
-    _ApplyStoreSummaryV2 event,
+  Future<void> _applyStoreSummary(
+    _ApplyStoreSummary event,
     Emitter emit,
   ) async {
     _viewModel = _viewModel.copyWith(storeSummary: event.storeSummary);
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _searchProfiles(
+    _SearchProfiles event,
+    Emitter emit,
+  ) async {
+    final trimmedQuery = event.request.query.trim();
+    if (trimmedQuery.isEmpty) {
+      _viewModel = _viewModel.copyWith(
+        isProfileSearchLoading: false,
+        profileSearchQuery: '',
+        profileSearchError: '',
+        profileSearchResults: const <ProfileSearchResultEntity>[],
+      );
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+
+    _viewModel = _viewModel.copyWith(
+      isProfileSearchLoading: true,
+      profileSearchQuery: trimmedQuery,
+      profileSearchError: '',
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+
+    final result = await _profileRepository.searchProfiles(event.request);
+    result.fold(
+      (error) {
+        if (_viewModel.profileSearchQuery != trimmedQuery) return;
+        _viewModel = _viewModel.copyWith(
+          isProfileSearchLoading: false,
+          profileSearchError: error.message,
+          profileSearchResults: const <ProfileSearchResultEntity>[],
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+      (results) {
+        if (_viewModel.profileSearchQuery != trimmedQuery) return;
+        _viewModel = _viewModel.copyWith(
+          isProfileSearchLoading: false,
+          profileSearchError: '',
+          profileSearchResults: results,
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _clearProfileSearch(Emitter emit) async {
+    _viewModel = _viewModel.copyWith(
+      isProfileSearchLoading: false,
+      profileSearchQuery: '',
+      profileSearchError: '',
+      profileSearchResults: const <ProfileSearchResultEntity>[],
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _addProfileSearchRecent(
+    _AddProfileSearchRecent event,
+    Emitter emit,
+  ) async {
+    final updatedItems = <ProfileSearchRecentItemEntity>[
+      ProfileSearchRecentItemEntity(
+        profile: event.result,
+        searchedAt: DateTime.now(),
+      ),
+      ..._viewModel.profileSearchRecentItems.where(
+        (item) => item.profile.userId != event.result.userId,
+      ),
+    ].take(10).toList();
+
+    _viewModel = _viewModel.copyWith(profileSearchRecentItems: updatedItems);
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _removeProfileSearchRecent(
+    _RemoveProfileSearchRecent event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(
+      profileSearchRecentItems: _viewModel.profileSearchRecentItems
+          .where((item) => item.profile.userId != event.userId)
+          .toList(),
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _clearProfileSearchRecent(Emitter emit) async {
+    _viewModel = _viewModel.copyWith(
+      profileSearchRecentItems: const <ProfileSearchRecentItemEntity>[],
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _applyProfileSearchResults(
+    _ApplyProfileSearchResults event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(
+      isProfileSearchLoading: false,
+      profileSearchQuery: _viewModel.profileSearchQuery,
+      profileSearchError: '',
+      profileSearchResults: event.results,
+    );
     emit(HomeState.loaded(viewModel: _viewModel));
   }
 

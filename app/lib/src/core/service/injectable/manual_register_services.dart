@@ -30,6 +30,7 @@ Future<void> manualRegisterServices() async {
   getIt.registerBloc<HomeBloc>(
     () => HomeBloc(
       getIt<IHomeRepository>(instanceName: 'HomeRepositoryImpl'),
+      getIt<IProfileRepository>(instanceName: 'ProfileRepositoryImpl'),
     ),
   );
 
@@ -42,7 +43,8 @@ Future<void> manualRegisterServices() async {
     ),
   );
 
-  if (getIt.isRegistered<ILocationService>(instanceName: 'LocationServiceImpl')) {
+  if (getIt.isRegistered<ILocationService>(
+      instanceName: 'LocationServiceImpl')) {
     getIt.unregister<ILocationService>(instanceName: 'LocationServiceImpl');
   }
   getIt.registerLazySingleton<ILocationService>(

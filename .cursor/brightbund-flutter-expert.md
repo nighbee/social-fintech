@@ -205,9 +205,10 @@ flutter clean
   - Preserve old behavior while introducing new API contract types.
 
 - **BLoC event extension style**:
-  - Add new events as separate `V2`/new-flow events when introducing backend-aligned APIs.
+  - Add new events with clear domain names that match the new backend-aligned flow.
+  - Do not add `V2` suffixes by default. Use a temporary alternate name only when keeping two distinct flows alive in parallel is genuinely required.
   - Wire handlers in bloc, but do not attach to UI until explicitly requested.
-  - Keep existing events and current user flow untouched.
+  - Keep existing events and current user flow untouched unless the new flow is meant to replace them.
   - For interaction endpoints with queued/toggle backend semantics (e.g. `POST /posts/{post_id}/likes`), prefer `toggleX` naming over forcing separate like/unlike names.
 
 ### BLoC Best Practices

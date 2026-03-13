@@ -22,6 +22,7 @@ import 'package:app/src/features/auth/presentation/pages/create_password_page.da
 import 'package:app/src/features/auth/presentation/pages/change_password_page.dart';
 import 'package:app/src/features/home/presentation/pages/home_page.dart';
 import 'package:app/src/features/home/presentation/pages/create_post_page.dart';
+import 'package:app/src/features/home/presentation/pages/search_page.dart';
 import 'package:app/src/features/home/presentation/pages/store_page.dart';
 import 'package:app/src/features/map/presentation/pages/create_request_page.dart';
 import 'package:app/src/features/map/presentation/pages/create_request_published_page.dart';

@@ -1,6 +1,7 @@
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
 import 'package:dio/dio.dart';
 import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
+import 'package:app/src/features/profile/domain/requests/search_profiles_request.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
@@ -9,6 +10,7 @@ import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.da
 import 'package:app/src/features/profile/data/sources/remote/profile_remote_impl.dart';
 import 'package:app/src/features/profile/domain/entities/ally_profile_entity.dart';
 
+import 'package:app/src/features/profile/domain/entities/profile_search_result_entity.dart';
 import 'package:app/src/features/profile/domain/entities/profile_entity.dart';
 import 'package:app/src/features/profile/domain/entities/public_profile_entity.dart';
 import 'package:app/src/features/profile/domain/repositories/i_profile_repository.dart';
@@ -65,6 +67,27 @@ class ProfileRepositoryImpl implements IProfileRepository {
         (error) => Left(error),
         (publicProfileDto) => Right(publicProfileDto.toEntity()),
       );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<ProfileSearchResultEntity>>>
+      searchProfiles(
+    SearchProfilesRequest request,
+  ) async {
+    try {
+      final result = await _profileRemote.searchProfiles(request);
+
+      return result.fold((error) => Left(error), (profileDtoList) {
+        final List<ProfileSearchResultEntity> entities = profileDtoList
+            .map((dto) => dto.toEntity())
+            .toList();
+        return Right(entities);
+      });
     } catch (e) {
       return Left(
         e is DomainException ? e : UnknownException(message: e.toString()),

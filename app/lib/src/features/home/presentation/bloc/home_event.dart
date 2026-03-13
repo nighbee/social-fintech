@@ -34,13 +34,28 @@ class HomeEvent with _$HomeEvent {
   const factory HomeEvent.togglePostLike({
     required String postId,
   }) = _TogglePostLike;
-  const factory HomeEvent.loadStoreSummaryV2() = _LoadStoreSummaryV2;
-  const factory HomeEvent.claimStoreDailyAccrualV2({
+  const factory HomeEvent.loadStoreSummary() = _LoadStoreSummary;
+  const factory HomeEvent.claimStoreDailyAccrual({
     required ClaimDailyAccrualRequest request,
-  }) = _ClaimStoreDailyAccrualV2;
-  const factory HomeEvent.applyStoreSummaryV2({
+  }) = _ClaimStoreDailyAccrual;
+  const factory HomeEvent.searchProfiles({
+    required SearchProfilesRequest request,
+  }) = _SearchProfiles;
+  const factory HomeEvent.clearProfileSearch() = _ClearProfileSearch;
+  const factory HomeEvent.addProfileSearchRecent({
+    required ProfileSearchResultEntity result,
+  }) = _AddProfileSearchRecent;
+  const factory HomeEvent.removeProfileSearchRecent({
+    required String userId,
+  }) = _RemoveProfileSearchRecent;
+  const factory HomeEvent.clearProfileSearchRecent() =
+      _ClearProfileSearchRecent;
+  const factory HomeEvent.applyStoreSummary({
     required StoreSummaryEntity storeSummary,
-  }) = _ApplyStoreSummaryV2;
+  }) = _ApplyStoreSummary;
+  const factory HomeEvent.applyProfileSearchResults({
+    required List<ProfileSearchResultEntity> results,
+  }) = _ApplyProfileSearchResults;
   const factory HomeEvent.applyPostSealResult({
     required String postId,
     required SendPostSealResultEntity result,

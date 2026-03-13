@@ -22,6 +22,7 @@ class RouteNames {
   // Home routes
   static const String home = 'home';
   static const String createPost = 'createPost';
+  static const String search = 'search';
   static const String store = 'store';
 
   // Map routes

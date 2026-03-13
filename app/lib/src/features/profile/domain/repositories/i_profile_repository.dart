@@ -1,9 +1,11 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/domain/entities/ally_profile_entity.dart';
+import 'package:app/src/features/profile/domain/entities/profile_search_result_entity.dart';
 import 'package:app/src/features/profile/domain/entities/profile_entity.dart';
 import 'package:app/src/features/profile/domain/entities/public_profile_entity.dart';
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
+import 'package:app/src/features/profile/domain/requests/search_profiles_request.dart';
 import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:dio/dio.dart';
@@ -25,6 +27,11 @@ abstract interface class IProfileRepository {
   /// Get public profile of another user by userId
   Future<Either<DomainException, PublicProfileEntity>> getPublicProfile(
     UserIdRequest request,
+  );
+
+  Future<Either<DomainException, List<ProfileSearchResultEntity>>>
+      searchProfiles(
+    SearchProfilesRequest request,
   );
 
   Future<Either<DomainException, void>> becomeAlly(UserIdRequest request);

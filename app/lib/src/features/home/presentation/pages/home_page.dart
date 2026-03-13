@@ -125,6 +125,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             backgroundColor: AppColors.colorff19191A,
             appBar: FeedAppBar(
               onCreatePostTap: () => context.push(RoutePaths.createPost),
+              onSearchTap: () => context.push(RoutePaths.search),
               silverHonorCount: 0,
             ),
             bottomNavigationBar:
@@ -136,6 +137,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             backgroundColor: AppColors.colorff19191A,
             appBar: FeedAppBar(
               onCreatePostTap: () => context.push(RoutePaths.createPost),
+              onSearchTap: () => context.push(RoutePaths.search),
               feedState: viewModel.feedState,
               silverHonorCount: viewModel.storeSummary.silverHonorsCount,
             ),
@@ -153,6 +155,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 backgroundColor: AppColors.colorff19191A,
                 appBar: FeedAppBar(
                   onCreatePostTap: () => context.push(RoutePaths.createPost),
+                  onSearchTap: () => context.push(RoutePaths.search),
                   feedState: feedState,
                   silverHonorCount: viewModel.storeSummary.silverHonorsCount,
                 ),
@@ -193,6 +196,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               backgroundColor: AppColors.colorff19191A,
               appBar: FeedAppBar(
                 onCreatePostTap: () => context.push(RoutePaths.createPost),
+                onSearchTap: () => context.push(RoutePaths.search),
                 feedState: feedState,
                 silverHonorCount: viewModel.storeSummary.silverHonorsCount,
               ),
@@ -216,6 +220,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             backgroundColor: AppColors.colorff19191A,
             appBar: FeedAppBar(
               onCreatePostTap: () => context.push(RoutePaths.createPost),
+              onSearchTap: () => context.push(RoutePaths.search),
               silverHonorCount: 0,
             ),
             bottomNavigationBar:

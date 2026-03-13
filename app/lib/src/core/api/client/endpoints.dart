@@ -84,6 +84,7 @@ class EndPoints {
   //* Profile
   static const String profiles = '/profiles';
   static const String profileMe = '/profiles/me';
+  static const String profileSearch = '/profiles/search';
   static const String profileMePosts = '/profiles/me/posts';
   static const String profileUpdate = '/profiles/me';
   static String profileById(String userId) => '/profiles/$userId';
