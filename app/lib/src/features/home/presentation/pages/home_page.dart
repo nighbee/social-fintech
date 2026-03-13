@@ -37,6 +37,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _bloc.add(const HomeEvent.loadFeed(request: FeedRequest()));
     _bloc.add(const HomeEvent.loadFeedState());
+    _loadStoreSummarySilently();
     _initDeviceId();
     _startFeedSyncTimer();
   }
@@ -72,6 +73,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         _currentDeviceId = id;
       });
     } catch (_) {}
+  }
+
+  Future<void> _loadStoreSummarySilently() async {
+    await _bloc.getStoreSummaryDirect();
   }
 
   void _startFeedSyncTimer() {
@@ -120,6 +125,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             backgroundColor: AppColors.colorff19191A,
             appBar: FeedAppBar(
               onCreatePostTap: () => context.push(RoutePaths.createPost),
+              silverHonorCount: 0,
             ),
             bottomNavigationBar:
                 const CustomNavBar(currentTab: RoutePaths.home),
@@ -131,6 +137,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             appBar: FeedAppBar(
               onCreatePostTap: () => context.push(RoutePaths.createPost),
               feedState: viewModel.feedState,
+              silverHonorCount: viewModel.storeSummary.silverHonorsCount,
             ),
             bottomNavigationBar:
                 const CustomNavBar(currentTab: RoutePaths.home),
@@ -147,6 +154,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                 appBar: FeedAppBar(
                   onCreatePostTap: () => context.push(RoutePaths.createPost),
                   feedState: feedState,
+                  silverHonorCount: viewModel.storeSummary.silverHonorsCount,
                 ),
                 bottomNavigationBar:
                     const CustomNavBar(currentTab: RoutePaths.home),
@@ -186,6 +194,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               appBar: FeedAppBar(
                 onCreatePostTap: () => context.push(RoutePaths.createPost),
                 feedState: feedState,
+                silverHonorCount: viewModel.storeSummary.silverHonorsCount,
               ),
               bottomNavigationBar:
                   const CustomNavBar(currentTab: RoutePaths.home),
@@ -207,6 +216,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             backgroundColor: AppColors.colorff19191A,
             appBar: FeedAppBar(
               onCreatePostTap: () => context.push(RoutePaths.createPost),
+              silverHonorCount: 0,
             ),
             bottomNavigationBar:
                 const CustomNavBar(currentTab: RoutePaths.home),

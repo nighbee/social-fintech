@@ -8,7 +8,9 @@ import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
+import 'package:app/src/features/home/domain/entities/claim_daily_accrual_result_entity.dart';
 import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/store_summary_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
@@ -22,6 +24,7 @@ import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
 import 'package:app/src/features/home/domain/requests/comment_id_request.dart';
+import 'package:app/src/features/home/domain/requests/claim_daily_accrual_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
@@ -67,6 +70,14 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
           _togglePostLike(event as _TogglePostLike, emit),
       applyPostSealResult: (_, __) =>
           _applyPostSealResult(event as _ApplyPostSealResult, emit),
+      loadStoreSummaryV2: () =>
+          _loadStoreSummaryV2(event as _LoadStoreSummaryV2, emit),
+      claimStoreDailyAccrualV2: (_) => _claimStoreDailyAccrualV2(
+        event as _ClaimStoreDailyAccrualV2,
+        emit,
+      ),
+      applyStoreSummaryV2: (_) =>
+          _applyStoreSummaryV2(event as _ApplyStoreSummaryV2, emit),
     );
   }
 
@@ -153,6 +164,18 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     return _repository.getFeed(FeedRequest(limit: limit));
   }
 
+  Future<Either<DomainException, StoreSummaryEntity>> getStoreSummaryDirect()
+      async {
+    final result = await _repository.getStoreSummary();
+    result.fold(
+      (_) {},
+      (storeSummary) {
+        add(HomeEvent.applyStoreSummaryV2(storeSummary: storeSummary));
+      },
+    );
+    return result;
+  }
+
   Future<Either<DomainException, SealListEntity>> getPostSealsDirect(
     GetPostSealsRequest request,
   ) async {
@@ -208,6 +231,60 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       ),
       feed: _viewModel.feed.copyWith(items: updatedItems),
     );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _loadStoreSummaryV2(
+    _LoadStoreSummaryV2 event,
+    Emitter emit,
+  ) async {
+    final result = await _repository.getStoreSummary();
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (storeSummary) {
+        _viewModel = _viewModel.copyWith(storeSummary: storeSummary);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _claimStoreDailyAccrualV2(
+    _ClaimStoreDailyAccrualV2 event,
+    Emitter emit,
+  ) async {
+    final result = await _repository.claimStoreDailyAccrual(event.request);
+    DomainException? claimError;
+    ClaimDailyAccrualResultEntity? accrualResult;
+    result.fold(
+      (error) => claimError = error,
+      (entity) => accrualResult = entity,
+    );
+    if (claimError != null) {
+      emit(HomeState.loadingError(claimError!.message));
+      return;
+    }
+
+    _viewModel = _viewModel.copyWith(
+      lastStoreAccrualResult: accrualResult!,
+    );
+
+    final summaryResult = await _repository.getStoreSummary();
+    summaryResult.fold(
+      (_) {
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+      (storeSummary) {
+        _viewModel = _viewModel.copyWith(storeSummary: storeSummary);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _applyStoreSummaryV2(
+    _ApplyStoreSummaryV2 event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.copyWith(storeSummary: event.storeSummary);
     emit(HomeState.loaded(viewModel: _viewModel));
   }
 

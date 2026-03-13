@@ -1,3 +1,5 @@
+import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
+import 'package:app/src/features/home/data/models/economy_limits_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/domain/entities/feed_entity.dart';
@@ -5,9 +7,11 @@ import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
+import 'package:app/src/features/home/domain/entities/claim_daily_accrual_result_entity.dart';
 import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/seal_list_entity.dart';
 import 'package:app/src/features/home/domain/entities/send_post_seal_result_entity.dart';
+import 'package:app/src/features/home/domain/entities/store_summary_entity.dart';
 import 'package:app/src/features/home/domain/entities/threaded_comments_entity.dart';
 import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:fpdart/fpdart.dart';
@@ -18,6 +22,7 @@ import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
 import 'package:app/src/features/home/domain/requests/comment_id_request.dart';
+import 'package:app/src/features/home/domain/requests/claim_daily_accrual_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
@@ -175,6 +180,50 @@ class HomeRepositoryImpl implements IHomeRepository {
     FeedStateSyncRequest request,
   ) async {
     final result = await _remote.syncFeedState(request);
+    return result.fold(
+      (error) => Left(error),
+      (dto) => Right(dto.toEntity()),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, StoreSummaryEntity>> getStoreSummary() async {
+    final balanceResult = await _remote.getEconomyBalance();
+    DomainException? balanceError;
+    EconomyBalanceDto? balanceDto;
+    balanceResult.fold(
+      (error) => balanceError = error,
+      (dto) => balanceDto = dto,
+    );
+    if (balanceError != null) {
+      return Left(balanceError!);
+    }
+
+    final limitsResult = await _remote.getEconomyLimits();
+    DomainException? limitsError;
+    EconomyLimitsDto? limitsDto;
+    limitsResult.fold(
+      (error) => limitsError = error,
+      (dto) => limitsDto = dto,
+    );
+    if (limitsError != null) {
+      return Left(limitsError!);
+    }
+
+    return Right(
+      StoreSummaryEntity(
+        balance: balanceDto!.toEntity(),
+        limits: limitsDto!.toEntity(),
+      ),
+    );
+  }
+
+  @override
+  Future<Either<DomainException, ClaimDailyAccrualResultEntity>>
+      claimStoreDailyAccrual(
+    ClaimDailyAccrualRequest request,
+  ) async {
+    final result = await _remote.claimDailyAccrual(request);
     return result.fold(
       (error) => Left(error),
       (dto) => Right(dto.toEntity()),

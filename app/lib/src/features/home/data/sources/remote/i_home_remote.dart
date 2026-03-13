@@ -6,6 +6,9 @@ import 'package:app/src/features/home/data/models/interaction_list_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/post_response_dto.dart';
 import 'package:app/src/features/home/data/models/comment_response_dto.dart';
+import 'package:app/src/features/home/data/models/claim_daily_accrual_result_dto.dart';
+import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
+import 'package:app/src/features/home/data/models/economy_limits_dto.dart';
 import 'package:app/src/features/home/data/models/seal_list_dto.dart';
 import 'package:app/src/features/home/data/models/send_post_seal_result_dto.dart';
 import 'package:app/src/features/home/data/models/threaded_comments_dto.dart';
@@ -13,6 +16,7 @@ import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
 import 'package:app/src/features/home/domain/requests/comment_id_request.dart';
+import 'package:app/src/features/home/domain/requests/claim_daily_accrual_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
@@ -47,12 +51,18 @@ abstract class IHomeRemote {
   Future<Either<DomainException, SealListDto>> getPostSeals(
     GetPostSealsRequest request,
   );
+  Future<Either<DomainException, EconomyBalanceDto>> getEconomyBalance();
+  Future<Either<DomainException, EconomyLimitsDto>> getEconomyLimits();
   Future<Either<DomainException, PostResponseDto>> togglePostLike(
     PostIdRequest request,
   );
   Future<Either<DomainException, SendPostSealResultDto>> sendPostSeal(
     PostIdRequest requestId,
     SendPostSealRequest request,
+  );
+  Future<Either<DomainException, ClaimDailyAccrualResultDto>>
+      claimDailyAccrual(
+    ClaimDailyAccrualRequest request,
   );
   Future<Either<DomainException, CommentResponseDto>> toggleCommentLike(
     CommentIdRequest request,

@@ -10,6 +10,9 @@ import 'package:app/src/features/home/data/models/interaction_list_dto.dart';
 import 'package:app/src/features/home/data/models/notification_dto.dart';
 import 'package:app/src/features/home/data/models/post_response_dto.dart';
 import 'package:app/src/features/home/data/models/comment_response_dto.dart';
+import 'package:app/src/features/home/data/models/claim_daily_accrual_result_dto.dart';
+import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
+import 'package:app/src/features/home/data/models/economy_limits_dto.dart';
 import 'package:app/src/features/home/data/models/seal_list_dto.dart';
 import 'package:app/src/features/home/data/models/send_post_seal_result_dto.dart';
 import 'package:app/src/features/home/data/models/threaded_comments_dto.dart';
@@ -18,6 +21,7 @@ import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
 import 'package:app/src/features/home/domain/requests/create_post_request.dart';
 import 'package:app/src/features/home/domain/requests/comment_id_request.dart';
+import 'package:app/src/features/home/domain/requests/claim_daily_accrual_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
@@ -373,6 +377,58 @@ class HomeRemoteImpl implements IHomeRemote {
   }
 
   @override
+  Future<Either<DomainException, EconomyBalanceDto>> getEconomyBalance() async {
+    try {
+      final response = await _restClient.get(EndPoints.economyBalance);
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid economy balance response'),
+            );
+          }
+          final dto = EconomyBalanceDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, EconomyLimitsDto>> getEconomyLimits() async {
+    try {
+      final response = await _restClient.get(EndPoints.economyLimits);
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid economy limits response'),
+            );
+          }
+          final dto = EconomyLimitsDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
   Future<Either<DomainException, PostResponseDto>> togglePostLike(
     PostIdRequest request,
   ) async {
@@ -422,6 +478,38 @@ class HomeRemoteImpl implements IHomeRemote {
             );
           }
           final dto = SendPostSealResultDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ClaimDailyAccrualResultDto>>
+      claimDailyAccrual(
+    ClaimDailyAccrualRequest request,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.economyAccrualClaim,
+        data: request.toPayload(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid claim daily accrual response'),
+            );
+          }
+          final dto = ClaimDailyAccrualResultDto.fromJson(
             Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
           );
           return Right(dto);

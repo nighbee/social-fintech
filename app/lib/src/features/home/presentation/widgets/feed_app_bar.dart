@@ -12,19 +12,20 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     this.onCreatePostTap,
     this.feedState = const FeedStateEntity.empty(),
+    this.silverHonorCount = 0,
   });
 
   final VoidCallback? onCreatePostTap;
   final FeedStateEntity feedState;
+  final int silverHonorCount;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
-    final maxAllowedSeconds = feedState.maxAllowedSeconds > 0
-        ? feedState.maxAllowedSeconds
-        : 20 * 60;
+    final maxAllowedSeconds =
+        feedState.maxAllowedSeconds > 0 ? feedState.maxAllowedSeconds : 20 * 60;
     final remainingSeconds =
         (maxAllowedSeconds - feedState.accumulatedActiveSeconds).clamp(
       0,
@@ -66,7 +67,10 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       title: Row(
         children: [
-          const SilverBalanceChip(count: 27),
+          GestureDetector(
+            onTap: () => context.push(RoutePaths.store),
+            child: SilverBalanceChip(count: silverHonorCount),
+          ),
           const Gap(12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -74,8 +78,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ? ShaderMask(
                     blendMode: BlendMode.srcIn,
                     shaderCallback: (bounds) {
-                      final gradient =
-                          isBreak ? breakGradient : endingGradient;
+                      final gradient = isBreak ? breakGradient : endingGradient;
                       return gradient.createShader(
                         Rect.fromLTWH(0, 0, bounds.width, bounds.height),
                       );

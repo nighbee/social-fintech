@@ -34,6 +34,13 @@ class HomeEvent with _$HomeEvent {
   const factory HomeEvent.togglePostLike({
     required String postId,
   }) = _TogglePostLike;
+  const factory HomeEvent.loadStoreSummaryV2() = _LoadStoreSummaryV2;
+  const factory HomeEvent.claimStoreDailyAccrualV2({
+    required ClaimDailyAccrualRequest request,
+  }) = _ClaimStoreDailyAccrualV2;
+  const factory HomeEvent.applyStoreSummaryV2({
+    required StoreSummaryEntity storeSummary,
+  }) = _ApplyStoreSummaryV2;
   const factory HomeEvent.applyPostSealResult({
     required String postId,
     required SendPostSealResultEntity result,

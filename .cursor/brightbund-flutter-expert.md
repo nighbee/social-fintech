@@ -180,14 +180,19 @@ flutter clean
 - **DTO style (Freezed only)**:
   - DTOs must use `@freezed`, extend `BaseDto`, and include `fromJson`.
   - API fields should follow backend naming with `@JsonKey(name: ...)`.
-  - Keep backend contract in DTOs: field can be nullable in DTO when backend may omit it.
+  - Keep the backend contract strict in DTOs:
+    - mark a field `required` when the backend contract normally returns it;
+    - make a field nullable only when the backend really may omit it or send `null`;
+    - do not make core response fields nullable "just to be safe", because that hides backend contract regressions.
   - Every DTO must provide `toEntity()`.
 
 - **Entity style (Freezed only)**:
   - Entities must use `@freezed` and include `fromJson`.
-  - Prefer non-null entity fields with `@Default(...)` instead of nullable fields.
+  - Keep entity fields non-null by default.
+  - In the main entity constructor, use `required` for real domain data.
+  - Use `@Default(...)` mainly inside `empty` constructors or for fields that are truly optional by domain meaning.
   - Add `empty` constructor for each new entity.
-  - If DTO field is nullable, map fallback in `toEntity()` (for example `?? ''`, `?? 0`, `?? false`, empty object).
+  - If a DTO field is nullable because the backend may omit it, map the fallback in `toEntity()` (for example `?? ''`, `?? 0`, `?? false`, empty object).
 
 - **Request style**:
   - Requests must live in domain layer and use `@freezed` + `BaseRequest`.

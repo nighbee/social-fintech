@@ -22,6 +22,9 @@ class EndPoints {
   static const String economyWallet = '/economy/wallet';
   static const String economyTransfer = '/economy/transfer';
   static const String economyLedger = '/economy/ledger';
+  static const String economyBalance = '/economy/balance';
+  static const String economyLimits = '/economy/limits';
+  static const String economyAccrualClaim = '/economy/accrual/claim';
 
   //* Feed
   static const String feed = '/feed';
