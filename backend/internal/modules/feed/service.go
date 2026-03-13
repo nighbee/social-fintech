@@ -16,9 +16,11 @@ const (
 	// BreakDurationSeconds is the mandatory break after the active phase (5 minutes)
 	BreakDurationSeconds = 300
 	// AwayResetThreshold is how long a user can be away (in active phase) before their timer resets
-	AwayResetThreshold   = 300
-	NetworkBufferSeconds = 5.0
-	FeedPresenceTTL      = 20 * time.Second
+	AwayResetThreshold      = 300
+	NetworkBufferSeconds    = 5.0
+	FeedPresenceTTL         = 20 * time.Second
+	ReportRateLimitPerHour  = 10
+	AutoHideReportThreshold = 100
 )
 
 type Service struct {
@@ -413,11 +415,83 @@ func (s *Service) DeleteComment(ctx context.Context, actorID, commentID uuid.UUI
 	return s.repo.DeleteComment(ctx, commentID, actorID, isAdmin)
 }
 
-func (s *Service) ReportComment(ctx context.Context, reporterID, commentID uuid.UUID, reason, description string) error {
-	if reason == "" {
+func (s *Service) validateReportReason(reason string) bool {
+	switch strings.TrimSpace(reason) {
+	case ReportReasonSpam,
+		ReportReasonHate,
+		ReportReasonNudity,
+		ReportReasonViolence,
+		ReportReasonIllegal,
+		ReportReasonGambling,
+		ReportReasonCopyright,
+		ReportReasonFakeAccount,
+		ReportReasonManipulation:
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error {
+	if !s.validateReportReason(reason) {
 		return ErrInvalidReportReason
 	}
-	return s.repo.ReportComment(ctx, commentID, reporterID, reason, description)
+
+	recentCount, err := s.repo.CountRecentReportsByUser(ctx, reporterID, time.Now().Add(-1*time.Hour))
+	if err != nil {
+		return err
+	}
+	if recentCount >= ReportRateLimitPerHour {
+		return ErrReportRateLimited
+	}
+
+	if err := s.repo.CreateReport(ctx, reporterID, targetType, targetID, reason, description); err != nil {
+		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "uq_reports_reporter_target") {
+			return ErrDuplicateReport
+		}
+		return err
+	}
+
+	totalReports, err := s.repo.CountReportsForTarget(ctx, targetType, targetID)
+	if err != nil {
+		return err
+	}
+	if totalReports >= AutoHideReportThreshold {
+		if err := s.repo.HideTargetByReports(ctx, targetType, targetID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Service) ReportComment(ctx context.Context, reporterID, commentID uuid.UUID, reason, description string) error {
+	return s.reportTarget(ctx, reporterID, ReportTargetComment, commentID, reason, description)
+}
+
+func (s *Service) ReportPost(ctx context.Context, reporterID, postID uuid.UUID, reason, description string) error {
+	return s.reportTarget(ctx, reporterID, ReportTargetPost, postID, reason, description)
+}
+
+func (s *Service) ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) (*ReportsListResponse, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	items, total, err := s.repo.ListReports(ctx, status, targetType, reason, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReportsListResponse{
+		Items:  items,
+		Total:  total,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
 }
 
 // ---------------- Interactions System ----------------

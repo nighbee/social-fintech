@@ -754,6 +754,43 @@ definitions:
       reason:
         type: string
     type: object
+  feed.ReportItem:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      moderation_status:
+        type: string
+      reason:
+        type: string
+      reporter_id:
+        type: string
+      target_id:
+        type: string
+      target_type:
+        type: string
+    type: object
+  feed.ReportPostRequest:
+    properties:
+      description:
+        type: string
+      reason:
+        type: string
+    type: object
+  feed.ReportsListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/feed.ReportItem'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
   feed.SealListResponse:
     properties:
       items:
@@ -1316,6 +1353,50 @@ info:
   title: BrightBund API
   version: "1.0"
 paths:
+  /admin/reports:
+    get:
+      description: Admin endpoint with filters by status/target_type/reason.
+      parameters:
+      - description: pending/reviewed
+        in: query
+        name: status
+        type: string
+      - description: post/comment
+        in: query
+        name: target_type
+        type: string
+      - description: report reason
+        in: query
+        name: reason
+        type: string
+      - default: 50
+        description: limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.ReportsListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: List moderation reports
+      tags:
+      - Feed Moderation
   /auth/check-email:
     post:
       consumes:
@@ -2582,6 +2663,49 @@ paths:
       summary: Like a post
       tags:
       - Feed Interactions
+  /posts/{post_id}/report:
+    post:
+      consumes:
+      - application/json
+      description: Creates moderation report for a post.
+      parameters:
+      - description: Post UUID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: Report reason and optional description
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/feed.ReportPostRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Report post
+      tags:
+      - Feed Moderation
   /posts/{post_id}/seals:
     get:
       description: Fetch all users who contributed Silver Seals and their messages

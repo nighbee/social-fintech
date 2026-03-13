@@ -44,12 +44,16 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 	postGroup.Post("/:post_id/comments", handler.CreateComment)
 	postGroup.Delete("/:post_id/comments/:comment_id", handler.DeleteComment)
 	postGroup.Post("/:post_id/comments/:comment_id/report", handler.ReportComment)
+	postGroup.Post("/:post_id/report", handler.ReportPost)
 
 	// --- Interaction Endpoints ---
 	postGroup.Get("/:post_id/likes", handler.GetLikes)
 	postGroup.Post("/:post_id/likes", handler.ToggleLike)
 	postGroup.Get("/:post_id/seals", handler.GetSeals)
 	postGroup.Post("/:post_id/seals", handler.SendSeal)
+
+	adminGroup := app.Group("/api/v1/admin", authMiddleware)
+	adminGroup.Get("/reports", handler.GetAdminReports)
 
 	// In API group for generic ID
 	api.Post("/comments/:comment_id/likes", handler.ToggleCommentLike)

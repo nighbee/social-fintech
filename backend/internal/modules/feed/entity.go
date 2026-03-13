@@ -16,6 +16,24 @@ const (
 	CommentPermNoOne      = "NO_ONE"
 )
 
+const (
+	ReportTargetPost    = "post"
+	ReportTargetComment = "comment"
+
+	ReportStatusPending  = "pending"
+	ReportStatusReviewed = "reviewed"
+
+	ReportReasonSpam         = "spam"
+	ReportReasonHate         = "hate"
+	ReportReasonNudity       = "nudity"
+	ReportReasonViolence     = "violence"
+	ReportReasonIllegal      = "illegal"
+	ReportReasonGambling     = "gambling"
+	ReportReasonCopyright    = "copyright"
+	ReportReasonFakeAccount  = "fake_account"
+	ReportReasonManipulation = "manipulation"
+)
+
 type FeedFatigueState struct {
 	UserID                   uuid.UUID `json:"user_id" db:"user_id"`
 	AccumulatedActiveSeconds int       `json:"accumulated_active_seconds" db:"accumulated_active_seconds"`
@@ -89,6 +107,11 @@ type CreateCommentRequest struct {
 }
 
 type ReportCommentRequest struct {
+	Reason      string `json:"reason"`
+	Description string `json:"description,omitempty"`
+}
+
+type ReportPostRequest struct {
 	Reason      string `json:"reason"`
 	Description string `json:"description,omitempty"`
 }
@@ -202,6 +225,23 @@ type InteractionResponse struct {
 type InteractionListResponse struct {
 	Items      []InteractionResponse `json:"items"`
 	NextCursor string                `json:"next_cursor,omitempty"`
+}
+
+type ReportItem struct {
+	ID               uuid.UUID `json:"id"`
+	ReporterID       uuid.UUID `json:"reporter_id"`
+	TargetType       string    `json:"target_type"`
+	TargetID         uuid.UUID `json:"target_id"`
+	Reason           string    `json:"reason"`
+	ModerationStatus string    `json:"moderation_status"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
+type ReportsListResponse struct {
+	Items  []ReportItem `json:"items"`
+	Total  int          `json:"total"`
+	Limit  int          `json:"limit"`
+	Offset int          `json:"offset"`
 }
 
 type SendSealRequest struct {

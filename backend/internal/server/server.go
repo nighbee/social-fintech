@@ -161,10 +161,17 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	postGroup.Post("/:post_id/comments", feedHandler.CreateComment)
 	postGroup.Delete("/:post_id/comments/:comment_id", feedHandler.DeleteComment)
 	postGroup.Post("/:post_id/comments/:comment_id/report", feedHandler.ReportComment)
+	postGroup.Post("/:post_id/report", feedHandler.ReportPost)
 	postGroup.Post("/:post_id/likes", feedHandler.ToggleLike)
 	postGroup.Get("/:post_id/likes", feedHandler.GetLikes)
 	postGroup.Get("/:post_id/seals", feedHandler.GetSeals)
 	postGroup.Post("/:post_id/seals", feedHandler.SendSeal)
+
+	feedAdminGroup := api.Group("/admin")
+	feedAdminGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	feedAdminGroup.Use(middleware.TouchSession(authRepo))
+	feedAdminGroup.Use(middleware.RequireAdmin(authRepo))
+	feedAdminGroup.Get("/reports", feedHandler.GetAdminReports)
 
 	// Map & Tasks routes
 	mapGroup := api.Group("/")

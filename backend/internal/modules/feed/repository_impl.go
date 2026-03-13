@@ -151,6 +151,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		WHERE p.id = $1
+		  AND COALESCE(p.is_hidden_by_reports, false) = false
 	`
 	var resp PostResponse
 	var mediaJSON []byte
@@ -200,6 +201,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		WHERE p.is_archived = false
+		  AND COALESCE(p.is_hidden_by_reports, false) = false
 		-- If cursor is provided: AND p.created_at < $cursor
 		-- If ALLIES_ONLY: AND (p.visibility = 'ANYONE' OR p.user_id = $viewer_id OR EXISTS (SELECT 1 FROM user_relationships WHERE user_id=$viewer_id AND ally_id=p.user_id))
 		ORDER BY p.created_at DESC
@@ -272,7 +274,7 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 		FROM post_comments c
 		JOIN users u ON c.user_id = u.id
-		WHERE c.id = $1 AND c.is_deleted = false
+		WHERE c.id = $1 AND c.is_deleted = false AND c.is_hidden_by_reports = false
 	`
 	var resp CommentResponse
 	var mediaJSON []byte
@@ -352,7 +354,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
-			WHERE c.post_id = $1 AND c.parent_comment_id IS NULL AND c.is_deleted = false
+			WHERE c.post_id = $1 AND c.parent_comment_id IS NULL AND c.is_deleted = false AND c.is_hidden_by_reports = false
 			ORDER BY c.created_at DESC
 			LIMIT $3
 		`
@@ -368,7 +370,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
-			WHERE c.post_id = $1 AND c.parent_comment_id = $3 AND c.is_deleted = false
+			WHERE c.post_id = $1 AND c.parent_comment_id = $3 AND c.is_deleted = false AND c.is_hidden_by_reports = false
 			ORDER BY c.created_at ASC
 			LIMIT $4
 		`
@@ -521,12 +523,108 @@ func (r *repository) DeleteComment(ctx context.Context, commentID, actorID uuid.
 	return tx.Commit()
 }
 
-func (r *repository) ReportComment(ctx context.Context, commentID, reporterID uuid.UUID, reason, description string) error {
+func (r *repository) CreateReport(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error {
 	const query = `
-		INSERT INTO comment_reports (id, comment_id, reporter_id, reason, description, created_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
+		INSERT INTO reports (id, reporter_id, target_type, target_id, reason, moderation_status, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
 	`
-	_, err := r.db.ExecContext(ctx, query, uuid.New(), commentID, reporterID, reason, description)
+	_, err := r.db.ExecContext(ctx, query, uuid.New(), reporterID, targetType, targetID, reason, ReportStatusPending, description)
+	return err
+}
+
+func (r *repository) CountRecentReportsByUser(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error) {
+	var count int
+	const query = `SELECT COUNT(1) FROM reports WHERE reporter_id = $1 AND created_at >= $2`
+	if err := r.db.QueryRowContext(ctx, query, reporterID, since).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *repository) CountReportsForTarget(ctx context.Context, targetType string, targetID uuid.UUID) (int, error) {
+	var count int
+	const query = `SELECT COUNT(1) FROM reports WHERE target_type = $1 AND target_id = $2`
+	if err := r.db.QueryRowContext(ctx, query, targetType, targetID).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *repository) HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	switch targetType {
+	case ReportTargetPost:
+		_, err := r.db.ExecContext(ctx, `UPDATE posts SET is_hidden_by_reports = true, updated_at = NOW() WHERE id = $1`, targetID)
+		return err
+	case ReportTargetComment:
+		_, err := r.db.ExecContext(ctx, `UPDATE post_comments SET is_hidden_by_reports = true, updated_at = NOW() WHERE id = $1`, targetID)
+		return err
+	default:
+		return ErrInvalidReportReason
+	}
+}
+
+func (r *repository) ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) ([]ReportItem, int, error) {
+	baseWhere := []string{"1=1"}
+	args := make([]interface{}, 0, 6)
+	argIdx := 1
+
+	if status != "" {
+		baseWhere = append(baseWhere, fmt.Sprintf("moderation_status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+	if targetType != "" {
+		baseWhere = append(baseWhere, fmt.Sprintf("target_type = $%d", argIdx))
+		args = append(args, targetType)
+		argIdx++
+	}
+	if reason != "" {
+		baseWhere = append(baseWhere, fmt.Sprintf("reason = $%d", argIdx))
+		args = append(args, reason)
+		argIdx++
+	}
+
+	whereSQL := strings.Join(baseWhere, " AND ")
+
+	countQuery := fmt.Sprintf("SELECT COUNT(1) FROM reports WHERE %s", whereSQL)
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	listArgs := append(args, limit, offset)
+	listQuery := fmt.Sprintf(`
+		SELECT id, reporter_id, target_type, target_id, reason, moderation_status, created_at
+		FROM reports
+		WHERE %s
+		ORDER BY created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereSQL, argIdx, argIdx+1)
+
+	rows, err := r.db.QueryContext(ctx, listQuery, listArgs...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	items := make([]ReportItem, 0, limit)
+	for rows.Next() {
+		var item ReportItem
+		if err := rows.Scan(&item.ID, &item.ReporterID, &item.TargetType, &item.TargetID, &item.Reason, &item.ModerationStatus, &item.CreatedAt); err != nil {
+			return nil, 0, err
+		}
+		items = append(items, item)
+	}
+
+	return items, total, nil
+}
+
+func (r *repository) ReportComment(ctx context.Context, commentID, reporterID uuid.UUID, reason, description string) error {
+	// Backward-compat wrapper (legacy calls).
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO reports (id, reporter_id, target_type, target_id, reason, moderation_status, description, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+	`, uuid.New(), reporterID, ReportTargetComment, commentID, reason, ReportStatusPending, description)
 	return err
 }
 
@@ -569,7 +667,7 @@ func (r *repository) GetPostPermissionsInfo(ctx context.Context, postID uuid.UUI
 	var perm string
 	var authorID uuid.UUID
 
-	query := `SELECT comment_permission, user_id FROM posts WHERE id = $1 AND is_archived = false`
+	query := `SELECT comment_permission, user_id FROM posts WHERE id = $1 AND is_archived = false AND is_hidden_by_reports = false`
 	err := r.db.QueryRowContext(ctx, query, postID).Scan(&perm, &authorID)
 	if err == sql.ErrNoRows {
 		return "", uuid.Nil, ErrPostNotFound
