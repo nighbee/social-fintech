@@ -33,7 +33,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			  AND relationship_type = 'ally'
 		),
 		base_posts AS (
-			SELECT p.id, p.user_id, p.caption, p.visibility, p.comment_permission,
+			SELECT p.id, p.user_id, p.caption, p.visibility, p.comment_permission, p.hide_likes_count,
 				p.likes_count, p.comments_count, p.share_count, p.seals_count,
 				p.created_at, p.location_lat, p.location_lon,
 				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
@@ -46,7 +46,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			LIMIT 200
 		)
 		SELECT
-			p.id, p.caption, p.visibility, p.comment_permission,
+			p.id, p.caption, p.visibility, p.comment_permission, p.hide_likes_count,
 			p.likes_count, p.comments_count, p.share_count, p.seals_count,
 			p.created_at, p.location_lat, p.location_lon,
 			u.id as author_id,
@@ -115,7 +115,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		var commentPerm string
 
 		err := rows.Scan(
-			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm,
+			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.HideLikesCount,
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers,
 			&createdAt, &pLat, &pLon,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
@@ -132,6 +132,9 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		// Derive computed fields
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		resp.IsOwnPost = resp.Author.ID == viewerID
+		if resp.HideLikesCount {
+			resp.Metrics.Likes = 0
+		}
 
 		// time_ago is computed from createdAt
 		if createdAt.Valid {

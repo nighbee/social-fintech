@@ -322,7 +322,7 @@ definitions:
         type: integer
       comment:
         maxLength: 500
-        type: stringbut
+        type: string
       currency:
         enum:
         - SILVER_SEAL
@@ -612,6 +612,8 @@ definitions:
         type: string
       comment_permission:
         type: string
+      hide_likes_count:
+        type: boolean
       location_city:
         type: string
       location_country:
@@ -722,6 +724,8 @@ definitions:
         $ref: '#/definitions/feed.AuthorInfo'
       content_text:
         type: string
+      hide_likes_count:
+        type: boolean
       is_own_post:
         description: IsOwnPost lets the client show/hide the ··· edit/delete options
           menu
@@ -835,6 +839,13 @@ definitions:
         type: array
       next_cursor:
         type: string
+    type: object
+  feed.UpdatePostRequest:
+    properties:
+      comment_permission:
+        type: string
+      hide_likes_count:
+        type: boolean
     type: object
   feed.UserPostsGridResponse:
     properties:
@@ -2441,6 +2452,100 @@ paths:
       security:
       - Bearer: []
       summary: Create a new feed post
+      tags:
+      - Feed
+  /posts/{post_id}:
+    delete:
+      description: Soft-deletes an existing post. Only post author can delete.
+      parameters:
+      - description: Post UUID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Delete own post
+      tags:
+      - Feed
+    patch:
+      consumes:
+      - application/json
+      description: Updates post privacy settings after publication (comment_permission
+        and/or hide_likes_count).
+      parameters:
+      - description: Post UUID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      - description: Post update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/feed.UpdatePostRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/feed.PostResponse'
+        "400":
+          description: Validation error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Post not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Update own post settings
       tags:
       - Feed
   /posts/{post_id}/comments:

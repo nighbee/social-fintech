@@ -62,6 +62,7 @@ type Post struct {
 	LocationLon       *float64  `json:"location_lon,omitempty" db:"location_lon"`
 	Visibility        string    `json:"visibility" db:"visibility"`
 	CommentPermission string    `json:"comment_permission" db:"comment_permission"`
+	HideLikesCount    bool      `json:"hide_likes_count" db:"hide_likes_count"`
 	IsPublic          bool      `json:"is_public" db:"is_public"` // Legacy flag
 	IsArchived        bool      `json:"is_archived" db:"is_archived"`
 	LikesCount        int       `json:"likes_count" db:"likes_count"`
@@ -94,10 +95,16 @@ type CreatePostRequest struct {
 	MediaAttachments  []MediaAttachment `json:"media_attachments"`
 	Visibility        string            `json:"visibility"`
 	CommentPermission string            `json:"comment_permission"`
+	HideLikesCount    bool              `json:"hide_likes_count"`
 	LocationCity      *string           `json:"location_city,omitempty"`
 	LocationCountry   *string           `json:"location_country,omitempty"`
 	LocationLat       *float64          `json:"location_lat,omitempty"`
 	LocationLon       *float64          `json:"location_lon,omitempty"`
+}
+
+type UpdatePostRequest struct {
+	CommentPermission *string `json:"comment_permission,omitempty"`
+	HideLikesCount    *bool   `json:"hide_likes_count,omitempty"`
 }
 
 type CreateCommentRequest struct {
@@ -168,6 +175,7 @@ type PostResponse struct {
 	IsOwnPost bool `json:"is_own_post"`
 	// ViewerHasLiked lets the client render the ❤️ heart as filled immediately
 	ViewerHasLiked bool `json:"viewer_has_liked"`
+	HideLikesCount bool `json:"hide_likes_count"`
 }
 
 type FeedResponse struct {
