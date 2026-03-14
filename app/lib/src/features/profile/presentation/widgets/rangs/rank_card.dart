@@ -1,107 +1,88 @@
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/features/profile/domain/entities/rank_entity.dart';
+import 'package:app/src/features/profile/presentation/models/rank_card_item.dart';
 import 'package:app/src/features/profile/presentation/widgets/rangs/gemstone_sphere.dart';
 import 'package:app/src/features/profile/presentation/widgets/rangs/tier_indicators.dart';
 import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 
 class RankCard extends StatelessWidget {
-  const RankCard({super.key, required this.rank, this.nextRank});
+  const RankCard({super.key, required this.rank});
 
-  final RankEntity rank;
-  final RankEntity? nextRank;
+  final RankCardItem rank;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Color.fromARGB(0, 45, 36, 64).withValues(),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Color.fromARGB(0, 45, 36, 64).withValues(alpha: 0.45),
-                blurRadius: 20,
-                spreadRadius: 0,
-                offset: Offset(0, 2),
-              ),
-            ],
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.07),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFA9A9A9).withValues(alpha: 0.16),
+            blurRadius: 5,
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+        ],
+      ),
+      child: Column(
+        children: [
+          Column(
             children: [
-              // Rank level number
-
-              // Rank name and tier
               Text(
                 '${rank.name} | ${rank.tier}',
-                style: TextStyles.titleTag.copyWith(
-                  color: AppColors.colorff74afe3,
-                  fontWeight: FontWeight.w500,
-                ),
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-
-              // Gemstone sphere
-              GemstoneSphere(imagePath: rank.imagePath, size: 220),
-              const SizedBox(height: 40),
-
-              // Description
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Text(
-                  rank.description,
-                  style: TextStyles.bodyLarge.copyWith(
-                    color: AppColors.colorff9CA3AF,
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
+                style: TextStyles.bodyLarge.copyWith(
+                  fontSize: 18,
+                  height: 1,
+                  color: AppColors.textBrand.withValues(alpha: 0.7),
                 ),
               ),
-              const SizedBox(height: 32),
-
-              // Required XP
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Required: ${rank.requiredExp} ',
-                    style: TextStyles.bodyMain.copyWith(
-                      color: AppColors.colorffffffff,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    'seals',
-                    style: TextStyles.bodyMain.copyWith(
-                      color: AppColors.colorff9CA3AF,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-
-              // Tier indicators
-              TierIndicators(
-                tiers: rank.tierBadges,
-                activeTiers: ['C', 'B', 'A', 'S'],
+              const Gap(20),
+              Text(
+                '${rank.headline}\n${rank.description}',
+                textAlign: TextAlign.center,
+                style: TextStyles.bodyMain.copyWith(
+                  fontSize: 12,
+                  height: 1.2,
+                  color: const Color(0xFFA3A3A3).withValues(alpha: 0.82),
+                ),
               ),
             ],
           ),
-        ),
-        const SizedBox(height: 36),
-
-        Text(
-          '${rank.level}',
-          style: TextStyles.titleTag.copyWith(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
+          const Gap(32),
+          SizedBox(
+            width: 230,
+            child: Column(
+              children: [
+                GemstoneSphere(
+                  image: rank.image,
+                  style: rank.gemStyle,
+                ),
+                const Gap(16),
+                Text(
+                  'Required: ${rank.requiredHonorLabel} honor',
+                  textAlign: TextAlign.center,
+                  style: TextStyles.bodyMain.copyWith(
+                    fontSize: 12,
+                    height: 1,
+                    color: AppColors.textBrand.withValues(alpha: 0.8),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      ],
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 32),
+            child: TierIndicators(
+              filledTierCount: rank.filledTierCount,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

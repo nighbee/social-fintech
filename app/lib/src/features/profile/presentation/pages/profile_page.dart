@@ -1,9 +1,6 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
-import 'package:app/src/core/widgets/list_item/custom_list_item.dart';
-import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
@@ -17,6 +14,7 @@ import 'package:app/src/features/profile/presentation/widgets/profile_header_car
 import 'package:app/src/features/profile/presentation/widgets/profile_post_grid.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -38,6 +36,30 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   List<ProfilePostItem> _myPosts = const [];
   bool _isPostsLoading = false;
   String? _postsError;
+
+  void _openSettings() {
+    final currentUserId = getIt<ProfileBloc>().state.maybeWhen(
+      loaded: (viewModel) => viewModel.profile.userId,
+      orElse: () => null,
+    );
+    context.pushNamed(
+      RouteNames.settings,
+      extra: {'userId': currentUserId},
+    );
+  }
+
+  void _openStats({
+    required String userId,
+    required bool isCurrentUser,
+  }) {
+    context.pushNamed(
+      RouteNames.profileStats,
+      extra: {
+        'userId': userId,
+        'isCurrentUser': isCurrentUser,
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -80,8 +102,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       },
       (result) {
         final payload = result.data;
-        final items =
-            payload is Map<String, dynamic> ? payload['items'] : null;
+        final items = payload is Map<String, dynamic> ? payload['items'] : null;
         final mapped = <ProfilePostItem>[];
         if (items is List) {
           for (final item in items) {
@@ -133,48 +154,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             showLeading: false,
             actions: [
               GestureDetector(
-                onTap: () {
-                  showModalBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.white,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(20),
-                      ),
-                    ),
-                    builder: (context) => Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: 20,
-                        horizontal: 16,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          CustomListItem(
-                            title: 'Log out',
-                            iconRight: true,
-                            color: Colors.red,
-                            onTap: () {
-                              context.pop(); // Close bottom sheet
-                              getIt<AuthBloc>().add(const AuthEvent.logout());
-                              context.go(RoutePaths.loginWithEmail);
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  );
-                },
+                onTap: _openSettings,
                 child: Assets.icons.settingsIcon.svg(),
               ),
               const Gap(16),
@@ -211,6 +191,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                               region: profile.region,
                               rankTier: profile.rankTier,
                               reputationScore: profile.reputationScore,
+                              onOpenStats: () => _openStats(
+                                userId: profile.userId,
+                                isCurrentUser: true,
+                              ),
                             ),
                           ),
                         ),

@@ -5,59 +5,84 @@ import 'package:gap/gap.dart';
 class TierIndicators extends StatelessWidget {
   const TierIndicators({
     super.key,
-    required this.tiers,
-    this.activeTiers = const [],
+    this.tiers = const ['C', 'B', 'A', 'S'],
+    this.filledTierCount = 0,
   });
 
   final List<String> tiers;
-  final List<String> activeTiers;
+  final int filledTierCount;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: tiers.map((tier) {
-        final isActive = activeTiers.contains(tier);
-        return Column(
-          children: [
-            Text(
-              tier,
-              style: TextStyles.titleTag.copyWith(
-                color: AppColors.colorffffffff,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Gap(4),
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: Color(0xFF3d3d3d),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Color(0xFF3d3d3d), width: 1.5),
-                  ),
-                ),
-                Center(
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                    width: 16,
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: isActive ? Color(0xFF919191) : Color(0xFF000000),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Color(0xFF919191), width: 1.5),
+    return SizedBox(
+      width: 164,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              for (var index = 0; index < tiers.length; index++)
+                Expanded(
+                  child: Text(
+                    tiers[index],
+                    textAlign: TextAlign.center,
+                    style: TextStyles.bodyLarge.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                      color: index < filledTierCount
+                          ? AppColors.textBrand
+                          : const Color(0xFFA3A3A3),
                     ),
                   ),
                 ),
+            ],
+          ),
+          const Gap(6),
+          Row(
+            children: [
+              for (var index = 0; index < tiers.length; index++) ...[
+                _TierMarker(
+                  isActive: index < filledTierCount,
+                ),
+                if (index < tiers.length - 1)
+                  Expanded(
+                    child: Container(
+                      height: 1,
+                      color: const Color(0xFF444444),
+                    ),
+                  ),
               ],
-            ),
-          ],
-        );
-      }).toList(),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TierMarker extends StatelessWidget {
+  const _TierMarker({required this.isActive});
+
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 16,
+      height: 16,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: const Color(0xFF444444),
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isActive ? const Color(0xFF757576) : Colors.transparent,
+        ),
+      ),
     );
   }
 }

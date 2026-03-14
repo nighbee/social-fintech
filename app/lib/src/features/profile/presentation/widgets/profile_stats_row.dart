@@ -1,12 +1,16 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
 class ProfileStatsRow extends StatelessWidget {
-  const ProfileStatsRow({required this.reputationScore, super.key});
+  const ProfileStatsRow({
+    required this.reputationScore,
+    super.key,
+    this.onStatsTap,
+  });
 
   final int reputationScore;
+  final VoidCallback? onStatsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -36,22 +40,25 @@ class ProfileStatsRow extends StatelessWidget {
         const Gap(12),
         // Stats Graph Button
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white24),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.bar_chart, color: Colors.grey, size: 20),
-                const Gap(8),
-                Text(
-                  'Your Stats',
-                  style: TextStyles.titleTag.copyWith(color: Colors.grey),
-                ),
-              ],
+          child: GestureDetector(
+            onTap: onStatsTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white24),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.bar_chart, color: Colors.grey, size: 20),
+                  const Gap(8),
+                  Text(
+                    'Your Stats',
+                    style: TextStyles.titleTag.copyWith(color: Colors.grey),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
