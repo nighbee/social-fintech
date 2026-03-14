@@ -34,6 +34,7 @@ type Repository interface {
 	ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error
 	DeleteComment(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error
 	CreateReport(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error
+	HidePostForReporter(ctx context.Context, reporterID, postID uuid.UUID) error
 	CountRecentReportsByUser(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error)
 	CountReportsForTarget(ctx context.Context, targetType string, targetID uuid.UUID) (int, error)
 	HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error

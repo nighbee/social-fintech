@@ -15,6 +15,12 @@ type testRepo struct {
 	deletePostFn func(ctx context.Context, postID, userID uuid.UUID) error
 	getPostFn    func(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
 
+	createReportFn          func(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error
+	countRecentReportsByFn  func(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error)
+	countReportsForTargetFn func(ctx context.Context, targetType string, targetID uuid.UUID) (int, error)
+	hideTargetByReportsFn   func(ctx context.Context, targetType string, targetID uuid.UUID) error
+	hidePostForReporterFn   func(ctx context.Context, reporterID, postID uuid.UUID) error
+
 	lastCreatedPost *Post
 }
 
@@ -98,18 +104,37 @@ func (r *testRepo) DeleteComment(ctx context.Context, commentID, actorID uuid.UU
 }
 
 func (r *testRepo) CreateReport(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error {
+	if r.createReportFn != nil {
+		return r.createReportFn(ctx, reporterID, targetType, targetID, reason, description)
+	}
+	return nil
+}
+
+func (r *testRepo) HidePostForReporter(ctx context.Context, reporterID, postID uuid.UUID) error {
+	if r.hidePostForReporterFn != nil {
+		return r.hidePostForReporterFn(ctx, reporterID, postID)
+	}
 	return nil
 }
 
 func (r *testRepo) CountRecentReportsByUser(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error) {
+	if r.countRecentReportsByFn != nil {
+		return r.countRecentReportsByFn(ctx, reporterID, since)
+	}
 	return 0, nil
 }
 
 func (r *testRepo) CountReportsForTarget(ctx context.Context, targetType string, targetID uuid.UUID) (int, error) {
+	if r.countReportsForTargetFn != nil {
+		return r.countReportsForTargetFn(ctx, targetType, targetID)
+	}
 	return 0, nil
 }
 
 func (r *testRepo) HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	if r.hideTargetByReportsFn != nil {
+		return r.hideTargetByReportsFn(ctx, targetType, targetID)
+	}
 	return nil
 }
 
@@ -408,5 +433,78 @@ func TestCreatePost_PassesHideLikesCountToRepository(t *testing.T) {
 	}
 	if !resp.HideLikesCount {
 		t.Fatal("expected response hide_likes_count=true")
+	}
+}
+
+func TestReportPost_HidesPostForReporterOnSuccess(t *testing.T) {
+	reporterID := uuid.New()
+	postID := uuid.New()
+	hideCalled := false
+
+	repo := &testRepo{
+		hidePostForReporterFn: func(ctx context.Context, gotReporterID, gotPostID uuid.UUID) error {
+			hideCalled = true
+			if gotReporterID != reporterID || gotPostID != postID {
+				t.Fatalf("unexpected hide args: %s %s", gotReporterID, gotPostID)
+			}
+			return nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if err := svc.ReportPost(context.Background(), reporterID, postID, ReportReasonSpam, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !hideCalled {
+		t.Fatal("expected post to be hidden for reporter after successful report")
+	}
+}
+
+func TestReportPost_HidesPostForReporterOnDuplicateReport(t *testing.T) {
+	reporterID := uuid.New()
+	postID := uuid.New()
+	hideCalled := false
+
+	repo := &testRepo{
+		createReportFn: func(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error {
+			return errors.New("duplicate key value violates unique constraint uq_reports_reporter_target")
+		},
+		hidePostForReporterFn: func(ctx context.Context, gotReporterID, gotPostID uuid.UUID) error {
+			hideCalled = true
+			if gotReporterID != reporterID || gotPostID != postID {
+				t.Fatalf("unexpected hide args: %s %s", gotReporterID, gotPostID)
+			}
+			return nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	err := svc.ReportPost(context.Background(), reporterID, postID, ReportReasonSpam, "")
+	if !errors.Is(err, ErrDuplicateReport) {
+		t.Fatalf("expected ErrDuplicateReport, got %v", err)
+	}
+	if !hideCalled {
+		t.Fatal("expected post to remain hidden for reporter on duplicate report")
+	}
+}
+
+func TestReportComment_DoesNotHidePostForReporter(t *testing.T) {
+	reporterID := uuid.New()
+	commentID := uuid.New()
+	hideCalled := false
+
+	repo := &testRepo{
+		hidePostForReporterFn: func(ctx context.Context, gotReporterID, gotPostID uuid.UUID) error {
+			hideCalled = true
+			return nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if err := svc.ReportComment(context.Background(), reporterID, commentID, ReportReasonSpam, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if hideCalled {
+		t.Fatal("did not expect HidePostForReporter for comment reports")
 	}
 }

@@ -642,6 +642,16 @@ func (r *repository) CreateReport(ctx context.Context, reporterID uuid.UUID, tar
 	return err
 }
 
+func (r *repository) HidePostForReporter(ctx context.Context, reporterID, postID uuid.UUID) error {
+	const query = `
+		INSERT INTO reported_post_hides (reporter_id, post_id, created_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (reporter_id, post_id) DO NOTHING
+	`
+	_, err := r.db.ExecContext(ctx, query, reporterID, postID)
+	return err
+}
+
 func (r *repository) CountRecentReportsByUser(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error) {
 	var count int
 	const query = `SELECT COUNT(1) FROM reports WHERE reporter_id = $1 AND created_at >= $2`

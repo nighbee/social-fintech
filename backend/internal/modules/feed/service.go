@@ -492,9 +492,20 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 
 	if err := s.repo.CreateReport(ctx, reporterID, targetType, targetID, reason, description); err != nil {
 		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "uq_reports_reporter_target") {
+			if targetType == ReportTargetPost {
+				if hideErr := s.repo.HidePostForReporter(ctx, reporterID, targetID); hideErr != nil {
+					return hideErr
+				}
+			}
 			return ErrDuplicateReport
 		}
 		return err
+	}
+
+	if targetType == ReportTargetPost {
+		if err := s.repo.HidePostForReporter(ctx, reporterID, targetID); err != nil {
+			return err
+		}
 	}
 
 	totalReports, err := s.repo.CountReportsForTarget(ctx, targetType, targetID)
