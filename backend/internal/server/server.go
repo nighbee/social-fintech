@@ -10,6 +10,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
+	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -21,7 +22,7 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  cfg.Server.ReadTimeout,
 		WriteTimeout: cfg.Server.WriteTimeout,
@@ -172,6 +173,51 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	feedAdminGroup.Use(middleware.TouchSession(authRepo))
 	feedAdminGroup.Use(middleware.RequireAdmin(authRepo))
 	feedAdminGroup.Get("/reports", feedHandler.GetAdminReports)
+
+	settingsGroup := api.Group("/settings")
+	settingsGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	settingsGroup.Use(middleware.TouchSession(authRepo))
+
+	settingsSensitiveLimiter := limiter.New(limiter.Config{
+		Max:        5,
+		Expiration: 1 * time.Hour,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			if userID, ok := c.Locals("user_id").(string); ok && userID != "" {
+				return "settings-sensitive:" + userID
+			}
+			return "settings-sensitive-ip:" + c.IP()
+		},
+	})
+
+	settingsGroup.Get("/security", settingsHandler.GetSecurity)
+	settingsGroup.Patch("/security/password", settingsHandler.ChangePassword)
+	settingsGroup.Get("/security/2fa", settingsHandler.GetTwoFA)
+	settingsGroup.Post("/security/2fa/enable", settingsSensitiveLimiter, settingsHandler.EnableTwoFA)
+	settingsGroup.Post("/security/2fa/disable", settingsSensitiveLimiter, settingsHandler.DisableTwoFA)
+	settingsGroup.Get("/security/sessions", settingsHandler.GetSessions)
+	settingsGroup.Delete("/security/sessions/:id", settingsHandler.DeleteSession)
+	settingsGroup.Delete("/security/sessions", settingsHandler.DeleteAllSessions)
+
+	settingsGroup.Post("/security/delete-account/reason", settingsSensitiveLimiter, settingsHandler.DeleteAccountReason)
+	settingsGroup.Post("/security/delete-account/verify", settingsSensitiveLimiter, settingsHandler.DeleteAccountVerify)
+	settingsGroup.Delete("/security/delete-account", settingsSensitiveLimiter, settingsHandler.DeleteAccountFinalize)
+
+	settingsGroup.Get("/feed", settingsHandler.GetFeedSettings)
+	settingsGroup.Patch("/feed", settingsHandler.PatchFeedSettings)
+
+	settingsGroup.Get("/interactions", settingsHandler.GetInteractions)
+	settingsGroup.Get("/interactions/messages", settingsHandler.GetMessagesSettings)
+	settingsGroup.Patch("/interactions/messages", settingsHandler.PatchMessagesSettings)
+	settingsGroup.Post("/interactions/messages/keywords", settingsHandler.AddMessageKeyword)
+	settingsGroup.Delete("/interactions/messages/keywords/:id", settingsHandler.DeleteMessageKeyword)
+	settingsGroup.Get("/interactions/comments", settingsHandler.GetCommentsSettings)
+	settingsGroup.Patch("/interactions/comments", settingsHandler.PatchCommentsSettings)
+	settingsGroup.Get("/interactions/mentions", settingsHandler.GetMentionsSettings)
+	settingsGroup.Patch("/interactions/mentions", settingsHandler.PatchMentionsSettings)
+	settingsGroup.Get("/interactions/blocked", settingsHandler.GetBlockedUsers)
+	settingsGroup.Delete("/interactions/blocked/:userId", settingsHandler.UnblockUser)
+
+	settingsGroup.Post("/support/bugs", settingsHandler.ReportBug)
 
 	// Map & Tasks routes
 	mapGroup := api.Group("/")
