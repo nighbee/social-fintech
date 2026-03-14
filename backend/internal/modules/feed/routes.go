@@ -40,6 +40,8 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 
 	// --- Posts and Comments Endpoints ---
 	postGroup.Post("/", handler.CreatePost)
+	postGroup.Patch("/:post_id", handler.UpdatePost)
+	postGroup.Delete("/:post_id", handler.DeletePost)
 	postGroup.Get("/:post_id/comments", handler.GetThreadedComments)
 	postGroup.Post("/:post_id/comments", handler.CreateComment)
 	postGroup.Delete("/:post_id/comments/:comment_id", handler.DeleteComment)

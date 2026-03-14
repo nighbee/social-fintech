@@ -263,6 +263,7 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 		Caption:           req.Caption,
 		Visibility:        req.Visibility,
 		CommentPermission: req.CommentPermission,
+		HideLikesCount:    req.HideLikesCount,
 		IsPublic:          req.Visibility == VisibilityAnyone,
 		LocationCity:      req.LocationCity,
 		LocationCountry:   req.LocationCountry,
@@ -276,6 +277,34 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 	}
 
 	return s.repo.GetPost(ctx, post.ID, userID)
+}
+
+func (s *Service) UpdatePost(ctx context.Context, userID, postID uuid.UUID, req *UpdatePostRequest) (*PostResponse, error) {
+	if req == nil {
+		return nil, ErrInvalidPostUpdate
+	}
+
+	if req.CommentPermission == nil && req.HideLikesCount == nil {
+		return nil, ErrInvalidPostUpdate
+	}
+
+	if req.CommentPermission != nil {
+		perm := strings.TrimSpace(*req.CommentPermission)
+		if perm != CommentPermAnyone && perm != CommentPermAlliesOnly && perm != CommentPermNoOne {
+			return nil, ErrInvalidCommentPermission
+		}
+		req.CommentPermission = &perm
+	}
+
+	if err := s.repo.UpdatePost(ctx, postID, userID, req); err != nil {
+		return nil, err
+	}
+
+	return s.repo.GetPost(ctx, postID, userID)
+}
+
+func (s *Service) DeletePost(ctx context.Context, userID, postID uuid.UUID) error {
+	return s.repo.DeletePost(ctx, postID, userID)
 }
 
 func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int, lat, lon float64, hasLocation bool) (*FeedResponse, error) {

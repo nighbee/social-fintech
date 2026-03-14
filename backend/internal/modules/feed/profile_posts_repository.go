@@ -107,6 +107,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 			p.caption,
 			p.visibility,
 			p.comment_permission,
+			p.hide_likes_count,
 			p.likes_count,
 			p.comments_count,
 			p.share_count,
@@ -168,7 +169,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		var commentPerm string
 
 		if err := rows.Scan(
-			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm,
+			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.HideLikesCount,
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers,
 			&createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
@@ -181,6 +182,9 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		resp.IsOwnPost = resp.Author.ID == viewerID
+		if resp.HideLikesCount {
+			resp.Metrics.Likes = 0
+		}
 
 		if createdAt.Valid {
 			elapsed := time.Since(createdAt.Time)

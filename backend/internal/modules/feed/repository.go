@@ -15,6 +15,8 @@ type Repository interface {
 
 	// Posts
 	CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error
+	UpdatePost(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
+	DeletePost(ctx context.Context, postID, userID uuid.UUID) error
 	GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error)
 	GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
 

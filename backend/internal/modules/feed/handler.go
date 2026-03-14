@@ -266,6 +266,95 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 	return c.Status(201).JSON(postResp)
 }
 
+// UpdatePost godoc
+// @Summary Update own post settings
+// @Description Updates post privacy settings after publication (comment_permission and/or hide_likes_count).
+// @Tags Feed
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param post_id path string true "Post UUID"
+// @Param request body UpdatePostRequest true "Post update payload"
+// @Success 200 {object} PostResponse
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Post not found"
+// @Router /posts/{post_id} [patch]
+func (h *Handler) UpdatePost(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	postID, err := uuid.Parse(c.Params("post_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_post_id"})
+	}
+
+	var req UpdatePostRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	postResp, err := h.service.UpdatePost(c.Context(), userID, postID, &req)
+	if err != nil {
+		if errors.Is(err, ErrInvalidPostUpdate) || errors.Is(err, ErrInvalidCommentPermission) {
+			return validationErr(c, err.Error())
+		}
+		if errors.Is(err, ErrNotPostAuthor) {
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		}
+		if errors.Is(err, ErrPostNotFound) {
+			return c.Status(404).JSON(fiber.Map{"error": "post_not_found"})
+		}
+		logger.Error("failed to update post", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "post_update_failed"})
+	}
+
+	return c.JSON(postResp)
+}
+
+// DeletePost godoc
+// @Summary Delete own post
+// @Description Soft-deletes an existing post. Only post author can delete.
+// @Tags Feed
+// @Produce json
+// @Security Bearer
+// @Param post_id path string true "Post UUID"
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Post not found"
+// @Router /posts/{post_id} [delete]
+func (h *Handler) DeletePost(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	postID, err := uuid.Parse(c.Params("post_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_post_id"})
+	}
+
+	if err := h.service.DeletePost(c.Context(), userID, postID); err != nil {
+		if errors.Is(err, ErrNotPostAuthor) {
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		}
+		if errors.Is(err, ErrPostNotFound) {
+			return c.Status(404).JSON(fiber.Map{"error": "post_not_found"})
+		}
+		if errors.Is(err, ErrPostAlreadyDeleted) {
+			return c.Status(409).JSON(fiber.Map{"error": "post_already_deleted"})
+		}
+		logger.Error("failed to delete post", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "post_delete_failed"})
+	}
+
+	return c.JSON(fiber.Map{"status": "deleted"})
+}
+
 // GetFeed godoc
 // @Summary Get mixed feed
 // @Description Fetch mixed feed (Allies + Local Geo + World)

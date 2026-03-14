@@ -100,10 +100,10 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 
 	queryPost := `
 		INSERT INTO posts (
-			id, user_id, caption, visibility, comment_permission, is_public,
+			id, user_id, caption, visibility, comment_permission, hide_likes_count, is_public,
 			location_city, location_country, location_lat, location_lon,
 			created_at, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
 	`
 	_, err = tx.ExecContext(
 		ctx,
@@ -113,6 +113,7 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 		post.Caption,
 		post.Visibility,
 		post.CommentPermission,
+		post.HideLikesCount,
 		post.IsPublic,
 		post.LocationCity,
 		post.LocationCountry,
@@ -137,11 +138,113 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 	return tx.Commit()
 }
 
+func (r *repository) UpdatePost(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error {
+	if req == nil || (req.CommentPermission == nil && req.HideLikesCount == nil) {
+		return ErrInvalidPostUpdate
+	}
+
+	assignments := make([]string, 0, 3)
+	args := make([]interface{}, 0, 4)
+	idx := 1
+
+	if req.CommentPermission != nil {
+		assignments = append(assignments, fmt.Sprintf("comment_permission = $%d", idx))
+		args = append(args, *req.CommentPermission)
+		idx++
+	}
+
+	if req.HideLikesCount != nil {
+		assignments = append(assignments, fmt.Sprintf("hide_likes_count = $%d", idx))
+		args = append(args, *req.HideLikesCount)
+		idx++
+	}
+
+	assignments = append(assignments, "updated_at = NOW()")
+	args = append(args, postID, userID)
+
+	query := fmt.Sprintf(`
+		UPDATE posts
+		SET %s
+		WHERE id = $%d AND user_id = $%d AND is_archived = false
+	`, strings.Join(assignments, ", "), idx, idx+1)
+
+	res, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows > 0 {
+		return nil
+	}
+
+	var authorID uuid.UUID
+	var isArchived bool
+	err = r.db.QueryRowContext(ctx, `SELECT user_id, is_archived FROM posts WHERE id = $1`, postID).Scan(&authorID, &isArchived)
+	if err == sql.ErrNoRows {
+		return ErrPostNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if authorID != userID {
+		return ErrNotPostAuthor
+	}
+	if isArchived {
+		return ErrPostAlreadyDeleted
+	}
+
+	return ErrPostNotFound
+}
+
+func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID) error {
+	res, err := r.db.ExecContext(ctx, `
+		UPDATE posts
+		SET is_archived = true,
+		    updated_at = NOW()
+		WHERE id = $1
+		  AND user_id = $2
+		  AND is_archived = false
+	`, postID, userID)
+	if err != nil {
+		return err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows > 0 {
+		return nil
+	}
+
+	var authorID uuid.UUID
+	var isArchived bool
+	err = r.db.QueryRowContext(ctx, `SELECT user_id, is_archived FROM posts WHERE id = $1`, postID).Scan(&authorID, &isArchived)
+	if err == sql.ErrNoRows {
+		return ErrPostNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if authorID != userID {
+		return ErrNotPostAuthor
+	}
+	if isArchived {
+		return ErrPostAlreadyDeleted
+	}
+
+	return ErrPostNotFound
+}
+
 func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error) {
 	query := `
 		SELECT p.id as post_id, p.caption, p.visibility,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
-		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.created_at,
+		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order) 
@@ -151,6 +254,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		WHERE p.id = $1
+		  AND p.is_archived = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
 	`
 	var resp PostResponse
@@ -160,7 +264,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 
 	err := r.db.QueryRowContext(ctx, query, postID, viewerID).Scan(
 		&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.Permissions.CanComment, // placeholder for perms
-		&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &createdAt,
+		&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
 		&mediaJSON, &resp.ViewerHasLiked,
 	)
@@ -183,6 +287,9 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 
 	resp.TimeAgo = "just now"
 	resp.IsOwnPost = viewerID == resp.Author.ID
+	if resp.HideLikesCount {
+		resp.Metrics.Likes = 0
+	}
 
 	return &resp, nil
 }
@@ -192,7 +299,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 	query := `
 		SELECT p.id as post_id, p.caption, p.visibility,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
-		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.created_at,
+		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order) 
@@ -227,7 +334,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		// We missed it in the GetFeed query. Let's fix the query first or omit it here. We'll update the query in a follow up call.
 		err := rows.Scan(
 			&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.Permissions.CanComment, // placeholders for visibility/perms logic
-			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &createdAt,
+			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
 			&mediaJSON,
 		)
@@ -247,6 +354,9 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 
 		resp.TimeAgo = "just now" // formatted by client or util later
 		resp.IsOwnPost = viewerID == resp.Author.ID
+		if resp.HideLikesCount {
+			resp.Metrics.Likes = 0
+		}
 
 		feed = append(feed, resp)
 		if createdAt.Valid {

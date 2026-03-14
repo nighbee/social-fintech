@@ -45,6 +45,10 @@ var (
 	// by a user who is not the original post author.
 	ErrNotPostAuthor = errors.New("not_post_author: only the original author can perform this action")
 
+	// ErrInvalidPostUpdate is returned when a post update payload contains
+	// no supported fields.
+	ErrInvalidPostUpdate = errors.New("invalid_post_update_payload")
+
 	// ── Comments ─────────────────────────────────────────────────────────
 	// ErrCommentNotFound is returned when a specified comment does not exist.
 	ErrCommentNotFound = errors.New("comment_not_found")
