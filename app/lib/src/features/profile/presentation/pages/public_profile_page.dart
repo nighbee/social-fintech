@@ -1,4 +1,5 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/router/router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -21,6 +22,19 @@ class PublicProfilePage extends StatefulWidget {
 
 class _PublicProfilePageState extends State<PublicProfilePage>
     with ShowProfileActionsBottomSheet {
+  void _openStats({
+    required String userId,
+    required bool isCurrentUser,
+  }) {
+    context.pushNamed(
+      RouteNames.profileStats,
+      extra: {
+        'userId': userId,
+        'isCurrentUser': isCurrentUser,
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -118,6 +132,10 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                               bloc.add(ProfileEvent.removeAlly(widget.userId)),
                           onUnblock: () =>
                               bloc.add(ProfileEvent.unblockUser(widget.userId)),
+                          onOpenStats: () => _openStats(
+                            userId: profile.userId,
+                            isCurrentUser: false,
+                          ),
                         ),
                       ),
                     ),

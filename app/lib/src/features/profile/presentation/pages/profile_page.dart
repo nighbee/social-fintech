@@ -48,6 +48,19 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     );
   }
 
+  void _openStats({
+    required String userId,
+    required bool isCurrentUser,
+  }) {
+    context.pushNamed(
+      RouteNames.profileStats,
+      extra: {
+        'userId': userId,
+        'isCurrentUser': isCurrentUser,
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -178,6 +191,10 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                               region: profile.region,
                               rankTier: profile.rankTier,
                               reputationScore: profile.reputationScore,
+                              onOpenStats: () => _openStats(
+                                userId: profile.userId,
+                                isCurrentUser: true,
+                              ),
                             ),
                           ),
                         ),

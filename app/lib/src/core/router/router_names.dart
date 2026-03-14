@@ -37,10 +37,17 @@ class RouteNames {
 
   // Chats routes
   static const String chats = 'chats';
+  static const String chatRequests = 'chatRequests';
+  static const String chatConversation = 'chatConversation';
+  static const String chatConversationForward = 'chatConversationForward';
+  static const String chatConversationSelect = 'chatConversationSelect';
+  static const String chatConversationBlocked = 'chatConversationBlocked';
+  static const String chatConversationDeleted = 'chatConversationDeleted';
 
   // Profile routes
   static const String profile = 'profile';
   static const String settings = 'settings';
+  static const String profileStats = 'profileStats';
   static const String profileInteractions = 'profileInteractions';
   static const String profileInteractionMessages =
       'profileInteractionMessages';

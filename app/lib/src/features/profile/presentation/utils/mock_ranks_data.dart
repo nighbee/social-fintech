@@ -1,76 +1,88 @@
-import 'package:app/src/features/profile/domain/entities/rank_entity.dart';
+import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/features/profile/presentation/models/rank_card_item.dart';
 
-final List<RankEntity> mockRanks = [
-  RankEntity(
-    level: 10,
+List<RankCardItem> mockRanks = [
+  RankCardItem(
     name: 'Pearl',
-    tier: 'Warmth',
+    tier: 'Awareness',
+    headline: 'Beginning of the path.',
     description:
-        'Pearl is a versatile and widely recognized gem for the dead, when a person called an adventurer is established, ',
-    requiredExp: 10,
-    imagePath: 'assets/images/pearl.png',
+        'The member shows conscious participation and earns recognition for consistent, real actions.',
+    requiredHonorLabel: '0',
+    image: Assets.images.pearl,
+    gemStyle: RankGemStyle.pearl,
+    filledTierCount: 4,
   ),
-  RankEntity(
-    level: 50,
+  RankCardItem(
     name: 'Moonstone',
-    tier: 'Clarity',
+    tier: 'Intention',
+    headline: 'Actions become deliberate.',
     description:
-        'Moonstone is a gemstone known for its earth, glowing when a person called an adventurer is established, they embrace the clarity and pure introspect their feelings and are giving intensified with elevated traits elements, hardness, and provide energy.',
-    requiredExp: 50,
-    imagePath: 'assets/images/moonstone.png',
+        'The member acts with purpose and supports others in a meaningful way.',
+    requiredHonorLabel: '10-29',
+    image: Assets.images.moonstone,
+    gemStyle: RankGemStyle.moonstone,
+    filledTierCount: 3,
+    thresholdLabelAbove: '10',
   ),
-  RankEntity(
-    level: 70,
+  RankCardItem(
     name: 'Jade',
-    tier: 'Integrity',
+    tier: 'Discipline',
+    headline: 'Consistency under control.',
     description:
-        'Jade is a durable gemstone known for its deep, warm green, when a person called an adventurer is established, they embrace clarity and pure introspect their feelings and are giving intensified with elevated traits elements, hardness, and provide energy.',
-    requiredExp: 70,
-    imagePath: 'assets/images/jade.png',
+        'Recognition reflects reliability, self-control, and repeated contribution over time.',
+    requiredHonorLabel: '30-69',
+    image: Assets.images.jade,
+    gemStyle: RankGemStyle.jade,
+    filledTierCount: 0,
+    thresholdLabelAbove: '30',
   ),
-  RankEntity(
-    level: 170,
+  RankCardItem(
     name: 'Lapis Lazuli',
-    tier: 'Ascendance',
+    tier: 'Influence',
+    headline: 'Impact extends beyond self.',
     description:
-        'Lapis Lazuli is a deep blue gemstone often flecked with gold, this gemstone represents clarity, inner wisdom and power and are giving intensified with elevated traits elements, inner sight and expanded awareness.',
-    requiredExp: 170,
-    imagePath: 'assets/images/lapislazuli.png',
+        'The member\'s actions begin shaping the behavior and standards of others.',
+    requiredHonorLabel: '70+',
+    image: Assets.images.lapislazuli,
+    gemStyle: RankGemStyle.lapisLazuli,
+    filledTierCount: 0,
+    thresholdLabelAbove: '70',
   ),
-  RankEntity(
-    level: 500,
+  RankCardItem(
     name: 'Ammolite',
     tier: 'Fortitude',
+    headline: 'Strength through pressure.',
     description:
-        'Ammolite is a rare, iridescent gemstone formed from fossilized ammonite shells, it is renowned for its vibrant and shifting hues and the elevated elements, clarity and inner wisdom, and provide energy.',
-    requiredExp: 500,
-    imagePath: 'assets/images/ammolite.png',
+        'Recognition reflects resilience, long-term commitment, and stability in difficult moments.',
+    requiredHonorLabel: '170+',
+    image: Assets.images.ammolite,
+    gemStyle: RankGemStyle.ammolite,
+    filledTierCount: 0,
+    thresholdLabelAbove: '170',
   ),
-  RankEntity(
-    level: 1000,
+  RankCardItem(
     name: 'Onyx',
-    tier: 'Resilience',
+    tier: 'Transcendence',
+    headline: 'Above ego and noise.',
     description:
-        'Onyx is a powerful protective stone that absorbs and transforms negative energy. When an adventurer reaches this rank, they demonstrate unwavering determination and the ability to overcome any obstacle in their path.',
-    requiredExp: 1000,
-    imagePath: 'assets/images/onyx.png',
+        'The member is respected for composure, principles, and clean conduct even when unseen.',
+    requiredHonorLabel: '300+',
+    image: Assets.images.onyx,
+    gemStyle: RankGemStyle.onyx,
+    filledTierCount: 0,
+    thresholdLabelAbove: '300',
   ),
-  RankEntity(
-    level: 2500,
-    name: 'Sunstone',
-    tier: 'Radiance',
+  RankCardItem(
+    name: 'Supernova',
+    tier: 'Sovereign',
+    headline: 'System-level recognition.',
     description:
-        'Sunstone embodies the warmth and power of the sun itself. Adventurers who attain this rank radiate positivity and leadership, inspiring those around them to reach greater heights.',
-    requiredExp: 2500,
-    imagePath: 'assets/images/supernova.png',
-  ),
-  RankEntity(
-    level: 5000,
-    name: 'Diamond',
-    tier: 'Eternity',
-    description:
-        'Diamond represents the pinnacle of strength, clarity, and indestructibility. Only the most dedicated and exceptional adventurers reach this legendary rank, standing as beacons of excellence for all to admire.',
-    requiredExp: 5000,
-    imagePath: 'assets/images/supernova.png',
+        'Top-tier rank awarded for sustained impact, influence, and community-wide respect.',
+    requiredHonorLabel: '1000+',
+    image: Assets.images.supernova,
+    gemStyle: RankGemStyle.supernova,
+    filledTierCount: 0,
+    thresholdLabelAbove: '1000',
   ),
 ];

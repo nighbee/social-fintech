@@ -25,6 +25,7 @@ class ProfileHeaderCard extends StatelessWidget {
     this.onFollow,
     this.onUnfollow,
     this.onUnblock,
+    this.onOpenStats,
     super.key,
   });
 
@@ -43,6 +44,7 @@ class ProfileHeaderCard extends StatelessWidget {
   final VoidCallback? onFollow;
   final VoidCallback? onUnfollow;
   final VoidCallback? onUnblock;
+  final VoidCallback? onOpenStats;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +104,10 @@ class ProfileHeaderCard extends StatelessWidget {
                     ),
                     const Gap(10),
 
-                    ProfileStatsRow(reputationScore: reputationScore),
+                    ProfileStatsRow(
+                      reputationScore: reputationScore,
+                      onStatsTap: onOpenStats,
+                    ),
                   ],
                 ),
               ),

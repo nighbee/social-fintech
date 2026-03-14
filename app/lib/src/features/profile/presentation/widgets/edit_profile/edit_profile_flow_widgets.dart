@@ -167,7 +167,7 @@ class EditProfileValueCardRow extends StatelessWidget {
   }
 }
 
-class EditProfileCounterText extends StatelessWidget {
+class EditProfileCounterText extends StatelessWidget {      
   const EditProfileCounterText({
     required this.currentLength,
     required this.maxLength,

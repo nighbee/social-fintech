@@ -256,6 +256,55 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: ChatsPage());
                 },
+                routes: [
+                  GoRoute(
+                    path: 'requests',
+                    name: RouteNames.chatRequests,
+                    builder: (context, state) => const ChatRequestsPage(),
+                  ),
+                  GoRoute(
+                    path: ':chatId',
+                    name: RouteNames.chatConversation,
+                    builder: (context, state) {
+                      final chatId = state.pathParameters['chatId'] ?? '';
+                      return ChatConversationPage(chatId: chatId);
+                    },
+                    routes: [
+                      GoRoute(
+                        path: 'forward',
+                        name: RouteNames.chatConversationForward,
+                        builder: (context, state) {
+                          final chatId = state.pathParameters['chatId'] ?? '';
+                          return ChatForwardMessagePage(chatId: chatId);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'select',
+                        name: RouteNames.chatConversationSelect,
+                        builder: (context, state) {
+                          final chatId = state.pathParameters['chatId'] ?? '';
+                          return ChatSelectMessagePage(chatId: chatId);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'blocked',
+                        name: RouteNames.chatConversationBlocked,
+                        builder: (context, state) {
+                          final chatId = state.pathParameters['chatId'] ?? '';
+                          return ChatBlockedPage(chatId: chatId);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'deleted',
+                        name: RouteNames.chatConversationDeleted,
+                        builder: (context, state) {
+                          final chatId = state.pathParameters['chatId'] ?? '';
+                          return ChatDeletedPage(chatId: chatId);
+                        },
+                      ),
+                    ],
+                  ),
+                ],
               ),
 
               // Notifications route (protected by auth guard)
@@ -286,6 +335,19 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                   return NoTransitionPage(child: ProfilePage());
                 },
                 routes: [
+                  GoRoute(
+                    path: 'stats',
+                    name: RouteNames.profileStats,
+                    redirect: AuthGuard,
+                    builder: (context, state) {
+                      final extra = state.extra as Map<String, dynamic>?;
+                      return UserStatsPage(
+                        userId: extra?['userId'] as String?,
+                        isCurrentUser:
+                            extra?['isCurrentUser'] as bool? ?? true,
+                      );
+                    },
+                  ),
                   GoRoute(
                     path: 'settings',
                     name: RouteNames.settings,
