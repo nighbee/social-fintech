@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/rand"
 	"time"
 
@@ -18,7 +19,7 @@ import (
 // GetInteractions(ctx context.Context, postID uuid.UUID, interactionType string, limit int) ([]InteractionResponse, error)
 // BatchFlushLikes(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 
-// GetSmartFeed implements the Allies (80%) + Local (Geo) + World (10%) weighted blending.
+// GetSmartFeed implements the Allies/Local (80%) + World (20%) target weighted blending.
 func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error) {
 	// 1. Fetch Candidates (Limit 100 to sort and blend in memory)
 	// CTEs:
@@ -40,6 +41,12 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			FROM posts p
 			WHERE p.is_archived = false
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM reported_post_hides rph
+				WHERE rph.post_id = p.id
+				  AND rph.reporter_id = $1
+			  )
 			  AND p.created_at < $5
 			  AND (p.visibility = 'ANYONE' OR p.user_id = $1 OR p.user_id IN (SELECT ally_id FROM allies))
 			ORDER BY p.created_at DESC
@@ -157,22 +164,39 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		}
 	}
 
-	// 2. Blend the results (80% Allies/Local, 20% World)
+	// 2. Blend the results (target 80% Allies/Local, 20% World with fallback)
 	rand.Shuffle(len(world), func(i, j int) { world[i], world[j] = world[j], world[i] })
 
 	blended := make([]PostResponse, 0, limit)
-	aIdx, wIdx := 0, 0
+	aIdx := 0
+	wIdx := 0
 
-	for len(blended) < limit && (aIdx < len(alliesLocal) || wIdx < len(world)) {
-		// Take 8 from Allies/Local, 2 from World
-		for i := 0; i < 8 && aIdx < len(alliesLocal) && len(blended) < limit; i++ {
-			blended = append(blended, alliesLocal[aIdx])
-			aIdx++
-		}
-		for i := 0; i < 2 && wIdx < len(world) && len(blended) < limit; i++ {
-			blended = append(blended, world[wIdx])
-			wIdx++
-		}
+	worldQuota := int(math.Round(float64(limit) * 0.2))
+	if worldQuota < 1 && limit > 1 {
+		worldQuota = 1
+	}
+	if worldQuota > limit {
+		worldQuota = limit
+	}
+	alliesQuota := limit - worldQuota
+
+	for aIdx < len(alliesLocal) && len(blended) < alliesQuota {
+		blended = append(blended, alliesLocal[aIdx])
+		aIdx++
+	}
+
+	for wIdx < len(world) && len(blended) < alliesQuota+worldQuota {
+		blended = append(blended, world[wIdx])
+		wIdx++
+	}
+
+	for len(blended) < limit && aIdx < len(alliesLocal) {
+		blended = append(blended, alliesLocal[aIdx])
+		aIdx++
+	}
+	for len(blended) < limit && wIdx < len(world) {
+		blended = append(blended, world[wIdx])
+		wIdx++
 	}
 
 	// Next cursor is the oldest created_at from the returned set
