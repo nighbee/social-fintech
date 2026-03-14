@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/widgets/glass_container.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -57,6 +59,51 @@ class ImagePickerHelper {
                 ),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Future<void> showProfileImagePicker({
+    required BuildContext context,
+    required Function(Uint8List bytes, String fileName) onImageSelected,
+    int imageQuality = 80,
+    double? maxWidth,
+    double? maxHeight,
+  }) async {
+    final ImagePicker picker = ImagePicker();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (sheetContext) {
+        return SafeArea(
+          top: false,
+          child: _ProfileImagePickerSheet(
+            onCameraTap: () async {
+              Navigator.of(sheetContext).pop();
+              await _pickImage(
+                picker,
+                ImageSource.camera,
+                onImageSelected,
+                imageQuality,
+                maxWidth,
+                maxHeight,
+              );
+            },
+            onGalleryTap: () async {
+              Navigator.of(sheetContext).pop();
+              await _pickImage(
+                picker,
+                ImageSource.gallery,
+                onImageSelected,
+                imageQuality,
+                maxWidth,
+                maxHeight,
+              );
+            },
           ),
         );
       },
@@ -278,5 +325,107 @@ class ImagePickerHelper {
     } catch (e) {
       debugPrint('Error picking video: $e');
     }
+  }
+}
+
+class _ProfileImagePickerSheet extends StatelessWidget {
+  const _ProfileImagePickerSheet({
+    required this.onCameraTap,
+    required this.onGalleryTap,
+  });
+
+  final VoidCallback onCameraTap;
+  final VoidCallback onGalleryTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: GlassContainer(
+        borderRadius: 12,
+        blurSigma: 28,
+        backgroundColor: AppColors.colorff202020.withValues(alpha: 0.72),
+        borderColor: Colors.white.withValues(alpha: 0.08),
+        borderWidth: 1,
+        enableWhiteGlow: false,
+        dropShadowColor: Colors.black.withValues(alpha: 0.48),
+        dropShadowBlurRadius: 32,
+        dropShadowOffset: const Offset(0, 4),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 38,
+                height: 4.5,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFA3ADB6),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+              const SizedBox(height: 18),
+              _ProfileImagePickerActionRow(
+                icon: Icons.camera_alt_outlined,
+                label: 'Take a photo',
+                onTap: onCameraTap,
+              ),
+              const SizedBox(height: 12),
+              _ProfileImagePickerActionRow(
+                icon: Icons.photo_library_outlined,
+                label: 'Upload photo',
+                onTap: onGalleryTap,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileImagePickerActionRow extends StatelessWidget {
+  const _ProfileImagePickerActionRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: SizedBox(
+          height: 44,
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 24,
+                color: AppColors.textBrand,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyles.bodyLarge.copyWith(
+                    fontSize: 18,
+                    height: 1,
+                    color: AppColors.textBrand,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

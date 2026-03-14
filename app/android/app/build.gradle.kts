@@ -70,6 +70,9 @@ dependencies {
             force("androidx.core:core:1.15.0")
             force("androidx.activity:activity-ktx:1.9.3")
             force("androidx.activity:activity:1.9.3")
+            // url_launcher_android 6.3.28 pulls browser 1.9.0, which requires AGP 8.9.1+.
+            // Keep browser on 1.8.0 so the current AGP 8.7.0 toolchain can build.
+            force("androidx.browser:browser:1.8.0")
         }
     }
 }
