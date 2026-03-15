@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/profiles"
+	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/google/uuid"
 )
 
@@ -27,6 +28,7 @@ type Service struct {
 	repo        Repository
 	cache       CacheRepository
 	profileRepo *profiles.Repository
+	settingsSvc settings.PublicService
 }
 
 func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Repository) *Service {
@@ -37,9 +39,23 @@ func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Re
 	}
 }
 
+func (s *Service) SetSettingsService(settingsSvc settings.PublicService) {
+	s.settingsSvc = settingsSvc
+}
+
 // getUserMaxSeconds returns the user's configured anti-doomscroll ceiling in seconds.
-// Returns 0 if the user has set «no limit».
+// Returns 0 if the user has set no limit.
 func (s *Service) getUserMaxSeconds(ctx context.Context, userID uuid.UUID) int {
+	if s.settingsSvc != nil {
+		mins, err := s.settingsSvc.GetFeedTimeLimit(ctx, userID.String())
+		if err == nil {
+			if mins == 0 {
+				return 0
+			}
+			return mins * 60
+		}
+	}
+
 	profile, err := s.profileRepo.GetProfile(ctx, userID.String())
 	if err != nil || profile == nil {
 		return DefaultMaxAllowedActiveSeconds

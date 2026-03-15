@@ -16,6 +16,7 @@ import (
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/ranks"
+	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -216,7 +217,12 @@ func main() {
 	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, cfg.Storage.PublicURL)
 	logger.Info("feed module initialized")
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, jwtManager, authRepo, logger.Get())
+	settingsRepo := settings.NewRepository(db.DB)
+	settingsService := settings.NewService(settingsRepo)
+	settingsHandler := settings.NewHandler(settingsService)
+	logger.Info("settings module initialized")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
