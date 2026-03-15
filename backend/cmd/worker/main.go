@@ -12,6 +12,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
+	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -82,6 +83,10 @@ func main() {
 	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
 
+	settingsRepo := settings.NewRepository(db.DB)
+	settingsService := settings.NewService(settingsRepo, nil)
+	settingsHardDeleteWorker := settings.NewHardDeleteWorker(settingsService)
+
 	// Start workers
 	economyWorker.Start()
 	logger.Info("economy worker started")
@@ -92,6 +97,9 @@ func main() {
 	feedWorker.Start()
 	logger.Info("feed interaction worker started")
 
+	settingsHardDeleteWorker.Start()
+	logger.Info("settings hard-delete worker started")
+
 	// Wait for shutdown signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -100,7 +108,7 @@ func main() {
 	logger.Info("shutting down workers...")
 
 	var wg sync.WaitGroup
-	wg.Add(3)
+	wg.Add(4)
 
 	go func() {
 		defer wg.Done()
@@ -118,6 +126,12 @@ func main() {
 		defer wg.Done()
 		feedWorker.Stop()
 		logger.Info("feed interaction worker stopped")
+	}()
+
+	go func() {
+		defer wg.Done()
+		settingsHardDeleteWorker.Stop()
+		logger.Info("settings hard-delete worker stopped")
 	}()
 
 	wg.Wait()

@@ -2,7 +2,10 @@ package settings
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"fmt"
+	"math/big"
 	"strings"
 	"time"
 	"unicode"
@@ -12,11 +15,90 @@ import (
 )
 
 type Service struct {
-	repo Repository
+	repo         Repository
+	smsSender    SMSSender
+	authProvider AuthAdapter
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+const hardDeleteBatchSize = 100
+
+type SMSSender interface {
+	Send(ctx context.Context, to, message string) error
+}
+
+type noopSMSSender struct{}
+
+func (n *noopSMSSender) Send(ctx context.Context, to, message string) error {
+	return nil
+}
+
+func NewService(repo Repository, smsSender SMSSender, authProvider ...AuthAdapter) *Service {
+	if smsSender == nil {
+		smsSender = &noopSMSSender{}
+	}
+
+	var provider AuthAdapter
+	if len(authProvider) > 0 {
+		provider = authProvider[0]
+	}
+
+	return &Service{repo: repo, smsSender: smsSender, authProvider: provider}
+}
+
+func (s *Service) countActiveSessions(ctx context.Context, userID string) (int, error) {
+	if s.authProvider != nil {
+		return s.authProvider.CountActiveSessions(ctx, userID)
+	}
+	return s.repo.CountActiveSessions(ctx, userID)
+}
+
+func (s *Service) listSessions(ctx context.Context, userID string) ([]SessionItem, error) {
+	if s.authProvider != nil {
+		return s.authProvider.ListSessions(ctx, userID)
+	}
+	return s.repo.ListSessions(ctx, userID)
+}
+
+func (s *Service) revokeSessionForUser(ctx context.Context, userID, sessionID string, revokedAt time.Time) error {
+	if s.authProvider != nil {
+		return s.authProvider.RevokeSession(ctx, userID, sessionID, revokedAt)
+	}
+	return s.repo.RevokeSession(ctx, userID, sessionID, revokedAt)
+}
+
+func (s *Service) revokeAllSessionsExceptForUser(ctx context.Context, userID, currentSessionID string, revokedAt time.Time) error {
+	if s.authProvider != nil {
+		return s.authProvider.RevokeAllSessionsExcept(ctx, userID, currentSessionID, revokedAt)
+	}
+	return s.repo.RevokeAllSessionsExcept(ctx, userID, currentSessionID, revokedAt)
+}
+
+func (s *Service) revokeAllSessionsForUser(ctx context.Context, userID string, revokedAt time.Time) error {
+	if s.authProvider != nil {
+		return s.authProvider.RevokeAllSessions(ctx, userID, revokedAt)
+	}
+	return s.repo.RevokeAllSessions(ctx, userID, revokedAt)
+}
+
+func (s *Service) getUserPasswordHash(ctx context.Context, userID string) (string, error) {
+	if s.authProvider != nil {
+		return s.authProvider.GetUserPasswordHash(ctx, userID)
+	}
+	return s.repo.GetUserPasswordHash(ctx, userID)
+}
+
+func (s *Service) updateUserPasswordHash(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error {
+	if s.authProvider != nil {
+		return s.authProvider.UpdateUserPasswordHash(ctx, userID, passwordHash, updatedAt)
+	}
+	return s.repo.UpdateUserPasswordHash(ctx, userID, passwordHash, updatedAt)
+}
+
+func (s *Service) getUserPhone(ctx context.Context, userID string) (string, string, error) {
+	if s.authProvider != nil {
+		return s.authProvider.GetUserPhone(ctx, userID)
+	}
+	return s.repo.GetUserPhone(ctx, userID)
 }
 
 func isValidFeedLimit(v int) bool {
@@ -43,6 +125,15 @@ func isValidDeleteReason(v string) bool {
 
 func normalizeTwoFAMethod(v string) string {
 	return strings.ToLower(strings.TrimSpace(v))
+}
+
+func generateDeleteOTP() (string, error) {
+	max := big.NewInt(10000)
+	n, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%04d", n.Int64()), nil
 }
 
 func isValidTwoFAMethod(v string) bool {
@@ -79,7 +170,7 @@ func (s *Service) GetSecurityOverview(ctx context.Context, userID, currentSessio
 	if err != nil {
 		return nil, err
 	}
-	sessions, err := s.repo.CountActiveSessions(ctx, userID)
+	sessions, err := s.countActiveSessions(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +191,7 @@ func (s *Service) ChangePassword(ctx context.Context, userID, currentSessionID, 
 	if !s.validatePasswordStrength(newPassword) {
 		return ErrPasswordTooWeak
 	}
-	hash, err := s.repo.GetUserPasswordHash(ctx, userID)
+	hash, err := s.getUserPasswordHash(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -111,10 +202,10 @@ func (s *Service) ChangePassword(ctx context.Context, userID, currentSessionID, 
 	if err != nil {
 		return err
 	}
-	if err := s.repo.UpdateUserPasswordHash(ctx, userID, string(newHash), time.Now()); err != nil {
+	if err := s.updateUserPasswordHash(ctx, userID, string(newHash), time.Now()); err != nil {
 		return err
 	}
-	if err := s.repo.RevokeAllSessionsExcept(ctx, userID, currentSessionID, time.Now()); err != nil {
+	if err := s.revokeAllSessionsExceptForUser(ctx, userID, currentSessionID, time.Now()); err != nil {
 		return err
 	}
 	_ = s.repo.CreateAuditLog(ctx, userID, "security_password_changed", map[string]any{"session_id": currentSessionID})
@@ -129,9 +220,6 @@ func (s *Service) GetTwoFAStatus(ctx context.Context, userID string) (*TwoFAStat
 	resp := &TwoFAStatusResponse{Enabled: len(methods) > 0}
 	for _, m := range methods {
 		resp.Methods = append(resp.Methods, m.Method)
-		if m.Method == TwoFAMethodAuthenticator && m.SecretEncrypted != nil {
-			resp.Secret = *m.SecretEncrypted
-		}
 	}
 	return resp, nil
 }
@@ -172,7 +260,7 @@ func (s *Service) EnableTwoFA(ctx context.Context, userID string, methods []stri
 }
 
 func (s *Service) DisableTwoFA(ctx context.Context, userID, currentPassword string) error {
-	hash, err := s.repo.GetUserPasswordHash(ctx, userID)
+	hash, err := s.getUserPasswordHash(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -187,7 +275,7 @@ func (s *Service) DisableTwoFA(ctx context.Context, userID, currentPassword stri
 }
 
 func (s *Service) ListSessions(ctx context.Context, userID, currentSessionID string) ([]SessionItem, error) {
-	items, err := s.repo.ListSessions(ctx, userID)
+	items, err := s.listSessions(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -201,11 +289,11 @@ func (s *Service) RevokeSession(ctx context.Context, userID, currentSessionID, s
 	if sessionID == currentSessionID {
 		return ErrCannotDeleteCurrentSession
 	}
-	return s.repo.RevokeSession(ctx, userID, sessionID, time.Now())
+	return s.revokeSessionForUser(ctx, userID, sessionID, time.Now())
 }
 
 func (s *Service) RevokeAllSessionsExceptCurrent(ctx context.Context, userID, currentSessionID string) error {
-	return s.repo.RevokeAllSessionsExcept(ctx, userID, currentSessionID, time.Now())
+	return s.revokeAllSessionsExceptForUser(ctx, userID, currentSessionID, time.Now())
 }
 
 func (s *Service) DeleteAccountReason(ctx context.Context, userID, reason string) (*DeleteAccountReasonResponse, error) {
@@ -213,8 +301,41 @@ func (s *Service) DeleteAccountReason(ctx context.Context, userID, reason string
 		return nil, ErrDeleteReasonInvalid
 	}
 	verificationMethod := "password"
-	if _, err := s.repo.CreateDeleteRequest(ctx, userID, reason, verificationMethod); err != nil {
+	methods, err := s.repo.GetActiveTwoFAMethods(ctx, userID)
+	if err != nil {
 		return nil, err
+	}
+	for _, method := range methods {
+		if method.Method == TwoFAMethodSMS && method.IsActive {
+			countryCode, phoneNumber, phoneErr := s.getUserPhone(ctx, userID)
+			if phoneErr != nil {
+				return nil, phoneErr
+			}
+			if countryCode != "" && phoneNumber != "" {
+				verificationMethod = "otp"
+			}
+			break
+		}
+	}
+	requestID, err := s.repo.CreateDeleteRequest(ctx, userID, reason, verificationMethod)
+	if err != nil {
+		return nil, err
+	}
+	if verificationMethod == "otp" {
+		countryCode, phoneNumber, err := s.getUserPhone(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		otp, err := generateDeleteOTP()
+		if err != nil {
+			return nil, err
+		}
+		if err := s.repo.SetDeleteOTPCodeHash(ctx, requestID, hashDeleteOTP(otp)); err != nil {
+			return nil, err
+		}
+		if err := s.smsSender.Send(ctx, countryCode+phoneNumber, fmt.Sprintf("Your BrightBund delete account code is %s", otp)); err != nil {
+			return nil, err
+		}
 	}
 	_ = s.repo.CreateAuditLog(ctx, userID, "security_delete_account_reason", map[string]any{"reason": reason})
 	return &DeleteAccountReasonResponse{VerificationMethod: verificationMethod}, nil
@@ -231,7 +352,7 @@ func (s *Service) DeleteAccountVerify(ctx context.Context, userID string, req *D
 
 	switch latest.VerificationMethod {
 	case "password":
-		hash, err := s.repo.GetUserPasswordHash(ctx, userID)
+		hash, err := s.getUserPasswordHash(ctx, userID)
 		if err != nil {
 			return nil, err
 		}
@@ -242,7 +363,9 @@ func (s *Service) DeleteAccountVerify(ctx context.Context, userID string, req *D
 		if req.OTP == "" {
 			return nil, ErrInvalidCredentials
 		}
-		return nil, ErrInvalidCredentials
+		if latest.OTPCodeHash == nil || *latest.OTPCodeHash != hashDeleteOTP(req.OTP) {
+			return nil, ErrInvalidCredentials
+		}
 	default:
 		return nil, ErrInvalidCredentials
 	}
@@ -278,7 +401,7 @@ func (s *Service) DeleteAccountFinalize(ctx context.Context, userID, verificatio
 	if err := s.repo.SoftDeleteUser(ctx, userID, now, now.Add(30*24*time.Hour)); err != nil {
 		return err
 	}
-	if err := s.repo.RevokeAllSessions(ctx, userID, now); err != nil {
+	if err := s.revokeAllSessionsForUser(ctx, userID, now); err != nil {
 		return err
 	}
 	_ = s.repo.CreateAuditLog(ctx, userID, "security_delete_account_finalized", nil)
@@ -438,6 +561,30 @@ func (s *Service) CreateBugReport(ctx context.Context, userID string, req *BugRe
 
 func (s *Service) ApplyDueFeedLimits(ctx context.Context) error {
 	return s.repo.ApplyDueFeedLimits(ctx, time.Now())
+}
+
+func (s *Service) ApplyDueHardDeletes(ctx context.Context) error {
+	now := time.Now()
+
+	for {
+		userIDs, err := s.repo.ListDueHardDeleteUserIDs(ctx, now, hardDeleteBatchSize)
+		if err != nil {
+			return err
+		}
+		if len(userIDs) == 0 {
+			return nil
+		}
+
+		for _, userID := range userIDs {
+			if err := s.repo.HardDeleteUser(ctx, userID); err != nil {
+				return err
+			}
+		}
+
+		if len(userIDs) < hardDeleteBatchSize {
+			return nil
+		}
+	}
 }
 
 // Public service methods for cross-module usage.

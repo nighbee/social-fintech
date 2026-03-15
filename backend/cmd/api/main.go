@@ -218,8 +218,11 @@ func main() {
 	logger.Info("feed module initialized")
 
 	settingsRepo := settings.NewRepository(db.DB)
-	settingsService := settings.NewService(settingsRepo)
+	settingsAuthAdapter := settings.NewAuthAdapter(authRepo)
+	settingsService := settings.NewService(settingsRepo, smsSender, settingsAuthAdapter)
 	settingsHandler := settings.NewHandler(settingsService)
+	settingsWorker := settings.NewWorker(settingsService)
+	settingsWorker.Start()
 	logger.Info("settings module initialized")
 
 	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, jwtManager, authRepo, logger.Get())
@@ -239,6 +242,7 @@ func main() {
 
 	<-sigCh
 	logger.Info("shutting down server...")
+	settingsWorker.Stop()
 
 	if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
 		logger.Error("server shutdown error", zap.Error(err))

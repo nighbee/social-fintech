@@ -26,6 +26,14 @@ type Repository interface {
 	TouchUser(ctx context.Context, id string, lastActive time.Time) error
 	RevokeSession(ctx context.Context, id string, revokedAt time.Time) error
 	DeleteSession(ctx context.Context, id string) error
+	CountActiveSessionsByUser(ctx context.Context, userID string) (int, error)
+	ListActiveSessionsByUser(ctx context.Context, userID string) ([]Session, error)
+	RevokeSessionForUser(ctx context.Context, userID, sessionID string, revokedAt time.Time) error
+	RevokeAllSessionsExceptForUser(ctx context.Context, userID, currentSessionID string, revokedAt time.Time) error
+	RevokeAllSessionsForUser(ctx context.Context, userID string, revokedAt time.Time) error
+	GetUserPasswordHashByID(ctx context.Context, userID string) (string, error)
+	UpdateUserPasswordHashByID(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error
+	GetUserPhoneByID(ctx context.Context, userID string) (string, string, error)
 
 	CreatePhoneVerification(ctx context.Context, v *PhoneVerification) error
 	GetPhoneVerificationByID(ctx context.Context, id string) (*PhoneVerification, error)
@@ -207,6 +215,72 @@ func (r *PostgresRepository) RevokeSession(ctx context.Context, id string, revok
 	query := `UPDATE sessions SET revoked_at = $1 WHERE id = $2`
 	_, err := r.db.ExecContext(ctx, query, revokedAt, id)
 	return err
+}
+
+func (r *PostgresRepository) CountActiveSessionsByUser(ctx context.Context, userID string) (int, error) {
+	var count int
+	query := `SELECT COUNT(1) FROM sessions WHERE user_id = $1 AND revoked_at IS NULL`
+	if err := r.db.GetContext(ctx, &count, query, userID); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *PostgresRepository) ListActiveSessionsByUser(ctx context.Context, userID string) ([]Session, error) {
+	items := make([]Session, 0)
+	query := `
+		SELECT id, user_id, device_id, ip, user_agent, app_version, last_active_at, created_at, refresh_token_hash, revoked_at
+		FROM sessions
+		WHERE user_id = $1 AND revoked_at IS NULL
+		ORDER BY last_active_at DESC
+	`
+	if err := r.db.SelectContext(ctx, &items, query, userID); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *PostgresRepository) RevokeSessionForUser(ctx context.Context, userID, sessionID string, revokedAt time.Time) error {
+	query := `UPDATE sessions SET revoked_at = $3 WHERE user_id = $1 AND id = $2 AND revoked_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, userID, sessionID, revokedAt)
+	return err
+}
+
+func (r *PostgresRepository) RevokeAllSessionsExceptForUser(ctx context.Context, userID, currentSessionID string, revokedAt time.Time) error {
+	query := `UPDATE sessions SET revoked_at = $3 WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, userID, currentSessionID, revokedAt)
+	return err
+}
+
+func (r *PostgresRepository) RevokeAllSessionsForUser(ctx context.Context, userID string, revokedAt time.Time) error {
+	query := `UPDATE sessions SET revoked_at = $2 WHERE user_id = $1 AND revoked_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, userID, revokedAt)
+	return err
+}
+
+func (r *PostgresRepository) GetUserPasswordHashByID(ctx context.Context, userID string) (string, error) {
+	var hash string
+	query := `SELECT password_hash FROM users WHERE id = $1`
+	if err := r.db.GetContext(ctx, &hash, query, userID); err != nil {
+		return "", err
+	}
+	return hash, nil
+}
+
+func (r *PostgresRepository) UpdateUserPasswordHashByID(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error {
+	query := `UPDATE users SET password_hash = $2, updated_at = $3 WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, userID, passwordHash, updatedAt)
+	return err
+}
+
+func (r *PostgresRepository) GetUserPhoneByID(ctx context.Context, userID string) (string, string, error) {
+	var countryCode string
+	var phoneNumber string
+	query := `SELECT COALESCE(phone_country_code, ''), COALESCE(phone_number, '') FROM users WHERE id = $1`
+	if err := r.db.QueryRowContext(ctx, query, userID).Scan(&countryCode, &phoneNumber); err != nil {
+		return "", "", err
+	}
+	return countryCode, phoneNumber, nil
 }
 
 func (r *PostgresRepository) CreatePhoneVerification(ctx context.Context, v *PhoneVerification) error {

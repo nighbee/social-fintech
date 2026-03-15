@@ -2,7 +2,9 @@ package settings
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -34,6 +36,8 @@ type Repository interface {
 	GetUserSettings(ctx context.Context, userID string) (*UserSettings, error)
 	UpdateFeedLimitPending(ctx context.Context, userID string, pending int, applyAt time.Time) error
 	ApplyDueFeedLimits(ctx context.Context, now time.Time) error
+	ListDueHardDeleteUserIDs(ctx context.Context, now time.Time, limit int) ([]string, error)
+	HardDeleteUser(ctx context.Context, userID string) error
 
 	UpdateMessagesSettings(ctx context.Context, userID, whoCanMessage string, readStatus, safeMode *bool) error
 	UpdateCommentsSettings(ctx context.Context, userID, whoCanComment string, filterUnwanted *bool) error
@@ -54,9 +58,11 @@ type Repository interface {
 	GetActiveTwoFAMethods(ctx context.Context, userID string) ([]TwoFAMethod, error)
 	UpsertTwoFAMethod(ctx context.Context, userID, method string, isActive bool, secret *string) error
 	DeactivateAllTwoFAMethods(ctx context.Context, userID string) error
+	GetUserPhone(ctx context.Context, userID string) (string, string, error)
 
 	CreateDeleteRequest(ctx context.Context, userID, reason, verificationMethod string) (string, error)
 	GetLatestDeleteRequest(ctx context.Context, userID string) (*deleteAccountRequest, error)
+	SetDeleteOTPCodeHash(ctx context.Context, requestID, otpCodeHash string) error
 	SetDeleteVerification(ctx context.Context, requestID, token string, expiresAt time.Time) error
 	MarkDeleteRequestVerified(ctx context.Context, requestID string, verifiedAt time.Time) error
 	SoftDeleteUser(ctx context.Context, userID string, deletedAt, hardDeleteAt time.Time) error
@@ -137,6 +143,42 @@ func (r *PostgresRepository) ApplyDueFeedLimits(ctx context.Context, now time.Ti
 		  AND feed_time_limit_pending_apply_at <= $1
 	`, now)
 	return err
+}
+
+func (r *PostgresRepository) ListDueHardDeleteUserIDs(ctx context.Context, now time.Time, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = 100
+	}
+
+	items := make([]string, 0, limit)
+	err := r.db.SelectContext(ctx, &items, `
+		SELECT id
+		FROM users
+		WHERE deleted_at IS NOT NULL
+		  AND hard_delete_scheduled_at IS NOT NULL
+		  AND hard_delete_scheduled_at <= $1
+		ORDER BY hard_delete_scheduled_at ASC
+		LIMIT $2
+	`, now, limit)
+	if err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *PostgresRepository) HardDeleteUser(ctx context.Context, userID string) error {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM users
+		WHERE id = $1
+		  AND deleted_at IS NOT NULL
+		  AND hard_delete_scheduled_at IS NOT NULL
+	`, userID)
+	if err != nil {
+		return err
+	}
+
+	_, _ = result.RowsAffected()
+	return nil
 }
 
 func (r *PostgresRepository) UpdateMessagesSettings(ctx context.Context, userID, whoCanMessage string, readStatus, safeMode *bool) error {
@@ -344,6 +386,20 @@ func (r *PostgresRepository) DeactivateAllTwoFAMethods(ctx context.Context, user
 	return err
 }
 
+func (r *PostgresRepository) GetUserPhone(ctx context.Context, userID string) (string, string, error) {
+	var countryCode string
+	var phoneNumber string
+	err := r.db.QueryRowxContext(ctx, `
+		SELECT COALESCE(phone_country_code, ''), COALESCE(phone_number, '')
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&countryCode, &phoneNumber)
+	if err != nil {
+		return "", "", err
+	}
+	return countryCode, phoneNumber, nil
+}
+
 func (r *PostgresRepository) CreateDeleteRequest(ctx context.Context, userID, reason, verificationMethod string) (string, error) {
 	id := uuid.NewString()
 	_, err := r.db.ExecContext(ctx, `
@@ -369,6 +425,16 @@ func (r *PostgresRepository) GetLatestDeleteRequest(ctx context.Context, userID 
 		return nil, err
 	}
 	return &req, nil
+}
+
+func (r *PostgresRepository) SetDeleteOTPCodeHash(ctx context.Context, requestID, otpCodeHash string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE delete_account_requests
+		SET otp_code_hash = $2,
+			updated_at = NOW()
+		WHERE id = $1
+	`, requestID, otpCodeHash)
+	return err
 }
 
 func (r *PostgresRepository) SetDeleteVerification(ctx context.Context, requestID, token string, expiresAt time.Time) error {
@@ -456,6 +522,11 @@ func (r *PostgresRepository) CreateBugReport(ctx context.Context, userID string,
 		VALUES ($1, $2, $3, $4, $5, 'new')
 	`, userID, req.Description, req.Screenshot, req.AppVersion, req.DeviceOS)
 	return err
+}
+
+func hashDeleteOTP(code string) string {
+	sum := sha256.Sum256([]byte(code))
+	return hex.EncodeToString(sum[:])
 }
 
 func (r *PostgresRepository) ListBlockedUsers(ctx context.Context, userID string, cursor *time.Time, limit int) ([]BlockedUserItem, error) {

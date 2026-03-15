@@ -2,9 +2,13 @@ package settings
 
 import (
 	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 )
 
 type Handler struct {
@@ -420,7 +424,16 @@ func (h *Handler) ReportBug(c *fiber.Ctx) error {
 		req.AppVersion = c.FormValue("app_version")
 		req.DeviceOS = c.FormValue("device_os")
 		if file, ferr := c.FormFile("screenshot"); ferr == nil && file != nil {
-			req.Screenshot = file.Filename
+			dirPath := filepath.Join(".", "uploads", "bug-reports")
+			if mkErr := os.MkdirAll(dirPath, 0o755); mkErr != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "bug_report_failed"})
+			}
+			storedName := fmt.Sprintf("%s%s", uuid.NewString(), filepath.Ext(file.Filename))
+			storedPath := filepath.Join(dirPath, storedName)
+			if saveErr := c.SaveFile(file, storedPath); saveErr != nil {
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "bug_report_failed"})
+			}
+			req.Screenshot = filepath.ToSlash(filepath.Join("/uploads", "bug-reports", storedName))
 		}
 	} else {
 		if err := c.BodyParser(&req); err != nil {
