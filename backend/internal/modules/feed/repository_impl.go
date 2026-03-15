@@ -287,9 +287,6 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 
 	resp.TimeAgo = "just now"
 	resp.IsOwnPost = viewerID == resp.Author.ID
-	if resp.HideLikesCount {
-		resp.Metrics.Likes = 0
-	}
 
 	return &resp, nil
 }
@@ -309,13 +306,14 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		JOIN users u ON p.user_id = u.id
 		WHERE p.is_archived = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
+		  AND p.user_id <> $2
 		-- If cursor is provided: AND p.created_at < $cursor
-		-- If ALLIES_ONLY: AND (p.visibility = 'ANYONE' OR p.user_id = $viewer_id OR EXISTS (SELECT 1 FROM user_relationships WHERE user_id=$viewer_id AND ally_id=p.user_id))
+		-- If ALLIES_ONLY: AND (p.visibility = 'ANYONE' OR EXISTS (SELECT 1 FROM user_relationships WHERE user_id=$viewer_id AND ally_id=p.user_id))
 		ORDER BY p.created_at DESC
 		LIMIT $1
 	`
 	// Note: Fully fledged query elided for brevity. Assuming simple fetch for MVP blueprint
-	rows, err := r.db.QueryContext(ctx, query, limit)
+	rows, err := r.db.QueryContext(ctx, query, limit, viewerID)
 	if err != nil {
 		return nil, "", err
 	}
@@ -354,9 +352,6 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 
 		resp.TimeAgo = "just now" // formatted by client or util later
 		resp.IsOwnPost = viewerID == resp.Author.ID
-		if resp.HideLikesCount {
-			resp.Metrics.Likes = 0
-		}
 
 		feed = append(feed, resp)
 		if createdAt.Valid {

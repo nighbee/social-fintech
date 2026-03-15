@@ -32,6 +32,7 @@ class EndPoints {
   static const String feedState = '/feed/state';
   static const String feedStateSync = '/feed/state/sync';
   static const String posts = '/posts';
+  static String postById(String postId) => '/posts/$postId';
   static String postComments(String postId) => '/posts/$postId/comments';
   static String postReport(String postId) => '/posts/$postId/report';
   static String postLikes(String postId) => '/posts/$postId/likes';
@@ -87,6 +88,10 @@ class EndPoints {
   static const String profileMe = '/profiles/me';
   static const String profileSearch = '/profiles/search';
   static const String profileMePosts = '/profiles/me/posts';
+  static const String profileMePostsList = '/profiles/me/posts/list';
+  static String profilePostsById(String userId) => '/profiles/$userId/posts';
+  static String profilePostsListById(String userId) =>
+      '/profiles/$userId/posts/list';
   static const String profileUpdate = '/profiles/me';
   static String profileById(String userId) => '/profiles/$userId';
   static const String profileMeStats = '/profiles/me/stats';

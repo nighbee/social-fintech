@@ -13,6 +13,7 @@ class CreatePostRequest extends BaseRequest with _$CreatePostRequest {
     @Default([])
     List<MediaAttachmentRequest> mediaAttachments,
     required String visibility,
+    @JsonKey(name: 'hide_likes_count') @Default(false) bool hideLikesCount,
     @JsonKey(name: 'comment_permission') required String commentPermission,
   }) = _CreatePostRequest;
 

@@ -24,6 +24,7 @@ class RouteNames {
   static const String createPost = 'createPost';
   static const String search = 'search';
   static const String store = 'store';
+  static const String profilePublications = 'profilePublications';
 
   // Map routes
   static const String map = 'map';

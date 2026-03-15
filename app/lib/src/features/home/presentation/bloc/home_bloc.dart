@@ -32,11 +32,14 @@ import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/get_my_profile_posts_request.dart';
+import 'package:app/src/features/home/domain/requests/get_profile_posts_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
 import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
+import 'package:app/src/features/home/domain/requests/update_post_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
 import 'package:app/src/features/profile/domain/entities/profile_search_result_entity.dart';
@@ -59,6 +62,18 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   final IHomeRepository _repository;
   final IProfileRepository _profileRepository;
   HomeViewModel _viewModel = HomeViewModel();
+  FeedEntity _profilePostsGridCache = const FeedEntity.empty();
+  FeedEntity _profilePostsListCache = const FeedEntity.empty();
+  FeedEntity _myProfilePostsListCache = const FeedEntity.empty();
+  String _profilePostsGridUserId = '';
+  String _profilePostsListUserId = '';
+
+  FeedEntity get profilePostsGridCache => _profilePostsGridCache;
+  FeedEntity get profilePostsListCache => _profilePostsListCache;
+  FeedEntity get myProfilePostsListCache => _myProfilePostsListCache;
+  String get profilePostsGridUserId => _profilePostsGridUserId;
+  String get profilePostsListUserId => _profilePostsListUserId;
+
   @override
   Future<void> onEventHandler(HomeEvent event, Emitter emit) async {
     await event.when(
@@ -183,6 +198,67 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     return _repository.getFeed(request);
   }
 
+  Future<Either<DomainException, FeedEntity>> getProfilePostsGridDirect(
+    GetProfilePostsRequest request,
+  ) async {
+    final result = await _repository.getProfilePostsGrid(request);
+    result.fold(
+      (_) {},
+      (feed) {
+        final currentFeed =
+            _profilePostsGridUserId == request.userId
+                ? _profilePostsGridCache
+                : const FeedEntity.empty();
+        _profilePostsGridCache = _mergeFeedForCursor(
+          current: currentFeed,
+          incoming: feed,
+          cursor: request.cursor,
+        );
+        _profilePostsGridUserId = request.userId;
+      },
+    );
+    return result;
+  }
+
+  Future<Either<DomainException, FeedEntity>> getProfilePostsListDirect(
+    GetProfilePostsRequest request,
+  ) async {
+    final result = await _repository.getProfilePostsList(request);
+    result.fold(
+      (_) {},
+      (feed) {
+        final currentFeed =
+            _profilePostsListUserId == request.userId
+                ? _profilePostsListCache
+                : const FeedEntity.empty();
+        _profilePostsListCache = _mergeFeedForCursor(
+          current: currentFeed,
+          incoming: feed,
+          cursor: request.cursor,
+        );
+        _profilePostsListUserId = request.userId;
+      },
+    );
+    return result;
+  }
+
+  Future<Either<DomainException, FeedEntity>> getMyProfilePostsListDirect(
+    GetMyProfilePostsRequest request,
+  ) async {
+    final result = await _repository.getMyProfilePostsList(request);
+    result.fold(
+      (_) {},
+      (feed) {
+        _myProfilePostsListCache = _mergeFeedForCursor(
+          current: _myProfilePostsListCache,
+          incoming: feed,
+          cursor: request.cursor,
+        );
+      },
+    );
+    return result;
+  }
+
   Future<Either<DomainException, FeedEntity>> getInitialFeed({
     int limit = 20,
   }) async {
@@ -268,25 +344,65 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     return _repository.reportPost(requestId, request);
   }
 
+  Future<Either<DomainException, StatusResponseEntity>> updatePostDirect(
+    String postId,
+    UpdatePostRequest request,
+  ) async {
+    if (postId.startsWith('local-')) {
+      _applyUpdatedPostToViewModel(postId: postId, request: request);
+      return const Right(StatusResponseEntity(status: 'success'));
+    }
+
+    final result = await _repository.updatePost(
+      PostIdRequest(postId: postId),
+      request,
+    );
+    result.fold(
+      (_) {},
+      (_) {
+        _applyUpdatedPostToViewModel(postId: postId, request: request);
+      },
+    );
+    return result;
+  }
+
+  Future<Either<DomainException, StatusResponseEntity>> deletePostDirect(
+    String postId,
+  ) async {
+    if (postId.startsWith('local-')) {
+      _applyDeletedPostToViewModel(postId);
+      return const Right(StatusResponseEntity(status: 'success'));
+    }
+
+    final result = await _repository.deletePost(PostIdRequest(postId: postId));
+    result.fold(
+      (_) {},
+      (_) {
+        _applyDeletedPostToViewModel(postId);
+      },
+    );
+    return result;
+  }
+
   Future<void> _applyPostSealResult(
     _ApplyPostSealResult event,
     Emitter emit,
   ) async {
-    final updatedItems = _viewModel.feed.items.map((item) {
-      if (item.postId != event.postId) return item;
-      return item.copyWith(
-        metrics: item.metrics.copyWith(
-          silvers: item.metrics.silvers + 1,
-        ),
-      );
-    }).toList();
+    _profilePostsListCache = _applySealResultToFeed(
+      _profilePostsListCache,
+      event.postId,
+    );
+    _myProfilePostsListCache = _applySealResultToFeed(
+      _myProfilePostsListCache,
+      event.postId,
+    );
 
     _viewModel = _viewModel.copyWith(
       lastAction: StatusResponseEntity(
         status: event.result.status,
         message: event.result.ledgerEntryId,
       ),
-      feed: _viewModel.feed.copyWith(items: updatedItems),
+      feed: _applySealResultToFeed(_viewModel.feed, event.postId),
     );
     emit(HomeState.loaded(viewModel: _viewModel));
   }
@@ -631,6 +747,15 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       );
     }).toList();
 
+    _profilePostsListCache = _incrementCommentCountInFeed(
+      _profilePostsListCache,
+      postId,
+    );
+    _myProfilePostsListCache = _incrementCommentCountInFeed(
+      _myProfilePostsListCache,
+      postId,
+    );
+
     _viewModel = _viewModel.copyWith(
       lastAction: const StatusResponseEntity(status: 'success'),
       comments: _viewModel.comments.copyWith(
@@ -701,17 +826,170 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
       (updatedPost) {
-        final items = _viewModel.feed.items.map((item) {
-          if (item.postId != event.postId) return item;
-          return updatedPost;
-        }).toList();
+        _profilePostsListCache = _replacePostInFeed(
+          _profilePostsListCache,
+          updatedPost,
+        );
+        _myProfilePostsListCache = _replacePostInFeed(
+          _myProfilePostsListCache,
+          updatedPost,
+        );
 
         _viewModel = _viewModel.copyWith(
           lastAction: const StatusResponseEntity(status: 'success'),
-          feed: _viewModel.feed.copyWith(items: items),
+          feed: _replacePostInFeed(_viewModel.feed, updatedPost),
         );
         emit(HomeState.loaded(viewModel: _viewModel));
       },
+    );
+  }
+
+  FeedEntity _mergeFeedForCursor({
+    required FeedEntity current,
+    required FeedEntity incoming,
+    required String? cursor,
+  }) {
+    final trimmedCursor = cursor?.trim() ?? '';
+    if (trimmedCursor.isEmpty) {
+      return incoming;
+    }
+
+    final mergedItems = <PostResponseEntity>[
+      ...current.items,
+      for (final item in incoming.items)
+        if (!current.items.any((existing) => existing.postId == item.postId))
+          item,
+    ];
+
+    return current.copyWith(
+      items: mergedItems,
+      nextCursor: incoming.nextCursor,
+    );
+  }
+
+  void _applyUpdatedPostToViewModel({
+    required String postId,
+    required UpdatePostRequest request,
+  }) {
+    _profilePostsGridCache = _applyPostUpdateToFeed(
+      _profilePostsGridCache,
+      postId: postId,
+      request: request,
+    );
+    _profilePostsListCache = _applyPostUpdateToFeed(
+      _profilePostsListCache,
+      postId: postId,
+      request: request,
+    );
+    _myProfilePostsListCache = _applyPostUpdateToFeed(
+      _myProfilePostsListCache,
+      postId: postId,
+      request: request,
+    );
+    _viewModel = _viewModel.copyWith(
+      lastAction: const StatusResponseEntity(status: 'success'),
+      feed: _applyPostUpdateToFeed(
+        _viewModel.feed,
+        postId: postId,
+        request: request,
+      ),
+    );
+  }
+
+  FeedEntity _applyPostUpdateToFeed(
+    FeedEntity feed, {
+    required String postId,
+    required UpdatePostRequest request,
+  }) {
+    final hasChanges =
+        request.hideLikesCount != null ||
+        (request.commentPermission?.trim().isNotEmpty ?? false);
+    if (!hasChanges) {
+      return feed;
+    }
+
+    final hasPost = feed.items.any((item) => item.postId == postId);
+    if (!hasPost) {
+      return feed;
+    }
+
+    final trimmedCommentPermission = request.commentPermission?.trim() ?? '';
+
+    return feed.copyWith(
+      items: feed.items.map((item) {
+        if (item.postId != postId) {
+          return item;
+        }
+
+        var updatedItem = item;
+
+        if (request.hideLikesCount != null) {
+          updatedItem = updatedItem.copyWith(
+            hideLikesCount: request.hideLikesCount!,
+          );
+        }
+
+        if (trimmedCommentPermission.isNotEmpty) {
+          updatedItem = updatedItem.copyWith(
+            permissions: updatedItem.permissions.copyWith(
+              canComment: trimmedCommentPermission != 'NO_ONE',
+            ),
+          );
+        }
+
+        return updatedItem;
+      }).toList(),
+    );
+  }
+
+  void _applyDeletedPostToViewModel(String postId) {
+    _profilePostsGridCache = _removePostFromFeed(_profilePostsGridCache, postId);
+    _profilePostsListCache = _removePostFromFeed(_profilePostsListCache, postId);
+    _myProfilePostsListCache = _removePostFromFeed(_myProfilePostsListCache, postId);
+    _viewModel = _viewModel.copyWith(
+      lastAction: const StatusResponseEntity(status: 'success'),
+      feed: _removePostFromFeed(_viewModel.feed, postId),
+    );
+  }
+
+  FeedEntity _applySealResultToFeed(FeedEntity feed, String postId) {
+    return feed.copyWith(
+      items: feed.items.map((item) {
+        if (item.postId != postId) return item;
+        return item.copyWith(
+          metrics: item.metrics.copyWith(
+            silvers: item.metrics.silvers + 1,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  FeedEntity _incrementCommentCountInFeed(FeedEntity feed, String postId) {
+    return feed.copyWith(
+      items: feed.items.map((item) {
+        if (item.postId != postId) return item;
+        return item.copyWith(
+          metrics: item.metrics.copyWith(
+            comments: item.metrics.comments + 1,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  FeedEntity _replacePostInFeed(FeedEntity feed, PostResponseEntity updatedPost) {
+    return feed.copyWith(
+      items: feed.items.map((item) {
+        if (item.postId != updatedPost.postId) return item;
+        return updatedPost;
+      }).toList(),
+    );
+  }
+
+  FeedEntity _removePostFromFeed(FeedEntity feed, String postId) {
+    return feed.copyWith(
+      items: feed.items.where((item) => item.postId != postId).toList(),
     );
   }
 

@@ -5,9 +5,14 @@ import 'package:app/src/features/profile/presentation/models/profile_post_item.d
 import 'package:flutter/material.dart';
 
 class ProfilePostGrid extends StatelessWidget {
-  const ProfilePostGrid({required this.posts, super.key});
+  const ProfilePostGrid({
+    required this.posts,
+    super.key,
+    this.onTapPost,
+  });
 
   final List<ProfilePostItem> posts;
+  final ValueChanged<ProfilePostItem>? onTapPost;
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +54,25 @@ class ProfilePostGrid extends StatelessWidget {
       ),
       delegate: SliverChildBuilderDelegate((context, index) {
         final post = posts[index];
-        final imageUrl = post.imageUrls.isNotEmpty
-            ? post.imageUrls.first
-            : 'https://via.placeholder.com/150'; // Fallback
+        final imageUrl = post.imageUrls.isNotEmpty ? post.imageUrls.first : '';
 
-        return CustomNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover);
+        return GestureDetector(
+          onTap: onTapPost == null ? null : () => onTapPost!(post),
+          child: imageUrl.isEmpty
+              ? Container(
+                  color: AppColors.colorff2A2A2B,
+                  alignment: Alignment.center,
+                  child: Assets.icons.images.svg(
+                    width: 28,
+                    height: 28,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFCACACA),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                )
+              : CustomNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover),
+        );
       }, childCount: posts.length),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
@@ -6,8 +7,10 @@ import 'package:app/src/features/home/domain/entities/media_attachment_entity.da
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
 import 'package:app/src/features/home/domain/requests/report_post_request.dart';
+import 'package:app/src/features/home/domain/requests/update_post_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_own_post_actions_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_feedback_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_silver_honor_bottom_sheet.dart';
@@ -18,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 
 class PostCardWidget extends StatefulWidget {
   const PostCardWidget({super.key, required this.post});
@@ -31,10 +35,22 @@ class PostCardWidget extends StatefulWidget {
 class _PostCardWidgetState extends State<PostCardWidget>
     with
         ShowPostCommentsBottomSheet,
+        ShowOwnPostActionsBottomSheet,
         ShowPostReportFeedbackBottomSheet,
         ShowPostReportBottomSheet,
         ShowPostSilverHonorBottomSheet {
+  bool _isDeleted = false;
   bool _showReportedPostCard = false;
+
+  void _openAuthorProfile(String userId) {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) return;
+
+    context.pushNamed(
+      RouteNames.publicProfile,
+      pathParameters: {'userId': normalizedUserId},
+    );
+  }
 
   Future<bool> _onReportSubmitted(PostReportReason reason) async {
     final bloc = getIt<HomeBloc>();
@@ -58,8 +74,107 @@ class _PostCardWidgetState extends State<PostCardWidget>
     );
   }
 
+  Future<void> _toggleLikeCount(PostResponseEntity post) async {
+    final bloc = getIt<HomeBloc>();
+    final nextHideLikesCount = !post.hideLikesCount;
+    final result = await bloc.updatePostDirect(
+      post.postId,
+      UpdatePostRequest(hideLikesCount: nextHideLikesCount),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_ownerPostActionErrorMessage(error.message))),
+        );
+      },
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              nextHideLikesCount ? 'Like count hidden.' : 'Like count shown.',
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleCommenting(PostResponseEntity post) async {
+    final bloc = getIt<HomeBloc>();
+    final nextPermission =
+        post.permissions.canComment ? 'NO_ONE' : 'ANYONE';
+    final result = await bloc.updatePostDirect(
+      post.postId,
+      UpdatePostRequest(commentPermission: nextPermission),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(_ownerPostActionErrorMessage(error.message))),
+        );
+      },
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              post.permissions.canComment
+                  ? 'Commenting turned off.'
+                  : 'Commenting turned on.',
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deletePost(PostResponseEntity post) async {
+    final bloc = getIt<HomeBloc>();
+    final result = await bloc.deletePostDirect(post.postId);
+
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _ownerPostActionErrorMessage(
+                error.message,
+                fallbackMessage: 'Failed to delete post.',
+              ),
+            ),
+          ),
+        );
+      },
+      (_) {
+        setState(() {
+          _isDeleted = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post deleted.')),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isDeleted) {
+      return const SizedBox.shrink();
+    }
+
     if (_showReportedPostCard) {
       return ReportedPostCardWidget(
         onClose: () {
@@ -80,10 +195,11 @@ class _PostCardWidgetState extends State<PostCardWidget>
           loaded: (viewModel) => viewModel,
           orElse: HomeViewModel.new,
         );
-        final currentPost = viewModel.feed.items.firstWhere(
-          (item) => item.postId == widget.post.postId,
-          orElse: () => widget.post,
-        );
+        final currentPost =
+            _findPostById(viewModel.feed.items, widget.post.postId) ??
+            _findPostById(bloc.myProfilePostsListCache.items, widget.post.postId) ??
+            _findPostById(bloc.profilePostsListCache.items, widget.post.postId) ??
+            widget.post;
 
         final mediaItems = currentPost.mediaAttachments;
         final localMediaMap = <String, Uint8List>{
@@ -95,6 +211,7 @@ class _PostCardWidgetState extends State<PostCardWidget>
         final authorName = currentPost.author.username.trim().isNotEmpty
             ? currentPost.author.username
             : currentPost.author.fullName;
+        final shouldShowLikeCount = !currentPost.hideLikesCount;
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -109,49 +226,85 @@ class _PostCardWidgetState extends State<PostCardWidget>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildUserAvatar(currentPost.author.profilePicUrl),
-                  const Gap(12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          authorName,
-                          style: TextStyles.titleHeadline.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.colorffE5E5E5,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => _openAuthorProfile(currentPost.author.id),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildUserAvatar(currentPost.author.profilePicUrl),
+                              const Gap(12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      authorName,
+                                      style: TextStyles.titleHeadline.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.colorffE5E5E5,
+                                      ),
+                                    ),
+                                    Text(
+                                      currentPost.timeAgo.isNotEmpty
+                                          ? currentPost.timeAgo
+                                          : 'now',
+                                      style: TextStyles.bodySecondary.copyWith(
+                                        color: AppColors.colorff9CA3AF,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          currentPost.timeAgo.isNotEmpty
-                              ? currentPost.timeAgo
-                              : 'now',
-                          style: TextStyles.bodySecondary.copyWith(
-                            color: AppColors.colorff9CA3AF,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => showPostReportBottomSheet(
-                      context,
-                      onSubmitted: _onReportSubmitted,
-                      reportTargetName:
-                          authorName.isNotEmpty ? authorName : 'User',
-                      onBlock: () => getIt<ProfileBloc>().add(
-                        ProfileEvent.blockUser(currentPost.author.id),
-                      ),
-                      onRestrict: () => getIt<ProfileBloc>().add(
-                        ProfileEvent.restrictUser(currentPost.author.id),
-                      ),
-                      onFeedbackDone: () {
-                        if (!mounted) return;
-                        setState(() {
-                          _showReportedPostCard = true;
-                        });
-                      },
-                    ),
+                    onTap: () {
+                      if (currentPost.isOwnPost) {
+                        showOwnPostActionsBottomSheet(
+                          context,
+                          onDelete: () => _deletePost(currentPost),
+                          onToggleLikeCount: () => _toggleLikeCount(currentPost),
+                          onToggleCommenting: () =>
+                              _toggleCommenting(currentPost),
+                          likeCountLabel: currentPost.hideLikesCount
+                              ? 'Show like count'
+                              : 'Hide like count',
+                          commentingLabel: currentPost.permissions.canComment
+                              ? 'Turn off commenting'
+                              : 'Turn on commenting',
+                        );
+                        return;
+                      }
+
+                      showPostReportBottomSheet(
+                        context,
+                        onSubmitted: _onReportSubmitted,
+                        reportTargetName:
+                            authorName.isNotEmpty ? authorName : 'User',
+                        onBlock: () => getIt<ProfileBloc>().add(
+                          ProfileEvent.blockUser(currentPost.author.id),
+                        ),
+                        onRestrict: () => getIt<ProfileBloc>().add(
+                          ProfileEvent.restrictUser(currentPost.author.id),
+                        ),
+                        onFeedbackDone: () {
+                          if (!mounted) return;
+                          setState(() {
+                            _showReportedPostCard = true;
+                          });
+                        },
+                      );
+                    },
                     child: Assets.icons.more.svg(width: 16, height: 16),
                   ),
                 ],
@@ -195,15 +348,17 @@ class _PostCardWidgetState extends State<PostCardWidget>
                             BlendMode.srcIn,
                           ),
                         ),
-                        const Gap(4),
-                        Text(
-                          currentPost.metrics.likes.toString(),
-                          style: TextStyles.bodyMain.copyWith(
-                            color: currentPost.viewerHasLiked
-                                ? Colors.red
-                                : AppColors.colorffE5E5E5,
+                        if (shouldShowLikeCount) ...[
+                          const Gap(4),
+                          Text(
+                            currentPost.metrics.likes.toString(),
+                            style: TextStyles.bodyMain.copyWith(
+                              color: currentPost.viewerHasLiked
+                                  ? Colors.red
+                                  : AppColors.colorffE5E5E5,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -575,4 +730,26 @@ String _reportPostErrorMessage(String errorMessage) {
           ? 'Failed to report post.'
           : errorMessage;
   }
+}
+
+String _ownerPostActionErrorMessage(
+  String errorMessage, {
+  String fallbackMessage = 'Failed to update post.',
+}) {
+  if (errorMessage.trim().isEmpty) {
+    return fallbackMessage;
+  }
+  return errorMessage;
+}
+
+PostResponseEntity? _findPostById(
+  List<PostResponseEntity> items,
+  String postId,
+) {
+  for (final item in items) {
+    if (item.postId == postId) {
+      return item;
+    }
+  }
+  return null;
 }

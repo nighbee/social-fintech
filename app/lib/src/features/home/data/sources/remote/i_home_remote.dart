@@ -12,6 +12,7 @@ import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
 import 'package:app/src/features/home/data/models/economy_limits_dto.dart';
 import 'package:app/src/features/home/data/models/seal_list_dto.dart';
 import 'package:app/src/features/home/data/models/send_post_seal_result_dto.dart';
+import 'package:app/src/features/home/data/models/status_response_dto.dart';
 import 'package:app/src/features/home/data/models/threaded_comments_dto.dart';
 import 'package:app/src/features/home/domain/models/local_media_payload.dart';
 import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
@@ -22,11 +23,14 @@ import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/get_my_profile_posts_request.dart';
+import 'package:app/src/features/home/domain/requests/get_profile_posts_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
 import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
+import 'package:app/src/features/home/domain/requests/update_post_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:dio/dio.dart';
 
@@ -37,6 +41,15 @@ abstract class IHomeRemote {
     FormData? formData,
     List<LocalMediaPayload> localMediaPayloads,
   });
+  Future<Either<DomainException, FeedDto>> getProfilePostsGrid(
+    GetProfilePostsRequest request,
+  );
+  Future<Either<DomainException, FeedDto>> getMyProfilePostsList(
+    GetMyProfilePostsRequest request,
+  );
+  Future<Either<DomainException, FeedDto>> getProfilePostsList(
+    GetProfilePostsRequest request,
+  );
   Future<Either<DomainException, ThreadedCommentsDto>> getPostComments(
     GetPostCommentsRequest request,
   );
@@ -57,6 +70,13 @@ abstract class IHomeRemote {
   Future<Either<DomainException, EconomyLimitsDto>> getEconomyLimits();
   Future<Either<DomainException, PostResponseDto>> togglePostLike(
     PostIdRequest request,
+  );
+  Future<Either<DomainException, StatusResponseDto>> updatePost(
+    PostIdRequest requestId,
+    UpdatePostRequest request,
+  );
+  Future<Either<DomainException, StatusResponseDto>> deletePost(
+    PostIdRequest requestId,
   );
   Future<Either<DomainException, ReportPostResultDto>> reportPost(
     PostIdRequest requestId,

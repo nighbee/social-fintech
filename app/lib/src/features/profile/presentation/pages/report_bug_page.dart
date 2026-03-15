@@ -132,7 +132,7 @@ class _ReportBugPageState extends State<ReportBugPage> {
                           errorBorder: InputBorder.none,
                           focusedErrorBorder: InputBorder.none,
                           hintText:
-                              '|Describe the issue and steps to reproduce it',
+                              'Describe the issue and steps to reproduce it',
                           hintStyle: TextStyles.titleMain.copyWith(
                             color: AppColors.colorffa9a9a9,
                             fontFamily: FontFamily.canelaDeckTrial,

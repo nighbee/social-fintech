@@ -16,6 +16,7 @@ import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
 import 'package:app/src/features/home/data/models/economy_limits_dto.dart';
 import 'package:app/src/features/home/data/models/seal_list_dto.dart';
 import 'package:app/src/features/home/data/models/send_post_seal_result_dto.dart';
+import 'package:app/src/features/home/data/models/status_response_dto.dart';
 import 'package:app/src/features/home/data/models/threaded_comments_dto.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
 import 'package:app/src/features/home/domain/models/local_media_payload.dart';
@@ -27,11 +28,14 @@ import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/domain/requests/feed_state_sync_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_likes_request.dart';
+import 'package:app/src/features/home/domain/requests/get_my_profile_posts_request.dart';
+import 'package:app/src/features/home/domain/requests/get_profile_posts_request.dart';
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
 import 'package:app/src/features/home/domain/requests/post_id_request.dart';
 import 'package:app/src/features/home/domain/requests/report_post_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
+import 'package:app/src/features/home/domain/requests/update_post_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
@@ -99,6 +103,100 @@ class HomeRemoteImpl implements IHomeRemote {
             );
           }
           final dto = PostResponseDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, FeedDto>> getProfilePostsGrid(
+    GetProfilePostsRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.profilePostsById(request.userId),
+        queryParameters: request.toQuery(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid profile posts grid response'),
+            );
+          }
+          final dto = FeedDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, FeedDto>> getProfilePostsList(
+    GetProfilePostsRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.profilePostsListById(request.userId),
+        queryParameters: request.toQuery(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(message: 'Invalid profile posts list response'),
+            );
+          }
+          final dto = FeedDto.fromJson(
+            Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          );
+          return Right(dto);
+        },
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, FeedDto>> getMyProfilePostsList(
+    GetMyProfilePostsRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.profileMePostsList,
+        queryParameters: request.toQuery(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) {
+          final dynamic raw = result.data;
+          if (raw is! Map) {
+            return Left(
+              UnknownException(
+                  message: 'Invalid my profile posts list response'),
+            );
+          }
+          final dto = FeedDto.fromJson(
             Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
           );
           return Right(dto);
@@ -461,6 +559,46 @@ class HomeRemoteImpl implements IHomeRemote {
   }
 
   @override
+  Future<Either<DomainException, StatusResponseDto>> updatePost(
+    PostIdRequest requestId,
+    UpdatePostRequest request,
+  ) async {
+    try {
+      final response = await _restClient.patch(
+        EndPoints.postById(requestId.postId),
+        data: request.toPayload(),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) => Right(_statusDtoFromRaw(result.data)),
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
+  Future<Either<DomainException, StatusResponseDto>> deletePost(
+    PostIdRequest requestId,
+  ) async {
+    try {
+      final response = await _restClient.delete(
+        EndPoints.postById(requestId.postId),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (result) => Right(_statusDtoFromRaw(result.data)),
+      );
+    } catch (e) {
+      return Left(
+        e is DomainException ? e : UnknownException(message: e.toString()),
+      );
+    }
+  }
+
+  @override
   Future<Either<DomainException, ReportPostResultDto>> reportPost(
     PostIdRequest requestId,
     ReportPostRequest request,
@@ -525,8 +663,7 @@ class HomeRemoteImpl implements IHomeRemote {
   }
 
   @override
-  Future<Either<DomainException, ClaimDailyAccrualResultDto>>
-      claimDailyAccrual(
+  Future<Either<DomainException, ClaimDailyAccrualResultDto>> claimDailyAccrual(
     ClaimDailyAccrualRequest request,
   ) async {
     try {
@@ -708,7 +845,8 @@ class HomeRemoteImpl implements IHomeRemote {
         (result) {
           final dynamic raw = result.data;
           if (raw is! Map) {
-            return Left(UnknownException(message: 'Invalid feed state response'));
+            return Left(
+                UnknownException(message: 'Invalid feed state response'));
           }
           final dto = FeedStateDto.fromJson(
             Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
@@ -752,5 +890,18 @@ class HomeRemoteImpl implements IHomeRemote {
         e is DomainException ? e : UnknownException(message: e.toString()),
       );
     }
+  }
+
+  StatusResponseDto _statusDtoFromRaw(dynamic raw) {
+    if (raw is Map) {
+      final map = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+      if (map.containsKey('status') ||
+          map.containsKey('error') ||
+          map.containsKey('message')) {
+        return StatusResponseDto.fromJson(map);
+      }
+    }
+
+    return const StatusResponseDto(status: 'success');
   }
 }

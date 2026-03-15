@@ -10,6 +10,7 @@ import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/models/profile_post_item.dart';
+import 'package:app/src/features/profile/presentation/utils/profile_posts_grid_mapper.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_post_grid.dart';
 import 'package:flutter/material.dart';
@@ -88,7 +89,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     final restClient = getIt<RestClient>(instanceName: 'DioClient');
     final response = await restClient.get(
       EndPoints.profileMePosts,
-      queryParameters: <String, dynamic>{'limit': 60},
+      queryParameters: <String, dynamic>{'limit': 30},
     );
 
     if (!mounted) return;
@@ -101,28 +102,26 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         });
       },
       (result) {
-        final payload = result.data;
-        final items = payload is Map<String, dynamic> ? payload['items'] : null;
-        final mapped = <ProfilePostItem>[];
-        if (items is List) {
-          for (final item in items) {
-            if (item is! Map<String, dynamic>) continue;
-            final postId = (item['post_id'] ?? '').toString();
-            final thumbnail = (item['thumbnail_url'] ?? '').toString();
-            if (postId.isEmpty) continue;
-            mapped.add(
-              ProfilePostItem(
-                id: postId,
-                imageUrls: thumbnail.isEmpty ? const <String>[] : [thumbnail],
-              ),
-            );
-          }
-        }
+        final mapped = mapProfilePostsGridItems(result.data);
 
         setState(() {
           _myPosts = mapped;
           _isPostsLoading = false;
         });
+      },
+    );
+  }
+
+  void _openPublications({
+    required String displayName,
+    required ProfilePostItem post,
+  }) {
+    context.pushNamed(
+      RouteNames.profilePublications,
+      extra: {
+        'displayName': displayName,
+        'initialPostId': post.id,
+        'isCurrentUser': true,
       },
     );
   }
@@ -225,7 +224,13 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                             ),
                           )
                         else
-                          ProfilePostGrid(posts: _myPosts),
+                          ProfilePostGrid(
+                            posts: _myPosts,
+                            onTapPost: (post) => _openPublications(
+                              displayName: profile.displayName,
+                              post: post,
+                            ),
+                          ),
                       ],
                     );
                   },

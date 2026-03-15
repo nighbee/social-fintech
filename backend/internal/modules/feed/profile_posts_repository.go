@@ -182,9 +182,6 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		resp.IsOwnPost = resp.Author.ID == viewerID
-		if resp.HideLikesCount {
-			resp.Metrics.Likes = 0
-		}
 
 		if createdAt.Valid {
 			elapsed := time.Since(createdAt.Time)

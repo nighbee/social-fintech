@@ -24,6 +24,7 @@ class RoutePaths {
   static const String createPost = '/create-post';
   static const String search = '/search';
   static const String store = '/store';
+  static const String profilePublications = '/profile-publications';
 
   // Map routes
   static const String map = '/map';

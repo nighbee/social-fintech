@@ -1,8 +1,9 @@
 import 'dart:io';
 
 import 'package:app/gen/assets.gen.dart';
-import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
+import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
 import 'package:app/src/core/widgets/action_bottom_sheet.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
@@ -17,6 +18,7 @@ import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 mixin ShowPostCommentsBottomSheet {
@@ -69,6 +71,18 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
   String? _replyToUsername;
   String? _commentError;
   final List<_DraftCommentPhoto> _pendingPhotos = <_DraftCommentPhoto>[];
+
+  void _openPublicProfile(String userId) {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) return;
+
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
+    router.pushNamed(
+      RouteNames.publicProfile,
+      pathParameters: {'userId': normalizedUserId},
+    );
+  }
 
   @override
   void initState() {
@@ -465,6 +479,7 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                             childRepliesFor: (id) =>
                                 _repliesByParent[id] ??
                                 const <CommentResponseEntity>[],
+                            onOpenProfile: _openPublicProfile,
                             isChildExpanded: (id) =>
                                 _expandedReplyCommentIds.contains(id),
                             isChildLoading: (id) =>
@@ -522,6 +537,7 @@ class _CommentItem extends StatelessWidget {
     required this.onToggleReplies,
     required this.onReplyToChild,
     required this.childRepliesFor,
+    required this.onOpenProfile,
     required this.isChildExpanded,
     required this.isChildLoading,
     required this.onToggleChildReplies,
@@ -538,6 +554,7 @@ class _CommentItem extends StatelessWidget {
   final VoidCallback onToggleReplies;
   final ValueChanged<CommentResponseEntity> onReplyToChild;
   final List<CommentResponseEntity> Function(String id) childRepliesFor;
+  final ValueChanged<String> onOpenProfile;
   final bool Function(String id) isChildExpanded;
   final bool Function(String id) isChildLoading;
   final ValueChanged<String> onToggleChildReplies;
@@ -558,7 +575,10 @@ class _CommentItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(width: depth * 14),
-            _CommentAvatar(url: comment.author.profilePicUrl),
+            GestureDetector(
+              onTap: () => onOpenProfile(comment.author.id),
+              child: _CommentAvatar(url: comment.author.profilePicUrl),
+            ),
             const Gap(10),
             Expanded(
               child: Column(
@@ -568,11 +588,14 @@ class _CommentItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Flexible(
-                        child: Text(
-                          comment.author.username,
-                          style: TextStyles.bodyMain.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                        child: GestureDetector(
+                          onTap: () => onOpenProfile(comment.author.id),
+                          child: Text(
+                            comment.author.username,
+                            style: TextStyles.bodyMain.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
@@ -649,6 +672,7 @@ class _CommentItem extends StatelessWidget {
                 onToggleReplies: () => onToggleChildReplies(reply.commentId),
                 onReplyToChild: onReplyToChild,
                 childRepliesFor: childRepliesFor,
+                onOpenProfile: onOpenProfile,
                 isChildExpanded: isChildExpanded,
                 isChildLoading: isChildLoading,
                 onToggleChildReplies: onToggleChildReplies,

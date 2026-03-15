@@ -157,6 +157,8 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	postGroup.Use(middleware.TouchSession(authRepo))
 
 	postGroup.Post("/", feedHandler.CreatePost)
+	postGroup.Patch("/:post_id", feedHandler.UpdatePost)
+	postGroup.Delete("/:post_id", feedHandler.DeletePost)
 	postGroup.Get("/:post_id/comments", feedHandler.GetThreadedComments)
 	postGroup.Post("/:post_id/comments", feedHandler.CreateComment)
 	postGroup.Delete("/:post_id/comments/:comment_id", feedHandler.DeleteComment)

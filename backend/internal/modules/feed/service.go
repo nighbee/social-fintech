@@ -605,8 +605,9 @@ func (s *Service) GetUserPostsList(ctx context.Context, authorID, viewerID uuid.
 	if anchorPostID != nil {
 		anchorTime, err := s.repo.GetPostCreatedAt(ctx, *anchorPostID)
 		if err == nil {
-			// Add 1ns so the anchor post itself satisfies created_at < cursor.
-			cursor = anchorTime.Add(time.Nanosecond)
+			// Postgres timestamps are effectively microsecond precision here.
+			// Add 1 microsecond so the anchor post itself satisfies created_at < cursor.
+			cursor = anchorTime.Add(time.Microsecond)
 		}
 	} else if cursorStr != "" {
 		if t, err := time.Parse(time.RFC3339Nano, cursorStr); err == nil {

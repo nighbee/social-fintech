@@ -22,6 +22,7 @@ class PostResponseDto extends BaseDto with _$PostResponseDto {
     required List<MediaAttachmentDto> mediaAttachments,
     required PostMetricsDto metrics,
     required PermissionsDto permissions,
+    @JsonKey(name: 'hide_likes_count') required bool hideLikesCount,
     @JsonKey(name: 'is_own_post') required bool isOwnPost,
     @JsonKey(name: 'viewer_has_liked') required bool viewerHasLiked,
   }) = _PostResponseDto;
@@ -38,6 +39,7 @@ class PostResponseDto extends BaseDto with _$PostResponseDto {
         mediaAttachments: mediaAttachments.map((e) => e.toEntity()).toList(),
         metrics: metrics.toEntity(),
         permissions: permissions.toEntity(),
+        hideLikesCount: hideLikesCount,
         isOwnPost: isOwnPost,
         viewerHasLiked: viewerHasLiked,
       );

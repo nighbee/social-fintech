@@ -41,6 +41,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			FROM posts p
 			WHERE p.is_archived = false
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
+			  AND p.user_id <> $1
 			  AND NOT EXISTS (
 				SELECT 1
 				FROM reported_post_hides rph
@@ -48,7 +49,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				  AND rph.reporter_id = $1
 			  )
 			  AND p.created_at < $5
-			  AND (p.visibility = 'ANYONE' OR p.user_id = $1 OR p.user_id IN (SELECT ally_id FROM allies))
+			  AND (p.visibility = 'ANYONE' OR p.user_id IN (SELECT ally_id FROM allies))
 			ORDER BY p.created_at DESC
 			LIMIT 200
 		)
@@ -139,9 +140,6 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		// Derive computed fields
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		resp.IsOwnPost = resp.Author.ID == viewerID
-		if resp.HideLikesCount {
-			resp.Metrics.Likes = 0
-		}
 
 		// time_ago is computed from createdAt
 		if createdAt.Valid {

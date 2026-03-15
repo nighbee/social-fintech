@@ -18,6 +18,7 @@ class PostResponseEntity with _$PostResponseEntity {
     required List<MediaAttachmentEntity> mediaAttachments,
     required PostMetricsEntity metrics,
     required PermissionsEntity permissions,
+    required bool hideLikesCount,
     required bool isOwnPost,
     required bool viewerHasLiked,
   }) = _PostResponseEntity;
@@ -31,6 +32,7 @@ class PostResponseEntity with _$PostResponseEntity {
     @Default([]) List<MediaAttachmentEntity> mediaAttachments,
     @Default(PostMetricsEntity.empty()) PostMetricsEntity metrics,
     @Default(PermissionsEntity.empty()) PermissionsEntity permissions,
+    @Default(false) bool hideLikesCount,
     @Default(false) bool isOwnPost,
     @Default(false) bool viewerHasLiked,
   }) = _PostResponseEntityEmpty;

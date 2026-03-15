@@ -1,11 +1,14 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/api/client/dio/rest_client.dart';
+import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/mixins/show_profile_actions_bottom_sheet.dart';
-import 'package:app/src/features/profile/presentation/utils/mock_data.dart';
+import 'package:app/src/features/profile/presentation/models/profile_post_item.dart';
+import 'package:app/src/features/profile/presentation/utils/profile_posts_grid_mapper.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_post_grid.dart';
 import 'package:flutter/material.dart';
@@ -22,6 +25,10 @@ class PublicProfilePage extends StatefulWidget {
 
 class _PublicProfilePageState extends State<PublicProfilePage>
     with ShowProfileActionsBottomSheet {
+  List<ProfilePostItem> _publicPosts = const [];
+  bool _isPostsLoading = false;
+  String? _postsError;
+
   void _openStats({
     required String userId,
     required bool isCurrentUser,
@@ -35,10 +42,58 @@ class _PublicProfilePageState extends State<PublicProfilePage>
     );
   }
 
+  void _openPublications({
+    required String displayName,
+    required ProfilePostItem post,
+  }) {
+    context.pushNamed(
+      RouteNames.profilePublications,
+      extra: {
+        'userId': widget.userId,
+        'displayName': displayName,
+        'initialPostId': post.id,
+        'isCurrentUser': false,
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     getIt<ProfileBloc>().add(ProfileEvent.loadPublicProfile(widget.userId));
+    _loadPublicPosts();
+  }
+
+  Future<void> _loadPublicPosts() async {
+    if (_isPostsLoading) return;
+
+    setState(() {
+      _isPostsLoading = true;
+      _postsError = null;
+    });
+
+    final restClient = getIt<RestClient>(instanceName: 'DioClient');
+    final response = await restClient.get(
+      EndPoints.profilePostsById(widget.userId),
+      queryParameters: <String, dynamic>{'limit': 30},
+    );
+
+    if (!mounted) return;
+
+    response.fold(
+      (error) {
+        setState(() {
+          _isPostsLoading = false;
+          _postsError = error.message;
+        });
+      },
+      (result) {
+        setState(() {
+          _publicPosts = mapProfilePostsGridItems(result.data);
+          _isPostsLoading = false;
+        });
+      },
+    );
   }
 
   @override
@@ -177,8 +232,39 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                         ),
                       )
                     else
-                      // Posts Grid
-                      ProfilePostGrid(posts: []),
+                      if (_isPostsLoading)
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 48),
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                        )
+                      else if (_postsError != null)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 32,
+                            ),
+                            child: Center(
+                              child: Text(
+                                _postsError!,
+                                style: TextStyles.bodyMain.copyWith(
+                                  color: Colors.white70,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        ProfilePostGrid(
+                          posts: _publicPosts,
+                          onTapPost: (post) => _openPublications(
+                            displayName: profile.displayName,
+                            post: post,
+                          ),
+                        ),
                   ],
                 );
               },

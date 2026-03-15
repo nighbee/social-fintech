@@ -194,6 +194,21 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                   return const NoTransitionPage(child: StorePage());
                 },
               ),
+              GoRoute(
+                path: RoutePaths.profilePublications,
+                name: RouteNames.profilePublications,
+                redirect: AuthGuard,
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return ProfilePublicationsPage(
+                    userId: extra?['userId'] as String?,
+                    displayName: extra?['displayName'] as String? ?? '',
+                    initialPostId: extra?['initialPostId'] as String? ?? '',
+                    isCurrentUser:
+                        extra?['isCurrentUser'] as bool? ?? false,
+                  );
+                },
+              ),
 
               // Map route (protected by auth guard)
               GoRoute(
