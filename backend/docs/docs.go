@@ -5619,7 +5619,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "action_required": {
-                    "description": "\"trigger_friction\" or omitted",
+                    "description": "\"trigger_friction\", \"enforce_cooldown\", or omitted",
                     "type": "string"
                 },
                 "break_seconds_remaining": {

@@ -90,6 +90,10 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 	state.LastSyncTimestamp = now
 	_ = s.cache.SetFatigueState(ctx, state)
 	_ = s.cache.MarkUserDirty(ctx, userID) // Ensure transition (e.g. reset) is flushed to Postgres
+	actionRequired := ""
+	if state.IsInCooldown {
+		actionRequired = "enforce_cooldown"
+	}
 
 	return &FeedStateResponse{
 		AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
@@ -98,6 +102,7 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 		AccumulatedBreakSeconds:  state.AccumulatedBreakSeconds,
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
 		ServerTimestamp:          now.UTC(),
+		ActionRequired:           actionRequired,
 	}, nil
 }
 

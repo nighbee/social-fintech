@@ -141,7 +141,7 @@ type FeedStateResponse struct {
 	AccumulatedBreakSeconds int       `json:"accumulated_break_seconds"`
 	MaxAllowedSeconds       int       `json:"max_allowed_seconds"`
 	ServerTimestamp         time.Time `json:"server_timestamp"`
-	ActionRequired          string    `json:"action_required,omitempty"` // "trigger_friction" or omitted
+	ActionRequired          string    `json:"action_required,omitempty"` // "trigger_friction", "enforce_cooldown", or omitted
 }
 
 type AuthorInfo struct {

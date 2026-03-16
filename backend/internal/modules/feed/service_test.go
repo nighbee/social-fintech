@@ -25,6 +25,10 @@ type testRepo struct {
 	hideTargetByReportsFn   func(ctx context.Context, targetType string, targetID uuid.UUID) error
 	hidePostForReporterFn   func(ctx context.Context, reporterID, postID uuid.UUID) error
 
+	batchFlushLikesFn    func(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
+	batchFlushSealsFn    func(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
+	upsertFatigueStateFn func(ctx context.Context, state *FeedFatigueState) error
+
 	lastCreatedPost *Post
 }
 
@@ -33,6 +37,9 @@ func (r *testRepo) GetFatigueState(ctx context.Context, userID uuid.UUID) (*Feed
 }
 
 func (r *testRepo) UpsertFatigueState(ctx context.Context, state *FeedFatigueState) error {
+	if r.upsertFatigueStateFn != nil {
+		return r.upsertFatigueStateFn(ctx, state)
+	}
 	return nil
 }
 
@@ -211,26 +218,41 @@ func (r *testRepo) ToggleLike(ctx context.Context, postID uuid.UUID, userID uuid
 }
 
 func (r *testRepo) BatchFlushLikes(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error {
+	if r.batchFlushLikesFn != nil {
+		return r.batchFlushLikesFn(ctx, postID, userIDs)
+	}
 	return nil
 }
 
 func (r *testRepo) BatchFlushSeals(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error {
+	if r.batchFlushSealsFn != nil {
+		return r.batchFlushSealsFn(ctx, postID, count, totalAmount)
+	}
 	return nil
 }
 
 type testCacheRepo struct {
-	anyOnFeed bool
+	anyOnFeed    bool
+	fatigueState *FeedFatigueState
+	lastSetState *FeedFatigueState
+	dirtyUsers   []uuid.UUID
 }
 
 func (t *testCacheRepo) GetFatigueState(ctx context.Context, userID uuid.UUID) (*FeedFatigueState, error) {
-	return nil, nil
+	if t.fatigueState == nil {
+		return nil, errors.New("cache miss")
+	}
+	return t.fatigueState, nil
 }
 
 func (t *testCacheRepo) SetFatigueState(ctx context.Context, state *FeedFatigueState) error {
+	t.lastSetState = state
+	t.fatigueState = state
 	return nil
 }
 
 func (t *testCacheRepo) MarkUserDirty(ctx context.Context, userID uuid.UUID) error {
+	t.dirtyUsers = append(t.dirtyUsers, userID)
 	return nil
 }
 
@@ -371,6 +393,102 @@ func TestCalcBreakSecondsRemaining_MidBreak(t *testing.T) {
 	rem := svc.calcBreakSecondsRemaining(state)
 	if rem != 180 {
 		t.Errorf("expected 180, got %d", rem)
+	}
+}
+
+func TestGetFeedState_CooldownRequiresEnforceCooldownAction(t *testing.T) {
+	userID := uuid.New()
+	cacheRepo := &testCacheRepo{
+		fatigueState: &FeedFatigueState{
+			UserID:                   userID,
+			AccumulatedActiveSeconds: 1200,
+			AccumulatedBreakSeconds:  120,
+			LastSyncTimestamp:        time.Now().Add(-10 * time.Second),
+			IsInCooldown:             true,
+			MaxAllowedSeconds:        1200,
+		},
+	}
+	svc := &Service{cache: cacheRepo}
+
+	resp, err := svc.GetFeedState(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.IsInCooldown {
+		t.Fatal("expected cooldown state")
+	}
+	if resp.ActionRequired != "enforce_cooldown" {
+		t.Fatalf("expected action_required=enforce_cooldown, got %q", resp.ActionRequired)
+	}
+	if resp.BreakSecondsRemaining <= 0 || resp.BreakSecondsRemaining >= BreakDurationSeconds {
+		t.Fatalf("expected remaining break to stay within cooldown bounds, got %d", resp.BreakSecondsRemaining)
+	}
+	if len(cacheRepo.dirtyUsers) != 1 || cacheRepo.dirtyUsers[0] != userID {
+		t.Fatal("expected user to be marked dirty for persistence")
+	}
+}
+
+func TestSyncFeedState_ThresholdCrossingTriggersFriction(t *testing.T) {
+	userID := uuid.New()
+	now := time.Now()
+	cacheRepo := &testCacheRepo{
+		fatigueState: &FeedFatigueState{
+			UserID:                   userID,
+			AccumulatedActiveSeconds: 1195,
+			LastSyncTimestamp:        now.Add(-10 * time.Second),
+			IsInCooldown:             false,
+			MaxAllowedSeconds:        1200,
+		},
+	}
+	svc := &Service{cache: cacheRepo}
+
+	resp, err := svc.SyncFeedState(context.Background(), userID, &SyncFeedStateRequest{
+		DeltaSeconds: 5,
+		DeviceID:     "device-a",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !resp.IsInCooldown {
+		t.Fatal("expected cooldown after reaching the limit")
+	}
+	if resp.ActionRequired != "trigger_friction" {
+		t.Fatalf("expected action_required=trigger_friction, got %q", resp.ActionRequired)
+	}
+	if resp.BreakSecondsRemaining != BreakDurationSeconds {
+		t.Fatalf("expected full break duration remaining, got %d", resp.BreakSecondsRemaining)
+	}
+	if cacheRepo.lastSetState == nil || !cacheRepo.lastSetState.IsInCooldown {
+		t.Fatal("expected cached state to be persisted in cooldown")
+	}
+}
+
+func TestSyncFeedState_DuringCooldownEnforcesCooldownAction(t *testing.T) {
+	userID := uuid.New()
+	cacheRepo := &testCacheRepo{
+		fatigueState: &FeedFatigueState{
+			UserID:                   userID,
+			AccumulatedActiveSeconds: 1200,
+			AccumulatedBreakSeconds:  40,
+			LastSyncTimestamp:        time.Now().Add(-15 * time.Second),
+			IsInCooldown:             true,
+			MaxAllowedSeconds:        1200,
+		},
+	}
+	svc := &Service{cache: cacheRepo}
+
+	resp, err := svc.SyncFeedState(context.Background(), userID, &SyncFeedStateRequest{
+		DeltaSeconds: 5,
+		DeviceID:     "device-b",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.ActionRequired != "enforce_cooldown" {
+		t.Fatalf("expected action_required=enforce_cooldown, got %q", resp.ActionRequired)
+	}
+	if resp.BreakSecondsRemaining != BreakDurationSeconds-40 {
+		t.Fatalf("expected %d break seconds remaining, got %d", BreakDurationSeconds-40, resp.BreakSecondsRemaining)
 	}
 }
 

@@ -650,7 +650,7 @@ definitions:
           Client can use this to animate the break countdown even between sync calls.
         type: integer
       action_required:
-        description: '"trigger_friction" or omitted'
+        description: '"trigger_friction", "enforce_cooldown", or omitted'
         type: string
       break_seconds_remaining:
         description: 0-300; 0 = not in break
