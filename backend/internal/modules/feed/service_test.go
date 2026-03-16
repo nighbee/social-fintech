@@ -18,6 +18,10 @@ type testRepo struct {
 	createReportFn          func(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error
 	countRecentReportsByFn  func(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error)
 	countReportsForTargetFn func(ctx context.Context, targetType string, targetID uuid.UUID) (int, error)
+	weightedReportsForPost  func(ctx context.Context, postID uuid.UUID) (float64, error)
+	postImpressions         func(ctx context.Context, postID uuid.UUID) (int, error)
+	setPostReportControl    func(ctx context.Context, postID uuid.UUID, level int, distributionMultiplier float64) error
+	incrementImpressions    func(ctx context.Context, postIDs []uuid.UUID) error
 	hideTargetByReportsFn   func(ctx context.Context, targetType string, targetID uuid.UUID) error
 	hidePostForReporterFn   func(ctx context.Context, reporterID, postID uuid.UUID) error
 
@@ -129,6 +133,50 @@ func (r *testRepo) CountReportsForTarget(ctx context.Context, targetType string,
 		return r.countReportsForTargetFn(ctx, targetType, targetID)
 	}
 	return 0, nil
+}
+
+func (r *testRepo) GetWeightedReportsForPost(ctx context.Context, postID uuid.UUID) (float64, error) {
+	if r.weightedReportsForPost != nil {
+		return r.weightedReportsForPost(ctx, postID)
+	}
+	return 0, nil
+}
+
+func (r *testRepo) GetPostImpressions(ctx context.Context, postID uuid.UUID) (int, error) {
+	if r.postImpressions != nil {
+		return r.postImpressions(ctx, postID)
+	}
+	return 0, nil
+}
+
+func (r *testRepo) SetPostReportControl(ctx context.Context, postID uuid.UUID, level int, distributionMultiplier float64) error {
+	if r.setPostReportControl != nil {
+		return r.setPostReportControl(ctx, postID, level, distributionMultiplier)
+	}
+	return nil
+}
+
+func (r *testRepo) IncrementPostImpressions(ctx context.Context, postIDs []uuid.UUID) error {
+	if r.incrementImpressions != nil {
+		return r.incrementImpressions(ctx, postIDs)
+	}
+	return nil
+}
+
+func (r *testRepo) MarkReportsReviewed(ctx context.Context, targetType string, targetID uuid.UUID, decision string) ([]uuid.UUID, error) {
+	return nil, nil
+}
+
+func (r *testRepo) ApplyReporterReputationDelta(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error {
+	return nil
+}
+
+func (r *testRepo) MarkReportReputationApplied(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	return nil
+}
+
+func (r *testRepo) CreateAuthorPolicyStrikeForTarget(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error {
+	return nil
 }
 
 func (r *testRepo) HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error {
@@ -506,5 +554,77 @@ func TestReportComment_DoesNotHidePostForReporter(t *testing.T) {
 	}
 	if hideCalled {
 		t.Fatal("did not expect HidePostForReporter for comment reports")
+	}
+}
+
+func TestDeterminePostReportLevel_RequiresMinimumImpressions(t *testing.T) {
+	level := determinePostReportLevel(25, 49)
+	if level != 0 {
+		t.Fatalf("expected level 0 before activation threshold, got %d", level)
+	}
+}
+
+func TestDeterminePostReportLevel_UsesWeightedAndRatioThresholds(t *testing.T) {
+	tests := []struct {
+		name          string
+		weighted      float64
+		impressions   int
+		expectedLevel int
+	}{
+		{name: "level1 by weighted", weighted: 3.1, impressions: 100, expectedLevel: 1},
+		{name: "level2 by ratio", weighted: 6, impressions: 100, expectedLevel: 2},
+		{name: "level3 by weighted", weighted: 11, impressions: 400, expectedLevel: 3},
+		{name: "level4 by ratio", weighted: 13, impressions: 100, expectedLevel: 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			level := determinePostReportLevel(tt.weighted, tt.impressions)
+			if level != tt.expectedLevel {
+				t.Fatalf("expected level %d, got %d", tt.expectedLevel, level)
+			}
+		})
+	}
+}
+
+func TestReportPost_AppliesPolicyForPostReports(t *testing.T) {
+	reporterID := uuid.New()
+	postID := uuid.New()
+	applied := false
+
+	repo := &testRepo{
+		postImpressions: func(ctx context.Context, gotPostID uuid.UUID) (int, error) {
+			if gotPostID != postID {
+				t.Fatalf("unexpected post id for impressions: %s", gotPostID)
+			}
+			return 200, nil
+		},
+		weightedReportsForPost: func(ctx context.Context, gotPostID uuid.UUID) (float64, error) {
+			if gotPostID != postID {
+				t.Fatalf("unexpected post id for weighted reports: %s", gotPostID)
+			}
+			return 6, nil
+		},
+		setPostReportControl: func(ctx context.Context, gotPostID uuid.UUID, level int, distributionMultiplier float64) error {
+			applied = true
+			if gotPostID != postID {
+				t.Fatalf("unexpected post id for set policy: %s", gotPostID)
+			}
+			if level != 3 {
+				t.Fatalf("expected severe escalation to level 3, got %d", level)
+			}
+			if distributionMultiplier != reportDistributionMultiplier(level) {
+				t.Fatalf("unexpected distribution multiplier: %v", distributionMultiplier)
+			}
+			return nil
+		},
+	}
+
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+	if err := svc.ReportPost(context.Background(), reporterID, postID, ReportReasonNudity, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !applied {
+		t.Fatal("expected post report policy to be applied")
 	}
 }

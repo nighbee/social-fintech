@@ -11,22 +11,48 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Redis    RedisConfig    `yaml:"redis"`
-	Cache    CacheConfig    `yaml:"cache"`
-	Logging  LoggingConfig  `yaml:"logging"`
-	JWT      JWTConfig      `yaml:"jwt"`
-	CORS     CORSConfig     `yaml:"cors"`
-	OAuth    OAuthConfig    `yaml:"oauth"`
-	Firebase FirebaseConfig `yaml:"firebase"`
-	Storage  StorageConfig  `yaml:"storage"`
-	Economy  EconomyConfig  `yaml:"economy"`
-	Admin    AdminConfig    `yaml:"admin"`
+	Server     ServerConfig     `yaml:"server"`
+	Database   DatabaseConfig   `yaml:"database"`
+	Redis      RedisConfig      `yaml:"redis"`
+	Cache      CacheConfig      `yaml:"cache"`
+	Logging    LoggingConfig    `yaml:"logging"`
+	JWT        JWTConfig        `yaml:"jwt"`
+	CORS       CORSConfig       `yaml:"cors"`
+	OAuth      OAuthConfig      `yaml:"oauth"`
+	Firebase   FirebaseConfig   `yaml:"firebase"`
+	Storage    StorageConfig    `yaml:"storage"`
+	Economy    EconomyConfig    `yaml:"economy"`
+	Admin      AdminConfig      `yaml:"admin"`
+	Moderation ModerationConfig `yaml:"moderation"`
+	Activation ActivationConfig `yaml:"activation"`
 }
 
 type AdminConfig struct {
 	Emails []string `yaml:"emails"`
+}
+
+type ModerationConfig struct {
+	Enabled            bool    `yaml:"enabled"`
+	ShadowMode         bool    `yaml:"shadow_mode"`
+	MinActivationViews int     `yaml:"min_activation_views"`
+	DailyReportLimit   int     `yaml:"daily_report_limit"`
+	Level1Threshold    float64 `yaml:"level1_threshold"`
+	Level2Threshold    float64 `yaml:"level2_threshold"`
+	Level3Threshold    float64 `yaml:"level3_threshold"`
+	Level4Threshold    float64 `yaml:"level4_threshold"`
+	Level1Ratio        float64 `yaml:"level1_ratio"`
+	Level2Ratio        float64 `yaml:"level2_ratio"`
+	Level3Ratio        float64 `yaml:"level3_ratio"`
+	Level4Ratio        float64 `yaml:"level4_ratio"`
+}
+
+type ActivationConfig struct {
+	Enabled                      bool `yaml:"enabled"`
+	MinRestrictedHours           int  `yaml:"min_restricted_hours"`
+	ExtendedRestrictedHours      int  `yaml:"extended_restricted_hours"`
+	RequiredDistinctLoginDays    int  `yaml:"required_distinct_login_days"`
+	RequiredMeaningfulActions    int  `yaml:"required_meaningful_actions"`
+	MaxRegistrationsPerDeviceDay int  `yaml:"max_registrations_per_device_day"`
 }
 
 type EconomyConfig struct {
@@ -353,6 +379,54 @@ func overrideFromEnv(cfg *Config) {
 	if cfg.Cache.ProfileStatsTTL == 0 {
 		cfg.Cache.ProfileStatsTTL = 5 * time.Minute
 	}
+
+	if cfg.Moderation.MinActivationViews == 0 {
+		cfg.Moderation.MinActivationViews = 50
+	}
+	if cfg.Moderation.DailyReportLimit == 0 {
+		cfg.Moderation.DailyReportLimit = 10
+	}
+	if cfg.Moderation.Level1Threshold == 0 {
+		cfg.Moderation.Level1Threshold = 3
+	}
+	if cfg.Moderation.Level2Threshold == 0 {
+		cfg.Moderation.Level2Threshold = 5
+	}
+	if cfg.Moderation.Level3Threshold == 0 {
+		cfg.Moderation.Level3Threshold = 10
+	}
+	if cfg.Moderation.Level4Threshold == 0 {
+		cfg.Moderation.Level4Threshold = 20
+	}
+	if cfg.Moderation.Level1Ratio == 0 {
+		cfg.Moderation.Level1Ratio = 0.02
+	}
+	if cfg.Moderation.Level2Ratio == 0 {
+		cfg.Moderation.Level2Ratio = 0.05
+	}
+	if cfg.Moderation.Level3Ratio == 0 {
+		cfg.Moderation.Level3Ratio = 0.08
+	}
+	if cfg.Moderation.Level4Ratio == 0 {
+		cfg.Moderation.Level4Ratio = 0.12
+	}
+
+	if cfg.Activation.MinRestrictedHours == 0 {
+		cfg.Activation.MinRestrictedHours = 72
+	}
+	if cfg.Activation.ExtendedRestrictedHours == 0 {
+		cfg.Activation.ExtendedRestrictedHours = 120
+	}
+	if cfg.Activation.RequiredDistinctLoginDays == 0 {
+		cfg.Activation.RequiredDistinctLoginDays = 3
+	}
+	if cfg.Activation.RequiredMeaningfulActions == 0 {
+		cfg.Activation.RequiredMeaningfulActions = 5
+	}
+	if cfg.Activation.MaxRegistrationsPerDeviceDay == 0 {
+		cfg.Activation.MaxRegistrationsPerDeviceDay = 3
+	}
+
 	// Cache enabled by default (true by default if not specified)
 	if v := os.Getenv("CACHE_ENABLED"); v != "" {
 		cfg.Cache.Enabled = v == "true"

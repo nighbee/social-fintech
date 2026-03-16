@@ -125,6 +125,12 @@ func (m *MockAuthRepository) GetUserPhoneByID(ctx context.Context, userID string
 func (m *MockAuthRepository) GetUserByIdentity(ctx context.Context, provider, subject string) (*auth.User, error) {
 	return nil, nil
 }
+func (m *MockAuthRepository) RecordRegistrationSignal(ctx context.Context, deviceID, ip string, now time.Time) (int, int, error) {
+	return 0, 0, nil
+}
+func (m *MockAuthRepository) RecordActivationLogin(ctx context.Context, userID string, now time.Time) (string, bool, error) {
+	return "active", false, nil
+}
 
 func TestRequireAuth(t *testing.T) {
 	// Setup

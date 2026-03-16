@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -759,13 +760,17 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": ErrSealOwnPost.Error()})
 	}
 
-	// Build the idempotency key from viewer+post+comment so duplicate taps are safe.
+	// Build idempotency key so duplicate taps can replay safely even when client does
+	// not send an explicit key. Keep this scoped to a short server window to avoid
+	// blocking legitimate future seals after cooldown windows.
 	idempotencyKey := strings.TrimSpace(req.IdempotencyKey)
 	if idempotencyKey == "" {
 		idempotencyKey = strings.TrimSpace(c.Get("Idempotency-Key"))
 	}
 	if idempotencyKey == "" {
-		idempotencyKey = uuid.New().String()
+		window := time.Now().UTC().Format("200601021504")
+		autoKeyMaterial := fmt.Sprintf("post-seal|%s|%s|%s|%d|%s|%s", userID.String(), authorID.String(), postID.String(), req.Amount, req.Comment, window)
+		idempotencyKey = "auto_post_seal_" + uuid.NewSHA1(uuid.NameSpaceOID, []byte(autoKeyMaterial)).String()
 	}
 
 	// Call Economy вЂ” handles wallet debit, ledger entry, cooldown, monthly limit.

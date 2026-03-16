@@ -11,6 +11,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 func (r *repository) buildURL(u string) string {
@@ -242,7 +243,7 @@ func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID) e
 
 func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error) {
 	query := `
-		SELECT p.id as post_id, p.caption, p.visibility,
+		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
@@ -263,7 +264,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	var avatarURL sql.NullString
 
 	err := r.db.QueryRowContext(ctx, query, postID, viewerID).Scan(
-		&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.Permissions.CanComment, // placeholder for perms
+		&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.CommentPermission, &resp.Permissions.CanComment,
 		&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
 		&mediaJSON, &resp.ViewerHasLiked,
@@ -294,7 +295,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int) ([]PostResponse, string, error) {
 	// A basic implementation. In production, this would use the weighted algorithm and cursor pagination.
 	query := `
-		SELECT p.id as post_id, p.caption, p.visibility,
+		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
@@ -327,11 +328,12 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		var mediaJSON []byte
 		var createdAt sql.NullTime
 		var avatarURL sql.NullString
+		var commentPerm string
 
 		// Added viewer_has_liked to the generic feed response if needed, but the original query does not select it.
 		// We missed it in the GetFeed query. Let's fix the query first or omit it here. We'll update the query in a follow up call.
 		err := rows.Scan(
-			&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.Permissions.CanComment, // placeholders for visibility/perms logic
+			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.Permissions.CanComment,
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
 			&mediaJSON,
@@ -351,6 +353,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		}
 
 		resp.TimeAgo = "just now" // formatted by client or util later
+		resp.CommentPermission = commentPerm
 		resp.IsOwnPost = viewerID == resp.Author.ID
 
 		feed = append(feed, resp)
@@ -663,6 +666,181 @@ func (r *repository) CountReportsForTarget(ctx context.Context, targetType strin
 		return 0, err
 	}
 	return count, nil
+}
+
+func (r *repository) GetWeightedReportsForPost(ctx context.Context, postID uuid.UUID) (float64, error) {
+	var weighted float64
+	const query = `
+		SELECT COALESCE(SUM(
+			(CASE
+				WHEN u.created_at > NOW() - INTERVAL '7 days' THEN 0.3
+				ELSE 1.0
+			 END)
+			*
+			(CASE
+				WHEN COALESCE(pf.total_gold_seals_received, 0) >= 300 THEN 2.0
+				WHEN COALESCE(pf.total_gold_seals_received, 0) >= 30 THEN 1.5
+				ELSE 1.0
+			 END)
+			*
+			COALESCE(rr.reputation_multiplier, 1.0)
+		), 0)
+		FROM reports r
+		JOIN users u ON u.id = r.reporter_id
+		LEFT JOIN profiles pf ON pf.user_id = r.reporter_id
+		LEFT JOIN reporter_reputation rr ON rr.reporter_id = r.reporter_id
+		WHERE r.target_type = $1 AND r.target_id = $2
+	`
+	if err := r.db.QueryRowContext(ctx, query, ReportTargetPost, postID).Scan(&weighted); err != nil {
+		return 0, err
+	}
+	return weighted, nil
+}
+
+func (r *repository) GetPostImpressions(ctx context.Context, postID uuid.UUID) (int, error) {
+	var impressions int
+	const query = `SELECT COALESCE(impressions_count, 0) FROM posts WHERE id = $1`
+	if err := r.db.QueryRowContext(ctx, query, postID).Scan(&impressions); err != nil {
+		return 0, err
+	}
+	return impressions, nil
+}
+
+func (r *repository) SetPostReportControl(ctx context.Context, postID uuid.UUID, level int, distributionMultiplier float64) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE posts
+		SET report_control_level = $2,
+		    distribution_multiplier = $3,
+		    moderation_queue_at = CASE
+		        WHEN $2 >= 4 AND moderation_queue_at IS NULL THEN NOW()
+		        ELSE moderation_queue_at
+		    END,
+		    updated_at = NOW()
+		WHERE id = $1
+	`, postID, level, distributionMultiplier)
+	return err
+}
+
+func (r *repository) IncrementPostImpressions(ctx context.Context, postIDs []uuid.UUID) error {
+	if len(postIDs) == 0 {
+		return nil
+	}
+
+	ids := make([]string, 0, len(postIDs))
+	for _, id := range postIDs {
+		ids = append(ids, id.String())
+	}
+
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE posts
+		SET impressions_count = COALESCE(impressions_count, 0) + 1,
+		    updated_at = NOW()
+		WHERE id = ANY($1::uuid[])
+	`, pq.Array(ids))
+	return err
+}
+
+func (r *repository) MarkReportsReviewed(ctx context.Context, targetType string, targetID uuid.UUID, decision string) ([]uuid.UUID, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		UPDATE reports
+		SET moderation_status = $3,
+		    review_decision = $4,
+		    reviewed_at = NOW(),
+		    reputation_applied = false
+		WHERE target_type = $1
+		  AND target_id = $2
+		  AND moderation_status = $5
+		RETURNING reporter_id
+	`, targetType, targetID, ReportStatusReviewed, decision, ReportStatusPending)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	seen := make(map[uuid.UUID]struct{})
+	ids := make([]uuid.UUID, 0)
+	for rows.Next() {
+		var reporterID uuid.UUID
+		if err := rows.Scan(&reporterID); err != nil {
+			return nil, err
+		}
+		if _, ok := seen[reporterID]; ok {
+			continue
+		}
+		seen[reporterID] = struct{}{}
+		ids = append(ids, reporterID)
+	}
+
+	return ids, nil
+}
+
+func (r *repository) ApplyReporterReputationDelta(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error {
+	for _, reporterID := range reporterIDs {
+		if accepted {
+			_, err := r.db.ExecContext(ctx, `
+				INSERT INTO reporter_reputation (reporter_id, accepted_reports_count, rejected_reports_count, consecutive_rejected_count, reputation_multiplier, updated_at)
+				VALUES ($1, 1, 0, 0, 1.05, NOW())
+				ON CONFLICT (reporter_id) DO UPDATE
+				SET accepted_reports_count = reporter_reputation.accepted_reports_count + 1,
+				    consecutive_rejected_count = 0,
+				    reputation_multiplier = LEAST(2.5, GREATEST(0.3, reporter_reputation.reputation_multiplier + 0.05)),
+				    updated_at = NOW()
+			`, reporterID)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		_, err := r.db.ExecContext(ctx, `
+			INSERT INTO reporter_reputation (reporter_id, accepted_reports_count, rejected_reports_count, consecutive_rejected_count, reputation_multiplier, updated_at)
+			VALUES ($1, 0, 1, 1, 0.95, NOW())
+			ON CONFLICT (reporter_id) DO UPDATE
+			SET rejected_reports_count = reporter_reputation.rejected_reports_count + 1,
+			    consecutive_rejected_count = reporter_reputation.consecutive_rejected_count + 1,
+			    reputation_multiplier = LEAST(2.5, GREATEST(0.3, reporter_reputation.reputation_multiplier - 0.05)),
+			    updated_at = NOW()
+		`, reporterID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *repository) MarkReportReputationApplied(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE reports
+		SET reputation_applied = true
+		WHERE target_type = $1
+		  AND target_id = $2
+		  AND moderation_status = $3
+		  AND reputation_applied = false
+	`, targetType, targetID, ReportStatusReviewed)
+	return err
+}
+
+func (r *repository) CreateAuthorPolicyStrikeForTarget(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error {
+	var authorID uuid.UUID
+	switch targetType {
+	case ReportTargetPost:
+		if err := r.db.QueryRowContext(ctx, `SELECT user_id FROM posts WHERE id = $1`, targetID).Scan(&authorID); err != nil {
+			return err
+		}
+	case ReportTargetComment:
+		if err := r.db.QueryRowContext(ctx, `SELECT user_id FROM post_comments WHERE id = $1`, targetID).Scan(&authorID); err != nil {
+			return err
+		}
+	default:
+		return ErrInvalidReportReason
+	}
+
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO author_policy_strikes (author_id, report_id, strike_type, expires_at, created_at)
+		VALUES ($1, NULL, 'content_violation', $2, NOW())
+	`, authorID, expiresAt)
+	return err
 }
 
 func (r *repository) HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error {

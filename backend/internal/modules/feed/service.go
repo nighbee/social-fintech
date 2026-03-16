@@ -17,12 +17,22 @@ const (
 	// BreakDurationSeconds is the mandatory break after the active phase (5 minutes)
 	BreakDurationSeconds = 300
 	// AwayResetThreshold is how long a user can be away (in active phase) before their timer resets
-	AwayResetThreshold      = 300
-	NetworkBufferSeconds    = 5.0
-	FeedPresenceTTL         = 20 * time.Second
-	ReportRateLimitPerHour  = 10
-	AutoHideReportThreshold = 100
+	AwayResetThreshold       = 300
+	NetworkBufferSeconds     = 5.0
+	FeedPresenceTTL          = 20 * time.Second
+	ReportRateLimitPerHour   = 10
+	ReportRateLimitWindow    = 24 * time.Hour
+	CommentAutoHideReports   = 100
+	MinReportActivationViews = 50
 )
+
+var severeReportReasons = map[string]struct{}{
+	ReportReasonNudity:   {},
+	ReportReasonIllegal:  {},
+	ReportReasonViolence: {},
+	ReportReasonHate:     {},
+	ReportReasonSpam:     {},
+}
 
 type Service struct {
 	repo        Repository
@@ -347,6 +357,12 @@ func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string
 		return nil, err
 	}
 
+	postIDs := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		postIDs = append(postIDs, item.PostID)
+	}
+	_ = s.repo.IncrementPostImpressions(ctx, postIDs)
+
 	return &FeedResponse{
 		Items:        items,
 		NextCursor:   nextCursor,
@@ -482,7 +498,7 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 		return ErrInvalidReportReason
 	}
 
-	recentCount, err := s.repo.CountRecentReportsByUser(ctx, reporterID, time.Now().Add(-1*time.Hour))
+	recentCount, err := s.repo.CountRecentReportsByUser(ctx, reporterID, time.Now().Add(-ReportRateLimitWindow))
 	if err != nil {
 		return err
 	}
@@ -506,16 +522,112 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 		if err := s.repo.HidePostForReporter(ctx, reporterID, targetID); err != nil {
 			return err
 		}
+
+		level, policyErr := s.applyPostReportPolicy(ctx, targetID, reason)
+		if policyErr == nil && level >= 4 {
+			_ = s.finalizeAutoModerationOutcome(ctx, ReportTargetPost, targetID, ReportDecisionActioned)
+		}
 	}
 
 	totalReports, err := s.repo.CountReportsForTarget(ctx, targetType, targetID)
 	if err != nil {
 		return err
 	}
-	if totalReports >= AutoHideReportThreshold {
+	if targetType == ReportTargetComment && totalReports >= CommentAutoHideReports {
 		if err := s.repo.HideTargetByReports(ctx, targetType, targetID); err != nil {
 			return err
 		}
+		_ = s.finalizeAutoModerationOutcome(ctx, ReportTargetComment, targetID, ReportDecisionActioned)
+	}
+
+	return nil
+}
+
+func isSevereReportReason(reason string) bool {
+	_, ok := severeReportReasons[strings.TrimSpace(reason)]
+	return ok
+}
+
+func determinePostReportLevel(weightedReports float64, impressions int) int {
+	if impressions < MinReportActivationViews {
+		return 0
+	}
+
+	ratio := 0.0
+	if impressions > 0 {
+		ratio = weightedReports / float64(impressions)
+	}
+
+	switch {
+	case weightedReports >= 20 || ratio >= 0.12:
+		return 4
+	case weightedReports >= 10 || ratio >= 0.08:
+		return 3
+	case weightedReports >= 5 || ratio >= 0.05:
+		return 2
+	case weightedReports >= 3 || ratio >= 0.02:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func reportDistributionMultiplier(level int) float64 {
+	switch level {
+	case 1:
+		return 0.6
+	case 2:
+		return 0.5
+	case 3:
+		return 0.1
+	case 4:
+		return 0.0
+	default:
+		return 1.0
+	}
+}
+
+func (s *Service) applyPostReportPolicy(ctx context.Context, postID uuid.UUID, reason string) (int, error) {
+	impressions, err := s.repo.GetPostImpressions(ctx, postID)
+	if err != nil {
+		return 0, err
+	}
+
+	weightedReports, err := s.repo.GetWeightedReportsForPost(ctx, postID)
+	if err != nil {
+		return 0, err
+	}
+
+	level := determinePostReportLevel(weightedReports, impressions)
+	if isSevereReportReason(reason) && level > 0 && level < 4 {
+		level++
+	}
+
+	if err := s.repo.SetPostReportControl(ctx, postID, level, reportDistributionMultiplier(level)); err != nil {
+		return 0, err
+	}
+
+	return level, nil
+}
+
+func (s *Service) finalizeAutoModerationOutcome(ctx context.Context, targetType string, targetID uuid.UUID, decision string) error {
+	reporterIDs, err := s.repo.MarkReportsReviewed(ctx, targetType, targetID, decision)
+	if err != nil {
+		return err
+	}
+
+	if len(reporterIDs) > 0 {
+		if err := s.repo.ApplyReporterReputationDelta(ctx, reporterIDs, decision == ReportDecisionAccepted || decision == ReportDecisionActioned); err != nil {
+			return err
+		}
+	}
+
+	if err := s.repo.MarkReportReputationApplied(ctx, targetType, targetID); err != nil {
+		return err
+	}
+
+	if decision == ReportDecisionActioned {
+		_ = s.repo.CreateAuthorPolicyStrikeForTarget(ctx, targetType, targetID, time.Now().Add(30*24*time.Hour))
 	}
 
 	return nil

@@ -121,8 +121,9 @@ func (w *Worker) ProcessDailyAccruals(ctx context.Context) {
 	log.Println("[Economy Worker] Processing daily accruals...")
 
 	query := `
-		SELECT DISTINCT user_id 
-		FROM wallets 
+		SELECT DISTINCT w.user_id
+		FROM wallets w
+		JOIN users u ON u.id = w.user_id
 		WHERE currency = 'SILVER_SEAL'
 		  AND free_balance < $1
 		  AND (

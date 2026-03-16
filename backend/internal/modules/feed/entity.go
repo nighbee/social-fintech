@@ -23,6 +23,10 @@ const (
 	ReportStatusPending  = "pending"
 	ReportStatusReviewed = "reviewed"
 
+	ReportDecisionAccepted = "accepted"
+	ReportDecisionRejected = "rejected"
+	ReportDecisionActioned = "actioned"
+
 	ReportReasonSpam         = "spam"
 	ReportReasonHate         = "hate"
 	ReportReasonNudity       = "nudity"
@@ -166,11 +170,12 @@ type PostResponse struct {
 	Author  AuthorInfo `json:"author"`
 	TimeAgo string     `json:"time_ago"`
 	// Visibility is returned so the client can show the globe 🌐 or allies 👥 icon
-	Visibility       string            `json:"visibility"`
-	ContentText      string            `json:"content_text"`
-	MediaAttachments []MediaAttachment `json:"media_attachments"`
-	Metrics          PostMetrics       `json:"metrics"`
-	Permissions      Permissions       `json:"permissions"`
+	Visibility        string            `json:"visibility"`
+	CommentPermission string            `json:"comment_permission"`
+	ContentText       string            `json:"content_text"`
+	MediaAttachments  []MediaAttachment `json:"media_attachments"`
+	Metrics           PostMetrics       `json:"metrics"`
+	Permissions       Permissions       `json:"permissions"`
 	// IsOwnPost lets the client show/hide the ··· edit/delete options menu
 	IsOwnPost bool `json:"is_own_post"`
 	// ViewerHasLiked lets the client render the ❤️ heart as filled immediately

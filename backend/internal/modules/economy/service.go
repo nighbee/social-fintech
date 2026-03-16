@@ -26,6 +26,8 @@ type Service interface {
 	ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey string) (*AccrualResponse, error)
 	ProcessDailyAccrual(ctx context.Context, userID string) error
 	ProcessReferralBonus(ctx context.Context, referrerUserID, refereeUserID string) error
+	RegisterPendingReferral(ctx context.Context, referrerUserID, refereeUserID string) error
+	ActivateDeferredReferral(ctx context.Context, refereeUserID string) error
 
 	GetLimits(ctx context.Context, userID string) (*LimitsResponse, error)
 	GetReferralStats(ctx context.Context, userID string) (*ReferralStatsResponse, error)
@@ -106,6 +108,24 @@ func isRetryableError(err error) bool {
 	return false
 }
 
+func (s *service) ensureUserActivated(ctx context.Context, userID string) error {
+	status, restrictionsUntil, err := s.repo.GetUserActivationState(ctx, userID)
+	if err != nil {
+		return WrapErrorf(err, "failed to get user activation state")
+	}
+
+	if status == "active" {
+		return nil
+	}
+
+	now := time.Now()
+	if restrictionsUntil != nil && restrictionsUntil.Valid && restrictionsUntil.Time.After(now) {
+		return NewCooldownError(now, restrictionsUntil.Time.Sub(now), 0)
+	}
+
+	return NewCooldownError(now, 24*time.Hour, 0)
+}
+
 func (s *service) GetUserBalance(ctx context.Context, userID string) (*BalanceResponse, error) {
 	silverWallet, err := s.repo.GetWallet(ctx, userID, CurrencySilverSeal)
 	if err != nil && err != ErrWalletNotFound {
@@ -135,6 +155,10 @@ func (s *service) GetOrCreateWallets(ctx context.Context, userID string) error {
 }
 
 func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *TransferRequest) (*TransferResponse, error) {
+	if err := s.ensureUserActivated(ctx, senderUserID); err != nil {
+		return nil, err
+	}
+
 	if req.Amount <= 0 {
 		return nil, NewInvalidAmountError(req.Amount)
 	}
@@ -380,6 +404,10 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 }
 
 func (s *service) GiveSealToPost(ctx context.Context, userID, postID string, req *GiveSealToPostRequest) (*TransferResponse, error) {
+	if err := s.ensureUserActivated(ctx, userID); err != nil {
+		return nil, err
+	}
+
 	currency := CurrencyCode(req.Currency)
 	if !currency.IsValid() {
 		return nil, NewInvalidCurrencyError(req.Currency)
@@ -397,6 +425,10 @@ func (s *service) GiveSealToPost(ctx context.Context, userID, postID string, req
 }
 
 func (s *service) GiveSealToUser(ctx context.Context, fromUserID, toUserID string, req *GiveSealToUserRequest) (*TransferResponse, error) {
+	if err := s.ensureUserActivated(ctx, fromUserID); err != nil {
+		return nil, err
+	}
+
 	currency := CurrencyCode(req.Currency)
 	if !currency.IsValid() {
 		return nil, NewInvalidCurrencyError(req.Currency)
@@ -486,6 +518,10 @@ func (s *service) GetTransactionHistory(ctx context.Context, userID string, req 
 }
 
 func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey string) (*AccrualResponse, error) {
+	if err := s.ensureUserActivated(ctx, userID); err != nil {
+		return nil, err
+	}
+
 	var response *AccrualResponse
 	err := s.executeWithRetry(ctx, func() error {
 		tx, err := s.repo.BeginTx(ctx)
@@ -592,7 +628,10 @@ func (s *service) ProcessReferralBonus(ctx context.Context, referrerUserID, refe
 		return WrapErrorf(err, "failed to check existing referral")
 	}
 	if existing != nil {
-		return NewReferralExistsError()
+		if existing.IsActive {
+			return NewReferralExistsError()
+		}
+		return s.ActivateDeferredReferral(ctx, refereeUserID)
 	}
 
 	err = s.executeWithRetry(ctx, func() error {
@@ -664,6 +703,103 @@ func (s *service) ProcessReferralBonus(ctx context.Context, referrerUserID, refe
 	})
 
 	return err
+}
+
+func (s *service) RegisterPendingReferral(ctx context.Context, referrerUserID, refereeUserID string) error {
+	if referrerUserID == refereeUserID {
+		return NewSelfReferralError()
+	}
+
+	existing, err := s.repo.GetReferralByReferee(ctx, refereeUserID)
+	if err != nil && err != ErrReferralNotFound {
+		return WrapErrorf(err, "failed to check existing referral")
+	}
+	if existing != nil {
+		return NewReferralExistsError()
+	}
+
+	referral := &Referral{
+		ID:             uuid.New().String(),
+		ReferrerUserID: referrerUserID,
+		RefereeUserID:  refereeUserID,
+		IsActive:       false,
+		CreatedAt:      time.Now(),
+	}
+
+	if err := s.repo.CreateReferral(ctx, referral); err != nil {
+		return WrapErrorf(err, "failed to create pending referral")
+	}
+
+	return nil
+}
+
+func (s *service) ActivateDeferredReferral(ctx context.Context, refereeUserID string) error {
+	referral, err := s.repo.GetReferralByReferee(ctx, refereeUserID)
+	if err == ErrReferralNotFound {
+		return nil
+	}
+	if err != nil {
+		return WrapErrorf(err, "failed to fetch referral")
+	}
+	if referral.IsActive {
+		return nil
+	}
+
+	return s.executeWithRetry(ctx, func() error {
+		tx, err := s.repo.BeginTx(ctx)
+		if err != nil {
+			return WrapErrorf(err, "failed to begin transaction")
+		}
+		defer tx.Rollback()
+
+		txRepo := s.repo.WithTx(tx)
+		wallet, err := txRepo.GetOrCreateWallet(ctx, referral.ReferrerUserID, CurrencySilverSeal)
+		if err != nil {
+			return WrapErrorf(err, "failed to get referrer wallet")
+		}
+
+		wallet.Balance += s.cfg.ReferralBonusCents
+		if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+			return err
+		}
+
+		referenceID := fmt.Sprintf("referral_%s_%s", referral.ReferrerUserID, refereeUserID)
+		if existingEntry, err := txRepo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existingEntry != nil {
+			if err := txRepo.ActivateReferral(ctx, refereeUserID, existingEntry.ID); err != nil {
+				return err
+			}
+			if err := tx.Commit(); err != nil {
+				return WrapErrorf(err, "failed to commit transaction")
+			}
+			return nil
+		}
+
+		entry := &LedgerEntry{
+			ID:               uuid.New().String(),
+			Amount:           s.cfg.ReferralBonusCents,
+			Currency:         CurrencySilverSeal,
+			ReceiverWalletID: &wallet.ID,
+			Category:         CategoryReferralBonus,
+			ReferenceID:      referenceID,
+			Metadata:         mustMarshalJSON(map[string]interface{}{"referee_id": refereeUserID}),
+			CreatedAt:        time.Now(),
+		}
+
+		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
+			return WrapErrorf(err, "failed to create ledger entry")
+		}
+
+		if err := txRepo.ActivateReferral(ctx, refereeUserID, entry.ID); err != nil {
+			return err
+		}
+
+		if err := tx.Commit(); err != nil {
+			return WrapErrorf(err, "failed to commit transaction")
+		}
+
+		_ = s.cacheInvalidator.InvalidateStats(ctx, referral.ReferrerUserID)
+		return nil
+	})
 }
 
 func (s *service) GetLimits(ctx context.Context, userID string) (*LimitsResponse, error) {

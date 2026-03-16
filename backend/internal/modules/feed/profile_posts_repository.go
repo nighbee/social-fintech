@@ -180,6 +180,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		}
 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
+		resp.CommentPermission = commentPerm
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		resp.IsOwnPost = resp.Author.ID == viewerID
 

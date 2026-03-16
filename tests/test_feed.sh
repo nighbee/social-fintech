@@ -4,14 +4,22 @@
 #  Feed Module – End-to-End Test Suite
 #  Handlers covered:
 #    CreatePost          – happy path, no-media 400, invalid visibility 400
+#    UpdatePost          – happy path for privacy / interaction settings
+#    DeletePost          – happy path for author-owned post lifecycle
 #    GetFeed             – happy path, cursor pagination
+#    Smart Feed          – allies-only visibility + cursor pagination
 #    CreateComment       – happy path, reply thread, empty text 400
 #    GetThreadedComments – happy path (verifies reply appears)
+#    DeleteComment       – happy path for author-owned comment deletion
 #    ToggleLike          – like + unlike (second call)
+#    ToggleCommentLike   – happy path on comment interaction
 #    GetLikes            – happy path
 #    SendSeal            – happy path, self-seal 400, no-funds 402,
 #                          zero-amount 400, duplicate/idempotent 201
 #    GetSeals            – happy path
+#    ReportPost          – create + duplicate guard + admin listing visibility
+#    ReportComment       – create + admin listing visibility
+#    Admin Reports       – list report queue with filters
 #    SyncFeedState       – happy path, delta=0 400, large delta capped,
 #                          break_seconds_remaining field, sync-during-break
 #    GetFeedState        – happy path + new fields (break_seconds_remaining)
@@ -30,6 +38,12 @@ ECO_URL="http://localhost:8081/api/v1/economy"
 FEED_URL="http://localhost:8081/api/v1/feed"
 POSTS_URL="http://localhost:8081/api/v1/posts"
 
+if command -v curl.exe >/dev/null 2>&1; then
+    CURL_BIN="curl.exe"
+else
+    CURL_BIN="curl"
+fi
+
 PASS=0
 FAIL=0
 
@@ -41,6 +55,46 @@ get_json_string() {
 
 get_json_number() {
     echo "$1" | grep -o "\"$2\": *[0-9.]*" | head -1 | grep -o "[0-9.]*"
+}
+
+assert_contains() {
+    local label="$1"
+    local haystack="$2"
+    local needle="$3"
+    if echo "$haystack" | grep -q "$needle"; then
+        echo -e "${GREEN}✓ PASS: ${label}${NC}"
+        PASS=$((PASS + 1))
+    else
+        echo -e "${RED}✗ FAIL: ${label} — missing '${needle}'${NC}"
+        FAIL=$((FAIL + 1))
+    fi
+}
+
+run_sql() {
+    local sql="$1"
+
+    if command -v docker >/dev/null 2>&1; then
+        docker exec brightbund-db psql -U user -d brightbund -c "$sql" > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            return 0
+        fi
+    fi
+
+    if command -v psql >/dev/null 2>&1; then
+        PGPASSWORD="password" psql -h localhost -p 5434 -U user -d brightbund -c "$sql" > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            return 0
+        fi
+    fi
+
+    if command -v powershell.exe >/dev/null 2>&1; then
+        powershell.exe -Command "\$env:PGPASSWORD='password'; psql -h localhost -p 5434 -U user -d brightbund -c \"$sql\"" > /dev/null 2>&1
+        if [[ $? -eq 0 ]]; then
+            return 0
+        fi
+    fi
+
+    return 1
 }
 
 log_request() {
@@ -123,7 +177,7 @@ ADMIN_EMAIL="feed_admin_${RANDOM}@example.com"
 ADMIN_PASSWORD="AdminPass123!"
 
 REGISTER_BODY="{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\",\"first_name\":\"Admin\",\"last_name\":\"Feed\",\"date_of_birth\":\"1990-01-01\",\"device_id\":\"admin-feed-device\",\"app_version\":\"1.0.0\"}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
     -H "Content-Type: application/json" -d "$REGISTER_BODY")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
@@ -135,9 +189,7 @@ if [[ "$HTTP_CODE" -ge 200 && "$HTTP_CODE" -lt 300 ]]; then
     echo -e "${GREEN}✓ Admin created: $ADMIN_ID${NC}"
 
     echo -e "${YELLOW}  Granting admin privileges via SQL and clearing dirty post state…${NC}"
-    docker exec brightbund-db psql -U user -d brightbund \
-        -c "UPDATE users SET is_admin = true WHERE id = '$ADMIN_ID'; TRUNCATE posts CASCADE;" > /dev/null 2>&1
-    if [[ $? -eq 0 ]]; then
+    if run_sql "UPDATE users SET is_admin = true WHERE id = '$ADMIN_ID'; TRUNCATE posts CASCADE;"; then
         echo -e "${GREEN}  ✓ Admin privileges granted and env cleaned${NC}"
     else
         echo -e "${RED}  ✗ Failed to grant admin privileges – aborting${NC}"
@@ -149,7 +201,7 @@ else
 fi
 
 LOGIN_BODY="{\"email\":\"$ADMIN_EMAIL\",\"password\":\"$ADMIN_PASSWORD\",\"device_id\":\"admin-feed-device\"}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
     -H "Content-Type: application/json" -d "$LOGIN_BODY")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
@@ -164,7 +216,7 @@ USER1_EMAIL="feed_user1_${RANDOM}@example.com"
 USER1_PASSWORD="Pass123!"
 
 REGISTER_BODY="{\"email\":\"$USER1_EMAIL\",\"password\":\"$USER1_PASSWORD\",\"first_name\":\"Alice\",\"last_name\":\"Creator\",\"date_of_birth\":\"2000-01-01\",\"device_id\":\"feed-device1\",\"app_version\":\"1.0.0\"}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
     -H "Content-Type: application/json" -d "$REGISTER_BODY")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
@@ -180,7 +232,7 @@ else
 fi
 
 LOGIN_BODY="{\"email\":\"$USER1_EMAIL\",\"password\":\"$USER1_PASSWORD\",\"device_id\":\"feed-device1\"}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
     -H "Content-Type: application/json" -d "$LOGIN_BODY")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
@@ -195,7 +247,7 @@ USER2_EMAIL="feed_user2_${RANDOM}@example.com"
 USER2_PASSWORD="Pass123!"
 
 REGISTER_BODY="{\"email\":\"$USER2_EMAIL\",\"password\":\"$USER2_PASSWORD\",\"first_name\":\"Bob\",\"last_name\":\"Consumer\",\"date_of_birth\":\"2001-06-15\",\"device_id\":\"feed-device2\",\"app_version\":\"1.0.0\"}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
     -H "Content-Type: application/json" -d "$REGISTER_BODY")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
@@ -211,7 +263,7 @@ else
 fi
 
 LOGIN_BODY="{\"email\":\"$USER2_EMAIL\",\"password\":\"$USER2_PASSWORD\",\"device_id\":\"feed-device2\"}"
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
     -H "Content-Type: application/json" -d "$LOGIN_BODY")
 HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
 HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
@@ -219,6 +271,19 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 log_request "Login User2" "POST" "$AUTH_URL/login-email" "$LOGIN_BODY" "$HTTP_BODY" "$HTTP_CODE"
 USER2_TOKEN=$(get_json_string "$HTTP_BODY" "access_token")
 echo -e "${CYAN}  USER2_TOKEN acquired${NC}"
+echo ""
+
+# ======================================================================
+# SETUP – Ally relation for smart feed visibility tests
+# ======================================================================
+
+echo -e "${GREEN}=== SETUP: Ally Relation for Smart Feed ===${NC}"
+if run_sql "INSERT INTO user_relationships (user_id, target_user_id, relationship_type) VALUES ('$USER1_ID', '$USER2_ID', 'ally') ON CONFLICT DO NOTHING;"; then
+    echo -e "${GREEN}✓ Ally relation inserted: User1 can see User2 allies-only posts${NC}"
+else
+    echo -e "${RED}✗ Failed to insert ally relation – aborting${NC}"
+    exit 1
+fi
 echo ""
 
 # ======================================================================
@@ -237,6 +302,37 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 log_request "Admin Adjust Balance (User2 +5 Silver)" "POST" "$ECO_URL/admin/adjust" "$ADJUST_BODY" "$HTTP_BODY" "$HTTP_CODE" "ADMIN"
 assert_ok "Admin funds User2 with 5 Silver" "$HTTP_CODE"
+echo ""
+
+# ======================================================================
+# TEST 1b – Create additional posts to highlight smart-feed changes
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 1b: User2 Creates Smart Feed Visibility Posts ===${NC}"
+
+ALLY_POST_BODY="{\"caption\":\"ally-only smart feed post\",\"media_attachments\":[{\"type\":\"image\",\"url\":\"http://minio/bucket/ally.jpg\"}],\"visibility\":\"ALLIES_ONLY\",\"comment_permission\":\"ALLIES_ONLY\",\"location_lat\":40.0,\"location_lon\":-74.0}"
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$POSTS_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$ALLY_POST_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Create allies-only post (User2)" "POST" "$POSTS_URL" "$ALLY_POST_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+assert_ok "User2 creates allies-only post" "$HTTP_CODE"
+ALLY_ONLY_POST_ID=$(get_json_string "$HTTP_BODY" "post_id")
+
+sleep 1
+
+PUBLIC_POST_BODY="{\"caption\":\"public smart feed post\",\"media_attachments\":[{\"type\":\"image\",\"url\":\"http://minio/bucket/public.jpg\"}],\"visibility\":\"ANYONE\",\"comment_permission\":\"ANYONE\",\"location_lat\":40.0,\"location_lon\":-74.0}"
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$POSTS_URL" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$PUBLIC_POST_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Create public smart feed post (User2)" "POST" "$POSTS_URL" "$PUBLIC_POST_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+assert_ok "User2 creates public smart feed post" "$HTTP_CODE"
+PUBLIC_SMART_POST_ID=$(get_json_string "$HTTP_BODY" "post_id")
 echo ""
 
 # ======================================================================
@@ -305,6 +401,44 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 log_request "User1 Creates Post" "POST" "$POSTS_URL" "$CREATE_POST_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
 assert_ok "User1 creates a post" "$HTTP_CODE"
+PRIMARY_POST_ID=$(get_json_string "$HTTP_BODY" "post_id")
+echo ""
+
+# ======================================================================
+# TEST 5b – UpdatePost and DeletePost lifecycle on a temporary post
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 5b: Post Lifecycle – Update and Delete ===${NC}"
+
+TEMP_POST_BODY="{\"caption\":\"temporary lifecycle post\",\"media_attachments\":[{\"type\":\"image\",\"url\":\"http://minio/bucket/temp.jpg\"}],\"visibility\":\"ANYONE\",\"comment_permission\":\"ANYONE\"}"
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$POSTS_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$TEMP_POST_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Create temporary lifecycle post" "POST" "$POSTS_URL" "$TEMP_POST_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "Temporary post created for lifecycle checks" "$HTTP_CODE"
+TEMP_POST_ID=$(get_json_string "$HTTP_BODY" "post_id")
+
+UPDATE_BODY="{\"comment_permission\":\"NO_ONE\",\"hide_likes_count\":true}"
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X PATCH "${POSTS_URL}/${TEMP_POST_ID}" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$UPDATE_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Update temporary post" "PATCH" "${POSTS_URL}/${TEMP_POST_ID}" "$UPDATE_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "Author can update post settings" "$HTTP_CODE"
+assert_contains "Updated post reflects NO_ONE comment permission" "$HTTP_BODY" '"comment_permission":"NO_ONE"'
+
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X DELETE "${POSTS_URL}/${TEMP_POST_ID}" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Delete temporary post" "DELETE" "${POSTS_URL}/${TEMP_POST_ID}" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_ok "Author can delete own post" "$HTTP_CODE"
+assert_contains "Delete post returns deleted status" "$HTTP_BODY" '"status":"deleted"'
 echo ""
 
 # ======================================================================
@@ -433,6 +567,7 @@ if [[ -n "$COMMENT_ID" ]]; then
 
     log_request "User1 Replies to Comment" "POST" "${POSTS_URL}/${POST_ID}/comments" "$REPLY_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
     assert_ok "User1 posts a reply comment" "$HTTP_CODE"
+    REPLY_COMMENT_ID=$(get_json_string "$HTTP_BODY" "comment_id")
     echo ""
 
     # Verify root comment registers the child under reply_count
@@ -462,6 +597,22 @@ else
     echo -e "${YELLOW}! No comment_id found, skipping reply thread test.${NC}"
     echo ""
 fi
+
+# ======================================================================
+# TEST 11d – ToggleCommentLike: User1 likes User2 comment
+# ======================================================================
+
+if [[ -n "$COMMENT_ID" ]]; then
+    echo -e "${GREEN}=== TEST 11d: Toggle Comment Like ===${NC}"
+
+    RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "${FEED_URL}/comments/${COMMENT_ID}/likes" \
+        -H "Authorization: Bearer $USER1_TOKEN")
+    HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    log_request "User1 likes comment" "POST" "${FEED_URL}/comments/${COMMENT_ID}/likes" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+    assert_ok "User1 can like a comment" "$HTTP_CODE"
+fi
+echo ""
 
 # ======================================================================
 # TEST 12 – ToggleLike: User2 likes the post
@@ -666,6 +817,69 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 log_request "User1 Gets Seals" "GET" "${POSTS_URL}/${POST_ID}/seals" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
 assert_ok "User1 accesses the seals endpoint" "$HTTP_CODE"
 echo ""
+
+# ======================================================================
+# TEST 20b – Moderation: report post, duplicate guard, report comment, admin queue
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 20b: Moderation – Post and Comment Reports ===${NC}"
+
+POST_REPORT_BODY="{\"reason\":\"spam\",\"description\":\"Looks promotional\"}"
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "${POSTS_URL}/${POST_ID}/report" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$POST_REPORT_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "User2 reports post" "POST" "${POSTS_URL}/${POST_ID}/report" "$POST_REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+assert_status "User2 can report User1 post" "201" "$HTTP_CODE"
+
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "${POSTS_URL}/${POST_ID}/report" \
+    -H "Authorization: Bearer $USER2_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$POST_REPORT_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "User2 reports same post again" "POST" "${POSTS_URL}/${POST_ID}/report" "$POST_REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+assert_status "Duplicate post report is rejected with 409" "409" "$HTTP_CODE"
+
+if [[ -n "$COMMENT_ID" ]]; then
+    COMMENT_REPORT_BODY="{\"reason\":\"hate\",\"description\":\"Moderation coverage check\"}"
+    RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "${POSTS_URL}/${POST_ID}/comments/${COMMENT_ID}/report" \
+        -H "Authorization: Bearer $USER1_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$COMMENT_REPORT_BODY")
+    HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    log_request "User1 reports User2 comment" "POST" "${POSTS_URL}/${POST_ID}/comments/${COMMENT_ID}/report" "$COMMENT_REPORT_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+    assert_status "User1 can report User2 comment" "201" "$HTTP_CODE"
+fi
+
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X GET "${FEED_URL%/feed}/admin/reports?limit=20" \
+    -H "Authorization: Bearer $ADMIN_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Admin gets moderation reports" "GET" "${FEED_URL%/feed}/admin/reports?limit=20" "" "$HTTP_BODY" "$HTTP_CODE" "ADMIN"
+assert_ok "Admin reports endpoint returns queue" "$HTTP_CODE"
+assert_contains "Admin report queue includes spam reason" "$HTTP_BODY" '"reason":"spam"'
+assert_contains "Admin report queue includes post target type" "$HTTP_BODY" '"target_type":"post"'
+echo ""
+
+# ======================================================================
+# TEST 20c – DeleteComment lifecycle after interaction and moderation checks
+# ======================================================================
+
+if [[ -n "$REPLY_COMMENT_ID" ]]; then
+    echo -e "${GREEN}=== TEST 20c: Delete Comment Lifecycle ===${NC}"
+    RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X DELETE "${POSTS_URL}/${POST_ID}/comments/${REPLY_COMMENT_ID}" \
+        -H "Authorization: Bearer $USER1_TOKEN")
+    HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    log_request "User1 deletes own reply" "DELETE" "${POSTS_URL}/${POST_ID}/comments/${REPLY_COMMENT_ID}" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+    assert_ok "Author can delete own reply comment" "$HTTP_CODE"
+    assert_contains "Delete comment returns deleted status" "$HTTP_BODY" '"status":"deleted"'
+    echo ""
+fi
 
 fi  # end if POST_ID
 

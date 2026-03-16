@@ -37,6 +37,14 @@ type Repository interface {
 	HidePostForReporter(ctx context.Context, reporterID, postID uuid.UUID) error
 	CountRecentReportsByUser(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error)
 	CountReportsForTarget(ctx context.Context, targetType string, targetID uuid.UUID) (int, error)
+	GetWeightedReportsForPost(ctx context.Context, postID uuid.UUID) (float64, error)
+	GetPostImpressions(ctx context.Context, postID uuid.UUID) (int, error)
+	SetPostReportControl(ctx context.Context, postID uuid.UUID, level int, distributionMultiplier float64) error
+	IncrementPostImpressions(ctx context.Context, postIDs []uuid.UUID) error
+	MarkReportsReviewed(ctx context.Context, targetType string, targetID uuid.UUID, decision string) ([]uuid.UUID, error)
+	ApplyReporterReputationDelta(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error
+	MarkReportReputationApplied(ctx context.Context, targetType string, targetID uuid.UUID) error
+	CreateAuthorPolicyStrikeForTarget(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error
 	HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error
 	ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) ([]ReportItem, int, error)
 	IsAlly(ctx context.Context, userID, targetUserID uuid.UUID) (bool, error)

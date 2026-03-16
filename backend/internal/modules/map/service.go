@@ -43,7 +43,25 @@ func NewService(repo Repository, economyRepo economy.Repository, cacheClient *ca
 	}
 }
 
+func (s *Service) ensureCreatorActivated(ctx context.Context, userID string) error {
+	status, restrictionsUntil, err := s.economyRepo.GetUserActivationState(ctx, userID)
+	if err != nil {
+		return err
+	}
+	if status == "active" {
+		return nil
+	}
+	if restrictionsUntil != nil && restrictionsUntil.Valid && restrictionsUntil.Time.After(time.Now()) {
+		return ErrCooldownActive
+	}
+	return ErrCooldownActive
+}
+
 func (s *Service) CreateTask(ctx context.Context, userID string, req *CreateTaskRequest) (*CreateTaskResponse, error) {
+	if err := s.ensureCreatorActivated(ctx, userID); err != nil {
+		return nil, err
+	}
+
 	if req == nil || req.Title == "" || len(req.Title) > 100 {
 		return nil, ErrInvalidTitle
 	}

@@ -68,3 +68,25 @@ storage:
   bucket: avatars
   use_ssl: false
   public_url: http://localhost:9001
+
+moderation:
+  enabled: true
+  shadow_mode: true
+  min_activation_views: 50
+  daily_report_limit: 10
+  level1_threshold: 3
+  level2_threshold: 5
+  level3_threshold: 10
+  level4_threshold: 20
+  level1_ratio: 0.02
+  level2_ratio: 0.05
+  level3_ratio: 0.08
+  level4_ratio: 0.12
+
+activation:
+  enabled: true
+  min_restricted_hours: 72
+  extended_restricted_hours: 120
+  required_distinct_login_days: 3
+  required_meaningful_actions: 5
+  max_registrations_per_device_day: 3

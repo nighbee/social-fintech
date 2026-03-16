@@ -37,10 +37,17 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			SELECT p.id, p.user_id, p.caption, p.visibility, p.comment_permission, p.hide_likes_count,
 				p.likes_count, p.comments_count, p.share_count, p.seals_count,
 				p.created_at, p.location_lat, p.location_lon,
+				COALESCE(p.report_control_level, 0) AS report_control_level,
+				COALESCE(p.distribution_multiplier, 1.0) AS distribution_multiplier,
 				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
 			FROM posts p
 			WHERE p.is_archived = false
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
+			  AND COALESCE(p.report_control_level, 0) < 3
+			  AND (
+				COALESCE(p.report_control_level, 0) = 0
+				OR random() <= COALESCE(p.distribution_multiplier, 1.0)
+			  )
 			  AND p.user_id <> $1
 			  AND NOT EXISTS (
 				SELECT 1
@@ -138,6 +145,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 
 		// Derive computed fields
+		resp.CommentPermission = commentPerm
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		resp.IsOwnPost = resp.Author.ID == viewerID
 

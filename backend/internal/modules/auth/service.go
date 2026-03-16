@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"strings"
 	"time"
 
@@ -15,7 +16,14 @@ import (
 type EconomyService interface {
 	GetOrCreateWallets(ctx context.Context, userID string) error
 	ProcessReferralBonus(ctx context.Context, referrerUserID, refereeUserID string) error
+	RegisterPendingReferral(ctx context.Context, referrerUserID, refereeUserID string) error
+	ActivateDeferredReferral(ctx context.Context, refereeUserID string) error
 }
+
+const (
+	activationDeviceRegistrationsLimit = 3
+	activationIPRegistrationsLimit     = 5
+)
 
 // бизнес логика которая связывает jwt, repo, sms и verifiers
 type Service struct {
@@ -120,15 +128,30 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 			}
 
 			now := time.Now()
+			activationStatus, restrictionsUntil, activationErr := s.resolveInitialActivation(ctx, req.DeviceID, ip)
+			if activationErr != nil {
+				s.logger.Warn("initial_activation_resolution_failed", zap.Error(activationErr))
+				activationStatus = "restricted"
+				restrictionsUntil = nil
+			}
 			user = &User{
-				ID:             uuid.NewString(),
-				Email:          providerUser.Email,
-				Username:       username,
-				AvatarURL:      "",
-				IsShadowBanned: false,
-				CreatedAt:      now,
-				UpdatedAt:      now,
-				LastActiveAt:   now,
+				ID:               uuid.NewString(),
+				Email:            providerUser.Email,
+				Username:         username,
+				AvatarURL:        "",
+				IsShadowBanned:   false,
+				ActivationStatus: activationStatus,
+				ActivationUnlockedAt: func() *time.Time {
+					if activationStatus == "active" {
+						t := now
+						return &t
+					}
+					return nil
+				}(),
+				RestrictionsUntil: restrictionsUntil,
+				CreatedAt:         now,
+				UpdatedAt:         now,
+				LastActiveAt:      now,
 			}
 			if err := s.repo.CreateUser(ctx, user); err != nil {
 				s.logger.Error("failed_to_create_user", zap.Error(err))
@@ -199,7 +222,9 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	s.logger.Info("oauth_login_success",
 		zap.String("user_id", user.ID),
@@ -212,6 +237,54 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 		RefreshToken: refresh,
 		User:         *user,
 	}, nil
+}
+
+func (s *Service) onSuccessfulLogin(ctx context.Context, userID string) (bool, error) {
+	now := time.Now()
+	_, activated, err := s.repo.RecordActivationLogin(ctx, userID, now)
+	if err != nil {
+		return false, err
+	}
+	_ = s.repo.TouchUser(ctx, userID, now)
+	if activated && s.economyService != nil {
+		if err := s.economyService.ActivateDeferredReferral(ctx, userID); err != nil {
+			s.logger.Warn("activate_deferred_referral_failed", zap.String("user_id", userID), zap.Error(err))
+		}
+	}
+	return activated, nil
+}
+
+func (s *Service) resolveInitialActivation(ctx context.Context, deviceID, ip string) (string, *time.Time, error) {
+	if isTrustedRegistrationIP(ip) {
+		unlockedAt := time.Now()
+		return "active", &unlockedAt, nil
+	}
+
+	deviceCount, ipCount, err := s.repo.RecordRegistrationSignal(ctx, deviceID, ip, time.Now())
+	if err != nil {
+		return "", nil, err
+	}
+
+	if deviceCount > activationDeviceRegistrationsLimit || ipCount > activationIPRegistrationsLimit {
+		until := time.Now().Add(24 * time.Hour)
+		return "restricted", &until, nil
+	}
+
+	unlockedAt := time.Now()
+	return "active", &unlockedAt, nil
+}
+
+func isTrustedRegistrationIP(rawIP string) bool {
+	ip := net.ParseIP(strings.TrimSpace(rawIP))
+	if ip == nil {
+		return false
+	}
+
+	if ip.IsLoopback() || ip.IsPrivate() {
+		return true
+	}
+
+	return false
 }
 
 // регистрация с имелйлом и паролем + запрос данных. Хэш пароля + токены + сессия
@@ -258,30 +331,49 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 	}
 
 	now := time.Now()
+	activationStatus, restrictionsUntil, err := s.resolveInitialActivation(ctx, req.DeviceID, ip)
+	if err != nil {
+		s.logger.Warn("initial_activation_resolution_failed", zap.Error(err))
+		activationStatus = "restricted"
+		restrictionsUntil = nil
+	}
 	user := &User{
-		ID:             uuid.NewString(),
-		Email:          req.Email,
-		Username:       username,
-		PasswordHash:   string(hash),
-		FirstName:      req.FirstName,
-		LastName:       req.LastName,
-		DateOfBirth:    &dob,
-		ReferralCode:   "",
-		PhoneCountry:   nil,
-		PhoneNumber:    nil,
-		AvatarURL:      "",
-		IsShadowBanned: false,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-		LastActiveAt:   now,
+		ID:               uuid.NewString(),
+		Email:            req.Email,
+		Username:         username,
+		PasswordHash:     string(hash),
+		FirstName:        req.FirstName,
+		LastName:         req.LastName,
+		DateOfBirth:      &dob,
+		ReferralCode:     "",
+		PhoneCountry:     nil,
+		PhoneNumber:      nil,
+		AvatarURL:        "",
+		IsShadowBanned:   false,
+		ActivationStatus: activationStatus,
+		ActivationUnlockedAt: func() *time.Time {
+			if activationStatus == "active" {
+				t := now
+				return &t
+			}
+			return nil
+		}(),
+		RestrictionsUntil: restrictionsUntil,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+		LastActiveAt:      now,
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		s.logger.Error("failed_to_create_user_in_registration", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
 	}
 
-	if req.ReferrerUserID != "" {
-		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+	if req.ReferrerUserID != "" && s.economyService != nil {
+		referralFn := s.economyService.RegisterPendingReferral
+		if activationStatus == "active" {
+			referralFn = s.economyService.ProcessReferralBonus
+		}
+		if err := referralFn(ctx, req.ReferrerUserID, user.ID); err != nil {
 			s.logger.Warn("referral_bonus_failed",
 				zap.String("referrer_user_id", req.ReferrerUserID),
 				zap.String("referee_user_id", user.ID),
@@ -325,7 +417,9 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	return &LoginResponse{
 		AccessToken:  access,
@@ -390,7 +484,9 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	return &LoginResponse{
 		AccessToken:  access,
@@ -586,30 +682,49 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 	}
 
 	now := time.Now()
+	activationStatus, restrictionsUntil, err := s.resolveInitialActivation(ctx, req.DeviceID, ip)
+	if err != nil {
+		s.logger.Warn("initial_activation_resolution_failed", zap.Error(err))
+		activationStatus = "restricted"
+		restrictionsUntil = nil
+	}
 	phoneCountry := v.PhoneCountry
 	phoneNumber := v.PhoneNumber
 	user := &User{
-		ID:             uuid.NewString(),
-		Email:          "",
-		Username:       username,
-		FirstName:      req.FirstName,
-		LastName:       req.LastName,
-		DateOfBirth:    &dob,
-		ReferralCode:   "",
-		PhoneCountry:   &phoneCountry,
-		PhoneNumber:    &phoneNumber,
-		AvatarURL:      "",
-		IsShadowBanned: false,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-		LastActiveAt:   now,
+		ID:               uuid.NewString(),
+		Email:            "",
+		Username:         username,
+		FirstName:        req.FirstName,
+		LastName:         req.LastName,
+		DateOfBirth:      &dob,
+		ReferralCode:     "",
+		PhoneCountry:     &phoneCountry,
+		PhoneNumber:      &phoneNumber,
+		AvatarURL:        "",
+		IsShadowBanned:   false,
+		ActivationStatus: activationStatus,
+		ActivationUnlockedAt: func() *time.Time {
+			if activationStatus == "active" {
+				t := now
+				return &t
+			}
+			return nil
+		}(),
+		RestrictionsUntil: restrictionsUntil,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+		LastActiveAt:      now,
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		return nil, err
 	}
 
-	if req.ReferrerUserID != "" {
-		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+	if req.ReferrerUserID != "" && s.economyService != nil {
+		referralFn := s.economyService.RegisterPendingReferral
+		if activationStatus == "active" {
+			referralFn = s.economyService.ProcessReferralBonus
+		}
+		if err := referralFn(ctx, req.ReferrerUserID, user.ID); err != nil {
 			s.logger.Warn("referral_bonus_failed",
 				zap.String("referrer_user_id", req.ReferrerUserID),
 				zap.String("referee_user_id", user.ID),
@@ -656,7 +771,9 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	return &LoginResponse{
 		AccessToken:  access,

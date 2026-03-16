@@ -26,6 +26,8 @@ type Repository interface {
 	CreateReferral(ctx context.Context, referral *Referral) error
 	GetReferralsByReferrer(ctx context.Context, referrerUserID string) ([]*Referral, error)
 	GetReferralByReferee(ctx context.Context, refereeUserID string) (*Referral, error)
+	ActivateReferral(ctx context.Context, refereeUserID, bonusLedgerEntryID string) error
+	GetUserActivationState(ctx context.Context, userID string) (string, *sql.NullTime, error)
 
 	GetOrCreateTransferLimit(ctx context.Context, userID, monthYear string) (*TransferLimit, error)
 	UpdateTransferLimit(ctx context.Context, limit *TransferLimit, oldTransfersCount int, oldTotalSent int64) error
@@ -353,6 +355,30 @@ func (r *repository) GetReferralByReferee(ctx context.Context, refereeUserID str
 	}
 
 	return &referral, nil
+}
+
+func (r *repository) ActivateReferral(ctx context.Context, refereeUserID, bonusLedgerEntryID string) error {
+	_, err := r.getExecutor().ExecContext(ctx, `
+		UPDATE referrals
+		SET is_active = true,
+		    bonus_ledger_entry_id = $2
+		WHERE referee_user_id = $1
+	`, refereeUserID, bonusLedgerEntryID)
+	if err != nil {
+		return fmt.Errorf("failed to activate referral: %w", err)
+	}
+	return nil
+}
+
+func (r *repository) GetUserActivationState(ctx context.Context, userID string) (string, *sql.NullTime, error) {
+	row := struct {
+		ActivationStatus string       `db:"activation_status"`
+		Restrictions     sql.NullTime `db:"restrictions_until"`
+	}{}
+	if err := sqlx.GetContext(ctx, r.getExecutor(), &row, `SELECT activation_status, restrictions_until FROM users WHERE id = $1`, userID); err != nil {
+		return "", nil, fmt.Errorf("failed to scan activation state: %w", err)
+	}
+	return row.ActivationStatus, &row.Restrictions, nil
 }
 
 func (r *repository) GetOrCreateTransferLimit(ctx context.Context, userID, monthYear string) (*TransferLimit, error) {

@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -34,6 +35,8 @@ type Repository interface {
 	GetUserPasswordHashByID(ctx context.Context, userID string) (string, error)
 	UpdateUserPasswordHashByID(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error
 	GetUserPhoneByID(ctx context.Context, userID string) (string, string, error)
+	RecordRegistrationSignal(ctx context.Context, deviceID, ip string, now time.Time) (int, int, error)
+	RecordActivationLogin(ctx context.Context, userID string, now time.Time) (string, bool, error)
 
 	CreatePhoneVerification(ctx context.Context, v *PhoneVerification) error
 	GetPhoneVerificationByID(ctx context.Context, id string) (*PhoneVerification, error)
@@ -108,9 +111,9 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 	  INSERT INTO users (
 			id, email, username, password_hash, first_name, last_name, date_of_birth, referral_code,
 			phone_country_code, phone_number,
-			avatar_url, is_shadow_banned, created_at, updated_at, last_active_at
+			avatar_url, is_shadow_banned, activation_status, restrictions_until, created_at, updated_at, last_active_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), $11, $12, $13, $14, $15)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), $11, $12, COALESCE(NULLIF($13, ''), 'restricted'), $14, $15, $16, $17)
 	`
 	// Convert empty strings to NULL for phone fields to avoid unique constraint violations
 	var phoneCountry, phoneNumber interface{}
@@ -133,7 +136,7 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 	_, err := r.db.ExecContext(ctx, query,
 		user.ID, user.Email, user.Username, user.PasswordHash, user.FirstName, user.LastName,
 		user.DateOfBirth, user.ReferralCode, phoneCountry, phoneNumber,
-		user.AvatarURL, user.IsShadowBanned, user.CreatedAt, user.UpdatedAt, user.LastActiveAt,
+		user.AvatarURL, user.IsShadowBanned, user.ActivationStatus, user.RestrictionsUntil, user.CreatedAt, user.UpdatedAt, user.LastActiveAt,
 	)
 	return err
 }
@@ -281,6 +284,100 @@ func (r *PostgresRepository) GetUserPhoneByID(ctx context.Context, userID string
 		return "", "", err
 	}
 	return countryCode, phoneNumber, nil
+}
+
+func (r *PostgresRepository) RecordRegistrationSignal(ctx context.Context, deviceID, ip string, now time.Time) (int, int, error) {
+	statDate := now.UTC().Format("2006-01-02")
+
+	deviceCount := 0
+	if strings.TrimSpace(deviceID) != "" {
+		if err := r.db.QueryRowContext(ctx, `
+			INSERT INTO device_registration_stats (device_id, stat_date, registrations_count)
+			VALUES ($1, $2, 1)
+			ON CONFLICT (device_id, stat_date)
+			DO UPDATE SET registrations_count = device_registration_stats.registrations_count + 1
+			RETURNING registrations_count
+		`, deviceID, statDate).Scan(&deviceCount); err != nil {
+			return 0, 0, err
+		}
+	}
+
+	ipCount := 0
+	if strings.TrimSpace(ip) != "" {
+		if err := r.db.QueryRowContext(ctx, `
+			INSERT INTO ip_registration_stats (ip_address, stat_date, registrations_count)
+			VALUES ($1, $2, 1)
+			ON CONFLICT (ip_address, stat_date)
+			DO UPDATE SET registrations_count = ip_registration_stats.registrations_count + 1
+			RETURNING registrations_count
+		`, ip, statDate).Scan(&ipCount); err != nil {
+			return 0, 0, err
+		}
+	}
+
+	return deviceCount, ipCount, nil
+}
+
+func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID string, now time.Time) (string, bool, error) {
+	loginDate := now.UTC().Format("2006-01-02")
+
+	if _, err := r.db.ExecContext(ctx, `
+		INSERT INTO user_activation_activity (user_id, distinct_login_days, login_events_count, meaningful_actions_count, last_login_date, updated_at)
+		VALUES ($1, 1, 1, 0, $2, NOW())
+		ON CONFLICT (user_id) DO UPDATE
+		SET login_events_count = user_activation_activity.login_events_count + 1,
+		    distinct_login_days = CASE
+		        WHEN user_activation_activity.last_login_date IS DISTINCT FROM $2::date THEN user_activation_activity.distinct_login_days + 1
+		        ELSE user_activation_activity.distinct_login_days
+		    END,
+		    last_login_date = $2,
+		    updated_at = NOW()
+	`, userID, loginDate); err != nil {
+		return "", false, err
+	}
+
+	var status string
+	var restrictionsUntil sql.NullTime
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT activation_status, restrictions_until
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&status, &restrictionsUntil); err != nil {
+		return "", false, err
+	}
+
+	if status == "active" {
+		return status, false, nil
+	}
+	if restrictionsUntil.Valid && restrictionsUntil.Time.After(now) {
+		return status, false, nil
+	}
+
+	var distinctDays int
+	var loginEvents int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT distinct_login_days, login_events_count
+		FROM user_activation_activity
+		WHERE user_id = $1
+	`, userID).Scan(&distinctDays, &loginEvents); err != nil {
+		return "", false, err
+	}
+
+	if distinctDays >= 2 && loginEvents >= 3 {
+		if _, err := r.db.ExecContext(ctx, `
+			UPDATE users
+			SET activation_status = 'active',
+			    activation_unlocked_at = COALESCE(activation_unlocked_at, NOW()),
+			    restrictions_until = NULL,
+			    updated_at = NOW()
+			WHERE id = $1
+		`, userID); err != nil {
+			return "", false, err
+		}
+		return "active", true, nil
+	}
+
+	return status, false, nil
 }
 
 func (r *PostgresRepository) CreatePhoneVerification(ctx context.Context, v *PhoneVerification) error {
