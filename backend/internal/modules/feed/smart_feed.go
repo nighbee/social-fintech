@@ -42,6 +42,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
 			FROM posts p
 			WHERE p.is_archived = false
+			  AND p.is_deleted = false
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
 			  AND COALESCE(p.report_control_level, 0) < 3
 			  AND (
@@ -147,7 +148,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		// Derive computed fields
 		resp.CommentPermission = commentPerm
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
-		resp.IsOwnPost = resp.Author.ID == viewerID
+		applyHiddenLikesForViewer(&resp, viewerID)
 
 		// time_ago is computed from createdAt
 		if createdAt.Valid {

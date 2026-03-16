@@ -15,7 +15,7 @@ import (
 func (r *repository) GetPostCreatedAt(ctx context.Context, postID uuid.UUID) (time.Time, error) {
 	var createdAt time.Time
 	err := r.db.QueryRowContext(ctx,
-		`SELECT created_at FROM posts WHERE id = $1`,
+		`SELECT created_at FROM posts WHERE id = $1 AND is_archived = false AND is_deleted = false`,
 		postID,
 	).Scan(&createdAt)
 	if err != nil {
@@ -48,6 +48,7 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 		FROM posts p
 		WHERE p.user_id    = $1
 		  AND p.is_archived = false
+		  AND p.is_deleted = false
 		  AND EXISTS (
 		        SELECT 1 FROM post_media pm WHERE pm.post_id = p.id
 		      )
@@ -138,6 +139,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		) media ON true
 		WHERE p.user_id     = $1
 		  AND p.is_archived  = false
+		  AND p.is_deleted   = false
 		  AND p.created_at   < $3
 		  AND (
 		        $1 = $2
@@ -182,7 +184,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		resp.CommentPermission = commentPerm
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
-		resp.IsOwnPost = resp.Author.ID == viewerID
+		applyHiddenLikesForViewer(&resp, viewerID)
 
 		if createdAt.Valid {
 			elapsed := time.Since(createdAt.Time)

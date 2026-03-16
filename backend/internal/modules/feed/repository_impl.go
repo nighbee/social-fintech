@@ -166,7 +166,7 @@ func (r *repository) UpdatePost(ctx context.Context, postID, userID uuid.UUID, r
 	query := fmt.Sprintf(`
 		UPDATE posts
 		SET %s
-		WHERE id = $%d AND user_id = $%d AND is_archived = false
+		WHERE id = $%d AND user_id = $%d AND is_archived = false AND is_deleted = false
 	`, strings.Join(assignments, ", "), idx, idx+1)
 
 	res, err := r.db.ExecContext(ctx, query, args...)
@@ -184,7 +184,8 @@ func (r *repository) UpdatePost(ctx context.Context, postID, userID uuid.UUID, r
 
 	var authorID uuid.UUID
 	var isArchived bool
-	err = r.db.QueryRowContext(ctx, `SELECT user_id, is_archived FROM posts WHERE id = $1`, postID).Scan(&authorID, &isArchived)
+	var isDeleted bool
+	err = r.db.QueryRowContext(ctx, `SELECT user_id, is_archived, is_deleted FROM posts WHERE id = $1`, postID).Scan(&authorID, &isArchived, &isDeleted)
 	if err == sql.ErrNoRows {
 		return ErrPostNotFound
 	}
@@ -194,7 +195,7 @@ func (r *repository) UpdatePost(ctx context.Context, postID, userID uuid.UUID, r
 	if authorID != userID {
 		return ErrNotPostAuthor
 	}
-	if isArchived {
+	if isArchived || isDeleted {
 		return ErrPostAlreadyDeleted
 	}
 
@@ -204,11 +205,11 @@ func (r *repository) UpdatePost(ctx context.Context, postID, userID uuid.UUID, r
 func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID) error {
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE posts
-		SET is_archived = true,
+		SET is_deleted = true,
 		    updated_at = NOW()
 		WHERE id = $1
 		  AND user_id = $2
-		  AND is_archived = false
+		  AND is_archived = false AND is_deleted = false
 	`, postID, userID)
 	if err != nil {
 		return err
@@ -224,7 +225,8 @@ func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID) e
 
 	var authorID uuid.UUID
 	var isArchived bool
-	err = r.db.QueryRowContext(ctx, `SELECT user_id, is_archived FROM posts WHERE id = $1`, postID).Scan(&authorID, &isArchived)
+	var isDeleted bool
+	err = r.db.QueryRowContext(ctx, `SELECT user_id, is_archived, is_deleted FROM posts WHERE id = $1`, postID).Scan(&authorID, &isArchived, &isDeleted)
 	if err == sql.ErrNoRows {
 		return ErrPostNotFound
 	}
@@ -234,7 +236,7 @@ func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID) e
 	if authorID != userID {
 		return ErrNotPostAuthor
 	}
-	if isArchived {
+	if isArchived || isDeleted {
 		return ErrPostAlreadyDeleted
 	}
 
@@ -256,6 +258,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		JOIN users u ON p.user_id = u.id
 		WHERE p.id = $1
 		  AND p.is_archived = false
+		  AND p.is_deleted = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
 	`
 	var resp PostResponse
@@ -287,7 +290,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	}
 
 	resp.TimeAgo = "just now"
-	resp.IsOwnPost = viewerID == resp.Author.ID
+	applyHiddenLikesForViewer(&resp, viewerID)
 
 	return &resp, nil
 }
@@ -305,7 +308,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		       ) as media_json
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
-		WHERE p.is_archived = false
+		WHERE p.is_archived = false AND p.is_deleted = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
 		  AND p.user_id <> $2
 		-- If cursor is provided: AND p.created_at < $cursor
@@ -354,7 +357,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 
 		resp.TimeAgo = "just now" // formatted by client or util later
 		resp.CommentPermission = commentPerm
-		resp.IsOwnPost = viewerID == resp.Author.ID
+		applyHiddenLikesForViewer(&resp, viewerID)
 
 		feed = append(feed, resp)
 		if createdAt.Valid {
@@ -960,7 +963,7 @@ func (r *repository) GetPostPermissionsInfo(ctx context.Context, postID uuid.UUI
 	var perm string
 	var authorID uuid.UUID
 
-	query := `SELECT comment_permission, user_id FROM posts WHERE id = $1 AND is_archived = false AND is_hidden_by_reports = false`
+	query := `SELECT comment_permission, user_id FROM posts WHERE id = $1 AND is_archived = false AND is_deleted = false AND is_hidden_by_reports = false`
 	err := r.db.QueryRowContext(ctx, query, postID).Scan(&perm, &authorID)
 	if err == sql.ErrNoRows {
 		return "", uuid.Nil, ErrPostNotFound

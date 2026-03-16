@@ -69,6 +69,7 @@ type Post struct {
 	HideLikesCount    bool      `json:"hide_likes_count" db:"hide_likes_count"`
 	IsPublic          bool      `json:"is_public" db:"is_public"` // Legacy flag
 	IsArchived        bool      `json:"is_archived" db:"is_archived"`
+	IsDeleted         bool      `json:"is_deleted" db:"is_deleted"`
 	LikesCount        int       `json:"likes_count" db:"likes_count"`
 	CommentsCount     int       `json:"comments_count" db:"comments_count"`
 	SharesCount       int       `json:"shares_count" db:"share_count"`
