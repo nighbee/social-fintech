@@ -10,10 +10,13 @@ import (
 )
 
 type testRepo struct {
-	createPostFn func(ctx context.Context, post *Post, media []MediaAttachment) error
-	updatePostFn func(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
-	deletePostFn func(ctx context.Context, postID, userID uuid.UUID) error
-	getPostFn    func(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
+	createPostFn       func(ctx context.Context, post *Post, media []MediaAttachment) error
+	updatePostFn       func(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
+	deletePostFn       func(ctx context.Context, postID, userID uuid.UUID) error
+	getPostFn          func(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
+	getUserPostsGridFn func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error)
+	getUserPostsListFn func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error)
+	getPostCreatedAtFn func(ctx context.Context, postID uuid.UUID) (time.Time, error)
 
 	createReportFn          func(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error
 	countRecentReportsByFn  func(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error)
@@ -77,14 +80,23 @@ func (r *testRepo) GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.
 }
 
 func (r *testRepo) GetUserPostsGrid(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error) {
+	if r.getUserPostsGridFn != nil {
+		return r.getUserPostsGridFn(ctx, authorID, viewerID, cursor, limit)
+	}
 	return nil, "", nil
 }
 
 func (r *testRepo) GetUserPostsList(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error) {
+	if r.getUserPostsListFn != nil {
+		return r.getUserPostsListFn(ctx, authorID, viewerID, cursor, limit)
+	}
 	return nil, "", nil
 }
 
 func (r *testRepo) GetPostCreatedAt(ctx context.Context, postID uuid.UUID) (time.Time, error) {
+	if r.getPostCreatedAtFn != nil {
+		return r.getPostCreatedAtFn(ctx, postID)
+	}
 	return time.Now(), nil
 }
 
@@ -312,9 +324,10 @@ func TestApplyStateTransitions_BreakPhase_SyncFreezesAndRefreshesLastSync(t *tes
 	}
 }
 
-func TestApplyStateTransitions_BreakPhase_ReentryAdvancesWhenNoDeviceOnFeed(t *testing.T) {
+func TestApplyStateTransitions_BreakPhase_TracksElapsedFromBreakStartAt(t *testing.T) {
 	svc := newTestService(false)
 	now := time.Now()
+	breakStart := now.Add(-150 * time.Second)
 
 	state := &FeedFatigueState{
 		UserID:                   uuid.New(),
@@ -322,21 +335,23 @@ func TestApplyStateTransitions_BreakPhase_ReentryAdvancesWhenNoDeviceOnFeed(t *t
 		AccumulatedBreakSeconds:  100,
 		LastSyncTimestamp:        now.Add(-50 * time.Second),
 		IsInCooldown:             true,
+		BreakStartedAt:           &breakStart,
 	}
 
 	result := svc.applyStateTransitions(context.Background(), state, now, false)
 
 	if result.AccumulatedBreakSeconds != 150 {
-		t.Errorf("expected accumulated break to become 150, got %d", result.AccumulatedBreakSeconds)
+		t.Errorf("expected break seconds to reflect wall-clock elapsed (150), got %d", result.AccumulatedBreakSeconds)
 	}
 	if result.IsInCooldown != true {
 		t.Error("expected cooldown to continue")
 	}
 }
 
-func TestApplyStateTransitions_BreakPhase_ReentryFrozenWhenAnotherDeviceOnFeed(t *testing.T) {
+func TestApplyStateTransitions_BreakPhase_SyncAlsoUsesBreakStartAt(t *testing.T) {
 	svc := newTestService(true)
 	now := time.Now()
+	breakStart := now.Add(-140 * time.Second)
 
 	state := &FeedFatigueState{
 		UserID:                   uuid.New(),
@@ -344,15 +359,16 @@ func TestApplyStateTransitions_BreakPhase_ReentryFrozenWhenAnotherDeviceOnFeed(t
 		AccumulatedBreakSeconds:  100,
 		LastSyncTimestamp:        now.Add(-50 * time.Second),
 		IsInCooldown:             true,
+		BreakStartedAt:           &breakStart,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, false)
+	result := svc.applyStateTransitions(context.Background(), state, now, true)
 
-	if result.AccumulatedBreakSeconds != 100 {
-		t.Errorf("expected break to stay frozen at 100, got %d", result.AccumulatedBreakSeconds)
+	if result.AccumulatedBreakSeconds != 140 {
+		t.Errorf("expected break seconds to follow break_start_at during sync, got %d", result.AccumulatedBreakSeconds)
 	}
 	if !result.LastSyncTimestamp.Equal(now) {
-		t.Error("expected LastSyncTimestamp to move to now on reentry")
+		t.Error("expected LastSyncTimestamp to move to now during sync")
 	}
 }
 
@@ -389,10 +405,23 @@ func TestApplyStateTransitions_BreakPhase_ResolvesAfterEnoughOffFeed(t *testing.
 func TestCalcBreakSecondsRemaining_MidBreak(t *testing.T) {
 	svc := newTestService(false)
 	state := &FeedFatigueState{IsInCooldown: true, AccumulatedBreakSeconds: 120}
+	now := time.Now()
 
-	rem := svc.calcBreakSecondsRemaining(state)
+	rem := svc.calcBreakSecondsRemaining(state, now)
 	if rem != 180 {
 		t.Errorf("expected 180, got %d", rem)
+	}
+}
+
+func TestCalcBreakSecondsRemaining_UsesBreakStartedAt(t *testing.T) {
+	svc := newTestService(false)
+	now := time.Now()
+	breakStart := now.Add(-200 * time.Second)
+	state := &FeedFatigueState{IsInCooldown: true, BreakStartedAt: &breakStart, AccumulatedBreakSeconds: 5}
+
+	rem := svc.calcBreakSecondsRemaining(state, now)
+	if rem != 100 {
+		t.Errorf("expected 100 seconds remaining from break_start_at, got %d", rem)
 	}
 }
 
@@ -465,13 +494,16 @@ func TestSyncFeedState_ThresholdCrossingTriggersFriction(t *testing.T) {
 
 func TestSyncFeedState_DuringCooldownEnforcesCooldownAction(t *testing.T) {
 	userID := uuid.New()
+	now := time.Now()
+	breakStart := now.Add(-40 * time.Second)
 	cacheRepo := &testCacheRepo{
 		fatigueState: &FeedFatigueState{
 			UserID:                   userID,
 			AccumulatedActiveSeconds: 1200,
 			AccumulatedBreakSeconds:  40,
-			LastSyncTimestamp:        time.Now().Add(-15 * time.Second),
+			LastSyncTimestamp:        now.Add(-15 * time.Second),
 			IsInCooldown:             true,
+			BreakStartedAt:           &breakStart,
 			MaxAllowedSeconds:        1200,
 		},
 	}
@@ -489,6 +521,127 @@ func TestSyncFeedState_DuringCooldownEnforcesCooldownAction(t *testing.T) {
 	}
 	if resp.BreakSecondsRemaining != BreakDurationSeconds-40 {
 		t.Fatalf("expected %d break seconds remaining, got %d", BreakDurationSeconds-40, resp.BreakSecondsRemaining)
+	}
+}
+
+func TestGetUserPostsGrid_UsesDefaultAndMaxLimitRules(t *testing.T) {
+	authorID := uuid.New()
+	viewerID := uuid.New()
+
+	var seenLimit int
+	repo := &testRepo{
+		getUserPostsGridFn: func(ctx context.Context, aID, vID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error) {
+			seenLimit = limit
+			if aID != authorID || vID != viewerID {
+				t.Fatalf("unexpected author/viewer ids: %s %s", aID, vID)
+			}
+			return []PostGridItem{}, "", nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if _, err := svc.GetUserPostsGrid(context.Background(), authorID, viewerID, "", 0); err != nil {
+		t.Fatalf("unexpected error for default limit case: %v", err)
+	}
+	if seenLimit != 18 {
+		t.Fatalf("expected default grid limit=18, got %d", seenLimit)
+	}
+
+	if _, err := svc.GetUserPostsGrid(context.Background(), authorID, viewerID, "", 99); err != nil {
+		t.Fatalf("unexpected error for max limit case: %v", err)
+	}
+	if seenLimit != 30 {
+		t.Fatalf("expected clamped grid limit=30, got %d", seenLimit)
+	}
+}
+
+func TestGetUserPostsList_UsesDefaultAndMaxLimitRules(t *testing.T) {
+	authorID := uuid.New()
+	viewerID := uuid.New()
+
+	var seenLimit int
+	repo := &testRepo{
+		getUserPostsListFn: func(ctx context.Context, aID, vID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error) {
+			seenLimit = limit
+			if aID != authorID || vID != viewerID {
+				t.Fatalf("unexpected author/viewer ids: %s %s", aID, vID)
+			}
+			return []PostResponse{}, "", nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if _, err := svc.GetUserPostsList(context.Background(), authorID, viewerID, nil, "", 0); err != nil {
+		t.Fatalf("unexpected error for default limit case: %v", err)
+	}
+	if seenLimit != 10 {
+		t.Fatalf("expected default list limit=10, got %d", seenLimit)
+	}
+
+	if _, err := svc.GetUserPostsList(context.Background(), authorID, viewerID, nil, "", 99); err != nil {
+		t.Fatalf("unexpected error for max limit case: %v", err)
+	}
+	if seenLimit != 30 {
+		t.Fatalf("expected clamped list limit=30, got %d", seenLimit)
+	}
+}
+
+func TestGetUserPostsList_AnchorPostUsesCreatedAtPlusMicrosecond(t *testing.T) {
+	authorID := uuid.New()
+	viewerID := uuid.New()
+	anchorID := uuid.New()
+	anchorTime := time.Now().Add(-3 * time.Hour)
+
+	var seenCursor time.Time
+	repo := &testRepo{
+		getPostCreatedAtFn: func(ctx context.Context, postID uuid.UUID) (time.Time, error) {
+			if postID != anchorID {
+				t.Fatalf("unexpected anchor id: %s", postID)
+			}
+			return anchorTime, nil
+		},
+		getUserPostsListFn: func(ctx context.Context, aID, vID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error) {
+			seenCursor = cursor
+			return []PostResponse{}, "", nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if _, err := svc.GetUserPostsList(context.Background(), authorID, viewerID, &anchorID, "", 10); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := anchorTime.Add(time.Microsecond)
+	if !seenCursor.Equal(expected) {
+		t.Fatalf("expected cursor %s, got %s", expected.Format(time.RFC3339Nano), seenCursor.Format(time.RFC3339Nano))
+	}
+}
+
+func TestGetUserPostsList_AnchorLookupFailureFallsBackToCursor(t *testing.T) {
+	authorID := uuid.New()
+	viewerID := uuid.New()
+	anchorID := uuid.New()
+	fallbackCursor := time.Now().Add(-90 * time.Minute).UTC().Format(time.RFC3339Nano)
+
+	var seenCursor time.Time
+	repo := &testRepo{
+		getPostCreatedAtFn: func(ctx context.Context, postID uuid.UUID) (time.Time, error) {
+			return time.Time{}, errors.New("anchor not found")
+		},
+		getUserPostsListFn: func(ctx context.Context, aID, vID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error) {
+			seenCursor = cursor
+			return []PostResponse{}, "", nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if _, err := svc.GetUserPostsList(context.Background(), authorID, viewerID, &anchorID, fallbackCursor, 10); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected, _ := time.Parse(time.RFC3339Nano, fallbackCursor)
+	if !seenCursor.Equal(expected) {
+		t.Fatalf("expected fallback cursor %s, got %s", expected.Format(time.RFC3339Nano), seenCursor.Format(time.RFC3339Nano))
 	}
 }
 

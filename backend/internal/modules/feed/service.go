@@ -98,7 +98,7 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 	return &FeedStateResponse{
 		AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 		IsInCooldown:             state.IsInCooldown,
-		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state),
+		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
 		AccumulatedBreakSeconds:  state.AccumulatedBreakSeconds,
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
 		ServerTimestamp:          now.UTC(),
@@ -132,7 +132,7 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 		return &FeedStateResponse{
 			AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 			IsInCooldown:             true,
-			BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state),
+			BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
 			AccumulatedBreakSeconds:  state.AccumulatedBreakSeconds,
 			MaxAllowedSeconds:        state.MaxAllowedSeconds,
 			ServerTimestamp:          now.UTC(),
@@ -174,7 +174,7 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 	return &FeedStateResponse{
 		AccumulatedActiveSeconds: state.AccumulatedActiveSeconds,
 		IsInCooldown:             state.IsInCooldown,
-		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state),
+		BreakSecondsRemaining:    s.calcBreakSecondsRemaining(state, now),
 		AccumulatedBreakSeconds:  state.AccumulatedBreakSeconds,
 		MaxAllowedSeconds:        state.MaxAllowedSeconds,
 		ServerTimestamp:          now.UTC(),
@@ -212,33 +212,27 @@ func (s *Service) getOrInitState(ctx context.Context, userID uuid.UUID) (*FeedFa
 //
 // calledFromSync=true  → caller is SyncFeedState (user IS on the feed).
 //   - Active phase: accumulate time via SyncFeedState delta, no away-reset here.
-//   - Break phase:  break countdown does NOT advance and LastSyncTimestamp is refreshed.
+//   - Break phase:  cooldown remains anchored to break_start_at (wall-clock).
 //
 // calledFromSync=false → caller is GetFeedState (user just opened / re-entered the feed).
 //   - Active phase: gap since LastSyncTimestamp is off-feed time; if ≥ AwayResetThreshold, reset.
-//   - Break phase:  break countdown advances only while no device is currently on feed.
+//   - Break phase:  cooldown remains anchored to break_start_at (wall-clock).
 func (s *Service) applyStateTransitions(ctx context.Context, state *FeedFatigueState, now time.Time, calledFromSync bool) *FeedFatigueState {
 	if state.IsInCooldown {
-		if calledFromSync {
-			// While feed is open on this device, cooldown is frozen.
-			state.LastSyncTimestamp = now
-			return state
+		if state.BreakStartedAt == nil {
+			inferredStart := now.Add(-time.Duration(state.AccumulatedBreakSeconds) * time.Second)
+			state.BreakStartedAt = &inferredStart
 		}
 
-		// User is entering/re-entering feed. Advance break only by confirmed off-feed time.
-		anyOnFeed := false
-		if s.cache != nil {
-			active, err := s.cache.AnyDeviceOnFeed(ctx, state.UserID)
-			if err == nil {
-				anyOnFeed = active
+		if state.BreakStartedAt != nil {
+			elapsed := int(now.Sub(*state.BreakStartedAt).Seconds())
+			if elapsed < 0 {
+				elapsed = 0
 			}
-		}
-
-		if !anyOnFeed {
-			offFeedSeconds := int(now.Sub(state.LastSyncTimestamp).Seconds())
-			if offFeedSeconds > 0 {
-				state.AccumulatedBreakSeconds += offFeedSeconds
+			if elapsed > BreakDurationSeconds {
+				elapsed = BreakDurationSeconds
 			}
+			state.AccumulatedBreakSeconds = elapsed
 		}
 
 		state.LastSyncTimestamp = now
@@ -262,13 +256,25 @@ func (s *Service) applyStateTransitions(ctx context.Context, state *FeedFatigueS
 	return state
 }
 
-// calcBreakSecondsRemaining returns off-feed seconds the user still needs to wait
-// before the break resolves. Uses AccumulatedBreakSeconds (off-feed time only)
-// so the countdown only ticks while the user is away from the feed.
-func (s *Service) calcBreakSecondsRemaining(state *FeedFatigueState) int {
+// calcBreakSecondsRemaining returns how many seconds remain in cooldown.
+// Primary source is break_start_at (wall-clock anchor) so all devices compute
+// the same value; AccumulatedBreakSeconds is a compatibility fallback.
+func (s *Service) calcBreakSecondsRemaining(state *FeedFatigueState, now time.Time) int {
 	if !state.IsInCooldown {
 		return 0
 	}
+	if state.BreakStartedAt != nil {
+		elapsed := int(now.Sub(*state.BreakStartedAt).Seconds())
+		if elapsed < 0 {
+			elapsed = 0
+		}
+		remaining := BreakDurationSeconds - elapsed
+		if remaining < 0 {
+			return 0
+		}
+		return remaining
+	}
+
 	remaining := BreakDurationSeconds - state.AccumulatedBreakSeconds
 	if remaining < 0 {
 		return 0
@@ -711,8 +717,10 @@ func (s *Service) GetSeals(ctx context.Context, postID uuid.UUID, cursor string,
 
 // GetUserPostsGrid returns a paginated grid of thumbnail items for a user's profile.
 func (s *Service) GetUserPostsGrid(ctx context.Context, authorID, viewerID uuid.UUID, cursorStr string, limit int) (*UserPostsGridResponse, error) {
-	if limit <= 0 || limit > 30 {
+	if limit <= 0 {
 		limit = 18
+	} else if limit > 30 {
+		limit = 30
 	}
 	cursor := time.Now()
 	if cursorStr != "" {
@@ -731,8 +739,10 @@ func (s *Service) GetUserPostsGrid(ctx context.Context, authorID, viewerID uuid.
 // If anchorPostID is set, the list starts at (and includes) that post.
 // Otherwise cursorStr is used as the exclusive upper bound.
 func (s *Service) GetUserPostsList(ctx context.Context, authorID, viewerID uuid.UUID, anchorPostID *uuid.UUID, cursorStr string, limit int) (*FeedResponse, error) {
-	if limit <= 0 || limit > 30 {
+	if limit <= 0 {
 		limit = 10
+	} else if limit > 30 {
+		limit = 30
 	}
 	cursor := time.Now()
 	if anchorPostID != nil {
@@ -741,6 +751,10 @@ func (s *Service) GetUserPostsList(ctx context.Context, authorID, viewerID uuid.
 			// Postgres timestamps are effectively microsecond precision here.
 			// Add 1 microsecond so the anchor post itself satisfies created_at < cursor.
 			cursor = anchorTime.Add(time.Microsecond)
+		} else if cursorStr != "" {
+			if t, parseErr := time.Parse(time.RFC3339Nano, cursorStr); parseErr == nil {
+				cursor = t
+			}
 		}
 	} else if cursorStr != "" {
 		if t, err := time.Parse(time.RFC3339Nano, cursorStr); err == nil {
