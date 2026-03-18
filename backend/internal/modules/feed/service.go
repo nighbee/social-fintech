@@ -22,8 +22,11 @@ const (
 	FeedPresenceTTL          = 20 * time.Second
 	ReportRateLimitPerHour   = 10
 	ReportRateLimitWindow    = 24 * time.Hour
-	CommentAutoHideReports   = 100
 	MinReportActivationViews = 50
+	CommentLevel1Threshold   = 3
+	CommentLevel2Threshold   = 5
+	CommentLevel3Threshold   = 10
+	CommentLevel4Threshold   = 20
 )
 
 var severeReportReasons = map[string]struct{}{
@@ -544,11 +547,14 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 	if err != nil {
 		return err
 	}
-	if targetType == ReportTargetComment && totalReports >= CommentAutoHideReports {
-		if err := s.repo.HideTargetByReports(ctx, targetType, targetID); err != nil {
-			return err
+	if targetType == ReportTargetComment {
+		level := determineCommentReportLevel(totalReports, reason)
+		if level >= 4 {
+			if err := s.repo.HideTargetByReports(ctx, targetType, targetID); err != nil {
+				return err
+			}
+			_ = s.finalizeAutoModerationOutcome(ctx, ReportTargetComment, targetID, ReportDecisionActioned)
 		}
-		_ = s.finalizeAutoModerationOutcome(ctx, ReportTargetComment, targetID, ReportDecisionActioned)
 	}
 
 	return nil
@@ -581,6 +587,26 @@ func determinePostReportLevel(weightedReports float64, impressions int) int {
 	default:
 		return 0
 	}
+}
+
+func determineCommentReportLevel(totalReports int, reason string) int {
+	level := 0
+	switch {
+	case totalReports >= CommentLevel4Threshold:
+		level = 4
+	case totalReports >= CommentLevel3Threshold:
+		level = 3
+	case totalReports >= CommentLevel2Threshold:
+		level = 2
+	case totalReports >= CommentLevel1Threshold:
+		level = 1
+	}
+
+	if isSevereReportReason(reason) && level > 0 && level < 4 {
+		level++
+	}
+
+	return level
 }
 
 func reportDistributionMultiplier(level int) float64 {
@@ -650,6 +676,36 @@ func (s *Service) ReportComment(ctx context.Context, reporterID, commentID uuid.
 
 func (s *Service) ReportPost(ctx context.Context, reporterID, postID uuid.UUID, reason, description string) error {
 	return s.reportTarget(ctx, reporterID, ReportTargetPost, postID, reason, description)
+}
+
+func (s *Service) IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
+	return s.repo.IsUserAdmin(ctx, userID)
+}
+
+func (s *Service) ReviewReports(ctx context.Context, targetType string, targetID uuid.UUID, decision string) error {
+	targetType = strings.TrimSpace(targetType)
+	decision = strings.TrimSpace(decision)
+
+	if targetType != ReportTargetPost && targetType != ReportTargetComment {
+		return ErrInvalidReportTargetType
+	}
+
+	if decision != ReportDecisionAccepted && decision != ReportDecisionRejected && decision != ReportDecisionActioned {
+		return ErrInvalidReportDecision
+	}
+
+	if decision == ReportDecisionActioned {
+		if err := s.repo.HideTargetByReports(ctx, targetType, targetID); err != nil {
+			return err
+		}
+		if targetType == ReportTargetPost {
+			if err := s.repo.SetPostReportControl(ctx, targetID, 4, 0.0); err != nil {
+				return err
+			}
+		}
+	}
+
+	return s.finalizeAutoModerationOutcome(ctx, targetType, targetID, decision)
 }
 
 func (s *Service) ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) (*ReportsListResponse, error) {

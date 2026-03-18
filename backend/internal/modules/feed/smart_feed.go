@@ -39,15 +39,30 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				p.created_at, p.location_lat, p.location_lon,
 				COALESCE(p.report_control_level, 0) AS report_control_level,
 				COALESCE(p.distribution_multiplier, 1.0) AS distribution_multiplier,
+				COALESCE(aps.post_removed_30d, 0) AS author_post_removed_30d,
 				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
 			FROM posts p
+			LEFT JOIN LATERAL (
+				SELECT COUNT(1) AS post_removed_30d
+				FROM author_policy_strikes aps
+				WHERE aps.author_id = p.user_id
+				  AND aps.strike_type = 'post_removed'
+				  AND aps.created_at >= NOW() - INTERVAL '30 days'
+			) aps ON true
 			WHERE p.is_archived = false
 			  AND p.is_deleted = false
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
 			  AND COALESCE(p.report_control_level, 0) < 3
 			  AND (
 				COALESCE(p.report_control_level, 0) = 0
-				OR random() <= COALESCE(p.distribution_multiplier, 1.0)
+				OR random() <= (
+					COALESCE(p.distribution_multiplier, 1.0) *
+					CASE
+						WHEN COALESCE(aps.post_removed_30d, 0) >= 5 THEN 0.4
+						WHEN COALESCE(aps.post_removed_30d, 0) >= 3 THEN 0.7
+						ELSE 1.0
+					END
+				)
 			  )
 			  AND p.user_id <> $1
 			  AND NOT EXISTS (

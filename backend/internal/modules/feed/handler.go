@@ -257,6 +257,9 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 		if err == ErrPostRequiresMedia {
 			return validationErr(c, err.Error())
 		}
+		if err == ErrPublishingRestricted {
+			return c.Status(429).JSON(fiber.Map{"error": err.Error()})
+		}
 		logger.Error("failed to create post",
 			zap.String("user_id", userID.String()),
 			zap.Error(err),
@@ -600,6 +603,20 @@ func (h *Handler) ReportPost(c *fiber.Ctx) error {
 // @Failure 401 {object} map[string]string "Unauthorized"
 // @Router /admin/reports [get]
 func (h *Handler) GetAdminReports(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	isAdmin, err := h.service.IsUserAdmin(c.Context(), userID)
+	if err != nil {
+		logger.Error("failed to check admin role", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
+	}
+	if !isAdmin {
+		return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+	}
+
 	resp, err := h.service.ListReports(
 		c.Context(),
 		strings.TrimSpace(c.Query("status")),
@@ -613,6 +630,55 @@ func (h *Handler) GetAdminReports(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "fetch_failed"})
 	}
 	return c.JSON(resp)
+}
+
+// ReviewReports godoc
+// @Summary Review moderation reports
+// @Description Admin endpoint to apply moderation decision for a target.
+// @Tags Feed Moderation
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ReviewReportsRequest true "Target and decision"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} map[string]string "Validation error"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /admin/reports/review [post]
+func (h *Handler) ReviewReports(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	isAdmin, err := h.service.IsUserAdmin(c.Context(), userID)
+	if err != nil {
+		logger.Error("failed to check admin role", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "review_failed"})
+	}
+	if !isAdmin {
+		return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+	}
+
+	var req ReviewReportsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	targetID, err := uuid.Parse(strings.TrimSpace(req.TargetID))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_target_id"})
+	}
+
+	err = h.service.ReviewReports(c.Context(), req.TargetType, targetID, req.Decision)
+	if err != nil {
+		if errors.Is(err, ErrInvalidReportTargetType) || errors.Is(err, ErrInvalidReportDecision) {
+			return c.Status(400).JSON(fiber.Map{"error": err.Error()})
+		}
+		logger.Error("failed to review reports", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "review_failed"})
+	}
+
+	return c.JSON(fiber.Map{"status": "reviewed"})
 }
 
 // ToggleCommentLike godoc

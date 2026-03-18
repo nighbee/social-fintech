@@ -49,6 +49,10 @@ var (
 	// no supported fields.
 	ErrInvalidPostUpdate = errors.New("invalid_post_update_payload")
 
+	// ErrPublishingRestricted is returned when author publication is temporarily blocked
+	// by policy escalation (e.g. repeated actioned post removals).
+	ErrPublishingRestricted = errors.New("publishing_restricted")
+
 	// ── Comments ─────────────────────────────────────────────────────────
 	// ErrCommentNotFound is returned when a specified comment does not exist.
 	ErrCommentNotFound = errors.New("comment_not_found")
@@ -74,6 +78,10 @@ var (
 	ErrDuplicateReport = errors.New("duplicate_report")
 	// ErrReportRateLimited is returned when reporter exceeds allowed report rate.
 	ErrReportRateLimited = errors.New("report_rate_limited")
+	// ErrInvalidReportTargetType is returned when moderation target type is not supported.
+	ErrInvalidReportTargetType = errors.New("invalid_report_target_type")
+	// ErrInvalidReportDecision is returned when moderation decision is not supported.
+	ErrInvalidReportDecision = errors.New("invalid_report_decision")
 
 	// ── Likes ─────────────────────────────────────────────────────────────
 	// ErrLikeQueueFull is returned when the Redis write-behind buffer for likes

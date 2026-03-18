@@ -56,6 +56,7 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 
 	adminGroup := app.Group("/api/v1/admin", authMiddleware)
 	adminGroup.Get("/reports", handler.GetAdminReports)
+	adminGroup.Post("/reports/review", handler.ReviewReports)
 
 	// In API group for generic ID
 	api.Post("/comments/:comment_id/likes", handler.ToggleCommentLike)

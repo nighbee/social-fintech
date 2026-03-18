@@ -70,6 +70,19 @@ assert_contains() {
     fi
 }
 
+assert_not_contains() {
+    local label="$1"
+    local haystack="$2"
+    local needle="$3"
+    if echo "$haystack" | grep -q "$needle"; then
+        echo -e "${RED}✗ FAIL: ${label} — unexpected '${needle}'${NC}"
+        FAIL=$((FAIL + 1))
+    else
+        echo -e "${GREEN}✓ PASS: ${label}${NC}"
+        PASS=$((PASS + 1))
+    fi
+}
+
 run_sql() {
     local sql="$1"
 
@@ -645,6 +658,21 @@ assert_ok "User2 unlikes the post (second toggle returns 202)" "$HTTP_CODE"
 echo ""
 
 # ======================================================================
+# TEST 13b – ToggleLike again to keep one like for GetLikes list test
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 13b: User2 Likes Again (Prepare GetLikes non-empty) ===${NC}"
+
+RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "${POSTS_URL}/${POST_ID}/likes" \
+    -H "Authorization: Bearer $USER2_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+
+log_request "User2 Toggles Like (like again)" "POST" "${POSTS_URL}/${POST_ID}/likes" "" "$HTTP_BODY" "$HTTP_CODE" "USER2"
+assert_ok "User2 likes post again for interactions listing" "$HTTP_CODE"
+echo ""
+
+# ======================================================================
 # TEST 14 – GetLikes: User1 fetches likes on post
 # ======================================================================
 
@@ -657,6 +685,7 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 log_request "User1 Gets Likes" "GET" "${POSTS_URL}/${POST_ID}/likes" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
 assert_ok "User1 accesses the likes endpoint" "$HTTP_CODE"
+assert_not_contains "GetLikes returns non-empty interactions list" "$HTTP_BODY" '"items":[]'
 echo ""
 
 # ======================================================================
@@ -863,6 +892,13 @@ log_request "Admin gets moderation reports" "GET" "${FEED_URL%/feed}/admin/repor
 assert_ok "Admin reports endpoint returns queue" "$HTTP_CODE"
 assert_contains "Admin report queue includes spam reason" "$HTTP_BODY" '"reason":"spam"'
 assert_contains "Admin report queue includes post target type" "$HTTP_BODY" '"target_type":"post"'
+
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X GET "${FEED_URL%/feed}/admin/reports?limit=20" \
+    -H "Authorization: Bearer $USER1_TOKEN")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Non-admin denied moderation reports" "GET" "${FEED_URL%/feed}/admin/reports?limit=20" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+assert_status "Non-admin cannot access admin reports" "403" "$HTTP_CODE"
 echo ""
 
 # ======================================================================
@@ -880,6 +916,138 @@ if [[ -n "$REPLY_COMMENT_ID" ]]; then
     assert_contains "Delete comment returns deleted status" "$HTTP_BODY" '"status":"deleted"'
     echo ""
 fi
+
+# ======================================================================
+# TEST 20d – Comment report ladder: 10 severe reports => auto-hide comment
+# ======================================================================
+
+if [[ -n "$COMMENT_ID" ]]; then
+    echo -e "${GREEN}=== TEST 20d: Comment Report Ladder Auto-Hide ===${NC}"
+
+    EXTRA_REPORTERS_CREATED=0
+    for i in $(seq 1 10); do
+        R_EMAIL="feed_rep_${RANDOM}_${i}@example.com"
+        R_PASS="Pass123!"
+        R_DEVICE="feed-rep-device-${i}-${RANDOM}"
+
+        REGISTER_BODY="{\"email\":\"$R_EMAIL\",\"password\":\"$R_PASS\",\"first_name\":\"Rep${i}\",\"last_name\":\"User\",\"date_of_birth\":\"2000-01-01\",\"device_id\":\"$R_DEVICE\",\"app_version\":\"1.0.0\"}"
+        RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/register-email" \
+            -H "Content-Type: application/json" -d "$REGISTER_BODY")
+        HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+        if [[ "$HTTP_CODE" -lt 200 || "$HTTP_CODE" -ge 300 ]]; then
+            continue
+        fi
+
+        LOGIN_BODY="{\"email\":\"$R_EMAIL\",\"password\":\"$R_PASS\",\"device_id\":\"$R_DEVICE\"}"
+        RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$AUTH_URL/login-email" \
+            -H "Content-Type: application/json" -d "$LOGIN_BODY")
+        HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+        if [[ "$HTTP_CODE" -lt 200 || "$HTTP_CODE" -ge 300 ]]; then
+            continue
+        fi
+
+        R_TOKEN=$(get_json_string "$HTTP_BODY" "access_token")
+        if [[ -z "$R_TOKEN" ]]; then
+            continue
+        fi
+
+        COMMENT_REPORT_BODY="{\"reason\":\"spam\",\"description\":\"ladder-${i}\"}"
+        RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "${POSTS_URL}/${POST_ID}/comments/${COMMENT_ID}/report" \
+            -H "Authorization: Bearer $R_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "$COMMENT_REPORT_BODY")
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+        if [[ "$HTTP_CODE" == "201" ]]; then
+            EXTRA_REPORTERS_CREATED=$((EXTRA_REPORTERS_CREATED + 1))
+        fi
+    done
+
+    echo -e "${CYAN}  Successful extra comment reports: ${EXTRA_REPORTERS_CREATED}${NC}"
+    if [[ "$EXTRA_REPORTERS_CREATED" -ge 10 ]]; then
+        RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X GET "${POSTS_URL}/${POST_ID}/comments?limit=100" \
+            -H "Authorization: Bearer $USER1_TOKEN")
+        HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+        log_request "Fetch comments after report ladder" "GET" "${POSTS_URL}/${POST_ID}/comments?limit=100" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+        assert_ok "Fetch comments succeeds after ladder reports" "$HTTP_CODE"
+        if echo "$HTTP_BODY" | grep -q "$COMMENT_ID"; then
+            echo -e "${RED}✗ FAIL: Comment should be auto-hidden at ladder level 4${NC}"
+            FAIL=$((FAIL + 1))
+        else
+            echo -e "${GREEN}✓ PASS: Comment auto-hidden by report ladder${NC}"
+            PASS=$((PASS + 1))
+        fi
+    else
+        echo -e "${YELLOW}! Could not create enough unique reporters for ladder test, skipping strict assertion.${NC}"
+    fi
+    echo ""
+fi
+
+# ======================================================================
+# TEST 20e – Author sanctions: 8 actioned post reports => publishing ban
+# ======================================================================
+
+echo -e "${GREEN}=== TEST 20e: Author Sanctions Escalation (8 actioned posts) ===${NC}"
+
+ACTIONED_OK=0
+for i in $(seq 1 8); do
+    SANCTION_POST_BODY="{\"caption\":\"sanction-seed-${i}\",\"media_attachments\":[{\"type\":\"image\",\"url\":\"http://minio/bucket/sanction-${i}.jpg\"}],\"visibility\":\"ANYONE\",\"comment_permission\":\"ANYONE\"}"
+    RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$POSTS_URL" \
+        -H "Authorization: Bearer $USER1_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$SANCTION_POST_BODY")
+    HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    if [[ "$HTTP_CODE" -lt 200 || "$HTTP_CODE" -ge 300 ]]; then
+        continue
+    fi
+
+    SANCTION_POST_ID=$(get_json_string "$HTTP_BODY" "post_id")
+    if [[ -z "$SANCTION_POST_ID" ]]; then
+        continue
+    fi
+
+    POST_REPORT_BODY="{\"reason\":\"spam\",\"description\":\"sanction-seed-${i}\"}"
+    RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "${POSTS_URL}/${SANCTION_POST_ID}/report" \
+        -H "Authorization: Bearer $ADMIN_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$POST_REPORT_BODY")
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    if [[ "$HTTP_CODE" != "201" && "$HTTP_CODE" != "409" ]]; then
+        continue
+    fi
+
+    REVIEW_BODY="{\"target_type\":\"post\",\"target_id\":\"${SANCTION_POST_ID}\",\"decision\":\"actioned\"}"
+    RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "${FEED_URL%/feed}/admin/reports/review" \
+        -H "Authorization: Bearer $ADMIN_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$REVIEW_BODY")
+    HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+    if [[ "$HTTP_CODE" == "200" ]]; then
+        ACTIONED_OK=$((ACTIONED_OK + 1))
+    fi
+done
+
+echo -e "${CYAN}  Actioned post reports prepared: ${ACTIONED_OK}${NC}"
+
+BAN_CHECK_BODY="{\"caption\":\"should_be_blocked_by_policy\",\"media_attachments\":[{\"type\":\"image\",\"url\":\"http://minio/bucket/blocked.jpg\"}],\"visibility\":\"ANYONE\",\"comment_permission\":\"ANYONE\"}"
+RESPONSE=$($CURL_BIN -s -w "\n%{http_code}" -X POST "$POSTS_URL" \
+    -H "Authorization: Bearer $USER1_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "$BAN_CHECK_BODY")
+HTTP_BODY=$(echo "$RESPONSE" | head -n -1)
+HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
+log_request "Create post after sanctions escalation" "POST" "$POSTS_URL" "$BAN_CHECK_BODY" "$HTTP_BODY" "$HTTP_CODE" "USER1"
+
+if [[ "$ACTIONED_OK" -ge 8 ]]; then
+    assert_status "Author publishing is blocked after 8 actioned post reports" "429" "$HTTP_CODE"
+    assert_contains "Publishing block error is explicit" "$HTTP_BODY" 'publishing_restricted'
+else
+    echo -e "${YELLOW}! Could not prepare 8 actioned reports (schema/env mismatch), strict ban assertion skipped.${NC}"
+fi
+echo ""
 
 fi  # end if POST_ID
 

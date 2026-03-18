@@ -93,6 +93,10 @@ func (r *repository) UpsertFatigueState(ctx context.Context, state *FeedFatigueS
 }
 
 func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error {
+	if err := r.enforceAuthorPublishingPolicy(ctx, post.UserID); err != nil {
+		return err
+	}
+
 	tx, err := r.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
@@ -137,6 +141,41 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 	}
 
 	return tx.Commit()
+}
+
+func (r *repository) enforceAuthorPublishingPolicy(ctx context.Context, authorID uuid.UUID) error {
+	const query = `
+		SELECT
+			COUNT(1) AS post_removed_30d,
+			MAX(COALESCE(r.reviewed_at, r.created_at)) AS last_actioned_at
+		FROM reports r
+		JOIN posts p ON p.id = r.target_id
+		WHERE r.target_type = 'post'
+		  AND r.moderation_status = 'reviewed'
+		  AND r.review_decision = 'actioned'
+		  AND p.user_id = $1
+		  AND COALESCE(r.reviewed_at, r.created_at) >= NOW() - INTERVAL '30 days'
+	`
+
+	var postRemoved30d int
+	var lastStrikeAt sql.NullTime
+	if err := r.db.QueryRowContext(ctx, query, authorID).Scan(&postRemoved30d, &lastStrikeAt); err != nil {
+		return err
+	}
+
+	if !lastStrikeAt.Valid {
+		return nil
+	}
+
+	now := time.Now()
+	switch {
+	case postRemoved30d >= 12 && lastStrikeAt.Time.Add(7*24*time.Hour).After(now):
+		return ErrPublishingRestricted
+	case postRemoved30d >= 8 && lastStrikeAt.Time.Add(3*24*time.Hour).After(now):
+		return ErrPublishingRestricted
+	default:
+		return nil
+	}
 }
 
 func (r *repository) UpdatePost(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error {
@@ -1014,8 +1053,78 @@ func (r *repository) ToggleLike(ctx context.Context, postID uuid.UUID, userID uu
 }
 
 func (r *repository) GetInteractions(ctx context.Context, postID uuid.UUID, interactionType string, cursor string, limit int) ([]InteractionResponse, string, error) {
-	// Query post_interactions joined with users table. Placeholder for MVP.
-	return []InteractionResponse{}, "", nil
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	cursorTime := time.Now()
+	if cursor != "" {
+		if t, err := time.Parse(time.RFC3339Nano, cursor); err == nil {
+			cursorTime = t
+		}
+	}
+
+	query := `
+		SELECT
+			u.id,
+			COALESCE(u.username, '') AS username,
+			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') AS full_name,
+			COALESCE(p.avatar_url, '') AS profile_pic_url,
+			COALESCE(p.current_rank_tier, '') AS rank,
+			pi.created_at
+		FROM post_interactions pi
+		JOIN users u ON u.id = pi.user_id
+		LEFT JOIN profiles p ON p.user_id = u.id
+		WHERE pi.post_id = $1
+		  AND pi.interaction_type = $2
+		  AND pi.created_at < $3
+		ORDER BY pi.created_at DESC
+		LIMIT $4
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, postID, interactionType, cursorTime, limit)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	items := make([]InteractionResponse, 0, limit)
+	var lastCreatedAt time.Time
+	for rows.Next() {
+		var item InteractionResponse
+		var createdAt time.Time
+		var avatarURL sql.NullString
+		var rank sql.NullString
+
+		if err := rows.Scan(
+			&item.User.ID,
+			&item.User.Username,
+			&item.User.FullName,
+			&avatarURL,
+			&rank,
+			&createdAt,
+		); err != nil {
+			return nil, "", err
+		}
+
+		if avatarURL.Valid {
+			item.User.ProfilePicURL = r.buildURL(avatarURL.String)
+		}
+		if rank.Valid {
+			item.User.Rank = rank.String
+		}
+
+		item.CreatedAt = createdAt
+		items = append(items, item)
+		lastCreatedAt = createdAt
+	}
+
+	nextCursor := ""
+	if len(items) == limit && !lastCreatedAt.IsZero() {
+		nextCursor = lastCreatedAt.Format(time.RFC3339Nano)
+	}
+
+	return items, nextCursor, nil
 }
 
 func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor string, limit int) ([]SealResponse, string, error) {

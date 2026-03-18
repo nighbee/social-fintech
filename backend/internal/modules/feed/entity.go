@@ -128,6 +128,12 @@ type ReportPostRequest struct {
 	Description string `json:"description,omitempty"`
 }
 
+type ReviewReportsRequest struct {
+	TargetType string `json:"target_type"`
+	TargetID   string `json:"target_id"`
+	Decision   string `json:"decision"`
+}
+
 type SyncFeedStateRequest struct {
 	DeltaSeconds int    `json:"delta_seconds"`
 	DeviceID     string `json:"device_id"`
