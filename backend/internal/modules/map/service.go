@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/economy"
@@ -798,13 +799,22 @@ func (s *Service) ResolveH3ToLocation(ctx context.Context, h3Index string) (*H3G
 		return metadata, nil
 	}
 
-	// 2. Resolve center point
-	lat, lon := centerOfH3(h3Index)
+	// 2. Primary strategy: executable 50%+ overlap rule using the full H3 polygon
+	hexWKT, err := boundaryWKTOfH3(h3Index)
+	if err == nil {
+		metadata, err = s.repo.GetAdministrativeHierarchyByHex(ctx, hexWKT)
+		if err != nil {
+			return nil, err
+		}
+	}
 
-	// 3. Spatial lookup
-	metadata, err = s.repo.GetAdministrativeHierarchy(ctx, lat, lon)
-	if err != nil {
-		return nil, err
+	// 3. Deterministic fallback: center-point lookup for sparse/incomplete boundaries
+	if metadata == nil || (metadata.CityName == "" && metadata.RegionName == "" && metadata.CountryName == "") {
+		lat, lon := centerOfH3(h3Index)
+		metadata, err = s.repo.GetAdministrativeHierarchy(ctx, lat, lon)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	metadata.H3Index = h3Index
@@ -826,4 +836,25 @@ func centerOfH3(h3Index string) (float64, float64) {
 
 	latLng := h3.CellToLatLng(cell)
 	return latLng.Lat, latLng.Lng
+}
+
+func boundaryWKTOfH3(h3Index string) (string, error) {
+	var cellUint uint64
+	if _, err := fmt.Sscanf(h3Index, "%x", &cellUint); err != nil {
+		return "", err
+	}
+
+	cell := h3.Cell(cellUint)
+	boundary := h3.CellToBoundary(cell)
+	if len(boundary) == 0 {
+		return "", fmt.Errorf("invalid h3 boundary")
+	}
+
+	coords := make([]string, 0, len(boundary)+1)
+	for _, point := range boundary {
+		coords = append(coords, fmt.Sprintf("%f %f", point.Lng, point.Lat))
+	}
+	coords = append(coords, fmt.Sprintf("%f %f", boundary[0].Lng, boundary[0].Lat))
+
+	return fmt.Sprintf("POLYGON((%s))", strings.Join(coords, ", ")), nil
 }

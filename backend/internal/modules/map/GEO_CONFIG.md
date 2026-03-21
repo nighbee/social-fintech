@@ -142,7 +142,7 @@ Response:
 
 ### Partial
 - Boundary data population (no loader visible; requires OSM import)
-- Spatial query coverage validation (current uses center-point; 50% rule is theoretical)
+- Boundary ownership now uses executable 50%+ H3 polygon overlap (with deterministic center-point fallback when no 50% winner exists)
 
 ### Future Enhancements
 - Admin-boundary-based feed scoping (instead of distance rings)
@@ -163,7 +163,8 @@ See `backend/internal/modules/map/service_test.go`:
 
 **H3 lookups return NULL**:
 - Check if `administrative_boundaries` table is populated
-- Verify center-point falls within any boundary polygon
+- Verify H3 polygon intersects expected boundary polygons (>50% overlap for ownership)
+- If no >50% winner exists, verify center-point fallback falls within expected polygon
 - Check PostGIS extension is enabled: `SELECT PostGIS_Version();`
 
 **Feed not blending correctly**:

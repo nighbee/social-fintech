@@ -47,6 +47,7 @@ type Repository interface {
 
 	// Administrative Layer
 	GetAdministrativeHierarchy(ctx context.Context, lat, lon float64) (*H3GeoMetadata, error)
+	GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT string) (*H3GeoMetadata, error)
 	GetH3GeoMetadata(ctx context.Context, h3Index string) (*H3GeoMetadata, error)
 	UpsertH3GeoMetadata(ctx context.Context, metadata *H3GeoMetadata) error
 }
@@ -557,6 +558,52 @@ func (r *repository) GetAdministrativeHierarchy(ctx context.Context, lat, lon fl
 	if err != nil {
 		return nil, err
 	}
+	return &metadata, nil
+}
+
+func (r *repository) GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT string) (*H3GeoMetadata, error) {
+	query := `
+		WITH hex AS (
+			SELECT ST_GeomFromText($1, 4326) AS geom
+		),
+		intersections AS (
+			SELECT
+				ab.name,
+				ab.level,
+				ab.country_code,
+				ST_Area(
+					ST_Intersection(ab.boundary::geography, hex.geom::geography)
+				) / NULLIF(ST_Area(hex.geom::geography), 0) AS overlap_ratio
+			FROM administrative_boundaries ab, hex
+			WHERE ST_Intersects(ab.boundary, hex.geom)
+		),
+		ranked AS (
+			SELECT
+				name,
+				level,
+				country_code,
+				overlap_ratio,
+				ROW_NUMBER() OVER (
+					PARTITION BY level
+					ORDER BY overlap_ratio DESC, name ASC
+				) AS rn
+			FROM intersections
+			WHERE overlap_ratio >= 0.5
+		)
+		SELECT
+			MAX(CASE WHEN level = 2 AND rn = 1 THEN name END) AS city_name,
+			MAX(CASE WHEN level = 1 AND rn = 1 THEN name END) AS region_name,
+			MAX(CASE WHEN level = 0 AND rn = 1 THEN name END) AS country_name,
+			MAX(CASE WHEN level = 0 AND rn = 1 THEN country_code END) AS country_code
+		FROM ranked
+	`
+
+	var metadata H3GeoMetadata
+	err := sqlx.GetContext(ctx, r.executor(), &metadata, query, hexWKT)
+	if err != nil {
+		return nil, err
+	}
+
 	return &metadata, nil
 }
 
