@@ -78,7 +78,8 @@ func main() {
 	economyWorker := economy.NewWorker(economyService, economyRepo, cfg.Economy)
 
 	mapRepo := mapmodule.NewRepository(db.DB)
-	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo)
+	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
+	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo, mapService)
 
 	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)

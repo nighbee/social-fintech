@@ -818,6 +818,57 @@ func (h *Handler) GetRegionChampions(c *fiber.Ctx) error {
 	return c.JSON(pins)
 }
 
+// GetH3AdminHierarchy godoc
+// @Summary Resolve H3 cell to administrative regions
+// @Description Returns the city, region, and country for a given H3 cell index.
+// @Description This endpoint performs a spatial lookup against the administrative_boundaries table
+// @Description using the H3 cell's center point. Result is cached in h3_geo_metadata for repeated lookups.
+// @Tags Map
+// @Produce json
+// @Security Bearer
+// @Param h3_index path string true "H3 cell index (any resolution)"
+// @Success 200 {object} H3AdminLookupResponse
+// @Failure 400 {object} map[string]string "Invalid H3 index"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "H3 index could not be resolved to admin boundaries"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /map/h3/{h3_index}/admin [get]
+func (h *Handler) GetH3AdminHierarchy(c *fiber.Ctx) error {
+	if _, ok := requireUserID(c); !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	h3Index := c.Params("h3_index")
+	if h3Index == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_h3_index"})
+	}
+
+	metadata, err := h.service.ResolveH3ToLocation(c.Context(), h3Index)
+	if err != nil {
+		logger.Error("failed to resolve H3 to admin hierarchy",
+			zap.String("h3_index", h3Index),
+			zap.String("request_id", c.Get("X-Request-Id")),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "h3_resolve_failed"})
+	}
+
+	if metadata == nil || (metadata.CityName == "" && metadata.CountryName == "") {
+		return c.Status(404).JSON(fiber.Map{"error": "h3_not_in_boundaries"})
+	}
+
+	resp := &H3AdminLookupResponse{
+		H3Index:     h3Index,
+		CityName:    metadata.CityName,
+		RegionName:  metadata.RegionName,
+		CountryName: metadata.CountryName,
+		CountryCode: metadata.CountryCode,
+		ResolvedAt:  metadata.ResolvedAt.Format("2006-01-02T15:04:05Z"),
+	}
+
+	return c.JSON(resp)
+}
+
 func splitCSV(raw string) []string {
 	var out []string
 	start := 0

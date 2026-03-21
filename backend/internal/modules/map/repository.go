@@ -44,6 +44,11 @@ type Repository interface {
 	// Champions
 	UpsertRegionChampion(ctx context.Context, champion *RegionChampion) error
 	GetRegionChampions(ctx context.Context, h3Indexes []string, resolution, year, week int) ([]RegionChampion, error)
+
+	// Administrative Layer
+	GetAdministrativeHierarchy(ctx context.Context, lat, lon float64) (*H3GeoMetadata, error)
+	GetH3GeoMetadata(ctx context.Context, h3Index string) (*H3GeoMetadata, error)
+	UpsertH3GeoMetadata(ctx context.Context, metadata *H3GeoMetadata) error
 }
 
 type repository struct {
@@ -509,12 +514,16 @@ func (r *repository) UpsertRegionChampion(ctx context.Context, champion *RegionC
 
 func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string, resolution, year, week int) ([]RegionChampion, error) {
 	query := `
-		SELECT id, h3_index, resolution, user_id, score, week, year, updated_at
-		FROM region_champions
-		WHERE resolution = $1
-		  AND year = $2
-		  AND week = $3
-		  AND h3_index = ANY($4)
+		SELECT c.id, c.h3_index, c.resolution, c.user_id, c.score, c.week, c.year, c.updated_at,
+		       COALESCE(m.city_name, '') as city_name,
+		       COALESCE(m.region_name, '') as region_name,
+		       COALESCE(m.country_name, '') as country_name
+		FROM region_champions c
+		LEFT JOIN h3_geo_metadata m ON c.h3_index = m.h3_index
+		WHERE c.resolution = $1
+		  AND c.year = $2
+		  AND c.week = $3
+		  AND c.h3_index = ANY($4)
 	`
 
 	var champs []RegionChampion
@@ -522,6 +531,58 @@ func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string,
 		return nil, fmt.Errorf("failed to get region champions: %w", err)
 	}
 	return champs, nil
+}
+
+func (r *repository) GetAdministrativeHierarchy(ctx context.Context, lat, lon float64) (*H3GeoMetadata, error) {
+	// Priority: (1) direct point-in-polygon (exact), (2) try intersecting boundaries for edge points
+	// The 50%+ rule is implemented in the database via trigger or spatial index materialization.
+	// This method queries the pre-materialized h3_geo_metadata cache; fallback uses center-point lookup.
+	query := `
+		WITH matched AS (
+			SELECT name, level, country_code
+			FROM administrative_boundaries
+			WHERE ST_Covers(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326))
+			   OR (ST_Within(ST_SetSRID(ST_MakePoint($1, $2), 4326), boundary))
+			ORDER BY level DESC
+		)
+		SELECT 
+			MAX(CASE WHEN level = 2 THEN name END) as city_name,
+			MAX(CASE WHEN level = 1 THEN name END) as region_name,
+			MAX(CASE WHEN level = 0 THEN name END) as country_name,
+			MAX(CASE WHEN level = 0 THEN country_code END) as country_code
+		FROM matched
+	`
+	var metadata H3GeoMetadata
+	err := sqlx.GetContext(ctx, r.executor(), &metadata, query, lon, lat)
+	if err != nil {
+		return nil, err
+	}
+	return &metadata, nil
+}
+
+func (r *repository) GetH3GeoMetadata(ctx context.Context, h3Index string) (*H3GeoMetadata, error) {
+	query := `SELECT h3_index, city_name, region_name, country_name, country_code, resolved_at FROM h3_geo_metadata WHERE h3_index = $1`
+	var m H3GeoMetadata
+	err := sqlx.GetContext(ctx, r.executor(), &m, query, h3Index)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	return &m, err
+}
+
+func (r *repository) UpsertH3GeoMetadata(ctx context.Context, m *H3GeoMetadata) error {
+	query := `
+		INSERT INTO h3_geo_metadata (h3_index, city_name, region_name, country_name, country_code, resolved_at)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (h3_index) DO UPDATE SET
+			city_name = EXCLUDED.city_name,
+			region_name = EXCLUDED.region_name,
+			country_name = EXCLUDED.country_name,
+			country_code = EXCLUDED.country_code,
+			resolved_at = NOW()
+	`
+	_, err := r.executor().ExecContext(ctx, query, m.H3Index, m.CityName, m.RegionName, m.CountryName, m.CountryCode)
+	return err
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

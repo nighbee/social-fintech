@@ -2,6 +2,7 @@ package economy
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -114,16 +115,37 @@ func (s *service) ensureUserActivated(ctx context.Context, userID string) error 
 		return WrapErrorf(err, "failed to get user activation state")
 	}
 
-	if status == "active" {
+	now := time.Now()
+	if isActivationEligible(status, restrictionsUntil, now) {
 		return nil
 	}
 
-	now := time.Now()
 	if restrictionsUntil != nil && restrictionsUntil.Valid && restrictionsUntil.Time.After(now) {
 		return NewCooldownError(now, restrictionsUntil.Time.Sub(now), 0)
 	}
 
 	return NewCooldownError(now, 24*time.Hour, 0)
+}
+
+func (s *service) isUserActivationEligible(ctx context.Context, userID string) (bool, error) {
+	status, restrictionsUntil, err := s.repo.GetUserActivationState(ctx, userID)
+	if err != nil {
+		return false, WrapErrorf(err, "failed to get user activation state")
+	}
+
+	return isActivationEligible(status, restrictionsUntil, time.Now()), nil
+}
+
+func isActivationEligible(status string, restrictionsUntil *sql.NullTime, now time.Time) bool {
+	if status != "active" {
+		return false
+	}
+
+	if restrictionsUntil != nil && restrictionsUntil.Valid && restrictionsUntil.Time.After(now) {
+		return false
+	}
+
+	return true
 }
 
 func (s *service) GetUserBalance(ctx context.Context, userID string) (*BalanceResponse, error) {
@@ -631,7 +653,24 @@ func (s *service) ProcessReferralBonus(ctx context.Context, referrerUserID, refe
 		if existing.IsActive {
 			return NewReferralExistsError()
 		}
+
+		canActivateNow, err := s.isUserActivationEligible(ctx, refereeUserID)
+		if err != nil {
+			return err
+		}
+		if !canActivateNow {
+			return nil
+		}
+
 		return s.ActivateDeferredReferral(ctx, refereeUserID)
+	}
+
+	canActivateNow, err := s.isUserActivationEligible(ctx, refereeUserID)
+	if err != nil {
+		return err
+	}
+	if !canActivateNow {
+		return s.RegisterPendingReferral(ctx, referrerUserID, refereeUserID)
 	}
 
 	err = s.executeWithRetry(ctx, func() error {
@@ -742,6 +781,14 @@ func (s *service) ActivateDeferredReferral(ctx context.Context, refereeUserID st
 		return WrapErrorf(err, "failed to fetch referral")
 	}
 	if referral.IsActive {
+		return nil
+	}
+
+	canActivateNow, err := s.isUserActivationEligible(ctx, refereeUserID)
+	if err != nil {
+		return err
+	}
+	if !canActivateNow {
 		return nil
 	}
 

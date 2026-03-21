@@ -1,8 +1,10 @@
 package feed
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -17,15 +19,20 @@ import (
 	"go.uber.org/zap"
 )
 
+type ObjectStorage interface {
+	Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+}
+
 type Handler struct {
 	service   *Service
 	worker    *InteractionWorker
 	economy   economy.Service
+	storage   ObjectStorage
 	publicURL string
 }
 
-func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, publicURL string) *Handler {
-	return &Handler{service: service, worker: worker, economy: economyService, publicURL: publicURL}
+func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, storageClient ObjectStorage, publicURL string) *Handler {
+	return &Handler{service: service, worker: worker, economy: economyService, storage: storageClient, publicURL: publicURL}
 }
 
 // UploadMedia godoc
@@ -50,31 +57,50 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "missing_file"})
 	}
 
-	// Make sure directory exists
-	// Using generic './uploads/media' or similar
-	err = os.MkdirAll("./uploads/media", os.ModePerm)
-	if err != nil {
-		logger.Error("failed to create upload directory", zap.Error(err))
-		return c.Status(500).JSON(fiber.Map{"error": "internal_error"})
-	}
-
-	filename := uuid.New().String() + filepath.Ext(file.Filename)
-	savePath := filepath.Join("./uploads/media", filename)
-
-	if err := c.SaveFile(file, savePath); err != nil {
-		logger.Error("failed to save file", zap.Error(err))
-		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
-	}
-
 	contentType := file.Header.Get("Content-Type")
 	mediaType := "image"
 	if strings.HasPrefix(contentType, "video/") {
 		mediaType = "video"
 	}
 
-	baseURL := resolvePublicBaseURL(h.publicURL, c.BaseURL())
+	filename := uuid.New().String() + filepath.Ext(file.Filename)
+	objectName := "media/" + filename
 
-	publicURL := fmt.Sprintf("%s/uploads/media/%s", baseURL, filename)
+	src, err := file.Open()
+	if err != nil {
+		logger.Error("failed to open file", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
+	}
+	defer src.Close()
+
+	if h.storage == nil {
+		// Fallback to local if storage is not configured
+		err = os.MkdirAll("./uploads/media", os.ModePerm)
+		if err != nil {
+			logger.Error("failed to create upload directory", zap.Error(err))
+			return c.Status(500).JSON(fiber.Map{"error": "internal_error"})
+		}
+
+		savePath := filepath.Join("./uploads/media", filename)
+		if err := c.SaveFile(file, savePath); err != nil {
+			logger.Error("failed to save file", zap.Error(err))
+			return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
+		}
+
+		baseURL := resolvePublicBaseURL(h.publicURL, c.BaseURL())
+		publicURL := fmt.Sprintf("%s/uploads/media/%s", baseURL, filename)
+
+		return c.Status(201).JSON(fiber.Map{
+			"url":  publicURL,
+			"type": mediaType,
+		})
+	}
+
+	publicURL, err := h.storage.Upload(c.Context(), objectName, src, file.Size, contentType)
+	if err != nil {
+		logger.Error("failed to upload to minio", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
+	}
 
 	return c.Status(201).JSON(fiber.Map{
 		"url":  publicURL,

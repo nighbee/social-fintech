@@ -188,7 +188,11 @@ func main() {
 	}
 
 	profilesRepo := profiles.NewRepository(db.DB)
-	profilesService := profiles.NewService(profilesRepo, storageClient, profilesCache)
+
+	mapRepo := mapmodule.NewRepository(db.DB)
+	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
+
+	profilesService := profiles.NewService(profilesRepo, storageClient, profilesCache, mapService)
 
 	ranksRepo := ranks.NewRepository(db.DB)
 	ranksService := ranks.NewService(ranksRepo)
@@ -196,14 +200,24 @@ func main() {
 
 	profilesHandler := profiles.NewHandler(profilesService, ranksService)
 	logger.Info("profiles module initialized")
-
-	mapRepo := mapmodule.NewRepository(db.DB)
-	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
 	mapHandler := mapmodule.NewHandler(mapService)
 	logger.Info("map module initialized")
 
 	// Feed Module Initialization
-	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
+	feedRepo := feed.NewRepositoryWithAdaptiveGeo(db.DB, cfg.Storage.PublicURL, feed.AdaptiveGeoConfig{
+		Enabled:            cfg.Feed.AdaptiveGeoEnabled,
+		MaxKRing:           cfg.Feed.MaxKRing,
+		Ring1RadiusKm:      cfg.Feed.Ring1RadiusKm,
+		Ring2RadiusKm:      cfg.Feed.Ring2RadiusKm,
+		Ring3RadiusKm:      cfg.Feed.Ring3RadiusKm,
+		MinLocalPosts24h:   cfg.Feed.MinLocalPosts24h,
+		MinLocalAuthors24h: cfg.Feed.MinLocalAuthors24h,
+		MedLocalPosts24h:   cfg.Feed.MedLocalPosts24h,
+		MedLocalAuthors24h: cfg.Feed.MedLocalAuthors24h,
+		LocalShareLow:      cfg.Feed.LocalShareLow,
+		LocalShareMedium:   cfg.Feed.LocalShareMedium,
+		LocalShareHigh:     cfg.Feed.LocalShareHigh,
+	})
 	feedCache := feed.NewCacheRepository(redisCache)
 	feedService := feed.NewService(feedRepo, feedCache, profilesRepo)
 
@@ -214,7 +228,7 @@ func main() {
 	// but for now we'll rely on the existing worker initialization for interface compliance if needed, just without .Start())
 
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
-	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, cfg.Storage.PublicURL)
+	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, cfg.Storage.PublicURL)
 	logger.Info("feed module initialized")
 
 	settingsRepo := settings.NewRepository(db.DB)

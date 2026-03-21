@@ -1,6 +1,10 @@
 package mapmodule
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // Task represents a geospatial task stored in PostGIS.
 // Reward is stored in centinels (1 seal = 100 centinels).
@@ -30,7 +34,8 @@ type Task struct {
 
 // TaskApplication represents a user2 offer to help complete a task.
 // Status lifecycle: pending → code_verified → confirmed
-//	                         └→ rejected
+//
+//	└→ rejected
 type TaskApplication struct {
 	ID              string     `db:"id"               json:"id"`
 	TaskID          string     `db:"task_id"          json:"task_id"`
@@ -98,6 +103,16 @@ type VerifyCodeResponse struct {
 	Status        string `json:"status"` // "code_verified" on success
 }
 
+// H3AdminLookupResponse returns the administrative hierarchy for a given H3 index.
+type H3AdminLookupResponse struct {
+	H3Index     string `json:"h3_index" example:"8a2830707fc1fff"`
+	CityName    string `json:"city_name" example:"Almaty"`
+	RegionName  string `json:"region_name" example:"Almaty Region"`
+	CountryName string `json:"country_name" example:"Kazakhstan"`
+	CountryCode string `json:"country_code" example:"KZ"`
+	ResolvedAt  string `json:"resolved_at" example:"2026-03-21T12:00:00Z"`
+}
+
 type ConfirmCompletionResponse struct {
 	TaskID        string  `json:"task_id"`
 	ApplicationID string  `json:"application_id"`
@@ -136,14 +151,28 @@ type RegionAssignmentResponse struct {
 }
 
 type RegionChampion struct {
-	ID         string    `db:"id"         json:"id"`
-	H3Index    string    `db:"h3_index"   json:"h3_index"`
-	Resolution int       `db:"resolution" json:"resolution"`
-	UserID     string    `db:"user_id"    json:"user_id"`
-	Score      int64     `db:"score"      json:"score"`
-	Week       int       `db:"week"       json:"week"`
-	Year       int       `db:"year"       json:"year"`
-	UpdatedAt  time.Time `db:"updated_at" json:"updated_at"`
+	ID         uuid.UUID `db:"id"          json:"id"`
+	H3Index    string    `db:"h3_index"    json:"h3_index"`
+	Resolution int       `db:"resolution"  json:"resolution"`
+	UserID     uuid.UUID `db:"user_id"     json:"user_id"`
+	Score      int64     `db:"score"       json:"score"`
+	Week       int       `db:"week"        json:"week"`
+	Year       int       `db:"year"        json:"year"`
+	UpdatedAt  time.Time `db:"updated_at"  json:"updated_at"`
+
+	// Enriched fields from geo-metadata
+	CityName    string `db:"city_name"    json:"city_name,omitempty"`
+	RegionName  string `db:"region_name"  json:"region_name,omitempty"`
+	CountryName string `db:"country_name" json:"country_name,omitempty"`
+}
+
+type H3GeoMetadata struct {
+	H3Index     string    `db:"h3_index"     json:"h3_index"`
+	CityName    string    `db:"city_name"    json:"city_name"`
+	RegionName  string    `db:"region_name"  json:"region_name"`
+	CountryName string    `db:"country_name" json:"country_name"`
+	CountryCode string    `db:"country_code" json:"country_code"`
+	ResolvedAt  time.Time `db:"resolved_at"  json:"resolved_at"`
 }
 
 type ChampionPin struct {

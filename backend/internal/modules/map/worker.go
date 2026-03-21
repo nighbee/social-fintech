@@ -21,6 +21,7 @@ type Worker struct {
 	cache       *cache.Cache
 	repo        Repository
 	economyRepo economy.Repository
+	service     *Service
 
 	mu      sync.Mutex
 	running bool
@@ -29,11 +30,12 @@ type Worker struct {
 	wg      sync.WaitGroup
 }
 
-func NewWorker(cacheClient *cache.Cache, repo Repository, economyRepo economy.Repository) *Worker {
+func NewWorker(cacheClient *cache.Cache, repo Repository, economyRepo economy.Repository, service *Service) *Worker {
 	return &Worker{
 		cache:       cacheClient,
 		repo:        repo,
 		economyRepo: economyRepo,
+		service:     service,
 	}
 }
 
@@ -117,14 +119,21 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 		}
 
 		champion := &RegionChampion{
-			ID:         uuid.NewString(),
+			ID:         uuid.MustParse(uuid.NewString()),
 			H3Index:    h3Index,
 			Resolution: resolution,
-			UserID:     userID,
+			UserID:     uuid.MustParse(userID),
 			Score:      int64(score),
 			Week:       week,
 			Year:       year,
 			UpdatedAt:  time.Now(),
+		}
+
+		// Try to resolve location names for the champion
+		if meta, err := w.service.ResolveH3ToLocation(ctx, h3Index); err == nil && meta != nil {
+			champion.CityName = meta.CityName
+			champion.RegionName = meta.RegionName
+			champion.CountryName = meta.CountryName
 		}
 
 		if err := w.repo.UpsertRegionChampion(ctx, champion); err != nil {

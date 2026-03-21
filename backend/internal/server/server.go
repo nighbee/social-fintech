@@ -245,9 +245,10 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 
 	// Legacy (deprecated) endpoint removed to enforce 2-step approval flow.
 
-	// Map / Champions
+	// Map / Champions & Geo Lookup
 	mapGroup.Post("/map/region", mapHandler.SetUserRegion)
 	mapGroup.Get("/map/champions", mapHandler.GetRegionChampions)
+	mapGroup.Get("/map/h3/:h3_index/admin", mapHandler.GetH3AdminHierarchy)
 
 	return app
 }

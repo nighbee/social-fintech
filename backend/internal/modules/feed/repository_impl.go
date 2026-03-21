@@ -33,12 +33,17 @@ func (r *repository) buildURL(u string) string {
 }
 
 type repository struct {
-	db        *sqlx.DB
-	publicURL string
+	db          *sqlx.DB
+	publicURL   string
+	adaptiveGeo AdaptiveGeoConfig
 }
 
 func NewRepository(db *sqlx.DB, publicURL string) Repository {
-	return &repository{db: db, publicURL: publicURL}
+	return NewRepositoryWithAdaptiveGeo(db, publicURL, DefaultAdaptiveGeoConfig())
+}
+
+func NewRepositoryWithAdaptiveGeo(db *sqlx.DB, publicURL string, adaptiveGeo AdaptiveGeoConfig) Repository {
+	return &repository{db: db, publicURL: publicURL, adaptiveGeo: adaptiveGeo.normalize()}
 }
 
 func (r *repository) GetFatigueState(ctx context.Context, userID uuid.UUID) (*FeedFatigueState, error) {
@@ -146,15 +151,17 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 func (r *repository) enforceAuthorPublishingPolicy(ctx context.Context, authorID uuid.UUID) error {
 	const query = `
 		SELECT
-			COUNT(1) AS post_removed_30d,
-			MAX(COALESCE(r.reviewed_at, r.created_at)) AS last_actioned_at
-		FROM reports r
-		JOIN posts p ON p.id = r.target_id
-		WHERE r.target_type = 'post'
-		  AND r.moderation_status = 'reviewed'
-		  AND r.review_decision = 'actioned'
-		  AND p.user_id = $1
-		  AND COALESCE(r.reviewed_at, r.created_at) >= NOW() - INTERVAL '30 days'
+			COUNT(1) FILTER (
+				WHERE aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+				  AND aps.created_at >= NOW() - INTERVAL '30 days'
+			) AS post_removed_30d,
+			MAX(aps.created_at) FILTER (
+				WHERE aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+				  AND aps.created_at >= NOW() - INTERVAL '30 days'
+			) AS last_actioned_at
+		FROM author_policy_strikes aps
+		WHERE aps.author_id = $1
+		  AND (aps.expires_at IS NULL OR aps.expires_at >= NOW())
 	`
 
 	var postRemoved30d int
@@ -167,14 +174,23 @@ func (r *repository) enforceAuthorPublishingPolicy(ctx context.Context, authorID
 		return nil
 	}
 
-	now := time.Now()
+	if shouldRestrictPublishing(postRemoved30d, lastStrikeAt.Time, time.Now()) {
+		return ErrPublishingRestricted
+	}
+
+	return nil
+}
+
+func shouldRestrictPublishing(postRemoved30d int, lastStrikeAt time.Time, now time.Time) bool {
 	switch {
-	case postRemoved30d >= 12 && lastStrikeAt.Time.Add(7*24*time.Hour).After(now):
-		return ErrPublishingRestricted
-	case postRemoved30d >= 8 && lastStrikeAt.Time.Add(3*24*time.Hour).After(now):
-		return ErrPublishingRestricted
+	case postRemoved30d >= 9:
+		return lastStrikeAt.Add(7 * 24 * time.Hour).After(now)
+	case postRemoved30d >= 6:
+		return lastStrikeAt.Add(3 * 24 * time.Hour).After(now)
+	case postRemoved30d >= 3:
+		return lastStrikeAt.Add(24 * time.Hour).After(now)
 	default:
-		return nil
+		return false
 	}
 }
 
@@ -504,7 +520,24 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
+			LEFT JOIN LATERAL (
+				SELECT COUNT(1) AS violations_30d
+				FROM author_policy_strikes aps
+				WHERE aps.author_id = c.user_id
+				  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+				  AND aps.created_at >= NOW() - INTERVAL '30 days'
+			) aps ON true
 			WHERE c.post_id = $1 AND c.parent_comment_id IS NULL AND c.is_deleted = false AND c.is_hidden_by_reports = false
+			  AND (
+				c.user_id = $2 OR
+				random() <= (
+					CASE
+						WHEN COALESCE(aps.violations_30d, 0) >= 5 THEN 0.4
+						WHEN COALESCE(aps.violations_30d, 0) >= 3 THEN 0.7
+						ELSE 1.0
+					END
+				)
+			  )
 			ORDER BY c.created_at DESC
 			LIMIT $3
 		`
@@ -520,7 +553,24 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
+			LEFT JOIN LATERAL (
+				SELECT COUNT(1) AS violations_30d
+				FROM author_policy_strikes aps
+				WHERE aps.author_id = c.user_id
+				  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+				  AND aps.created_at >= NOW() - INTERVAL '30 days'
+			) aps ON true
 			WHERE c.post_id = $1 AND c.parent_comment_id = $3 AND c.is_deleted = false AND c.is_hidden_by_reports = false
+			  AND (
+				c.user_id = $2 OR
+				random() <= (
+					CASE
+						WHEN COALESCE(aps.violations_30d, 0) >= 5 THEN 0.4
+						WHEN COALESCE(aps.violations_30d, 0) >= 3 THEN 0.7
+						ELSE 1.0
+					END
+				)
+			  )
 			ORDER BY c.created_at ASC
 			LIMIT $4
 		`
@@ -865,6 +915,11 @@ func (r *repository) MarkReportReputationApplied(ctx context.Context, targetType
 
 func (r *repository) CreateAuthorPolicyStrikeForTarget(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error {
 	var authorID uuid.UUID
+	strikeType, err := strikeTypeForTarget(targetType)
+	if err != nil {
+		return err
+	}
+
 	switch targetType {
 	case ReportTargetPost:
 		if err := r.db.QueryRowContext(ctx, `SELECT user_id FROM posts WHERE id = $1`, targetID).Scan(&authorID); err != nil {
@@ -874,15 +929,24 @@ func (r *repository) CreateAuthorPolicyStrikeForTarget(ctx context.Context, targ
 		if err := r.db.QueryRowContext(ctx, `SELECT user_id FROM post_comments WHERE id = $1`, targetID).Scan(&authorID); err != nil {
 			return err
 		}
-	default:
-		return ErrInvalidReportReason
 	}
 
-	_, err := r.db.ExecContext(ctx, `
+	_, err = r.db.ExecContext(ctx, `
 		INSERT INTO author_policy_strikes (author_id, report_id, strike_type, expires_at, created_at)
-		VALUES ($1, NULL, 'content_violation', $2, NOW())
-	`, authorID, expiresAt)
+		VALUES ($1, NULL, $2, $3, NOW())
+	`, authorID, strikeType, expiresAt)
 	return err
+}
+
+func strikeTypeForTarget(targetType string) (string, error) {
+	switch targetType {
+	case ReportTargetPost:
+		return "post_removed", nil
+	case ReportTargetComment:
+		return "comment_removed", nil
+	default:
+		return "", ErrInvalidReportReason
+	}
 }
 
 func (r *repository) HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error {
@@ -1154,14 +1218,21 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 		JOIN users u ON u.id = sw.user_id
 		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE le.category = $1
-		  AND le.currency = $2
-		  AND le.metadata->>'post_id' = $3
-		  AND le.created_at < $4
+		  AND le.currency IN ($2, $3)
+		  AND le.metadata->>'post_id' = $4
+		  AND le.created_at < $5
 		ORDER BY le.created_at DESC
-		LIMIT $5
+		LIMIT $6
 	`
 
-	rows, err := r.db.QueryContext(ctx, query, economy.CategoryPostSeal, economy.CurrencySilverSeal, postID.String(), cursorTime, limit)
+	rows, err := r.db.QueryContext(ctx, query,
+		economy.CategoryPostSeal,
+		economy.CurrencySilverSeal,
+		economy.CurrencyGoldSeal,
+		postID.String(),
+		cursorTime,
+		limit,
+	)
 	if err != nil {
 		return nil, "", err
 	}

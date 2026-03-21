@@ -121,7 +121,8 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				return nil, err
 			}
 		} else {
-			username, err := s.generateUniqueUsername(ctx, providerUser.Email)
+			// Initial registration via OAuth (provider name/dob might be missing)
+			username, err := s.generateUniqueUsername(ctx, "", "", nil)
 			if err != nil {
 				s.logger.Error("failed_to_generate_username", zap.Error(err))
 				return nil, err
@@ -324,7 +325,7 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		return nil, err
 	}
 
-	username, err := s.generateUniqueUsername(ctx, req.Email)
+	username, err := s.generateUniqueUsername(ctx, req.FirstName, req.LastName, &dob)
 	if err != nil {
 		s.logger.Error("failed_to_generate_username", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
@@ -675,8 +676,7 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		return nil, ErrInvalidDateOfBirth
 	}
 
-	base := "user" + v.PhoneNumber
-	username, err := s.generateUniqueUsername(ctx, base+"@phone.local")
+	username, err := s.generateUniqueUsername(ctx, req.FirstName, req.LastName, &dob)
 	if err != nil {
 		return nil, err
 	}
@@ -993,8 +993,7 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	}
 
 	// Generate username
-	base := "user" + number
-	username, err := s.generateUniqueUsername(ctx, base+"@phone.local")
+	username, err := s.generateUniqueUsername(ctx, req.FirstName, req.LastName, &dob)
 	if err != nil {
 		return nil, err
 	}
@@ -1077,12 +1076,20 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	}, nil
 }
 
-// для генерациии юзернейма универсального
-func (s *Service) generateUniqueUsername(ctx context.Context, email string) (string, error) {
-	base := strings.Split(email, "@")[0]
-	base = cleanUsername(base)
-	username := base
+// для генерациии юзернейма универсального (имя_фамилия_деньрождения)
+func (s *Service) generateUniqueUsername(ctx context.Context, firstName, lastName string, dob *time.Time) (string, error) {
+	var base string
+	if firstName != "" && lastName != "" && dob != nil {
+		base = fmt.Sprintf("%s_%s_%02d",
+			cleanUsername(firstName),
+			cleanUsername(lastName),
+			dob.Day())
+	} else {
+		// Fallback for cases where name/dob is missing (e.g. initial OAuth)
+		base = "user_" + strings.ReplaceAll(uuid.NewString()[:8], "-", "")
+	}
 
+	username := base
 	for i := 0; i < 20; i++ {
 		exists, err := s.repo.UsernameExists(ctx, username)
 		if err != nil {
@@ -1091,10 +1098,11 @@ func (s *Service) generateUniqueUsername(ctx context.Context, email string) (str
 		if !exists {
 			return username, nil
 		}
-		username = fmt.Sprintf("%s%d", base, i+1)
+		// If base exists, append a counter
+		username = fmt.Sprintf("%s_%d", base, i+1)
 	}
 
-	return "", fmt.Errorf("unable to generate username")
+	return "", fmt.Errorf("unable to generate unique username after 20 attempts")
 }
 
 // EnsureAdmins promotes the given emails to admin status

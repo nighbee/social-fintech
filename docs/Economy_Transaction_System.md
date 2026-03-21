@@ -515,6 +515,12 @@ func (s *service) TransferSeals(ctx, senderUserID, req) {
 - Trigger: When a new user signs up using a referral code
 - Limit: Each new user can only be referred once
 - Recipient: The referrer (existing user)
+- Activation gate: Bonus is credited only after referee becomes activation-eligible (`activation_status=active` and no active `restrictions_until` cooldown)
+
+**Deferred referral behavior (implemented):**
+- If referee is not activation-eligible at signup/login time, backend stores referral as pending (`is_active=false`) without minting bonus.
+- `ActivateDeferredReferral` re-checks activation eligibility; if still restricted, it exits without payout.
+- As soon as referee becomes activation-eligible, deferred referral is activated atomically and bonus ledger entry is created.
 
 **Flow** (from [service.go](backend/internal/modules/economy/service.go#L494-L561)):
 

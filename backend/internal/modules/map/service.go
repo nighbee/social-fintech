@@ -140,6 +140,11 @@ func (s *Service) CreateTask(ctx context.Context, userID string, req *CreateTask
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	// Trigger background resolution of H3 to human-readable location
+	go func() {
+		_, _ = s.ResolveH3ToLocation(context.Background(), h3Res4)
+	}()
+
 	resp := &CreateTaskResponse{
 		TaskResponse: TaskResponse{
 			ID:             task.ID,
@@ -650,6 +655,11 @@ func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionA
 		return nil, err
 	}
 
+	// Trigger background resolution of H3 to human-readable location
+	go func() {
+		_, _ = s.ResolveH3ToLocation(context.Background(), h3Res4)
+	}()
+
 	return &RegionAssignmentResponse{
 		H3Res5:              h3Res5,
 		H3Res4:              h3Res4,
@@ -658,28 +668,6 @@ func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionA
 		LocationOptIn:       true,
 		UpdatedAt:           time.Now(),
 	}, nil
-}
-
-func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, resolution, year, week int) ([]ChampionPin, error) {
-	if len(h3Indexes) == 0 {
-		return []ChampionPin{}, nil
-	}
-
-	champs, err := s.repo.GetRegionChampions(ctx, h3Indexes, resolution, year, week)
-	if err != nil {
-		return nil, err
-	}
-
-	pins := make([]ChampionPin, 0, len(champs))
-	for _, c := range champs {
-		pins = append(pins, ChampionPin{
-			H3Index:    c.H3Index,
-			Resolution: c.Resolution,
-			UserID:     c.UserID,
-			Score:      c.Score,
-		})
-	}
-	return pins, nil
 }
 
 // CompleteTask is the legacy single-actor completion path. Deprecated.
@@ -777,4 +765,65 @@ func strPtr(s string) *string {
 
 func isValidCoordinates(lat, lon float64) bool {
 	return lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180
+}
+
+func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, resolution, year, week int) ([]ChampionPin, error) {
+	if len(h3Indexes) == 0 {
+		return nil, nil
+	}
+	champs, err := s.repo.GetRegionChampions(ctx, h3Indexes, resolution, year, week)
+	if err != nil {
+		return nil, err
+	}
+
+	pins := make([]ChampionPin, 0, len(champs))
+	for _, c := range champs {
+		pins = append(pins, ChampionPin{
+			H3Index:    c.H3Index,
+			Resolution: c.Resolution,
+			UserID:     c.UserID.String(),
+			Score:      c.Score,
+		})
+	}
+	return pins, nil
+}
+
+func (s *Service) ResolveH3ToLocation(ctx context.Context, h3Index string) (*H3GeoMetadata, error) {
+	// 1. Try cache
+	metadata, err := s.repo.GetH3GeoMetadata(ctx, h3Index)
+	if err != nil {
+		return nil, err
+	}
+	if metadata != nil {
+		return metadata, nil
+	}
+
+	// 2. Resolve center point
+	lat, lon := centerOfH3(h3Index)
+
+	// 3. Spatial lookup
+	metadata, err = s.repo.GetAdministrativeHierarchy(ctx, lat, lon)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata.H3Index = h3Index
+
+	// 4. Update cache
+	if err := s.repo.UpsertH3GeoMetadata(ctx, metadata); err != nil {
+		return nil, err
+	}
+
+	return metadata, nil
+}
+
+func centerOfH3(h3Index string) (float64, float64) {
+	// h3 library: Cell is a uint64 type
+	// Parse hex string to uint64, then convert to Cell type
+	var cellUint uint64
+	fmt.Sscanf(h3Index, "%x", &cellUint)
+	cell := h3.Cell(cellUint)
+
+	latLng := h3.CellToLatLng(cell)
+	return latLng.Lat, latLng.Lng
 }

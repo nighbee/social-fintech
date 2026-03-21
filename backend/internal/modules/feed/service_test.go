@@ -27,6 +27,10 @@ type testRepo struct {
 	incrementImpressions    func(ctx context.Context, postIDs []uuid.UUID) error
 	hideTargetByReportsFn   func(ctx context.Context, targetType string, targetID uuid.UUID) error
 	hidePostForReporterFn   func(ctx context.Context, reporterID, postID uuid.UUID) error
+	markReportsReviewedFn   func(ctx context.Context, targetType string, targetID uuid.UUID, decision string) ([]uuid.UUID, error)
+	applyReputationDeltaFn  func(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error
+	markReputationAppliedFn func(ctx context.Context, targetType string, targetID uuid.UUID) error
+	createPolicyStrikeFn    func(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error
 
 	batchFlushLikesFn    func(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 	batchFlushSealsFn    func(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
@@ -183,18 +187,30 @@ func (r *testRepo) IncrementPostImpressions(ctx context.Context, postIDs []uuid.
 }
 
 func (r *testRepo) MarkReportsReviewed(ctx context.Context, targetType string, targetID uuid.UUID, decision string) ([]uuid.UUID, error) {
+	if r.markReportsReviewedFn != nil {
+		return r.markReportsReviewedFn(ctx, targetType, targetID, decision)
+	}
 	return nil, nil
 }
 
 func (r *testRepo) ApplyReporterReputationDelta(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error {
+	if r.applyReputationDeltaFn != nil {
+		return r.applyReputationDeltaFn(ctx, reporterIDs, accepted)
+	}
 	return nil
 }
 
 func (r *testRepo) MarkReportReputationApplied(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	if r.markReputationAppliedFn != nil {
+		return r.markReputationAppliedFn(ctx, targetType, targetID)
+	}
 	return nil
 }
 
 func (r *testRepo) CreateAuthorPolicyStrikeForTarget(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error {
+	if r.createPolicyStrikeFn != nil {
+		return r.createPolicyStrikeFn(ctx, targetType, targetID, expiresAt)
+	}
 	return nil
 }
 
@@ -897,5 +913,143 @@ func TestReportPost_AppliesPolicyForPostReports(t *testing.T) {
 	}
 	if !applied {
 		t.Fatal("expected post report policy to be applied")
+	}
+}
+
+func TestReviewReports_AcceptedAliasBehavesAsActioned(t *testing.T) {
+	targetID := uuid.New()
+	reporterID := uuid.New()
+
+	hideCalled := false
+	setControlCalled := false
+	markedReviewed := false
+	markedReputationApplied := false
+	strikeCalled := false
+	reputationAccepted := false
+
+	repo := &testRepo{
+		hideTargetByReportsFn: func(ctx context.Context, targetType string, gotTargetID uuid.UUID) error {
+			hideCalled = true
+			if targetType != ReportTargetPost || gotTargetID != targetID {
+				t.Fatalf("unexpected hide args: %s %s", targetType, gotTargetID)
+			}
+			return nil
+		},
+		setPostReportControl: func(ctx context.Context, gotPostID uuid.UUID, level int, distributionMultiplier float64) error {
+			setControlCalled = true
+			if gotPostID != targetID {
+				t.Fatalf("unexpected post id: %s", gotPostID)
+			}
+			if level != 4 || distributionMultiplier != 0.0 {
+				t.Fatalf("expected hard hide control level 4 with 0 multiplier, got level=%d multiplier=%v", level, distributionMultiplier)
+			}
+			return nil
+		},
+		markReportsReviewedFn: func(ctx context.Context, targetType string, gotTargetID uuid.UUID, decision string) ([]uuid.UUID, error) {
+			markedReviewed = true
+			if targetType != ReportTargetPost || gotTargetID != targetID {
+				t.Fatalf("unexpected reviewed args: %s %s", targetType, gotTargetID)
+			}
+			if decision != ReportDecisionActioned {
+				t.Fatalf("expected decision to be normalized to actioned, got %q", decision)
+			}
+			return []uuid.UUID{reporterID}, nil
+		},
+		applyReputationDeltaFn: func(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error {
+			reputationAccepted = accepted
+			if len(reporterIDs) != 1 || reporterIDs[0] != reporterID {
+				t.Fatalf("unexpected reporter ids: %+v", reporterIDs)
+			}
+			return nil
+		},
+		markReputationAppliedFn: func(ctx context.Context, targetType string, gotTargetID uuid.UUID) error {
+			markedReputationApplied = true
+			if targetType != ReportTargetPost || gotTargetID != targetID {
+				t.Fatalf("unexpected reputation apply args: %s %s", targetType, gotTargetID)
+			}
+			return nil
+		},
+		createPolicyStrikeFn: func(ctx context.Context, targetType string, gotTargetID uuid.UUID, expiresAt time.Time) error {
+			strikeCalled = true
+			if targetType != ReportTargetPost || gotTargetID != targetID {
+				t.Fatalf("unexpected strike args: %s %s", targetType, gotTargetID)
+			}
+			if expiresAt.Before(time.Now().Add(29*24*time.Hour)) || expiresAt.After(time.Now().Add(31*24*time.Hour)) {
+				t.Fatalf("unexpected strike expiration: %s", expiresAt)
+			}
+			return nil
+		},
+	}
+
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if err := svc.ReviewReports(context.Background(), ReportTargetPost, targetID, ReportDecisionAccepted); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !hideCalled {
+		t.Fatal("expected hide target to be called for accepted alias")
+	}
+	if !setControlCalled {
+		t.Fatal("expected post report control update for accepted alias")
+	}
+	if !markedReviewed {
+		t.Fatal("expected reports to be marked reviewed")
+	}
+	if !markedReputationApplied {
+		t.Fatal("expected report reputation to be marked applied")
+	}
+	if !reputationAccepted {
+		t.Fatal("expected reporter reputation positive delta for actioned outcome")
+	}
+	if !strikeCalled {
+		t.Fatal("expected author policy strike for actioned outcome")
+	}
+}
+
+func TestNormalizeReportDecision(t *testing.T) {
+	if got := normalizeReportDecision(ReportDecisionAccepted); got != ReportDecisionActioned {
+		t.Fatalf("expected accepted to normalize to actioned, got %q", got)
+	}
+	if got := normalizeReportDecision("  ACCEPTED  "); got != ReportDecisionActioned {
+		t.Fatalf("expected uppercase accepted to normalize to actioned, got %q", got)
+	}
+	if got := normalizeReportDecision(ReportDecisionRejected); got != ReportDecisionRejected {
+		t.Fatalf("expected rejected to stay unchanged, got %q", got)
+	}
+}
+
+func TestNormalizeReportTargetType(t *testing.T) {
+	if got := normalizeReportTargetType("  POST  "); got != ReportTargetPost {
+		t.Fatalf("expected POST to normalize to %q, got %q", ReportTargetPost, got)
+	}
+	if got := normalizeReportTargetType("  CoMmEnT  "); got != ReportTargetComment {
+		t.Fatalf("expected CoMmEnT to normalize to %q, got %q", ReportTargetComment, got)
+	}
+}
+
+func TestReviewReports_NormalizesUppercaseTargetAndDecision(t *testing.T) {
+	targetID := uuid.New()
+	called := false
+
+	repo := &testRepo{
+		hideTargetByReportsFn: func(ctx context.Context, targetType string, gotTargetID uuid.UUID) error {
+			called = true
+			if targetType != ReportTargetPost || gotTargetID != targetID {
+				t.Fatalf("unexpected args after normalization: %s %s", targetType, gotTargetID)
+			}
+			return nil
+		},
+		setPostReportControl: func(ctx context.Context, gotPostID uuid.UUID, level int, distributionMultiplier float64) error {
+			return nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	if err := svc.ReviewReports(context.Background(), "  POST  ", targetID, "  ACCEPTED  "); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !called {
+		t.Fatal("expected normalized review flow to execute")
 	}
 }

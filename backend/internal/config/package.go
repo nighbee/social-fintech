@@ -15,6 +15,7 @@ type Config struct {
 	Database   DatabaseConfig   `yaml:"database"`
 	Redis      RedisConfig      `yaml:"redis"`
 	Cache      CacheConfig      `yaml:"cache"`
+	Feed       FeedConfig       `yaml:"feed"`
 	Logging    LoggingConfig    `yaml:"logging"`
 	JWT        JWTConfig        `yaml:"jwt"`
 	CORS       CORSConfig       `yaml:"cors"`
@@ -70,6 +71,21 @@ type EconomyConfig struct {
 	SealCooldownLevel5Days  int     `yaml:"seal_cooldown_level5_days"`
 	SealDecayThreshold1Days int     `yaml:"seal_decay_threshold1_days"`
 	SealDecayThreshold2Days int     `yaml:"seal_decay_threshold2_days"`
+}
+
+type FeedConfig struct {
+	AdaptiveGeoEnabled bool    `yaml:"adaptive_geo_enabled"`
+	MaxKRing           int     `yaml:"max_k_ring"`
+	Ring1RadiusKm      float64 `yaml:"ring1_radius_km"`
+	Ring2RadiusKm      float64 `yaml:"ring2_radius_km"`
+	Ring3RadiusKm      float64 `yaml:"ring3_radius_km"`
+	MinLocalPosts24h   int     `yaml:"min_local_posts_24h"`
+	MinLocalAuthors24h int     `yaml:"min_local_authors_24h"`
+	MedLocalPosts24h   int     `yaml:"med_local_posts_24h"`
+	MedLocalAuthors24h int     `yaml:"med_local_authors_24h"`
+	LocalShareLow      float64 `yaml:"local_share_low"`
+	LocalShareMedium   float64 `yaml:"local_share_medium"`
+	LocalShareHigh     float64 `yaml:"local_share_high"`
 }
 
 type OAuthConfig struct {
@@ -378,6 +394,43 @@ func overrideFromEnv(cfg *Config) {
 	// Cache defaults
 	if cfg.Cache.ProfileStatsTTL == 0 {
 		cfg.Cache.ProfileStatsTTL = 5 * time.Minute
+	}
+
+	if !cfg.Feed.AdaptiveGeoEnabled {
+		cfg.Feed.AdaptiveGeoEnabled = true
+	}
+	if cfg.Feed.MaxKRing == 0 {
+		cfg.Feed.MaxKRing = 3
+	}
+	if cfg.Feed.Ring1RadiusKm == 0 {
+		cfg.Feed.Ring1RadiusKm = 5.0
+	}
+	if cfg.Feed.Ring2RadiusKm == 0 {
+		cfg.Feed.Ring2RadiusKm = 10.0
+	}
+	if cfg.Feed.Ring3RadiusKm == 0 {
+		cfg.Feed.Ring3RadiusKm = 18.0
+	}
+	if cfg.Feed.MinLocalPosts24h == 0 {
+		cfg.Feed.MinLocalPosts24h = 30
+	}
+	if cfg.Feed.MinLocalAuthors24h == 0 {
+		cfg.Feed.MinLocalAuthors24h = 15
+	}
+	if cfg.Feed.MedLocalPosts24h == 0 {
+		cfg.Feed.MedLocalPosts24h = 15
+	}
+	if cfg.Feed.MedLocalAuthors24h == 0 {
+		cfg.Feed.MedLocalAuthors24h = 8
+	}
+	if cfg.Feed.LocalShareLow == 0 {
+		cfg.Feed.LocalShareLow = 0.30
+	}
+	if cfg.Feed.LocalShareMedium == 0 {
+		cfg.Feed.LocalShareMedium = 0.50
+	}
+	if cfg.Feed.LocalShareHigh == 0 {
+		cfg.Feed.LocalShareHigh = 0.70
 	}
 
 	if cfg.Moderation.MinActivationViews == 0 {

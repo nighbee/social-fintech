@@ -18,7 +18,7 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 	interactionWorker.Start()
 
 	// Initialize layers
-	handler := NewHandler(service, interactionWorker, economyService, publicURL)
+	handler := NewHandler(service, interactionWorker, economyService, nil, publicURL)
 
 	// API Grouping
 	api := app.Group("/api/v1/feed", authMiddleware)

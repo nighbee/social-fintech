@@ -338,11 +338,13 @@ func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID s
 
 	var status string
 	var restrictionsUntil sql.NullTime
+	var createdAt time.Time
+	var phoneNumber sql.NullString
 	if err := r.db.QueryRowContext(ctx, `
-		SELECT activation_status, restrictions_until
+		SELECT activation_status, restrictions_until, created_at, phone_number
 		FROM users
 		WHERE id = $1
-	`, userID).Scan(&status, &restrictionsUntil); err != nil {
+	`, userID).Scan(&status, &restrictionsUntil, &createdAt, &phoneNumber); err != nil {
 		return "", false, err
 	}
 
@@ -355,15 +357,18 @@ func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID s
 
 	var distinctDays int
 	var loginEvents int
+	var meaningfulActions int
 	if err := r.db.QueryRowContext(ctx, `
-		SELECT distinct_login_days, login_events_count
+		SELECT distinct_login_days, login_events_count, meaningful_actions_count
 		FROM user_activation_activity
 		WHERE user_id = $1
-	`, userID).Scan(&distinctDays, &loginEvents); err != nil {
+	`, userID).Scan(&distinctDays, &loginEvents, &meaningfulActions); err != nil {
 		return "", false, err
 	}
 
-	if distinctDays >= 2 && loginEvents >= 3 {
+	ageHours := now.Sub(createdAt).Hours()
+
+	if distinctDays >= 3 && loginEvents >= 3 && ageHours >= 72 && phoneNumber.Valid && phoneNumber.String != "" && meaningfulActions >= 5 {
 		if _, err := r.db.ExecContext(ctx, `
 			UPDATE users
 			SET activation_status = 'active',

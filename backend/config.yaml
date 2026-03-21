@@ -26,6 +26,20 @@ cache:
   profile_stats_ttl: 5m  # How long to cache profile statistics
   enabled: true          # Feature flag to enable/disable caching
 
+feed:
+  adaptive_geo_enabled: true
+  max_k_ring: 3
+  ring1_radius_km: 5.0
+  ring2_radius_km: 10.0
+  ring3_radius_km: 18.0
+  min_local_posts_24h: 30
+  min_local_authors_24h: 15
+  med_local_posts_24h: 15
+  med_local_authors_24h: 8
+  local_share_low: 0.30
+  local_share_medium: 0.50
+  local_share_high: 0.70
+
 logging:
   level: debug
   encoding: json

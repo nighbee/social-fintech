@@ -8,19 +8,26 @@ import (
 	"strings"
 	"time"
 
+	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/google/uuid"
+	h3 "github.com/uber/h3-go/v4"
 )
 
 type ObjectStorage interface {
 	Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
 }
 
+type MapService interface {
+	ResolveH3ToLocation(ctx context.Context, h3Index string) (*mapmodule.H3GeoMetadata, error)
+}
+
 type Service struct {
 	repo       *Repository
 	storage    ObjectStorage
 	geolocator geolocation.Service
+	mapService MapService
 	cache      StatsCache // Optional cache for profile statistics
 }
 
@@ -34,11 +41,12 @@ type LocationInput struct {
 
 const maxAvatarSizeBytes = 5 * 1024 * 1024 // 5MB
 
-func NewService(repo *Repository, storage ObjectStorage, cache StatsCache) *Service {
+func NewService(repo *Repository, storage ObjectStorage, cache StatsCache, mapService MapService) *Service {
 	return &Service{
 		repo:       repo,
 		storage:    storage,
 		geolocator: geolocation.NewIPAPIClient(),
+		mapService: mapService,
 		cache:      cache,
 	}
 }
@@ -63,13 +71,13 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 		}
 	}
 
-	// Auto-populate location if not provided and IP is available
+	// Resolve location from client IP if not provided
 	if req.ClientIP != "" && req.Country == nil && req.City == nil {
+		// 2. Fall back to IP-based location if coordinates are missing
 		if loc, err := s.geolocator.GetLocationByIP(ctx, req.ClientIP); err == nil {
 			req.Country = &loc.Country
 			req.City = &loc.City
 		}
-		// Silently ignore geolocation errors - user can still update other fields
 	}
 
 	p, err := s.repo.UpdateProfile(ctx, userID, req)
@@ -78,6 +86,12 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 	}
 	p.RankTier = ranks.GetRankTierString(p.ReputationScore)
 	return p, nil
+}
+
+func computeH3Res4(lat, lon float64) string {
+	latLng := h3.LatLng{Lat: lat, Lng: lon}
+	cell := h3.LatLngToCell(latLng, 4)
+	return cell.String()
 }
 
 func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*PublicProfileResponse, error) {

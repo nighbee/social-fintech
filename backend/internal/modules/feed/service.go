@@ -648,13 +648,15 @@ func (s *Service) applyPostReportPolicy(ctx context.Context, postID uuid.UUID, r
 }
 
 func (s *Service) finalizeAutoModerationOutcome(ctx context.Context, targetType string, targetID uuid.UUID, decision string) error {
+	decision = normalizeReportDecision(decision)
+
 	reporterIDs, err := s.repo.MarkReportsReviewed(ctx, targetType, targetID, decision)
 	if err != nil {
 		return err
 	}
 
 	if len(reporterIDs) > 0 {
-		if err := s.repo.ApplyReporterReputationDelta(ctx, reporterIDs, decision == ReportDecisionAccepted || decision == ReportDecisionActioned); err != nil {
+		if err := s.repo.ApplyReporterReputationDelta(ctx, reporterIDs, decision == ReportDecisionActioned); err != nil {
 			return err
 		}
 	}
@@ -670,6 +672,18 @@ func (s *Service) finalizeAutoModerationOutcome(ctx context.Context, targetType 
 	return nil
 }
 
+func normalizeReportDecision(decision string) string {
+	decision = strings.ToLower(strings.TrimSpace(decision))
+	if decision == ReportDecisionAccepted {
+		return ReportDecisionActioned
+	}
+	return decision
+}
+
+func normalizeReportTargetType(targetType string) string {
+	return strings.ToLower(strings.TrimSpace(targetType))
+}
+
 func (s *Service) ReportComment(ctx context.Context, reporterID, commentID uuid.UUID, reason, description string) error {
 	return s.reportTarget(ctx, reporterID, ReportTargetComment, commentID, reason, description)
 }
@@ -683,14 +697,14 @@ func (s *Service) IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, erro
 }
 
 func (s *Service) ReviewReports(ctx context.Context, targetType string, targetID uuid.UUID, decision string) error {
-	targetType = strings.TrimSpace(targetType)
-	decision = strings.TrimSpace(decision)
+	targetType = normalizeReportTargetType(targetType)
+	decision = normalizeReportDecision(decision)
 
 	if targetType != ReportTargetPost && targetType != ReportTargetComment {
 		return ErrInvalidReportTargetType
 	}
 
-	if decision != ReportDecisionAccepted && decision != ReportDecisionRejected && decision != ReportDecisionActioned {
+	if decision != ReportDecisionRejected && decision != ReportDecisionActioned {
 		return ErrInvalidReportDecision
 	}
 
