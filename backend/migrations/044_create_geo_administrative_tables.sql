@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS administrative_boundaries (
     parent_id UUID REFERENCES administrative_boundaries(id),
     boundary GEOMETRY(Polygon, 4326) NOT NULL,
     country_code VARCHAR(10),
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_boundaries_geom ON administrative_boundaries USING GIST (boundary);

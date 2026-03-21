@@ -5,8 +5,6 @@
 
 -- Note: Polygons are simplified examples. Real data requires proper GIS import.
 
-BEGIN;
-
 -- Insert countries (level 0)
 INSERT INTO administrative_boundaries (name, level, country_code, boundary, parent_id, created_at, updated_at)
 VALUES (
@@ -140,12 +138,3 @@ CREATE INDEX IF NOT EXISTS idx_admin_boundaries_level
 
 CREATE INDEX IF NOT EXISTS idx_admin_boundaries_country_code
   ON administrative_boundaries(country_code);
-
-COMMIT;
-
--- Note for production deployment:
--- This seed data uses simplified polygons. For robust deployment:
--- 1. Import OSM data: https://osmdata.openstreetmap.de/
--- 2. Use proper administrative boundary shapefiles
--- 3. Validate >50% overlap rule with real-world data
--- 4. Test boundary queries against actual H3 cells in each region
