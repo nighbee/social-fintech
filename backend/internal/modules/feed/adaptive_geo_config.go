@@ -3,6 +3,10 @@ package feed
 const (
 	feedGeoMaxKRing = 3
 
+	// Default distances mapped approximately to H3 grid expansions
+	// kRing=1 ≈ 5.0 km (Local neighborhood)
+	// kRing=2 ≈ 10.0 km (City district)
+	// kRing=3 ≈ 18.0 km (Full city boundaries)
 	feedGeoRing1RadiusKm = 5.0
 	feedGeoRing2RadiusKm = 10.0
 	feedGeoRing3RadiusKm = 18.0

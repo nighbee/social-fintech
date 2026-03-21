@@ -272,21 +272,9 @@ func blendSmartFeedCandidatesWithShare(alliesLocal, world []PostResponse, limit 
 	}
 
 	blended := make([]PostResponse, 0, limit)
-	aIdx := 0
-	wIdx := 0
-	deferredAllies := make([]PostResponse, 0)
-	deferredWorld := make([]PostResponse, 0)
 	authorCounts := make(map[uuid.UUID]int)
-	const maxPostsPerAuthorPreferred = 2
-
-	appendWithCap := func(item PostResponse, enforceCap bool, deferred *[]PostResponse) {
-		if enforceCap && authorCounts[item.Author.ID] >= maxPostsPerAuthorPreferred {
-			*deferred = append(*deferred, item)
-			return
-		}
-		blended = append(blended, item)
-		authorCounts[item.Author.ID]++
-	}
+	seenPostIDs := make(map[uuid.UUID]bool)
+	const maxPostsPerAuthor = 2
 
 	if localShare < 0 {
 		localShare = 0
@@ -308,30 +296,60 @@ func blendSmartFeedCandidatesWithShare(alliesLocal, world []PostResponse, limit 
 		alliesQuota = limit - worldQuota
 	}
 
-	for aIdx < len(alliesLocal) && len(blended) < alliesQuota {
-		appendWithCap(alliesLocal[aIdx], true, &deferredAllies)
+	tryAppend := func(item PostResponse) bool {
+		if seenPostIDs[item.PostID] {
+			return false
+		}
+		if authorCounts[item.Author.ID] >= maxPostsPerAuthor {
+			return false
+		}
+		blended = append(blended, item)
+		seenPostIDs[item.PostID] = true
+		authorCounts[item.Author.ID]++
+		return true
+	}
+
+	aIdx := 0
+	wIdx := 0
+	alliesAdded := 0
+	worldAdded := 0
+
+	// Phase 1: Try to hit quotas
+	for alliesAdded < alliesQuota && aIdx < len(alliesLocal) {
+		if tryAppend(alliesLocal[aIdx]) {
+			alliesAdded++
+		}
 		aIdx++
 	}
 
-	for wIdx < len(world) && len(blended) < alliesQuota+worldQuota {
-		appendWithCap(world[wIdx], true, &deferredWorld)
+	for worldAdded < worldQuota && wIdx < len(world) {
+		if tryAppend(world[wIdx]) {
+			worldAdded++
+		}
 		wIdx++
 	}
 
-	for len(blended) < limit && aIdx < len(alliesLocal) {
-		appendWithCap(alliesLocal[aIdx], true, &deferredAllies)
-		aIdx++
-	}
-	for len(blended) < limit && wIdx < len(world) {
-		appendWithCap(world[wIdx], true, &deferredWorld)
-		wIdx++
-	}
-
-	for i := 0; i < len(deferredAllies) && len(blended) < limit; i++ {
-		appendWithCap(deferredAllies[i], false, nil)
-	}
-	for i := 0; i < len(deferredWorld) && len(blended) < limit; i++ {
-		appendWithCap(deferredWorld[i], false, nil)
+	// Phase 2: Fill remaining limit from whatever is left, respecting author caps
+	for len(blended) < limit && (aIdx < len(alliesLocal) || wIdx < len(world)) {
+		addedInLoop := false
+		
+		if aIdx < len(alliesLocal) {
+			if tryAppend(alliesLocal[aIdx]) {
+				addedInLoop = true
+			}
+			aIdx++
+		}
+		
+		if len(blended) < limit && wIdx < len(world) {
+			if tryAppend(world[wIdx]) {
+				addedInLoop = true
+			}
+			wIdx++
+		}
+		
+		if !addedInLoop && aIdx >= len(alliesLocal) && wIdx >= len(world) {
+			break
+		}
 	}
 
 	return blended
@@ -463,12 +481,20 @@ func (r *repository) BatchFlushLikes(ctx context.Context, postID uuid.UUID, user
 }
 
 // BatchFlushSeals handles the post denormalization. The actual Economy Ledger happened previously inline.
+// Made idempotent to prevent double increments under concurrency/retry scenarios.
 func (r *repository) BatchFlushSeals(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error {
-	if count == 0 {
-		return nil
-	}
-
-	query := `UPDATE posts SET seals_count = seals_count + $1, seals_amount = seals_amount + $2 WHERE id = $3`
-	_, err := r.db.ExecContext(ctx, query, count, totalAmount, postID)
+	query := `
+		UPDATE posts 
+		SET seals_count = (
+				SELECT COUNT(1) FROM ledger_entries 
+				WHERE category = 'POST_SEAL' AND metadata->>'post_id' = $1
+			),
+		    seals_amount = (
+				SELECT COALESCE(SUM(amount), 0) FROM ledger_entries 
+				WHERE category = 'POST_SEAL' AND metadata->>'post_id' = $1
+			)
+		WHERE id = $2
+	`
+	_, err := r.db.ExecContext(ctx, query, postID.String(), postID)
 	return err
 }

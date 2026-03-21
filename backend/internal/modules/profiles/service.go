@@ -12,7 +12,6 @@ import (
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/google/uuid"
-	h3 "github.com/uber/h3-go/v4"
 )
 
 type ObjectStorage interface {
@@ -86,12 +85,6 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 	}
 	p.RankTier = ranks.GetRankTierString(p.ReputationScore)
 	return p, nil
-}
-
-func computeH3Res4(lat, lon float64) string {
-	latLng := h3.LatLng{Lat: lat, Lng: lon}
-	cell := h3.LatLngToCell(latLng, 4)
-	return cell.String()
 }
 
 func (s *Service) GetPublicProfile(ctx context.Context, targetUserID string) (*PublicProfileResponse, error) {

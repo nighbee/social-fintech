@@ -368,7 +368,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		  AND p.user_id <> $2
 		-- If cursor is provided: AND p.created_at < $cursor
 		-- If ALLIES_ONLY: AND (p.visibility = 'ANYONE' OR EXISTS (SELECT 1 FROM user_relationships WHERE user_id=$viewer_id AND ally_id=p.user_id))
-		ORDER BY p.created_at DESC
+		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT $1
 	`
 	// Note: Fully fledged query elided for brevity. Assuming simple fetch for MVP blueprint
@@ -538,7 +538,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 					END
 				)
 			  )
-			ORDER BY c.created_at DESC
+			ORDER BY c.created_at DESC, c.id DESC
 			LIMIT $3
 		`
 		args = []interface{}{postID, viewerID, limit}
@@ -571,7 +571,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 					END
 				)
 			  )
-			ORDER BY c.created_at ASC
+			ORDER BY c.created_at ASC, c.id ASC
 			LIMIT $4
 		`
 		args = []interface{}{postID, viewerID, *parentID, limit}

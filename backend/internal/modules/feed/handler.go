@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/url"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -74,26 +73,8 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 	defer src.Close()
 
 	if h.storage == nil {
-		// Fallback to local if storage is not configured
-		err = os.MkdirAll("./uploads/media", os.ModePerm)
-		if err != nil {
-			logger.Error("failed to create upload directory", zap.Error(err))
-			return c.Status(500).JSON(fiber.Map{"error": "internal_error"})
-		}
-
-		savePath := filepath.Join("./uploads/media", filename)
-		if err := c.SaveFile(file, savePath); err != nil {
-			logger.Error("failed to save file", zap.Error(err))
-			return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
-		}
-
-		baseURL := resolvePublicBaseURL(h.publicURL, c.BaseURL())
-		publicURL := fmt.Sprintf("%s/uploads/media/%s", baseURL, filename)
-
-		return c.Status(201).JSON(fiber.Map{
-			"url":  publicURL,
-			"type": mediaType,
-		})
+		logger.Error("object storage not configured")
+		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
 	}
 
 	publicURL, err := h.storage.Upload(c.Context(), objectName, src, file.Size, contentType)

@@ -82,11 +82,7 @@ func TestCenterOfH3(t *testing.T) {
 func TestH3AdminLookupResponse(t *testing.T) {
 	resp := &H3AdminLookupResponse{
 		H3Index:     "8a2a100704d7fff",
-		CityName:    "Almaty",
-		RegionName:  "Almaty Region",
-		CountryName: "Kazakhstan",
 		CountryCode: "KZ",
-		ResolvedAt:  "2026-03-21T12:00:00Z",
 	}
 
 	if resp.H3Index == "" {
@@ -148,10 +144,6 @@ func TestTaskH3Assignment(t *testing.T) {
 
 	// Simulate task creation
 	task := &Task{
-		ID:        "test-task-1",
-		Title:     "Test Task",
-		Latitude:  lat,
-		Longitude: lon,
 		H3Res5:    &res5,
 		H3Res4:    &res4,
 		H3Res2:    &res2,
