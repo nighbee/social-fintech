@@ -102,6 +102,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	adminGroup.Post("/adjust", economyHandler.AdminAdjustBalance)
 	adminGroup.Get("/violations", economyHandler.GetViolationLogs)
 
+	// Public profiles routes
+	api.Get("/profiles/ranks", profilesHandler.GetAllRanks)
+
 	// Profiles routes
 	profilesGroup := api.Group("/profiles")
 	profilesGroup.Use(middleware.RequireAuth(jwt, authRepo))
@@ -134,7 +137,6 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Post("/:user_id/report", profilesHandler.ReportUser)
 
 	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank)
-	api.Get("/profiles/ranks", profilesHandler.GetAllRanks)
 
 	// Feed & Interactions (Note: Feed router actually manages its own sub-routing in routes.go
 	// but for consistency we can call a Feed register wrapper here or just inject the handler)

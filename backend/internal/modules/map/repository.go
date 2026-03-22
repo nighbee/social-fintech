@@ -591,10 +591,10 @@ func (r *repository) GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT
 			WHERE overlap_ratio >= 0.5
 		)
 		SELECT
-			MAX(CASE WHEN level = 2 AND rn = 1 THEN name END) AS city_name,
-			MAX(CASE WHEN level = 1 AND rn = 1 THEN name END) AS region_name,
-			MAX(CASE WHEN level = 0 AND rn = 1 THEN name END) AS country_name,
-			MAX(CASE WHEN level = 0 AND rn = 1 THEN country_code END) AS country_code
+			COALESCE(MAX(CASE WHEN level = 2 AND rn = 1 THEN name END), '') AS city_name,
+			COALESCE(MAX(CASE WHEN level = 1 AND rn = 1 THEN name END), '') AS region_name,
+			COALESCE(MAX(CASE WHEN level = 0 AND rn = 1 THEN name END), '') AS country_name,
+			COALESCE(MAX(CASE WHEN level = 0 AND rn = 1 THEN country_code END), '') AS country_code
 		FROM ranked
 	`
 

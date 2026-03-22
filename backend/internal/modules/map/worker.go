@@ -91,7 +91,7 @@ func (w *Worker) Stop() {
 func (w *Worker) snapshotChampions(ctx context.Context) {
 	w.snapshotByPattern(ctx, "leaderboard:arena:*:week:*:*", 5)
 	w.snapshotByPattern(ctx, "leaderboard:city:*:week:*:*", 4)
-	w.snapshotByPattern(ctx, "leaderboard:global:week:*:*", 0)
+	w.snapshotGlobalGoldChampion(ctx)
 }
 
 func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resolution int) {
@@ -145,6 +145,34 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 				zap.Error(err),
 			)
 		}
+	}
+}
+
+func (w *Worker) snapshotGlobalGoldChampion(ctx context.Context) {
+	year, week := time.Now().ISOWeek()
+	userID, score, err := w.economyRepo.GetTopGoldUserForWeek(ctx, year, week)
+	if err != nil {
+		logger.Warn("failed to fetch global gold champion", zap.Int("year", year), zap.Int("week", week), zap.Error(err))
+		return
+	}
+	if userID == "" {
+		return
+	}
+
+	champion := &RegionChampion{
+		ID:          uuid.MustParse(uuid.NewString()),
+		H3Index:     "global",
+		Resolution:  0,
+		UserID:      uuid.MustParse(userID),
+		Score:       score,
+		Week:        week,
+		Year:        year,
+		CountryName: "Global",
+		UpdatedAt:   time.Now(),
+	}
+
+	if err := w.repo.UpsertRegionChampion(ctx, champion); err != nil {
+		logger.Warn("failed to upsert global gold champion", zap.Int("year", year), zap.Int("week", week), zap.Error(err))
 	}
 }
 

@@ -40,6 +40,9 @@ type Repository interface {
 
 	GetPairCooldown(ctx context.Context, senderID, receiverID string) (*PairCooldown, error)
 	UpsertPairCooldown(ctx context.Context, cooldown *PairCooldown) error
+	UpsertGoldPeriodStat(ctx context.Context, userID string, periodYear, periodWeek int, amount int64) error
+	GetTopGoldUserForWeek(ctx context.Context, periodYear, periodWeek int) (string, int64, error)
+	UpsertProfileSealProjection(ctx context.Context, senderID, receiverID string, sealsDelta int64, receiverGoldBalanceCentinels int64, receiverRankTier string) error
 }
 
 type repository struct {
@@ -300,6 +303,81 @@ func (r *repository) GetLedgerEntryByReferenceID(ctx context.Context, referenceI
 	}
 
 	return &entry, nil
+}
+
+func (r *repository) UpsertGoldPeriodStat(ctx context.Context, userID string, periodYear, periodWeek int, amount int64) error {
+	query := `
+		INSERT INTO gold_reputation_period_stats (
+			user_id, period_type, period_year, period_week, gold_received_centinels, computed_at
+		) VALUES ($1, 'weekly', $2, $3, $4, NOW())
+		ON CONFLICT (user_id, period_type, period_year, period_week)
+		DO UPDATE SET
+			gold_received_centinels = gold_reputation_period_stats.gold_received_centinels + EXCLUDED.gold_received_centinels,
+			computed_at = NOW()
+	`
+
+	if _, err := r.getExecutor().ExecContext(ctx, query, userID, periodYear, periodWeek, amount); err != nil {
+		return fmt.Errorf("failed to upsert gold period stat: %w", err)
+	}
+
+	return nil
+}
+
+func (r *repository) GetTopGoldUserForWeek(ctx context.Context, periodYear, periodWeek int) (string, int64, error) {
+	query := `
+		SELECT user_id::text, gold_received_centinels
+		FROM gold_reputation_period_stats
+		WHERE period_type = 'weekly'
+		  AND period_year = $1
+		  AND period_week = $2
+		ORDER BY gold_received_centinels DESC
+		LIMIT 1
+	`
+
+	var userID string
+	var amount int64
+	if err := r.getExecutor().QueryRowxContext(ctx, query, periodYear, periodWeek).Scan(&userID, &amount); err != nil {
+		if err == sql.ErrNoRows {
+			return "", 0, nil
+		}
+		return "", 0, fmt.Errorf("failed to scan top gold user for week: %w", err)
+	}
+
+	return userID, amount, nil
+}
+
+func (r *repository) UpsertProfileSealProjection(ctx context.Context, senderID, receiverID string, sealsDelta int64, receiverGoldBalanceCentinels int64, receiverRankTier string) error {
+	senderQuery := `
+		INSERT INTO profiles (
+			user_id, total_gold_seals_received, total_silver_seals_given, reputation_score, current_rank_tier, created_at, updated_at
+		) VALUES ($1, 0, $2, 0, 'Pearl', NOW(), NOW())
+		ON CONFLICT (user_id)
+		DO UPDATE SET
+			total_silver_seals_given = profiles.total_silver_seals_given + EXCLUDED.total_silver_seals_given,
+			updated_at = NOW()
+	`
+
+	if _, err := r.getExecutor().ExecContext(ctx, senderQuery, senderID, sealsDelta); err != nil {
+		return fmt.Errorf("failed to upsert sender profile seal projection: %w", err)
+	}
+
+	receiverQuery := `
+		INSERT INTO profiles (
+			user_id, total_gold_seals_received, total_silver_seals_given, reputation_score, current_rank_tier, created_at, updated_at
+		) VALUES ($1, $2, 0, $3, $4, NOW(), NOW())
+		ON CONFLICT (user_id)
+		DO UPDATE SET
+			total_gold_seals_received = profiles.total_gold_seals_received + EXCLUDED.total_gold_seals_received,
+			reputation_score = EXCLUDED.reputation_score,
+			current_rank_tier = EXCLUDED.current_rank_tier,
+			updated_at = NOW()
+	`
+
+	if _, err := r.getExecutor().ExecContext(ctx, receiverQuery, receiverID, sealsDelta, receiverGoldBalanceCentinels/CentinelsPerSeal, receiverRankTier); err != nil {
+		return fmt.Errorf("failed to upsert receiver profile seal projection: %w", err)
+	}
+
+	return nil
 }
 
 func (r *repository) CreateReferral(ctx context.Context, referral *Referral) error {

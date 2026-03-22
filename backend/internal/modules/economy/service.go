@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/google/uuid"
 
 	"github.com/brightbund-backend/internal/config"
@@ -189,13 +190,16 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 	if !currency.IsValid() {
 		return nil, NewInvalidCurrencyError(req.Currency)
 	}
+	if currency != CurrencySilverSeal {
+		return nil, NewValidationError("currency", "only SILVER_SEAL can be sent; receiver gains GOLD_SEAL")
+	}
 
 	if senderUserID == req.RecipientUserID {
 		return nil, NewSelfTransferError()
 	}
 
 	amountCents := SealsToCentinels(req.Amount)
-	isSeal := currency == CurrencySilverSeal || currency == CurrencyGoldSeal
+	isSeal := true
 
 	if isSeal && amountCents != CentinelsPerSeal {
 		return nil, NewValidationError("amount", "seal transfer must be exactly 1 seal")
@@ -214,15 +218,24 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		// Early idempotency gate — short-circuit before cooldown/balance checks
 		// so that a re-tap with the same key never hits the cooldown guard.
 		if req.IdempotencyKey != "" {
-			if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, req.IdempotencyKey); err == nil && existing != nil {
+			debitRef := req.IdempotencyKey + ":silver_debit"
+			creditRef := req.IdempotencyKey + ":gold_credit"
+			debitExisting, debitErr := txRepo.GetLedgerEntryByReferenceID(ctx, debitRef)
+			creditExisting, creditErr := txRepo.GetLedgerEntryByReferenceID(ctx, creditRef)
+			if debitErr == nil && debitExisting != nil && creditErr == nil && creditExisting != nil {
+				senderWallet, _ := txRepo.GetOrCreateWallet(ctx, senderUserID, CurrencySilverSeal)
+				receiverWallet, _ := txRepo.GetOrCreateWallet(ctx, req.RecipientUserID, CurrencyGoldSeal)
 				response = &TransferResponse{
-					LedgerEntryID:   existing.ID,
-					SenderBalance:   0,
-					ReceiverBalance: 0,
+					LedgerEntryID:   creditExisting.ID,
+					SenderBalance:   CentinelsToSeals(senderWallet.Balance),
+					ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
 					CreatedNew:      false,
-					Timestamp:       existing.CreatedAt,
+					Timestamp:       creditExisting.CreatedAt,
 				}
 				return nil
+			}
+			if (debitErr == nil && debitExisting != nil) || (creditErr == nil && creditExisting != nil) {
+				return ErrIdempotencyConflict
 			}
 		}
 
@@ -281,7 +294,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 				int64(s.cfg.MaxDailyTransfers), int64(limit.TransfersCount), amountCents)
 		}
 
-		senderWallet, err := txRepo.GetOrCreateWallet(ctx, senderUserID, currency)
+		senderWallet, err := txRepo.GetOrCreateWallet(ctx, senderUserID, CurrencySilverSeal)
 		if err != nil {
 			return WrapErrorf(err, "failed to get sender wallet")
 		}
@@ -319,7 +332,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 			return NewInsufficientFundsError(senderUserID, currency, amountCents, senderWallet.Balance)
 		}
 
-		receiverWallet, err := txRepo.GetOrCreateWallet(ctx, req.RecipientUserID, currency)
+		receiverWallet, err := txRepo.GetOrCreateWallet(ctx, req.RecipientUserID, CurrencyGoldSeal)
 		if err != nil {
 			return WrapErrorf(err, "failed to get receiver wallet")
 		}
@@ -328,21 +341,28 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		if referenceID == "" {
 			referenceID = fmt.Sprintf("transfer_%s_%s_%d", senderUserID, req.RecipientUserID, time.Now().Unix())
 		}
+		debitRef := referenceID + ":silver_debit"
+		creditRef := referenceID + ":gold_credit"
 
-		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
+		debitExisting, debitErr := txRepo.GetLedgerEntryByReferenceID(ctx, debitRef)
+		creditExisting, creditErr := txRepo.GetLedgerEntryByReferenceID(ctx, creditRef)
+		if debitErr == nil && debitExisting != nil && creditErr == nil && creditExisting != nil {
 			response = &TransferResponse{
-				LedgerEntryID:   existing.ID,
+				LedgerEntryID:   creditExisting.ID,
 				SenderBalance:   CentinelsToSeals(senderWallet.Balance),
 				ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
 				CreatedNew:      false,
-				Timestamp:       existing.CreatedAt,
+				Timestamp:       creditExisting.CreatedAt,
 			}
 			return nil
+		}
+		if (debitErr == nil && debitExisting != nil) || (creditErr == nil && creditExisting != nil) {
+			return ErrIdempotencyConflict
 		}
 
 		senderWallet.Balance -= amountCents
 		senderWallet.TotalSentAmount += amountCents
-		if currency == CurrencySilverSeal && senderWallet.FreeBalance > 0 {
+		if senderWallet.FreeBalance > 0 {
 			deductFromFree := min(senderWallet.FreeBalance, amountCents)
 			senderWallet.FreeBalance -= deductFromFree
 		}
@@ -354,26 +374,49 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		}
 
 		// Use optimistic locking for receiver as well to prevent race conditions
-		receiverWallet.Balance += amountCents
-		receiverWallet.TotalReceivedAmount += amountCents
-		if err := txRepo.UpdateWalletWithVersion(ctx, receiverWallet, receiverWallet.Version); err != nil {
+		newRBalance, err := txRepo.IncrementWalletBalanceAtomic(ctx, receiverWallet.ID, amountCents)
+		if err != nil {
 			return err
 		}
+		receiverWallet.Balance = newRBalance
 
-		entry := &LedgerEntry{
-			ID:               uuid.New().String(),
-			Amount:           amountCents,
-			Currency:         currency,
-			SenderWalletID:   &senderWallet.ID,
-			ReceiverWalletID: &receiverWallet.ID,
-			Category:         CategoryP2PTransfer,
-			ReferenceID:      referenceID,
-			Metadata:         mustMarshalJSON(map[string]interface{}{"reason": req.Reason}),
-			CreatedAt:        time.Now(),
+		debitEntry := &LedgerEntry{
+			ID:             uuid.New().String(),
+			Amount:         amountCents,
+			Currency:       CurrencySilverSeal,
+			SenderWalletID: &senderWallet.ID,
+			Category:       CategoryP2PTransfer,
+			ReferenceID:    debitRef,
+			Metadata:       mustMarshalJSON(map[string]interface{}{"reason": req.Reason, "receiver_user_id": req.RecipientUserID, "conversion": "silver_to_gold"}),
+			CreatedAt:      time.Now(),
 		}
 
-		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
-			return WrapErrorf(err, "failed to create ledger entry")
+		if err := txRepo.CreateLedgerEntry(ctx, debitEntry); err != nil {
+			return WrapErrorf(err, "failed to create debit ledger entry")
+		}
+
+		creditEntry := &LedgerEntry{
+			ID:               uuid.New().String(),
+			Amount:           amountCents,
+			Currency:         CurrencyGoldSeal,
+			ReceiverWalletID: &receiverWallet.ID,
+			Category:         CategoryP2PTransfer,
+			ReferenceID:      creditRef,
+			Metadata:         mustMarshalJSON(map[string]interface{}{"reason": req.Reason, "sender_user_id": senderUserID, "conversion": "silver_to_gold"}),
+			CreatedAt:        debitEntry.CreatedAt,
+		}
+
+		if err := txRepo.CreateLedgerEntry(ctx, creditEntry); err != nil {
+			return WrapErrorf(err, "failed to create credit ledger entry")
+		}
+
+		if err := txRepo.UpsertGoldPeriodStat(ctx, req.RecipientUserID, debitEntry.CreatedAt.Year(), isoWeek(debitEntry.CreatedAt), amountCents); err != nil {
+			return WrapErrorf(err, "failed to upsert gold period stat")
+		}
+
+		receiverRankTier := ranks.GetRankTierString(int(receiverWallet.Balance / CentinelsPerSeal))
+		if err := txRepo.UpsertProfileSealProjection(ctx, senderUserID, req.RecipientUserID, amountCents/CentinelsPerSeal, receiverWallet.Balance, receiverRankTier); err != nil {
+			return WrapErrorf(err, "failed to upsert profile seal projection")
 		}
 
 		oldTransfersCount := limit.TransfersCount
@@ -413,11 +456,11 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		_ = s.repo.UpsertUserInteraction(ctx, senderUserID, req.RecipientUserID, amountCents)
 
 		response = &TransferResponse{
-			LedgerEntryID:   entry.ID,
+			LedgerEntryID:   creditEntry.ID,
 			SenderBalance:   CentinelsToSeals(senderWallet.Balance),
 			ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
 			CreatedNew:      true,
-			Timestamp:       entry.CreatedAt,
+			Timestamp:       creditEntry.CreatedAt,
 		}
 		return nil
 	})
@@ -434,6 +477,9 @@ func (s *service) GiveSealToPost(ctx context.Context, userID, postID string, req
 	if !currency.IsValid() {
 		return nil, NewInvalidCurrencyError(req.Currency)
 	}
+	if currency != CurrencySilverSeal {
+		return nil, NewValidationError("currency", "only SILVER_SEAL can be sent; receiver gains GOLD_SEAL")
+	}
 
 	metadata := map[string]interface{}{
 		"post_id": postID,
@@ -443,7 +489,7 @@ func (s *service) GiveSealToPost(ctx context.Context, userID, postID string, req
 		metadata["comment"] = comment
 	}
 
-	return s.processSealTransfer(ctx, userID, req.ReceiverUserID, req.Amount*CentinelsPerSeal, currency, CategoryPostSeal, req.IdempotencyKey, metadata)
+	return s.processSealTransfer(ctx, userID, req.ReceiverUserID, req.Amount*CentinelsPerSeal, CurrencySilverSeal, CurrencyGoldSeal, CategoryPostSeal, req.IdempotencyKey, metadata)
 }
 
 func (s *service) GiveSealToUser(ctx context.Context, fromUserID, toUserID string, req *GiveSealToUserRequest) (*TransferResponse, error) {
@@ -455,6 +501,9 @@ func (s *service) GiveSealToUser(ctx context.Context, fromUserID, toUserID strin
 	if !currency.IsValid() {
 		return nil, NewInvalidCurrencyError(req.Currency)
 	}
+	if currency != CurrencySilverSeal {
+		return nil, NewValidationError("currency", "only SILVER_SEAL can be sent; receiver gains GOLD_SEAL")
+	}
 
 	metadata := map[string]interface{}{
 		"message": StringOrEmpty(req.Message),
@@ -463,7 +512,7 @@ func (s *service) GiveSealToUser(ctx context.Context, fromUserID, toUserID strin
 
 	amountCents := SealsToCentinels(req.Amount)
 
-	return s.processSealTransfer(ctx, fromUserID, toUserID, amountCents, currency, CategoryP2PTransfer, req.IdempotencyKey, metadata)
+	return s.processSealTransfer(ctx, fromUserID, toUserID, amountCents, CurrencySilverSeal, CurrencyGoldSeal, CategoryP2PTransfer, req.IdempotencyKey, metadata)
 }
 
 func (s *service) GetTransactionHistory(ctx context.Context, userID string, req *TransactionHistoryRequest) (*TransactionHistoryResponse, error) {
@@ -926,6 +975,9 @@ func (s *service) ProcessIAPDeposit(ctx context.Context, userID string, amountCe
 	if !currency.IsValid() {
 		return NewInvalidCurrencyError(string(currency))
 	}
+	if currency == CurrencyGoldSeal {
+		return NewValidationError("currency", "direct GOLD_SEAL purchase is disabled")
+	}
 
 	err := s.executeWithRetry(ctx, func() error {
 		tx, err := s.repo.BeginTx(ctx)
@@ -1218,6 +1270,9 @@ func (s *service) AdminAdjustBalance(ctx context.Context, userID string, amountC
 	if !currency.IsValid() {
 		return NewInvalidCurrencyError(string(currency))
 	}
+	if currency == CurrencyGoldSeal && amountCentinels > 0 {
+		return NewValidationError("currency", "direct GOLD_SEAL mint is disabled")
+	}
 
 	tx, err := s.repo.BeginTx(ctx)
 	if err != nil {
@@ -1313,7 +1368,7 @@ func (s *service) logViolation(ctx context.Context, userID string, violationType
 	_ = s.repo.CreateViolationLog(ctx, violation)
 }
 
-func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID string, amount int64, currency CurrencyCode, category TransactionCategory, refID string, metadata map[string]interface{}) (*TransferResponse, error) {
+func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID string, amount int64, senderCurrency CurrencyCode, receiverCurrency CurrencyCode, category TransactionCategory, refID string, metadata map[string]interface{}) (*TransferResponse, error) {
 	if amount != CentinelsPerSeal {
 		return nil, NewValidationError("amount", "seal transfer must be exactly 1 seal")
 	}
@@ -1332,34 +1387,40 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 
 		txRepo := s.repo.WithTx(tx)
 
-		// 1. Check Idempotency First
-		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, refID); err == nil && existing != nil {
-			// Strict check: parameters must match exactly
-			match := existing.Amount == amount && existing.Currency == currency
+		if refID == "" {
+			refID = fmt.Sprintf("seal_%s_%s_%d", senderID, receiverID, time.Now().UnixNano())
+		}
 
-			// Check Sender Wallet
-			senderWalletCheck, _ := txRepo.GetOrCreateWallet(ctx, senderID, currency)
-			if existing.SenderWalletID == nil || *existing.SenderWalletID != senderWalletCheck.ID {
-				match = false
+		debitRef := refID + ":silver_debit"
+		creditRef := refID + ":gold_credit"
+
+		debitExisting, debitErr := txRepo.GetLedgerEntryByReferenceID(ctx, debitRef)
+		creditExisting, creditErr := txRepo.GetLedgerEntryByReferenceID(ctx, creditRef)
+		if debitErr == nil && debitExisting != nil && creditErr == nil && creditExisting != nil {
+			senderWalletCheck, _ := txRepo.GetOrCreateWallet(ctx, senderID, senderCurrency)
+			receiverWalletCheck, _ := txRepo.GetOrCreateWallet(ctx, receiverID, receiverCurrency)
+
+			if debitExisting.Amount != amount || debitExisting.Currency != senderCurrency || creditExisting.Amount != amount || creditExisting.Currency != receiverCurrency {
+				return ErrIdempotencyConflict
 			}
-
-			// Check Receiver Wallet
-			receiverWalletCheck, _ := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
-			if existing.ReceiverWalletID == nil || *existing.ReceiverWalletID != receiverWalletCheck.ID {
-				match = false
+			if debitExisting.SenderWalletID == nil || *debitExisting.SenderWalletID != senderWalletCheck.ID {
+				return ErrIdempotencyConflict
 			}
-
-			if !match {
+			if creditExisting.ReceiverWalletID == nil || *creditExisting.ReceiverWalletID != receiverWalletCheck.ID {
 				return ErrIdempotencyConflict
 			}
 
 			response = &TransferResponse{
-				LedgerEntryID: existing.ID,
-				SenderBalance: CentinelsToSeals(senderWalletCheck.Balance),
-				CreatedNew:    false,
-				Timestamp:     existing.CreatedAt,
+				LedgerEntryID:   creditExisting.ID,
+				SenderBalance:   CentinelsToSeals(senderWalletCheck.Balance),
+				ReceiverBalance: CentinelsToSeals(receiverWalletCheck.Balance),
+				CreatedNew:      false,
+				Timestamp:       creditExisting.CreatedAt,
 			}
 			return nil
+		}
+		if (debitErr == nil && debitExisting != nil) || (creditErr == nil && creditExisting != nil) {
+			return ErrIdempotencyConflict
 		}
 
 		// 2. Check/Update Cooldown
@@ -1397,17 +1458,17 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		}
 
 		// 3. Check Balances
-		wallet, err := txRepo.GetOrCreateWallet(ctx, senderID, currency)
+		wallet, err := txRepo.GetOrCreateWallet(ctx, senderID, senderCurrency)
 		if err != nil {
 			return WrapErrorf(err, "failed to get wallet")
 		}
 
 		if !wallet.HasSufficientBalance(amount) {
-			return NewInsufficientFundsError(senderID, currency, amount, wallet.Balance)
+			return NewInsufficientFundsError(senderID, senderCurrency, amount, wallet.Balance)
 		}
 
 		// 4. Get Receiver Wallet (required for recording ID)
-		receiverWallet, err := txRepo.GetOrCreateWallet(ctx, receiverID, currency)
+		receiverWallet, err := txRepo.GetOrCreateWallet(ctx, receiverID, receiverCurrency)
 		if err != nil {
 			return WrapErrorf(err, "failed to get receiver wallet")
 		}
@@ -1416,7 +1477,7 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		// Sender
 		wallet.Balance -= amount
 		wallet.TotalSentAmount += amount
-		if currency == CurrencySilverSeal && wallet.FreeBalance > 0 {
+		if senderCurrency == CurrencySilverSeal && wallet.FreeBalance > 0 {
 			deductFromFree := min(wallet.FreeBalance, amount)
 			wallet.FreeBalance -= deductFromFree
 		}
@@ -1431,21 +1492,64 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		}
 		receiverWallet.Balance = newRBalance
 
-		// 6. Create Ledger Entry
+		// 6. Create Ledger Entries (SILVER debit + GOLD credit)
+		debitMeta := map[string]interface{}{
+			"sender_user_id":   senderID,
+			"receiver_user_id": receiverID,
+			"conversion":       "silver_to_gold",
+			"entry_role":       "silver_debit",
+		}
+		for k, v := range metadata {
+			debitMeta[k] = v
+		}
+
+		creditMeta := map[string]interface{}{
+			"sender_user_id":   senderID,
+			"receiver_user_id": receiverID,
+			"conversion":       "silver_to_gold",
+			"entry_role":       "gold_credit",
+		}
+		for k, v := range metadata {
+			creditMeta[k] = v
+		}
+
 		entry := &LedgerEntry{
-			ID:               uuid.New().String(),
-			Amount:           amount,
-			Currency:         currency,
-			SenderWalletID:   &wallet.ID,
-			ReceiverWalletID: &receiverWallet.ID,
-			Category:         category,
-			ReferenceID:      refID,
-			Metadata:         mustMarshalJSON(metadata),
-			CreatedAt:        now,
+			ID:             uuid.New().String(),
+			Amount:         amount,
+			Currency:       senderCurrency,
+			SenderWalletID: &wallet.ID,
+			Category:       category,
+			ReferenceID:    debitRef,
+			Metadata:       mustMarshalJSON(debitMeta),
+			CreatedAt:      now,
 		}
 
 		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
-			return WrapErrorf(err, "failed to create ledger entry")
+			return WrapErrorf(err, "failed to create debit ledger entry")
+		}
+
+		creditEntry := &LedgerEntry{
+			ID:               uuid.New().String(),
+			Amount:           amount,
+			Currency:         receiverCurrency,
+			ReceiverWalletID: &receiverWallet.ID,
+			Category:         category,
+			ReferenceID:      creditRef,
+			Metadata:         mustMarshalJSON(creditMeta),
+			CreatedAt:        now,
+		}
+
+		if err := txRepo.CreateLedgerEntry(ctx, creditEntry); err != nil {
+			return WrapErrorf(err, "failed to create credit ledger entry")
+		}
+
+		if err := txRepo.UpsertGoldPeriodStat(ctx, receiverID, now.Year(), isoWeek(now), amount); err != nil {
+			return WrapErrorf(err, "failed to upsert gold period stat")
+		}
+
+		receiverRankTier := ranks.GetRankTierString(int(receiverWallet.Balance / CentinelsPerSeal))
+		if err := txRepo.UpsertProfileSealProjection(ctx, senderID, receiverID, amount/CentinelsPerSeal, receiverWallet.Balance, receiverRankTier); err != nil {
+			return WrapErrorf(err, "failed to upsert profile seal projection")
 		}
 
 		// 7. Update Pair Cooldown
@@ -1471,11 +1575,11 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		_ = s.cacheInvalidator.InvalidateStats(ctx, receiverID)
 
 		response = &TransferResponse{
-			LedgerEntryID:   entry.ID,
+			LedgerEntryID:   creditEntry.ID,
 			SenderBalance:   CentinelsToSeals(wallet.Balance),
 			ReceiverBalance: CentinelsToSeals(receiverWallet.Balance),
 			CreatedNew:      true,
-			Timestamp:       entry.CreatedAt,
+			Timestamp:       creditEntry.CreatedAt,
 		}
 
 		return nil
@@ -1506,4 +1610,9 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func isoWeek(t time.Time) int {
+	_, w := t.ISOWeek()
+	return w
 }
