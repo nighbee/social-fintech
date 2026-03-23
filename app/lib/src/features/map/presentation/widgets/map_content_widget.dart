@@ -124,10 +124,9 @@ class _MapContent extends StatelessWidget {
     final normalizedApplyStatus = normalizeStatus(applyResult.status);
     final normalizedAppliedTaskStatus =
         normalizeStatus(appliedTask?.status ?? '');
-    final canEnterCodeByStatus =
-        isApprovedStatus(normalizedExecutorStatus) ||
-            isApprovedStatus(normalizedApplyStatus) ||
-            isApprovedStatus(normalizedAppliedTaskStatus);
+    final canEnterCodeByStatus = isApprovedStatus(normalizedExecutorStatus) ||
+        isApprovedStatus(normalizedApplyStatus) ||
+        isApprovedStatus(normalizedAppliedTaskStatus);
     final isCodeVerified =
         verifyResult.applicationId == applyResult.applicationId &&
             verifyResult.status == 'code_verified';
@@ -144,9 +143,12 @@ class _MapContent extends StatelessWidget {
 
     // Debug logging
     debugPrint('[MapContent] Executor Status Check:');
-    debugPrint('  - executorTaskStatus: "$executorTaskStatus" (normalized: "$normalizedExecutorStatus")');
-    debugPrint('  - applyResult.status: "${applyResult.status}" (normalized: "$normalizedApplyStatus")');
-    debugPrint('  - appliedTask?.status: "${appliedTask?.status ?? ''}" (normalized: "$normalizedAppliedTaskStatus")');
+    debugPrint(
+        '  - executorTaskStatus: "$executorTaskStatus" (normalized: "$normalizedExecutorStatus")');
+    debugPrint(
+        '  - applyResult.status: "${applyResult.status}" (normalized: "$normalizedApplyStatus")');
+    debugPrint(
+        '  - appliedTask?.status: "${appliedTask?.status ?? ''}" (normalized: "$normalizedAppliedTaskStatus")');
     debugPrint('  - hasAppliedTask: $hasAppliedTask');
     debugPrint('  - canEnterCodeByStatus: $canEnterCodeByStatus');
     debugPrint('  - isCodeVerified: $isCodeVerified');
@@ -198,17 +200,17 @@ class _MapContent extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFF656565)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       blurRadius: 12,
                       offset: const Offset(0, -3),
                     ),
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 25,
                       offset: const Offset(0, 8),
                     ),
@@ -246,7 +248,7 @@ class _MapContent extends StatelessWidget {
             bottom: 140,
             child: myRequest != null
                 ? (() {
-                    final myTask = myRequest!;
+                    final myTask = myRequest;
                     return _MyRequestPanel(
                       task: myTask,
                       isExpanded: isRequestExpanded,
@@ -269,18 +271,20 @@ class _MapContent extends StatelessWidget {
                                       const EdgeInsets.fromLTRB(14, 16, 14, 12),
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF6D6D6D)
-                                        .withOpacity(0.35),
+                                        .withValues(alpha: 0.35),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                         color: const Color(0xFF656565)),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white.withOpacity(0.15),
+                                        color: Colors.white
+                                            .withValues(alpha: 0.15),
                                         blurRadius: 12,
                                         offset: const Offset(0, -3),
                                       ),
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.4),
+                                        color:
+                                            Colors.black.withValues(alpha: 0.4),
                                         blurRadius: 25,
                                         offset: const Offset(0, 8),
                                       ),

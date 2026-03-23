@@ -112,11 +112,9 @@ class _ParticleAnimationState extends State<ParticleAnimation>
       particles.add(
         Particle(
           position: position,
-          size:
-              widget.minSize +
+          size: widget.minSize +
               _random.nextDouble() * (widget.maxSize - widget.minSize),
-          animationDelay:
-              _random.nextDouble() *
+          animationDelay: _random.nextDouble() *
               widget.animationDurationSeconds, // Random delay across full cycle
           color: widget
               .particleColors[_random.nextInt(widget.particleColors.length)],
@@ -193,7 +191,7 @@ class ParticlesPainter extends CustomPainter {
       if (opacity <= 0) continue;
 
       final paint = Paint()
-        ..color = particle.color.withOpacity(opacity)
+        ..color = particle.color.withValues(alpha: opacity)
         ..style = PaintingStyle.fill
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8);
 

@@ -179,7 +179,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                   color: context.theme.mainBackground,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.textGray2.withOpacity(0.25),
+                    color: AppColors.textGray2.withValues(alpha: 0.25),
                   ),
                   boxShadow: const [
                     BoxShadow(
@@ -207,7 +207,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                         itemCount: options.length,
                         separatorBuilder: (_, __) => Divider(
                           height: 1,
-                          color: AppColors.textGray2.withOpacity(0.2),
+                          color: AppColors.textGray2.withValues(alpha: 0.2),
                         ),
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);

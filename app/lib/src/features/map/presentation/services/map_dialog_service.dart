@@ -33,17 +33,17 @@ class MapDialogService {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF656565)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       blurRadius: 12,
                       offset: const Offset(0, -3),
                     ),
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 25,
                       offset: const Offset(0, 8),
                     ),
@@ -55,7 +55,8 @@ class MapDialogService {
                     Text(
                       'Are you sure you want to cancel this request?',
                       textAlign: TextAlign.center,
-                      style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                      style:
+                          TextStyles.bodyMain.copyWith(color: Colors.white70),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -118,17 +119,17 @@ class MapDialogService {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF656565)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       blurRadius: 12,
                       offset: const Offset(0, -3),
                     ),
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 25,
                       offset: const Offset(0, 8),
                     ),
@@ -146,7 +147,8 @@ class MapDialogService {
                     Text(
                       'Your request has been canceled.',
                       textAlign: TextAlign.center,
-                      style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                      style:
+                          TextStyles.bodyMain.copyWith(color: Colors.white70),
                     ),
                     const SizedBox(height: 10),
                     CustomButton(
@@ -188,7 +190,8 @@ class MapDialogService {
       }
     }
 
-    if (selectedApplication == null || selectedApplication.status != 'code_verified') {
+    if (selectedApplication == null ||
+        selectedApplication.status != 'code_verified') {
       return;
     }
     if (_lastConfirmPromptApplicationId == selectedApplication.id) {
@@ -216,17 +219,17 @@ class MapDialogService {
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(16, 34, 16, 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                      color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFF656565)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           blurRadius: 12,
                           offset: const Offset(0, -3),
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.4),
+                          color: Colors.black.withValues(alpha: 0.4),
                           blurRadius: 25,
                           offset: const Offset(0, 8),
                         ),
@@ -259,7 +262,8 @@ class MapDialogService {
                                   color: Colors.black87,
                                   fontWeight: FontWeight.w600,
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -274,7 +278,8 @@ class MapDialogService {
                                   color: Colors.white70,
                                   fontWeight: FontWeight.w500,
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
                               ),
                             ),
                           ],
@@ -352,17 +357,17 @@ class MapDialogService {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFF656565)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       blurRadius: 12,
                       offset: const Offset(0, -3),
                     ),
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 25,
                       offset: const Offset(0, 8),
                     ),
@@ -374,7 +379,8 @@ class MapDialogService {
                     Text(
                       '$creatorName rejected your request.',
                       textAlign: TextAlign.center,
-                      style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                      style:
+                          TextStyles.bodyMain.copyWith(color: Colors.white70),
                     ),
                     const SizedBox(height: 12),
                     CustomButton(

@@ -28,7 +28,7 @@ mixin ShowPostCommentsBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.92,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         child: PostCommentsBottomSheet(post: post),
       ),
     );
@@ -95,9 +95,8 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
 
   void _onSendComment() {
     final text = _commentController.text.trim();
-    final photoFileNames = _currentComposerPhotos()
-        .map((photo) => photo.fileName)
-        .toList();
+    final photoFileNames =
+        _currentComposerPhotos().map((photo) => photo.fileName).toList();
     if (text.isEmpty && photoFileNames.isEmpty) return;
 
     _bloc.add(
@@ -157,7 +156,8 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                           ),
                           const Gap(8),
                           IconButton(
-                            icon: const Icon(Icons.refresh, color: Colors.white),
+                            icon:
+                                const Icon(Icons.refresh, color: Colors.white),
                             onPressed: () {
                               _bloc.add(HomeEvent.loadComments(widget.post.id));
                             },
@@ -574,7 +574,7 @@ class _CommentInputBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 168, 168, 168).withOpacity(0.08),
+        color: const Color.fromARGB(255, 168, 168, 168).withValues(alpha: 0.08),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -53,7 +53,8 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
       create: (context) => getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
-        appBar: const CustomAppBar(title: 'Password', backgroundColor: Colors.transparent),
+        appBar: const CustomAppBar(
+            title: 'Password', backgroundColor: Colors.transparent),
         body: Stack(
           children: [
             Positioned.fill(
@@ -74,7 +75,8 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                   loading: () {},
                   loadingFailure: (message) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(message), backgroundColor: Colors.red),
+                      SnackBar(
+                          content: Text(message), backgroundColor: Colors.red),
                     );
                   },
                   goRegister: () {},
@@ -203,36 +205,42 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
 
                               if (widget.isNewUser) {
                                 context.read<AuthBloc>().add(
-                                  AuthEvent.checkEmail(email: widget.email),
-                                );
+                                      AuthEvent.checkEmail(email: widget.email),
+                                    );
 
                                 final bloc = context.read<AuthBloc>();
-                                bloc.add(AuthEvent.checkEmail(email: widget.email));
+                                bloc.add(
+                                    AuthEvent.checkEmail(email: widget.email));
 
-                                Future.delayed(const Duration(milliseconds: 100), () {
+                                Future.delayed(
+                                    const Duration(milliseconds: 100), () {
+                                  if (!mounted) return;
                                   context.pushNamed(
                                     RouteNames.info,
                                     extra: {
                                       'email': widget.email,
-                                      'password': _passwordController.text.trim(),
+                                      'password':
+                                          _passwordController.text.trim(),
                                     },
                                   );
                                 });
                               } else {
                                 context.read<AuthBloc>().add(
-                                  AuthEvent.login(
-                                    request: LoginRequest.email(
-                                      email: widget.email,
-                                      password: _passwordController.text.trim(),
-                                    ),
-                                  ),
-                                );
+                                      AuthEvent.login(
+                                        request: LoginRequest.email(
+                                          email: widget.email,
+                                          password:
+                                              _passwordController.text.trim(),
+                                        ),
+                                      ),
+                                    );
                               }
                             },
                           ),
                           Gap(20),
                           SizedBox(
-                            height: MediaQuery.of(context).viewInsets.bottom + 20,
+                            height:
+                                MediaQuery.of(context).viewInsets.bottom + 20,
                           ),
                         ],
                       ),

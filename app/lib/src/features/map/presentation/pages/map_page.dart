@@ -12,7 +12,6 @@ import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/features/map/domain/entities/map_task_application_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_task_entity.dart';
-import 'package:app/src/features/map/domain/requests/map_nearby_tasks_request.dart';
 import 'package:app/src/features/map/domain/requests/map_task_application_id_request.dart';
 import 'package:app/src/features/map/domain/requests/map_task_id_request.dart';
 import 'package:app/src/features/map/domain/requests/map_verify_code_request.dart';
@@ -24,7 +23,6 @@ import 'package:app/src/features/map/presentation/services/map_persistence_servi
 import 'package:app/src/features/map/presentation/services/map_polling_service.dart';
 import 'package:app/src/features/map/presentation/utils/map_flow_evaluator.dart';
 import 'package:app/src/features/ranking/presentation/widgets/ranking_countdown_widget.dart';
-import 'package:geolocator/geolocator.dart' as geo;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';

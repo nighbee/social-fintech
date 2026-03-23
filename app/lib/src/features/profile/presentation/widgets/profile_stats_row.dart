@@ -1,4 +1,3 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';

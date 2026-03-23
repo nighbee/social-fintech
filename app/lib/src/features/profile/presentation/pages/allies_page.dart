@@ -58,7 +58,7 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 15),
             decoration: BoxDecoration(
-              color: const Color(0xFF6D6D6D).withOpacity(0.35),
+              color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFF656565)),
             ),

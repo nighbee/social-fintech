@@ -42,7 +42,4 @@ class DioClient extends DioRestClient implements RestClient {
       Log.debug('DioClient', 'TalkerDioLogger not available: $e');
     }
   }
-
-  @override
-  late final Dio dio;
 }

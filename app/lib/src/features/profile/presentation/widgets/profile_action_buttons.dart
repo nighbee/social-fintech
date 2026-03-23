@@ -10,7 +10,7 @@ class ProfileActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 40,
       child: Row(
         children: [
@@ -24,7 +24,7 @@ class ProfileActionButtons extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Color(0xFF656565)),
                 ),
@@ -46,7 +46,7 @@ class ProfileActionButtons extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Color(0xFF656565)),
                 ),
@@ -71,7 +71,7 @@ class ProfileActionButtons extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Color(0xFF656565)),
               ),

@@ -242,7 +242,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                                 ),
                                 Switch(
                                   value: _autoShutdown,
-                                  activeColor: Colors.white,
+                                  activeThumbColor: Colors.white,
                                   inactiveThumbColor: Colors.white70,
                                   inactiveTrackColor: Colors.white24,
                                   onChanged: (value) {

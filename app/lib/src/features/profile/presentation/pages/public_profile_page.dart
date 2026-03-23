@@ -4,7 +4,6 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/mixins/show_profile_actions_bottom_sheet.dart';
-import 'package:app/src/features/profile/presentation/utils/mock_data.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_post_grid.dart';
 import 'package:flutter/material.dart';

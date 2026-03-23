@@ -28,7 +28,8 @@ class _RequestsOverlay extends StatelessWidget {
         }
       }
     }
-    final visibleApps = selected == null ? applications : <MapTaskApplicationEntity>[selected];
+    final visibleApps =
+        selected == null ? applications : <MapTaskApplicationEntity>[selected];
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
@@ -36,17 +37,17 @@ class _RequestsOverlay extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF6D6D6D).withOpacity(0.35),
+            color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: const Color(0xFF656565)),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 blurRadius: 12,
                 offset: const Offset(0, -3),
               ),
               BoxShadow(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withValues(alpha: 0.4),
                 blurRadius: 25,
                 offset: const Offset(0, 8),
               ),

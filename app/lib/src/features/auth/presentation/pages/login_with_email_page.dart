@@ -47,7 +47,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                 child: ParticleAnimation(
                   particleCount: 25,
                   particleColors: [
-                    // AppColors.textGray2.withOpacity(0.2),
+                    // AppColors.textGray2.withValues(0.2),
                     const Color(0xFFFFFFFF),
                   ],
                   minSize: 4.0,
@@ -71,10 +71,8 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                     );
                   },
                   goRegister: () {
-                    final firebaseIdToken = context
-                        .read<AuthBloc>()
-                        .viewModel
-                        .firebaseIdToken;
+                    final firebaseIdToken =
+                        context.read<AuthBloc>().viewModel.firebaseIdToken;
                     context.pushNamed(
                       RouteNames.info,
                       extra: {
@@ -120,9 +118,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                   style: TextStyles.titleBig,
                                 ),
                               ),
-
                               Text("or", style: TextStyles.titleBig),
-
                               TextButton(
                                 onPressed: () {
                                   context.pushReplacementNamed(
@@ -144,9 +140,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                             keyboardType: TextInputType.emailAddress,
                             backgroundColor: context.theme.mainBackground,
                           ),
-
                           Gap(16),
-
                           CustomTextField(
                             controller: _passwordController,
                             labelText: "Password",
@@ -189,9 +183,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                               ),
                             ),
                           ),
-
                           Gap(16),
-
                           Align(
                             alignment: Alignment.centerLeft,
                             child: GestureDetector(
@@ -207,9 +199,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                               ),
                             ),
                           ),
-
                           Gap(28),
-
                           CustomButton(
                             text: isLoading ? "Loading..." : "Continue",
                             isDisabled: isLoading,
@@ -224,18 +214,16 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 return;
                               }
                               context.read<AuthBloc>().add(
-                                AuthEvent.login(
-                                  request: LoginRequest.email(
-                                    email: _emailController.text.trim(),
-                                    password: _passwordController.text,
-                                  ),
-                                ),
-                              );
+                                    AuthEvent.login(
+                                      request: LoginRequest.email(
+                                        email: _emailController.text.trim(),
+                                        password: _passwordController.text,
+                                      ),
+                                    ),
+                                  );
                             },
                           ),
-
                           Gap(57),
-
                           Row(
                             spacing: 12,
                             children: [
@@ -261,7 +249,6 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                             spacing: 16,
                             children: [
                               CustomOutlinedButton(
-                        
                                 text: "Continue with number",
                                 onTap: () {
                                   context.pushNamed(RouteNames.login);
@@ -273,8 +260,11 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
-                                    AuthEvent.login(request: LoginRequest.social(provider: SocialProvider.apple)),
-                                  );
+                                        AuthEvent.login(
+                                            request: LoginRequest.social(
+                                                provider:
+                                                    SocialProvider.apple)),
+                                      );
                                 },
                                 padding: EdgeInsets.symmetric(vertical: 10),
                                 textStyle: TextStyles.titleMain.copyWith(
@@ -287,8 +277,11 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
-                                    AuthEvent.login(request: LoginRequest.social(provider: SocialProvider.google)),
-                                  );
+                                        AuthEvent.login(
+                                            request: LoginRequest.social(
+                                                provider:
+                                                    SocialProvider.google)),
+                                      );
                                 },
                                 padding: EdgeInsets.symmetric(vertical: 10),
                                 textStyle: TextStyles.titleMain.copyWith(

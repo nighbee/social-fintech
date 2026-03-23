@@ -46,7 +46,7 @@ class MapRemoteImpl implements IMapRemote {
         }
 
         final dto = MapRegionAssignmentDto.fromJson(
-          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          Map<String, dynamic>.from(raw),
         );
         return Right(dto);
       });
@@ -92,7 +92,7 @@ class MapRemoteImpl implements IMapRemote {
             .whereType<Map>()
             .map(
               (item) => MapChampionDto.fromJson(
-                Map<String, dynamic>.from(item as Map<dynamic, dynamic>),
+                Map<String, dynamic>.from(item),
               ),
             )
             .toList()
@@ -132,7 +132,7 @@ class MapRemoteImpl implements IMapRemote {
           return Left(
               UnknownException(message: 'Invalid task create response'));
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         final dto = MapCreateTaskResponseDto.fromJson(json);
         return Right(dto);
       });
@@ -158,7 +158,7 @@ class MapRemoteImpl implements IMapRemote {
           return Left(
               UnknownException(message: 'Invalid cancel task response'));
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         final dto = MapCancelTaskResponseDto.fromJson(json);
         return Right(dto);
       });
@@ -184,7 +184,7 @@ class MapRemoteImpl implements IMapRemote {
           return Left(
               UnknownException(message: 'Invalid apply-to-task response'));
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         final dto = MapApplyToTaskResponseDto.fromJson(json);
         return Right(dto);
       });
@@ -217,7 +217,7 @@ class MapRemoteImpl implements IMapRemote {
               UnknownException(message: 'Invalid nearby tasks response'));
         }
         final dto = MapNearbyTasksResponseDto.fromJson(
-          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          Map<String, dynamic>.from(raw),
         );
         return Right(dto.tasks);
       });
@@ -243,7 +243,7 @@ class MapRemoteImpl implements IMapRemote {
           );
         }
         final dto = MapNearbyTasksResponseDto.fromJson(
-          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          Map<String, dynamic>.from(raw),
         );
         return Right(dto.tasks);
       });
@@ -269,7 +269,7 @@ class MapRemoteImpl implements IMapRemote {
           );
         }
         final dto = MapNearbyTasksResponseDto.fromJson(
-          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          Map<String, dynamic>.from(raw),
         );
         return Right(dto.tasks);
       });
@@ -292,11 +292,12 @@ class MapRemoteImpl implements IMapRemote {
       return response.fold((error) => Left(error), (result) {
         final dynamic raw = result.data;
         if (raw is! Map) {
-          return Left(UnknownException(message: 'Invalid task details response'));
+          return Left(
+              UnknownException(message: 'Invalid task details response'));
         }
 
         final dto = MapTaskDto.fromJson(
-          Map<String, dynamic>.from(raw as Map<dynamic, dynamic>),
+          Map<String, dynamic>.from(raw),
         );
         return Right(dto);
       });
@@ -326,7 +327,7 @@ class MapRemoteImpl implements IMapRemote {
             .whereType<Map>()
             .map(
               (item) => MapTaskApplicationDto.fromJson(
-                Map<String, dynamic>.from(item as Map<dynamic, dynamic>),
+                Map<String, dynamic>.from(item),
               ),
             )
             .toList();
@@ -359,7 +360,7 @@ class MapRemoteImpl implements IMapRemote {
             UnknownException(message: 'Invalid accept application response'),
           );
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         return Right((json['status'] ?? '').toString());
       });
     } catch (e) {
@@ -388,7 +389,7 @@ class MapRemoteImpl implements IMapRemote {
             UnknownException(message: 'Invalid reject application response'),
           );
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         return Right((json['status'] ?? '').toString());
       });
     } catch (e) {
@@ -417,7 +418,7 @@ class MapRemoteImpl implements IMapRemote {
             UnknownException(message: 'Invalid withdraw application response'),
           );
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         return Right((json['status'] ?? '').toString());
       });
     } catch (e) {
@@ -445,7 +446,7 @@ class MapRemoteImpl implements IMapRemote {
             UnknownException(message: 'Invalid confirm completion response'),
           );
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         final dto = MapConfirmCompletionResponseDto.fromJson(json);
         return Right(dto);
       });
@@ -477,7 +478,7 @@ class MapRemoteImpl implements IMapRemote {
           return Left(
               UnknownException(message: 'Invalid verify code response'));
         }
-        final json = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+        final json = Map<String, dynamic>.from(raw);
         final dto = MapVerifyCodeResponseDto.fromJson(json);
         return Right(dto);
       });

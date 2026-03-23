@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:app/src/features/auth/data/models/user_search_dto.dart';
@@ -135,12 +136,12 @@ class AuthRemoteImpl implements IAuthRemote {
       'user_agent': userAgent,
     };
 
-    print('=== LOGIN EMAIL REQUEST ===');
-    print('URL: ${EndPoints.authLoginEmail}');
-    print('Email: $email');
-    print('Password: $password');
-    print('Data: $requestData');
-    print('===========================');
+    log('=== LOGIN EMAIL REQUEST ===');
+    log('URL: ${EndPoints.authLoginEmail}');
+    log('Email: $email');
+    log('Password: $password');
+    log('Data: $requestData');
+    log('===========================');
 
     final result = await _client.post(
       EndPoints.authLoginEmail,
@@ -149,17 +150,17 @@ class AuthRemoteImpl implements IAuthRemote {
 
     return result.fold(
       (error) {
-        print('=== LOGIN EMAIL ERROR ===');
-        print('Error: ${error.message}');
-        print('Error type: ${error.runtimeType}');
-        print('=========================');
+        log('=== LOGIN EMAIL ERROR ===');
+        log('Error: ${error.message}');
+        log('Error type: ${error.runtimeType}');
+        log('=========================');
         Log.error('AuthRemote', 'Login Email Error: ${error.message}');
         return Left(error);
       },
       (response) {
-        print('=== LOGIN EMAIL SUCCESS ===');
-        print('Response: ${response.data}');
-        print('===========================');
+        log('=== LOGIN EMAIL SUCCESS ===');
+        log('Response: ${response.data}');
+        log('===========================');
         Log.debug('AuthRemote', 'Login Email Success:');
         Log.debug('AuthRemote', 'Response: ${response.data}');
         try {

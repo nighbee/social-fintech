@@ -53,7 +53,7 @@ class _UnblockButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onUnblock,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6D6D6D).withOpacity(0.35),
+          backgroundColor: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
             side: const BorderSide(color: Color(0xFF656565)),
@@ -102,7 +102,7 @@ class _NormalButtons extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withOpacity(0.35),
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: const Color(0xFF656565)),
                 ),
@@ -125,8 +125,8 @@ class _NormalButtons extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   color: isRestricted
-                      ? const Color(0xFFFF3B30).withOpacity(0.2)
-                      : const Color(0xFF6D6D6D).withOpacity(0.35),
+                      ? const Color(0xFFFF3B30).withValues(alpha: 0.2)
+                      : const Color(0xFF6D6D6D).withValues(alpha: 0.35),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: isRestricted

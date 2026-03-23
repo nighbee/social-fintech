@@ -112,9 +112,8 @@ class HomeRemoteImpl implements IHomeRemote {
         ],
         likesCount: 29,
         commentsCount: 44,
-        createdAt: DateTime.now()
-            .subtract(const Duration(hours: 3))
-            .toIso8601String(),
+        createdAt:
+            DateTime.now().subtract(const Duration(hours: 3)).toIso8601String(),
       ),
       PostDto(
         id: 'post-2',
@@ -127,9 +126,8 @@ class HomeRemoteImpl implements IHomeRemote {
         ],
         likesCount: 87,
         commentsCount: 23,
-        createdAt: DateTime.now()
-            .subtract(const Duration(hours: 5))
-            .toIso8601String(),
+        createdAt:
+            DateTime.now().subtract(const Duration(hours: 5)).toIso8601String(),
       ),
       PostDto(
         id: 'post-3',
@@ -144,9 +142,8 @@ class HomeRemoteImpl implements IHomeRemote {
         ],
         likesCount: 156,
         commentsCount: 67,
-        createdAt: DateTime.now()
-            .subtract(const Duration(hours: 8))
-            .toIso8601String(),
+        createdAt:
+            DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
       ),
       PostDto(
         id: 'post-4',

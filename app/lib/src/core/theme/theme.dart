@@ -13,15 +13,15 @@ class MaterialAppTheme {
     brightness: Brightness.light,
     scaffoldBackgroundColor: AppColors.whiteBackground,
     splashFactory: InkSparkle.splashFactory,
-    splashColor: AppColors.blueText1.withOpacity(0.3),
-    highlightColor: AppColors.blueText1.withOpacity(0.2),
+    splashColor: AppColors.blueText1.withValues(alpha: 0.5),
+    highlightColor: AppColors.blueText1.withValues(alpha: 0.5),
     dividerTheme: const DividerThemeData(
       color: AppColors.backgroundGray,
       thickness: 1,
       space: 36,
     ),
     textSelectionTheme: TextSelectionThemeData(
-      selectionColor: AppColors.greenText.withOpacity(0.3),
+      selectionColor: AppColors.greenText.withValues(alpha: 0.3),
       selectionHandleColor: AppColors.blueText1,
     ),
     bottomSheetTheme: const BottomSheetThemeData(
@@ -75,12 +75,10 @@ class MaterialAppTheme {
       secondary: AppColors.blueText2,
       error: AppColors.redText,
       surface: AppColors.whiteBackground,
-      background: AppColors.whiteBackground,
       onPrimary: AppColors.whiteBackground,
       onSecondary: AppColors.whiteBackground,
       onError: AppColors.whiteBackground,
       onSurface: AppColors.blackBackground,
-      onBackground: AppColors.blackBackground,
     ),
   );
 
@@ -94,12 +92,10 @@ class MaterialAppTheme {
       secondary: AppColors.blueText2,
       error: AppColors.redText,
       surface: AppColors.blackBackground,
-      background: AppColors.blackBackground,
       onPrimary: AppColors.whiteBackground,
       onSecondary: AppColors.whiteBackground,
       onError: AppColors.whiteBackground,
       onSurface: AppColors.whiteBackground,
-      onBackground: AppColors.whiteBackground,
     ),
   );
 }
