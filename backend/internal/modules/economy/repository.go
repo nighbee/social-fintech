@@ -330,20 +330,32 @@ func (r *repository) GetTopGoldUserForWeek(ctx context.Context, periodYear, peri
 		WHERE period_type = 'weekly'
 		  AND period_year = $1
 		  AND period_week = $2
-		ORDER BY gold_received_centinels DESC
+		ORDER BY gold_received_centinels DESC, user_id ASC
 		LIMIT 1
 	`
+	// DETERMINISTIC TIE-BREAK RULE:
+	// When multiple users have the same gold_received_centinels score:
+	// 1. PRIMARY: gold_received_centinels DESC (higher score wins)
+	// 2. SECONDARY (TIE-BREAK): user_id ASC (alphabetically first UUID wins)
+	// This ensures the same champion is selected consistently across server restarts,
+	// data rebuilds, and concurrent queries. Prevents "phantom leader changes" where
+	// users see different champions in the same week.
 
-	var userID string
-	var amount int64
-	if err := r.getExecutor().QueryRowxContext(ctx, query, periodYear, periodWeek).Scan(&userID, &amount); err != nil {
+	type Result struct {
+		UserID string `db:"user_id"`
+		Amount int64  `db:"gold_received_centinels"`
+	}
+
+	var result Result
+	err := sqlx.GetContext(ctx, r.getExecutor(), &result, query, periodYear, periodWeek)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			return "", 0, nil
 		}
-		return "", 0, fmt.Errorf("failed to scan top gold user for week: %w", err)
+		return "", 0, fmt.Errorf("failed to get top gold user for week: %w", err)
 	}
 
-	return userID, amount, nil
+	return result.UserID, result.Amount, nil
 }
 
 func (r *repository) UpsertProfileSealProjection(ctx context.Context, senderID, receiverID string, sealsDelta int64, receiverGoldBalanceCentinels int64, receiverRankTier string) error {

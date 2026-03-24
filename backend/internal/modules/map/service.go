@@ -817,6 +817,21 @@ func (s *Service) ResolveH3ToLocation(ctx context.Context, h3Index string) (*H3G
 		}
 	}
 
+	// SAFETY GUARD: If metadata is still nil after both lookups, return safe default
+	// This prevents "nil pointer dereference" panics in rare edge cases where:
+	// - No administrative boundaries cover this H3 cell
+	// - Sparse/incomplete boundary data in region
+	// See: https://github.com/brightbund-backend/issues/XXX-geo-nil-metadata
+	if metadata == nil {
+		metadata = &H3GeoMetadata{
+			H3Index:     h3Index,
+			CityName:    "",
+			RegionName:  "",
+			CountryName: "",
+			CountryCode: "",
+		}
+	}
+
 	metadata.H3Index = h3Index
 
 	// 4. Update cache

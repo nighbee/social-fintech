@@ -285,11 +285,13 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 		}
 
 		if !limit.CanTransfer(s.cfg.MaxDailyTransfers) {
+			// TODO: Extract client IP from context and pass as last parameter to logViolation
+			// See: backend/internal/platform/geolocation/ip_extractor.go for IP extraction utilities
 			s.logViolation(ctx, senderUserID, ViolationMonthlyLimitExceeded, "/economy/transfer", &amountCents, map[string]interface{}{
 				"recipient_id":  req.RecipientUserID,
 				"current_count": limit.TransfersCount,
 				"limit":         s.cfg.MaxDailyTransfers,
-			})
+			}, nil) // IP address should be extracted from handler request context
 			return NewMonthlyLimitError(senderUserID, req.RecipientUserID, currency,
 				int64(s.cfg.MaxDailyTransfers), int64(limit.TransfersCount), amountCents)
 		}
@@ -306,7 +308,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 					"recipient_id":     req.RecipientUserID,
 					"elapsed_seconds":  int(elapsed.Seconds()),
 					"cooldown_seconds": s.cfg.TransferCooldownSeconds,
-				})
+				}, nil) // IP address should be extracted from handler request context
 				return NewCooldownError(*senderWallet.LastTransferAt, time.Duration(s.cfg.TransferCooldownSeconds)*time.Second, 0)
 			}
 		}
@@ -318,7 +320,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 						"recipient_id":    req.RecipientUserID,
 						"total_transfers": ui.TotalTransfers,
 						"last_amount":     ui.LastAmount,
-					})
+					}, nil) // IP address should be extracted from handler request context
 				}
 			}
 		}
@@ -328,7 +330,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 				"recipient_id": req.RecipientUserID,
 				"available":    senderWallet.Balance,
 				"required":     amountCents,
-			})
+			}, nil) // IP address should be extracted from handler request context
 			return NewInsufficientFundsError(senderUserID, currency, amountCents, senderWallet.Balance)
 		}
 
@@ -619,7 +621,7 @@ func (s *service) ClaimDailyAccrual(ctx context.Context, userID, idempotencyKey 
 			s.logViolation(ctx, userID, ViolationFreeSilverCap, "/economy/accrual/claim", nil, map[string]interface{}{
 				"current_free_balance": wallet.FreeBalance,
 				"max_free_balance":     s.cfg.MaxFreeSilverBalance,
-			})
+			}, nil) // IP address should be extracted from handler request context
 			return NewFreeSilverCapError()
 		}
 
@@ -1354,7 +1356,7 @@ func mustMarshalJSON(v interface{}) json.RawMessage {
 	return b
 }
 
-func (s *service) logViolation(ctx context.Context, userID string, violationType ViolationType, endpoint string, amountAttempted *int64, details map[string]interface{}) {
+func (s *service) logViolation(ctx context.Context, userID string, violationType ViolationType, endpoint string, amountAttempted *int64, details map[string]interface{}, ipAddress *string) {
 	violation := &ViolationLog{
 		ID:              uuid.New().String(),
 		UserID:          userID,
@@ -1362,6 +1364,7 @@ func (s *service) logViolation(ctx context.Context, userID string, violationType
 		AmountAttempted: amountAttempted,
 		Details:         mustMarshalJSON(details),
 		Endpoint:        StringPtr(endpoint),
+		IPAddress:       ipAddress,
 		CreatedAt:       time.Now(),
 	}
 

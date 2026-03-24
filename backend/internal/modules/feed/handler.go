@@ -34,16 +34,39 @@ func NewHandler(service *Service, worker *InteractionWorker, economyService econ
 	return &Handler{service: service, worker: worker, economy: economyService, storage: storageClient, publicURL: publicURL}
 }
 
+// Constants for media upload hardening (SAFETY)
+const (
+	// Maximum file sizes by MIME category
+	maxImageSizeBytes = 10 * 1024 * 1024  // 10 MB for images (PNG, JPEG, WebP)
+	maxVideoSizeBytes = 100 * 1024 * 1024 // 100 MB for videos (MP4, WebM)
+)
+
+// Allowed MIME types (whitelist defense against abuse)
+var allowedImageMimes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/webp": true,
+}
+
+var allowedVideoMimes = map[string]bool{
+	"video/mp4":       true,
+	"video/webm":      true,
+	"video/quicktime": true, // MOV files (iOS)
+}
+
 // UploadMedia godoc
 // @Summary Upload media
-// @Description Uploads an image or video and returns its URL
+// @Description Uploads an image or video and returns its URL with size/MIME validation
 // @Tags Feed
 // @Accept multipart/form-data
 // @Produce json
 // @Security Bearer
-// @Param file formData file true "Media file"
+// @Param file formData file true "Media file (JPEG/PNG/WebP/MP4/WebM/MOV)"
 // @Success 201 {object} PostResponse
+// @Failure 400 {object} map[string]string "Invalid file (size/type/format)"
 // @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 413 {object} map[string]string "File too large"
+// @Failure 507 {object} map[string]string "Insufficient storage"
 // @Router /feed/media/upload [post]
 func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 	_, ok := requireUserID(c)
@@ -57,9 +80,55 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 	}
 
 	contentType := file.Header.Get("Content-Type")
-	mediaType := "image"
+
+	// VALIDATION: Determine media type and validate against whitelist
+	var mediaType string
+	var maxSize int64
+
 	if strings.HasPrefix(contentType, "video/") {
+		if !allowedVideoMimes[contentType] {
+			return c.Status(400).JSON(fiber.Map{
+				"error":    "invalid_video_mime",
+				"message":  "Supported video types: MP4, WebM, MOV (iPhone)",
+				"received": contentType,
+			})
+		}
 		mediaType = "video"
+		maxSize = maxVideoSizeBytes
+	} else if strings.HasPrefix(contentType, "image/") {
+		if !allowedImageMimes[contentType] {
+			return c.Status(400).JSON(fiber.Map{
+				"error":    "invalid_image_mime",
+				"message":  "Supported image types: JPEG, PNG, WebP",
+				"received": contentType,
+			})
+		}
+		mediaType = "image"
+		maxSize = maxImageSizeBytes
+	} else {
+		return c.Status(400).JSON(fiber.Map{
+			"error":    "unsupported_media_type",
+			"message":  "Only image/* or video/* MIME types allowed",
+			"received": contentType,
+		})
+	}
+
+	// VALIDATION: Check file size boundaries
+	if file.Size <= 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"error":   "empty_file",
+			"message": "File must be at least 1 byte",
+		})
+	}
+
+	if file.Size > maxSize {
+		limitMB := maxSize / (1024 * 1024)
+		return c.Status(413).JSON(fiber.Map{
+			"error":      "file_too_large",
+			"message":    fmt.Sprintf("Maximum size for %s: %d MB", mediaType, limitMB),
+			"max_bytes":  maxSize,
+			"file_bytes": file.Size,
+		})
 	}
 
 	filename := uuid.New().String() + filepath.Ext(file.Filename)
@@ -77,10 +146,30 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
 	}
 
+	// Attempt upload with error differentiation for storage failures
 	publicURL, err := h.storage.Upload(c.Context(), objectName, src, file.Size, contentType)
 	if err != nil {
-		logger.Error("failed to upload to minio", zap.Error(err))
-		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
+		logger.Error("failed to upload to storage",
+			zap.Error(err),
+			zap.String("filename", filename),
+			zap.Int64("size", file.Size),
+			zap.String("media_type", mediaType))
+
+		// Differentiate storage errors: insufficient space vs transient/other failures
+		errMsg := err.Error()
+		if strings.Contains(strings.ToLower(errMsg), "no space") ||
+			strings.Contains(strings.ToLower(errMsg), "quota") ||
+			strings.Contains(strings.ToLower(errMsg), "disk full") {
+			return c.Status(507).JSON(fiber.Map{
+				"error":   "insufficient_storage",
+				"message": "Server storage full, please try later",
+			})
+		}
+
+		return c.Status(500).JSON(fiber.Map{
+			"error":   "upload_failed",
+			"message": "Storage service error, please try again",
+		})
 	}
 
 	return c.Status(201).JSON(fiber.Map{

@@ -81,6 +81,23 @@ FOR EACH ROW
 EXECUTE FUNCTION init_user_activation_activity_row();
 
 -- 5) Meaningful-actions counter increment helper
+-- ACTIVATION REQUIREMENT: user_activation_activity.meaningful_actions_count >= 5
+-- This signals genuine engagement and prevents bot registration spam.
+-- 
+-- SOURCES OF MEANINGFUL_ACTIONS_COUNT INCREMENT (auto-incremented via DB triggers):
+-- 1. POST CREATION: user creates a post (trg_posts_meaningful_action) +1
+-- 2. COMMENT CREATION: user creates a comment/reply (trg_comments_meaningful_action) +1
+-- 3. TASK CREATION: user creates a task (trg_tasks_meaningful_action) +1
+--
+-- These are the ONLY sources. NOT counted:
+-- - Likes/seals/shares (too easy to farm)
+-- - Profile updates (cosmetic)
+-- - Authentication attempts (fraud signal, not engagement)
+-- - Following/allies (can be falsified)
+--
+-- Enforcement: activated when meaningful_actions_count >= 5 (see auth/service.go:resolveInitialActivation)
+-- Anti-farm: DB triggers enforce increments, code cannot bypass
+-- Anti-reverse-engineering: count is non-destructive, only increases monotonically
 CREATE OR REPLACE FUNCTION increment_meaningful_actions(actor_user_id UUID)
 RETURNS VOID AS $$
 BEGIN

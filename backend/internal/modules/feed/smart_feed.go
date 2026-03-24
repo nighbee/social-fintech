@@ -68,6 +68,14 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
 			  AND COALESCE(p.report_control_level, 0) < 3
 			  AND (
+				-- DISTRIBUTION FILTER (NON-SILENT SHADOW-BAN)
+				-- If report_control_level > 0 (restricted/shadowbanned user):
+				--   probability of showing post = distribution_multiplier * penalty_factor
+				-- - distribution_multiplier ∈ [0.0, 1.0]: how much reputation damage (0=fully hidden, 1=normal)
+				-- - penalty_factor ∈ [0.4, 0.7, 1.0]: based on strike count in 30d
+				-- If ALL conditions fail, post is FILTERED OUT of feed (does NOT appear for any viewer)
+				-- This is NOT debug-only; it's live operational filtering to protect community
+				-- Users with distribution_multiplier=0.1 will see their posts in ~10% of feeds
 				COALESCE(p.report_control_level, 0) = 0
 				OR random() <= (
 					COALESCE(p.distribution_multiplier, 1.0) *
@@ -332,21 +340,21 @@ func blendSmartFeedCandidatesWithShare(alliesLocal, world []PostResponse, limit 
 	// Phase 2: Fill remaining limit from whatever is left, respecting author caps
 	for len(blended) < limit && (aIdx < len(alliesLocal) || wIdx < len(world)) {
 		addedInLoop := false
-		
+
 		if aIdx < len(alliesLocal) {
 			if tryAppend(alliesLocal[aIdx]) {
 				addedInLoop = true
 			}
 			aIdx++
 		}
-		
+
 		if len(blended) < limit && wIdx < len(world) {
 			if tryAppend(world[wIdx]) {
 				addedInLoop = true
 			}
 			wIdx++
 		}
-		
+
 		if !addedInLoop && aIdx >= len(alliesLocal) && wIdx >= len(world) {
 			break
 		}
