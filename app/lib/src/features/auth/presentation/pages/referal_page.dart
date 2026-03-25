@@ -202,10 +202,15 @@ class _ReferalPageState extends State<ReferalPage> {
                           onInputChanged: (value) {
                             final selected = _selectedReferralUser;
                             if (selected == null) return;
+                            final normalizedValue = value.trim().toLowerCase();
+                            final selectedDisplayName =
+                                selected.displayName.trim().toLowerCase();
                             final selectedFullName =
                                 '${selected.firstName} ${selected.lastName}'
-                                    .trim();
-                            if (value.trim() != selectedFullName) {
+                                    .trim()
+                                    .toLowerCase();
+                            if (normalizedValue != selectedDisplayName &&
+                                normalizedValue != selectedFullName) {
                               setState(() {
                                 _selectedReferralUser = null;
                               });

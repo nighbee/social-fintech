@@ -149,6 +149,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                               displayName: profile.displayName,
                               userId: profile.userId,
                               avatarUrl: profile.avatarUrl,
+                              bio: profile.bio,
                               city: profile.city,
                               country: profile.country,
                               region: profile.region,

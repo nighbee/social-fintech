@@ -1,4 +1,4 @@
-﻿part of 'package:app/src/features/map/presentation/pages/map_page.dart';
+part of 'package:app/src/features/map/presentation/pages/map_page.dart';
 
 class _MapContent extends StatelessWidget {
   const _MapContent({
@@ -56,6 +56,17 @@ class _MapContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mapBloc = getIt<MapBloc>();
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    final safeTop = mediaQuery.padding.top;
+    final safeBottom = mediaQuery.padding.bottom;
+    final horizontalInset = screenHeight < 720 ? 12.0 : 14.0;
+    final topBannerInset = screenHeight < 720 ? 14.0 : 18.0;
+    final topBannerTop = safeTop + 12;
+    final overlayTop = topBannerTop + 104;
+    final controlsTop = screenHeight < 720 ? overlayTop + 88 : overlayTop + 126;
+    final floatingActionBottom = safeBottom + 18;
+    final floatingPanelBottom = floatingActionBottom + 74;
     final myRequest = MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks);
 
     final nearbyTasks = viewModel.nearbyTasks.toList(growable: false);
@@ -168,8 +179,8 @@ class _MapContent extends StatelessWidget {
                   color: const Color(0xFF181C22),
                   child: Center(
                     child: Text(
-                      'MAPBOX_ACCESS_TOKEN РЅРµ Р·Р°РґР°РЅ',
-                      style: TextStyle(color: Colors.white70),
+                      'MAPBOX_ACCESS_TOKEN is not set',
+                      style: const TextStyle(color: Colors.white70),
                     ),
                   ),
                 )
@@ -190,9 +201,9 @@ class _MapContent extends StatelessWidget {
                 ),
         ),
         Positioned(
-          top: 22,
-          left: 18,
-          right: 18,
+          top: topBannerTop,
+          left: topBannerInset,
+          right: topBannerInset,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: BackdropFilter(
@@ -243,9 +254,9 @@ class _MapContent extends StatelessWidget {
         if (myRequest != null ||
             (!hasExecutorFlowActive && selectedNearbyTask != null))
           Positioned(
-            left: 14,
-            right: 14,
-            bottom: 140,
+            left: horizontalInset,
+            right: horizontalInset,
+            bottom: floatingPanelBottom,
             child: myRequest != null
                 ? (() {
                     final myTask = myRequest;
@@ -367,8 +378,8 @@ class _MapContent extends StatelessWidget {
                   ),
           ),
         Positioned(
-          right: 18,
-          top: 250,
+          right: topBannerInset,
+          top: controlsTop,
           child: _MapControlsPanel(
             onZoomIn: onZoomIn,
             onZoomOut: onZoomOut,
@@ -377,9 +388,9 @@ class _MapContent extends StatelessWidget {
         ),
         if (myRequest != null && visibleApplications.isNotEmpty)
           Positioned(
-            top: 125,
-            left: 14,
-            right: 14,
+            top: overlayTop,
+            left: horizontalInset,
+            right: horizontalInset,
             child: _RequestsOverlay(
               applications: visibleApplications,
               selectedApplicationId: selectedApplicationId,
@@ -389,9 +400,9 @@ class _MapContent extends StatelessWidget {
           ),
         if (shouldShowExecutorTopStrip)
           Positioned(
-            top: 125,
-            left: 14,
-            right: 14,
+            top: overlayTop,
+            left: horizontalInset,
+            right: horizontalInset,
             child: _ExecutorRequestStrip(
               message:
                   '${executorCreatorName.trim().isEmpty ? 'Creator' : executorCreatorName.trim()} confirm help received',
@@ -399,9 +410,9 @@ class _MapContent extends StatelessWidget {
             ),
           ),
         Positioned(
-          left: 14,
-          right: 14,
-          bottom: 82,
+          left: horizontalInset,
+          right: horizontalInset,
+          bottom: floatingActionBottom,
           child: isAwaitingCodeEntry
               ? CustomButton(
                   text: 'Click here to enter the verification code',

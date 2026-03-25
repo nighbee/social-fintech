@@ -104,6 +104,7 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                           displayName: profile.displayName,
                           userId: profile.userId,
                           avatarUrl: profile.avatarUrl,
+                          bio: profile.bio,
                           city: profile.city,
                           country: profile.country,
                           region: profile.region,

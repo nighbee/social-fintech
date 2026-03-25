@@ -321,7 +321,7 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 
 log_request "User1 Balance After Task Creation (should be -1)" "GET" "$ECO_URL/balance" "" "$HTTP_BODY" "$HTTP_CODE" "USER1"
 USER1_SILVER_AFTER_CREATE=$(get_json_number "$HTTP_BODY" "silver_balance")
-EXPECTED_USER1=$(awk "BEGIN {printf \"%.0f\", $USER1_SILVER_BEFORE - 1}")
+EXPECTED_USER1=$(awk "BEGIN {logf \"%.0f\", $USER1_SILVER_BEFORE - 1}")
 echo -e "${CYAN}  User1 Silver before : ${USER1_SILVER_BEFORE}${NC}"
 echo -e "${CYAN}  User1 Silver after  : ${USER1_SILVER_AFTER_CREATE} (expected ${EXPECTED_USER1})${NC}"
 assert_eq "User1 charged 1 Silver for task creation" "$EXPECTED_USER1" "$USER1_SILVER_AFTER_CREATE"
@@ -602,7 +602,7 @@ HTTP_CODE=$(echo "$RESPONSE" | tail -n 1)
 log_request "User2 Balance After Task Completion" "GET" "$ECO_URL/balance" "" "$HTTP_BODY" "$HTTP_CODE" "USER2"
 USER2_SILVER_AFTER=$(get_json_number "$HTTP_BODY" "silver_balance")
 
-EXPECTED_USER2=$(awk "BEGIN {printf \"%.0f\", ${USER2_SILVER_BEFORE:-0} + 1}")
+EXPECTED_USER2=$(awk "BEGIN {logf \"%.0f\", ${USER2_SILVER_BEFORE:-0} + 1}")
 echo -e "${CYAN}  User2 Silver before : ${USER2_SILVER_BEFORE:-0}${NC}"
 echo -e "${CYAN}  User2 Silver after  : ${USER2_SILVER_AFTER}${NC}"
 echo -e "${CYAN}  Expected            : ${EXPECTED_USER2}${NC}"
@@ -703,7 +703,7 @@ echo ""
 
 echo -e "${GREEN}=== TEST 13: CreateTask – Title Too Long (>100 chars) → 400 ===${NC}"
 
-LONG_TITLE=$(printf 'A%.0s' {1..101})
+LONG_TITLE=$(logf 'A%.0s' {1..101})
 BAD_BODY="{\"title\":\"${LONG_TITLE}\",\"reward\":1,\"workers_needed\":1,\"latitude\":40.71,\"longitude\":-74.00}"
 RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$TASK_URL" \
     -H "Authorization: Bearer $USER1_TOKEN" \

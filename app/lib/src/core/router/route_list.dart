@@ -43,7 +43,6 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
           GoRoute(
             path: RoutePaths.publicProfile,
             name: RouteNames.publicProfile,
-            redirect: AuthGuard,
             builder: (context, state) {
               final userId = state.pathParameters['userId'] ?? '';
               return PublicProfilePage(userId: userId);
@@ -204,7 +203,8 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 redirect: AuthGuard,
                 builder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
-                  final latitude = (extra?['latitude'] as num?)?.toDouble() ?? 50.4501;
+                  final latitude =
+                      (extra?['latitude'] as num?)?.toDouble() ?? 50.4501;
                   final longitude =
                       (extra?['longitude'] as num?)?.toDouble() ?? 30.5234;
                   return CreateRequestPage(

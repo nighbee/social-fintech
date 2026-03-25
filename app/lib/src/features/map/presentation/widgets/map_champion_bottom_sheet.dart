@@ -16,12 +16,11 @@ class MapChampionBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sorted = champions.toList(growable: false)
+    final sortedOthers = champions
+        .where((champion) => champion.h3Index != selectedChampion.h3Index)
+        .toList(growable: false)
       ..sort((a, b) => b.score.compareTo(a.score));
-
-    final leader = sorted.isNotEmpty ? sorted.first : selectedChampion;
-    final others =
-        sorted.length > 1 ? sorted.sublist(1) : const <MapChampionEntity>[];
+    final leader = selectedChampion;
 
     return SafeArea(
       child: Container(
@@ -49,7 +48,7 @@ class MapChampionBottomSheet extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    'Regional Champion',
+                    _titleForResolution(leader.resolution),
                     style: TextStyles.titleMain.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -81,7 +80,7 @@ class MapChampionBottomSheet extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Flexible(
-              child: others.isEmpty
+              child: sortedOthers.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
                       child: Text(
@@ -94,13 +93,13 @@ class MapChampionBottomSheet extends StatelessWidget {
                   : ListView.separated(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                       shrinkWrap: true,
-                      itemCount: others.length,
+                      itemCount: sortedOthers.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
-                        final item = others[index];
+                        final item = sortedOthers[index];
                         return _RatingRow(
                           champion: item,
-                          rank: index + 2,
+                          rank: index + 1,
                           onTap: () => onOpenProfile(item.userId),
                         );
                       },
@@ -110,6 +109,19 @@ class MapChampionBottomSheet extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _titleForResolution(int resolution) {
+    switch (resolution) {
+      case 5:
+        return 'District Champion';
+      case 4:
+        return 'City Champion';
+      case 2:
+        return 'Country Champion';
+      default:
+        return 'Regional Champion';
+    }
   }
 }
 
@@ -133,9 +145,7 @@ class _LeaderCard extends StatelessWidget {
             radius: 36,
             backgroundColor: Colors.white.withValues(alpha: 0.15),
             child: Text(
-              champion.userId.isNotEmpty
-                  ? champion.userId[0].toUpperCase()
-                  : '?',
+              _avatarLabel(champion.userId),
               style: TextStyles.titleMain.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -144,7 +154,7 @@ class _LeaderCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            champion.userId,
+            _displayName(champion.userId),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyles.bodyMain.copyWith(
@@ -154,7 +164,7 @@ class _LeaderCard extends StatelessWidget {
           ),
           const SizedBox(height: 2),
           Text(
-            'Score: ${champion.score}',
+            '${_resolutionLabel(champion.resolution)} | ${champion.score} pts',
             style: TextStyles.bodySecondary.copyWith(
               color: const Color(0xFFE8C547),
               fontWeight: FontWeight.w600,
@@ -204,9 +214,7 @@ class _RatingRow extends StatelessWidget {
               radius: 18,
               backgroundColor: Colors.white.withValues(alpha: 0.14),
               child: Text(
-                champion.userId.isNotEmpty
-                    ? champion.userId[0].toUpperCase()
-                    : '?',
+                _avatarLabel(champion.userId),
                 style: TextStyles.bodyMain.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
@@ -216,7 +224,7 @@ class _RatingRow extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                champion.userId,
+                _displayName(champion.userId),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyles.bodyMain.copyWith(
@@ -243,5 +251,37 @@ class _RatingRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+String _displayName(String userId) {
+  final trimmed = userId.trim();
+  if (trimmed.isEmpty) {
+    return 'Unknown champion';
+  }
+  if (trimmed.length <= 18) {
+    return trimmed;
+  }
+  return '${trimmed.substring(0, 8)}...${trimmed.substring(trimmed.length - 4)}';
+}
+
+String _avatarLabel(String userId) {
+  final trimmed = userId.trim();
+  if (trimmed.isEmpty) {
+    return '?';
+  }
+  return trimmed[0].toUpperCase();
+}
+
+String _resolutionLabel(int resolution) {
+  switch (resolution) {
+    case 5:
+      return 'District';
+    case 4:
+      return 'City';
+    case 2:
+      return 'Country';
+    default:
+      return 'Region';
   }
 }

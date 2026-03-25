@@ -436,32 +436,77 @@ func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName 
 		limit = 50
 	}
 
-	firstPattern := "%"
-	lastPattern := "%"
-	if firstName != "" {
-		firstPattern = "%" + strings.ToLower(firstName) + "%"
-	}
-	if lastName != "" {
-		lastPattern = "%" + strings.ToLower(lastName) + "%"
-	}
+	firstName = strings.ToLower(strings.TrimSpace(firstName))
+	lastName = strings.ToLower(strings.TrimSpace(lastName))
+	joinedQuery := strings.TrimSpace(strings.Join([]string{firstName, lastName}, " "))
 
 	// Initialize as empty slice so JSON returns [] instead of null when empty
 	rows := []UserSearchResult{}
-	err := r.db.SelectContext(ctx, &rows, `
-		SELECT
-			u.id as user_id,
-			COALESCE(u.first_name, '') as first_name,
-			COALESCE(u.last_name, '') as last_name,
-			COALESCE(p.display_name, '') as display_name,
-			COALESCE(p.avatar_url, '') as avatar_url
-		FROM users u
-		LEFT JOIN profiles p ON p.user_id = u.id
-		WHERE u.is_shadow_banned = false
-		  AND LOWER(COALESCE(u.first_name, '')) LIKE $1
-		  AND LOWER(COALESCE(u.last_name, '')) LIKE $2
-		ORDER BY u.first_name, u.last_name
-		LIMIT $3
-	`, firstPattern, lastPattern, limit)
+	var err error
+	if lastName == "" {
+		pattern := "%" + firstName + "%"
+		prefixPattern := firstName + "%"
+		err = r.db.SelectContext(ctx, &rows, `
+			SELECT
+				u.id as user_id,
+				COALESCE(u.first_name, '') as first_name,
+				COALESCE(u.last_name, '') as last_name,
+				COALESCE(p.display_name, '') as display_name,
+				COALESCE(p.avatar_url, '') as avatar_url
+			FROM users u
+			LEFT JOIN profiles p ON p.user_id = u.id
+			WHERE u.is_shadow_banned = false
+			  AND (
+			  	LOWER(COALESCE(u.first_name, '')) LIKE $1
+			  	OR LOWER(COALESCE(u.last_name, '')) LIKE $1
+			  	OR LOWER(COALESCE(p.display_name, '')) LIKE $1
+			  )
+			ORDER BY
+				CASE
+					WHEN LOWER(COALESCE(p.display_name, '')) = $2 THEN 0
+					WHEN LOWER(TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, ''))) = $2 THEN 1
+					WHEN LOWER(COALESCE(p.display_name, '')) LIKE $3 THEN 2
+					ELSE 3
+				END,
+				COALESCE(p.display_name, ''),
+				u.first_name,
+				u.last_name
+			LIMIT $4
+		`, pattern, firstName, prefixPattern, limit)
+	} else {
+		firstPattern := "%" + firstName + "%"
+		lastPattern := "%" + lastName + "%"
+		displayPattern := "%" + joinedQuery + "%"
+		prefixPattern := joinedQuery + "%"
+		err = r.db.SelectContext(ctx, &rows, `
+			SELECT
+				u.id as user_id,
+				COALESCE(u.first_name, '') as first_name,
+				COALESCE(u.last_name, '') as last_name,
+				COALESCE(p.display_name, '') as display_name,
+				COALESCE(p.avatar_url, '') as avatar_url
+			FROM users u
+			LEFT JOIN profiles p ON p.user_id = u.id
+			WHERE u.is_shadow_banned = false
+			  AND (
+			  	(
+			  		LOWER(COALESCE(u.first_name, '')) LIKE $1
+			  		AND LOWER(COALESCE(u.last_name, '')) LIKE $2
+			  	)
+			  	OR LOWER(COALESCE(p.display_name, '')) LIKE $3
+			  )
+			ORDER BY
+				CASE
+					WHEN LOWER(COALESCE(p.display_name, '')) = $4 THEN 0
+					WHEN LOWER(COALESCE(p.display_name, '')) LIKE $5 THEN 1
+					ELSE 2
+				END,
+				COALESCE(p.display_name, ''),
+				u.first_name,
+				u.last_name
+			LIMIT $6
+		`, firstPattern, lastPattern, displayPattern, joinedQuery, prefixPattern, limit)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("search users failed: %w", err)
 	}

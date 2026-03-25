@@ -70,7 +70,7 @@ func TestSearchUsersByName(t *testing.T) {
 	}
 
 	// Insert users + profiles
-	for _, u := range users {
+	for idx, u := range users {
 		_, err := testDB.ExecContext(ctx, `
 			INSERT INTO users (
 				id, email, username, first_name, last_name, is_shadow_banned,
@@ -83,12 +83,17 @@ func TestSearchUsersByName(t *testing.T) {
 			t.Fatalf("insert user failed: %v", err)
 		}
 
+		displayName := u.firstName + " " + u.lastName
+		if idx == 0 {
+			displayName = "captainbright"
+		}
+
 		_, err = testDB.ExecContext(ctx, `
 			INSERT INTO profiles (
 				user_id, display_name, avatar_url, is_profile_public, created_at, updated_at
 			) VALUES ($1, $2, $3, true, NOW(), NOW())
 			ON CONFLICT (user_id) DO NOTHING
-		`, u.id, u.firstName+" "+u.lastName, "https://example.com/avatars/"+u.id+".jpg")
+		`, u.id, displayName, "https://example.com/avatars/"+u.id+".jpg")
 		if err != nil {
 			t.Fatalf("insert profile failed: %v", err)
 		}
@@ -121,6 +126,17 @@ func TestSearchUsersByName(t *testing.T) {
 	}
 	if len(res) != 2 {
 		t.Fatalf("expected 2 results (shadow user excluded), got %d", len(res))
+	}
+
+	res, err = repo.SearchUsersByName(ctx, "captain", "", 20)
+	if err != nil {
+		t.Fatalf("display name search failed: %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("expected 1 result for display name search, got %d", len(res))
+	}
+	if res[0].DisplayName != "captainbright" {
+		t.Fatalf("unexpected display name result: %+v", res[0])
 	}
 }
 

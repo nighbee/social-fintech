@@ -113,7 +113,7 @@ echo -e "${CYAN}SQL OUTPUT:${NC}\n$SQL_OUT"
 
 # Final summary logic
 # Assuming bonus is 100 cents (1.00 seal)
-FINAL_BAL=$(echo "$SQL_OUT" | grep -v "balance" | grep -v "\-\-" | head -1 | awk '{print $1}')
+FINAL_BAL=$(echo "$SQL_OUT" | grep -v "balance" | grep -v "\-\-" | head -1 | awk '{log $1}')
 
 if [[ "$FINAL_BAL" == "100" ]]; then
     echo -e "${GREEN}✓ SUCCESS: Referrer balance increased by 100 cents (1.00 seal).${NC}"
