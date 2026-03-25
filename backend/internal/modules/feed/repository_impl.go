@@ -314,6 +314,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		WHERE p.id = $1
 		  AND p.is_archived = false
 		  AND p.is_deleted = false
+		  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
 	`
 	var resp PostResponse
@@ -364,6 +365,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		WHERE p.is_archived = false AND p.is_deleted = false
+		  AND COALESCE(u.is_shadow_banned, false) = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
 		  AND p.user_id <> $2
 		-- If cursor is provided: AND p.created_at < $cursor
@@ -440,7 +442,10 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 		FROM post_comments c
 		JOIN users u ON c.user_id = u.id
-		WHERE c.id = $1 AND c.is_deleted = false AND c.is_hidden_by_reports = false
+		WHERE c.id = $1
+		  AND c.is_deleted = false
+		  AND c.is_hidden_by_reports = false
+		  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
 	`
 	var resp CommentResponse
 	var mediaJSON []byte
@@ -527,7 +532,11 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
 				  AND aps.created_at >= NOW() - INTERVAL '30 days'
 			) aps ON true
-			WHERE c.post_id = $1 AND c.parent_comment_id IS NULL AND c.is_deleted = false AND c.is_hidden_by_reports = false
+			WHERE c.post_id = $1
+			  AND c.parent_comment_id IS NULL
+			  AND c.is_deleted = false
+			  AND c.is_hidden_by_reports = false
+			  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
 			  AND (
 				c.user_id = $2 OR
 				random() <= (
@@ -560,7 +569,11 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
 				  AND aps.created_at >= NOW() - INTERVAL '30 days'
 			) aps ON true
-			WHERE c.post_id = $1 AND c.parent_comment_id = $3 AND c.is_deleted = false AND c.is_hidden_by_reports = false
+			WHERE c.post_id = $1
+			  AND c.parent_comment_id = $3
+			  AND c.is_deleted = false
+			  AND c.is_hidden_by_reports = false
+			  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
 			  AND (
 				c.user_id = $2 OR
 				random() <= (

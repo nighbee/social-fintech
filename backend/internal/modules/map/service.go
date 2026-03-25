@@ -652,6 +652,23 @@ func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionA
 	}
 
 	h3Res5, h3Res4, h3Res2 := computeH3Indices(req.Latitude, req.Longitude)
+
+	prev, err := s.repo.GetUserRegionState(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	// Stabilize district/city assignment within the same ISO week when country is unchanged.
+	// This prevents ranking "jumps" for users on border zones while keeping country moves immediate.
+	if shouldKeepWeeklyRegion(prev, h3Res5, h3Res4, h3Res2, time.Now().UTC()) {
+		if prev != nil {
+			if prev.H3Res5 != nil && *prev.H3Res5 != "" {
+				h3Res5 = *prev.H3Res5
+			}
+			if prev.H3Res4 != nil && *prev.H3Res4 != "" {
+				h3Res4 = *prev.H3Res4
+			}
+		}
+	}
 	if err := s.repo.UpdateUserRegion(ctx, userID, &h3Res5, &h3Res4, &h3Res2, req.ParticipateDistrict, true); err != nil {
 		return nil, err
 	}
@@ -669,6 +686,28 @@ func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionA
 		LocationOptIn:       true,
 		UpdatedAt:           time.Now(),
 	}, nil
+}
+
+func shouldKeepWeeklyRegion(prev *UserRegionState, nextRes5, nextRes4, nextRes2 string, now time.Time) bool {
+	if prev == nil || prev.LocationUpdatedAt == nil || prev.H3Res5 == nil || prev.H3Res2 == nil {
+		return false
+	}
+	prevRes5 := *prev.H3Res5
+	prevRes2 := *prev.H3Res2
+	if prevRes5 == "" || prevRes2 == "" {
+		return false
+	}
+	if prevRes5 == nextRes5 {
+		return false
+	}
+	// Country changed -> switch immediately.
+	if prevRes2 != nextRes2 {
+		return false
+	}
+
+	prevYear, prevWeek := prev.LocationUpdatedAt.UTC().ISOWeek()
+	currYear, currWeek := now.UTC().ISOWeek()
+	return prevYear == currYear && prevWeek == currWeek
 }
 
 // CompleteTask is the legacy single-actor completion path. Deprecated.

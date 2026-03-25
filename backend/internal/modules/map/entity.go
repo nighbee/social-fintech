@@ -150,6 +150,13 @@ type RegionAssignmentResponse struct {
 	UpdatedAt           time.Time `json:"updated_at"`
 }
 
+type UserRegionState struct {
+	H3Res5            *string    `db:"h3_res5"`
+	H3Res4            *string    `db:"h3_res4"`
+	H3Res2            *string    `db:"h3_res2"`
+	LocationUpdatedAt *time.Time `db:"location_updated_at"`
+}
+
 type RegionChampion struct {
 	ID         uuid.UUID `db:"id"          json:"id"`
 	H3Index    string    `db:"h3_index"    json:"h3_index"`

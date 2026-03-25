@@ -368,7 +368,22 @@ func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID s
 
 	ageHours := now.Sub(createdAt).Hours()
 
-	if distinctDays >= 3 && loginEvents >= 3 && ageHours >= 72 && phoneNumber.Valid && phoneNumber.String != "" && meaningfulActions >= 5 {
+	requiredDays := 3
+	requiredLogins := 3
+	requiredMeaningful := 5
+	requiredAgeHours := 72.0
+	if status == "suspicious" {
+		requiredDays = 5
+		requiredLogins = 5
+		requiredMeaningful = 8
+		requiredAgeHours = 120.0
+	}
+
+	if distinctDays >= requiredDays &&
+		loginEvents >= requiredLogins &&
+		ageHours >= requiredAgeHours &&
+		phoneNumber.Valid && phoneNumber.String != "" &&
+		meaningfulActions >= requiredMeaningful {
 		if _, err := r.db.ExecContext(ctx, `
 			UPDATE users
 			SET activation_status = 'active',

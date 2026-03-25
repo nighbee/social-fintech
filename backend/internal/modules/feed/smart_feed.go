@@ -65,6 +65,15 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			) aps ON true
 			WHERE p.is_archived = false
 			  AND p.is_deleted = false
+			  AND (
+				p.user_id = $1
+				OR EXISTS (
+					SELECT 1
+					FROM users au
+					WHERE au.id = p.user_id
+					  AND COALESCE(au.is_shadow_banned, false) = false
+				)
+			  )
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
 			  AND COALESCE(p.report_control_level, 0) < 3
 			  AND (
@@ -358,6 +367,27 @@ func blendSmartFeedCandidatesWithShare(alliesLocal, world []PostResponse, limit 
 		if !addedInLoop && aIdx >= len(alliesLocal) && wIdx >= len(world) {
 			break
 		}
+	}
+
+	// Phase 3: Backfill when pool is small.
+	// If diversity cap prevented filling the page (e.g. single-author pool),
+	// finish with unseen posts regardless of per-author cap.
+	if len(blended) < limit {
+		appendWithoutAuthorCap := func(items []PostResponse) {
+			for _, item := range items {
+				if len(blended) >= limit {
+					return
+				}
+				if seenPostIDs[item.PostID] {
+					continue
+				}
+				blended = append(blended, item)
+				seenPostIDs[item.PostID] = true
+			}
+		}
+
+		appendWithoutAuthorCap(alliesLocal)
+		appendWithoutAuthorCap(world)
 	}
 
 	return blended

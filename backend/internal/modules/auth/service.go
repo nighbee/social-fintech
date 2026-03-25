@@ -23,6 +23,8 @@ type EconomyService interface {
 const (
 	activationDeviceRegistrationsLimit = 3
 	activationIPRegistrationsLimit     = 5
+	activationDeviceSuspiciousLimit    = 6
+	activationIPSuspiciousLimit        = 10
 )
 
 // бизнес логика которая связывает jwt, repo, sms и verifiers
@@ -267,7 +269,12 @@ func (s *Service) resolveInitialActivation(ctx context.Context, deviceID, ip str
 	}
 
 	if deviceCount > activationDeviceRegistrationsLimit || ipCount > activationIPRegistrationsLimit {
-		until := time.Now().Add(24 * time.Hour)
+		// Escalate to suspicious when device/IP signal is far above baseline.
+		if deviceCount > activationDeviceSuspiciousLimit || ipCount > activationIPSuspiciousLimit {
+			until := time.Now().Add(120 * time.Hour)
+			return "suspicious", &until, nil
+		}
+		until := time.Now().Add(72 * time.Hour)
 		return "restricted", &until, nil
 	}
 

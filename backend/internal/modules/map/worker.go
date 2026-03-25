@@ -2,6 +2,7 @@ package mapmodule
 
 import (
 	"context"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -116,6 +117,11 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 		score, err := w.cache.ZScore(ctx, key, userID)
 		if err != nil {
 			continue
+		}
+
+		// Deterministic tie-break for equal scores.
+		if tiedMembers, tieErr := w.cache.ZRangeByExactScore(ctx, key, score); tieErr == nil {
+			userID = pickChampionUserID(userID, tiedMembers)
 		}
 
 		champion := &RegionChampion{
@@ -274,4 +280,12 @@ func parseLeaderboardKey(key string, resolution int) (string, int, int, bool) {
 	}
 
 	return h3Index, year, week, true
+}
+
+func pickChampionUserID(fallback string, tiedMembers []string) string {
+	if len(tiedMembers) == 0 {
+		return fallback
+	}
+	sort.Strings(tiedMembers)
+	return tiedMembers[0]
 }

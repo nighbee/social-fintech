@@ -21,7 +21,7 @@ const (
 	NetworkBufferSeconds     = 5.0
 	FeedPresenceTTL          = 20 * time.Second
 	ReportRateLimitPerHour   = 10
-	ReportRateLimitWindow    = 24 * time.Hour
+	ReportRateLimitWindow    = 1 * time.Hour
 	MinReportActivationViews = 50
 	CommentLevel1Threshold   = 3
 	CommentLevel2Threshold   = 5

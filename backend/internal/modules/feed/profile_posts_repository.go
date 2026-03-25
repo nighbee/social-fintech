@@ -46,9 +46,11 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 			(SELECT COUNT(*) FROM post_media pm WHERE pm.post_id = p.id) > 1 AS has_multiple_media,
 			p.created_at
 		FROM posts p
+		JOIN users u ON u.id = p.user_id
 		WHERE p.user_id    = $1
 		  AND p.is_archived = false
 		  AND p.is_deleted = false
+		  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
 		  AND EXISTS (
 		        SELECT 1 FROM post_media pm WHERE pm.post_id = p.id
 		      )
@@ -140,6 +142,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		WHERE p.user_id     = $1
 		  AND p.is_archived  = false
 		  AND p.is_deleted   = false
+		  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
 		  AND p.created_at   < $3
 		  AND (
 		        $1 = $2

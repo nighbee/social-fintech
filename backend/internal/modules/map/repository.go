@@ -39,6 +39,7 @@ type Repository interface {
 	MarkTaskCompleted(ctx context.Context, taskID, completedBy string) (bool, error)
 
 	// User region
+	GetUserRegionState(ctx context.Context, userID string) (*UserRegionState, error)
 	UpdateUserRegion(ctx context.Context, userID string, h3Res5, h3Res4, h3Res2 *string, participateDistrict, locationOptIn bool) error
 
 	// Champions
@@ -463,6 +464,22 @@ func (r *repository) IncrementWorkersFilled(ctx context.Context, taskID string) 
 		return fmt.Errorf("failed to increment workers_filled: %w", err)
 	}
 	return nil
+}
+
+func (r *repository) GetUserRegionState(ctx context.Context, userID string) (*UserRegionState, error) {
+	query := `
+		SELECT h3_res5, h3_res4, h3_res2, location_updated_at
+		FROM users
+		WHERE id = $1
+	`
+	var state UserRegionState
+	if err := sqlx.GetContext(ctx, r.executor(), &state, query, userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get user region state: %w", err)
+	}
+	return &state, nil
 }
 
 func (r *repository) UpdateUserRegion(ctx context.Context, userID string, h3Res5, h3Res4, h3Res2 *string, participateDistrict, locationOptIn bool) error {

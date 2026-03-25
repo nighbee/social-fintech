@@ -2,6 +2,7 @@ package mapmodule
 
 import (
 	"testing"
+	"time"
 )
 
 // TestComputeH3Indices validates that coordinates are correctly converted to H3 cells.
@@ -144,9 +145,9 @@ func TestTaskH3Assignment(t *testing.T) {
 
 	// Simulate task creation
 	task := &Task{
-		H3Res5:    &res5,
-		H3Res4:    &res4,
-		H3Res2:    &res2,
+		H3Res5: &res5,
+		H3Res4: &res4,
+		H3Res2: &res2,
 	}
 
 	if task.H3Res5 == nil {
@@ -208,6 +209,33 @@ func TestValidateCoordinates(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestShouldKeepWeeklyRegion(t *testing.T) {
+	now := time.Now().UTC()
+	prevRes5 := "852b652bfffffff"
+	prevRes4 := "842b653ffffffff"
+	prevRes2 := "822b67fffffffff"
+	prevUpdated := now.Add(-2 * time.Hour)
+
+	prev := &UserRegionState{
+		H3Res5:            &prevRes5,
+		H3Res4:            &prevRes4,
+		H3Res2:            &prevRes2,
+		LocationUpdatedAt: &prevUpdated,
+	}
+
+	t.Run("freeze within same week and same country", func(t *testing.T) {
+		if !shouldKeepWeeklyRegion(prev, "852b6523fffffff", "842b653ffffffff", prevRes2, now) {
+			t.Fatal("expected weekly region freeze")
+		}
+	})
+
+	t.Run("allow switch on country change", func(t *testing.T) {
+		if shouldKeepWeeklyRegion(prev, "8a2a100704d7fff", "842a107ffffffff", "822a17fffffffff", now) {
+			t.Fatal("expected immediate switch on country change")
+		}
+	})
 }
 
 // Utility validation function.

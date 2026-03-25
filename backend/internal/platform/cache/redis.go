@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -82,6 +83,14 @@ func (c *Cache) ZRevRank(ctx context.Context, key, member string) (int64, error)
 
 func (c *Cache) ZScore(ctx context.Context, key, member string) (float64, error) {
 	return c.Client.ZScore(ctx, key, member).Result()
+}
+
+func (c *Cache) ZRangeByExactScore(ctx context.Context, key string, score float64) ([]string, error) {
+	scoreStr := strconv.FormatFloat(score, 'f', -1, 64)
+	return c.Client.ZRangeByScore(ctx, key, &redis.ZRangeBy{
+		Min: scoreStr,
+		Max: scoreStr,
+	}).Result()
 }
 
 func (c *Cache) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {
