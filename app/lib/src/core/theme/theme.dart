@@ -11,23 +11,23 @@ part 'theme_context_extension.dart';
 class MaterialAppTheme {
   static final theme = ThemeData(
     brightness: Brightness.light,
-    scaffoldBackgroundColor: AppColors.colorffffffff,
+    scaffoldBackgroundColor: AppColors.whiteBackground,
     splashFactory: InkSparkle.splashFactory,
-    splashColor: AppColors.colorff74afe3.withOpacity(0.3),
-    highlightColor: AppColors.colorff74afe3.withOpacity(0.2),
+    splashColor: AppColors.blueText1.withValues(alpha: 0.5),
+    highlightColor: AppColors.blueText1.withValues(alpha: 0.5),
     dividerTheme: const DividerThemeData(
-      color: AppColors.colorffd9d9,
+      color: AppColors.backgroundGray,
       thickness: 1,
       space: 36,
     ),
     textSelectionTheme: TextSelectionThemeData(
-      selectionColor: AppColors.colorff028a66.withOpacity(0.3),
-      selectionHandleColor: AppColors.colorff74afe3,
+      selectionColor: AppColors.greenText.withValues(alpha: 0.3),
+      selectionHandleColor: AppColors.blueText1,
     ),
     bottomSheetTheme: const BottomSheetThemeData(
-      modalBackgroundColor: AppColors.colorffffffff,
-      backgroundColor: AppColors.colorffffffff,
-      surfaceTintColor: AppColors.colorffffffff,
+      modalBackgroundColor: AppColors.whiteBackground,
+      backgroundColor: AppColors.whiteBackground,
+      surfaceTintColor: AppColors.whiteBackground,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(UIConstants.defaultGap3),
@@ -39,10 +39,10 @@ class MaterialAppTheme {
         elevation: 0,
         fixedSize: const Size.fromHeight(44),
         maximumSize: const Size.fromHeight(44),
-        backgroundColor: AppColors.colorffa43337,
-        foregroundColor: AppColors.colorffffffff,
-        disabledBackgroundColor: AppColors.colorffd9d9,
-        disabledForegroundColor: AppColors.colorff838383,
+        backgroundColor: AppColors.redText,
+        foregroundColor: AppColors.whiteBackground,
+        disabledBackgroundColor: AppColors.backgroundGray,
+        disabledForegroundColor: AppColors.textGray2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(UIConstants.defaultRadius),
         ),
@@ -50,37 +50,35 @@ class MaterialAppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.colorffffffff,
+      fillColor: AppColors.whiteBackground,
       contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 17),
       errorStyle: const TextStyle(height: 0),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.colorffd9d9),
+        borderSide: const BorderSide(color: AppColors.backgroundGray),
       ),
       focusedBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: AppColors.colorff74afe3),
+        borderSide: const BorderSide(color: AppColors.blueText1),
         borderRadius: BorderRadius.circular(12),
       ),
       errorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: AppColors.colorffa43337),
+        borderSide: const BorderSide(color: AppColors.redText),
         borderRadius: BorderRadius.circular(12),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderSide: const BorderSide(color: AppColors.colorffa43337),
+        borderSide: const BorderSide(color: AppColors.redText),
         borderRadius: BorderRadius.circular(12),
       ),
     ),
     colorScheme: ColorScheme.light(
-      primary: AppColors.colorff74afe3,
-      secondary: AppColors.colorff819dff,
-      error: AppColors.colorffa43337,
-      surface: AppColors.colorffffffff,
-      background: AppColors.colorffffffff,
-      onPrimary: AppColors.colorffffffff,
-      onSecondary: AppColors.colorffffffff,
-      onError: AppColors.colorffffffff,
-      onSurface: AppColors.colorff000000,
-      onBackground: AppColors.colorff000000,
+      primary: AppColors.blueText1,
+      secondary: AppColors.blueText2,
+      error: AppColors.redText,
+      surface: AppColors.whiteBackground,
+      onPrimary: AppColors.whiteBackground,
+      onSecondary: AppColors.whiteBackground,
+      onError: AppColors.whiteBackground,
+      onSurface: AppColors.blackBackground,
     ),
   );
 
@@ -88,18 +86,16 @@ class MaterialAppTheme {
 
   static final dark = theme.copyWith(
     brightness: Brightness.dark,
-    scaffoldBackgroundColor: AppColors.colorff000000,
+    scaffoldBackgroundColor: AppColors.blackBackground,
     colorScheme: ColorScheme.dark(
-      primary: AppColors.colorff74afe3,
-      secondary: AppColors.colorff819dff,
-      error: AppColors.colorffa43337,
-      surface: AppColors.colorff000000,
-      background: AppColors.colorff000000,
-      onPrimary: AppColors.colorffffffff,
-      onSecondary: AppColors.colorffffffff,
-      onError: AppColors.colorffffffff,
-      onSurface: AppColors.colorffffffff,
-      onBackground: AppColors.colorffffffff,
+      primary: AppColors.blueText1,
+      secondary: AppColors.blueText2,
+      error: AppColors.redText,
+      surface: AppColors.blackBackground,
+      onPrimary: AppColors.whiteBackground,
+      onSecondary: AppColors.whiteBackground,
+      onError: AppColors.whiteBackground,
+      onSurface: AppColors.whiteBackground,
     ),
   );
 }

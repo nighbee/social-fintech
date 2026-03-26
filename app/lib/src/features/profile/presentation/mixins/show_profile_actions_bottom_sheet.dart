@@ -18,7 +18,7 @@ mixin ShowProfileActionsBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.9,
       child: ActionBottomSheet(
-        backgroundColor: Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: Color(0xFF202020).withValues(alpha: 0.20),
         child: ListView(
           shrinkWrap: true,
           padding: const EdgeInsets.symmetric(vertical: 8),

@@ -101,8 +101,8 @@ class CustomListItem extends StatelessWidget {
             Container(
               width: double.infinity,
               height: 1,
-              color: Colors.grey.withOpacity(
-                0.2,
+              color: Colors.grey.withValues(
+                alpha: 0.2,
               ), // AppColors.stroke50 equivalent
             ),
         ],

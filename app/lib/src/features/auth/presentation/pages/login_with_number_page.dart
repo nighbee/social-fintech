@@ -11,7 +11,6 @@ import 'package:app/src/features/auth/domain/requests/login_request.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -180,16 +179,17 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                             children: [
                               TextButton(
                                 onPressed: () {},
-                                child: Text("Log in", style: TextStyles.titleBig),
+                                child:
+                                    Text("Log in", style: TextStyles.titleBig),
                               ),
-
                               Text("or", style: TextStyles.titleBig),
-
                               TextButton(
                                 onPressed: () {
-                                  context.pushReplacementNamed(RouteNames.signup);
+                                  context
+                                      .pushReplacementNamed(RouteNames.signup);
                                 },
-                                child: Text("Sign up", style: TextStyles.titleBig),
+                                child:
+                                    Text("Sign up", style: TextStyles.titleBig),
                               ),
                             ],
                           ),
@@ -218,9 +218,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                               PhoneNumberFormatter(_selectedCountryCode),
                             ],
                           ),
-
                           Gap(28),
-
                           CustomButton(
                             text: "Continue",
                             isDisabled: isLoading,
@@ -242,15 +240,13 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                               }
 
                               context.read<AuthBloc>().add(
-                                AuthEvent.startPhoneVerification(
-                                  phoneNumber: phoneNumber,
-                                ),
-                              );
+                                    AuthEvent.startPhoneVerification(
+                                      phoneNumber: phoneNumber,
+                                    ),
+                                  );
                             },
                           ),
-
                           Gap(57),
-
                           Row(
                             spacing: 12,
                             children: [
@@ -296,8 +292,11 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                                 isDisabled: isLoading,
                                 onTap: () {
                                   context.read<AuthBloc>().add(
-                                    AuthEvent.login(request: LoginRequest.social(provider: SocialProvider.google)),
-                                  );
+                                        AuthEvent.login(
+                                            request: LoginRequest.social(
+                                                provider:
+                                                    SocialProvider.google)),
+                                      );
                                 },
                                 padding: EdgeInsets.symmetric(vertical: 10),
                                 textStyle: TextStyles.titleMain.copyWith(
@@ -307,12 +306,14 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                               Text(
                                 "Continuing, I agree with\nTerms and conditions.",
                                 textAlign: TextAlign.center,
-                                style: TextStyles.bodyMain.copyWith(fontSize: 14),
+                                style:
+                                    TextStyles.bodyMain.copyWith(fontSize: 14),
                               ),
                             ],
                           ),
                           SizedBox(
-                            height: MediaQuery.of(context).viewInsets.bottom + 20,
+                            height:
+                                MediaQuery.of(context).viewInsets.bottom + 20,
                           ),
                         ],
                       ),

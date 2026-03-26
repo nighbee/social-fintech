@@ -1,97 +1,83 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
-import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/profile/presentation/utils/mock_ranks_data.dart';
 import 'package:app/src/features/profile/presentation/widgets/rangs/rank_card.dart';
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 
-class RangsPage extends StatelessWidget {
+class RangsPage extends StatefulWidget {
   const RangsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: Container(
-            color: const Color(0xFF16171A),
-            child: const IgnorePointer(
-              child: ParticleAnimation(
-                particleCount: 18,
-                particleColors: [Color(0xFFFFFFFF)],
-                minSize: 3,
-                maxSize: 6,
-                minDistanceBetweenParticles: 72,
-              ),
-            ),
-          ),
-        ),
-        Scaffold(
-          backgroundColor: Colors.transparent,
-          appBar: CustomAppBar(
-            title: 'Rang',
-            backgroundColor: Colors.transparent,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: Center(
-                  child: Assets.icons.more.svg(
-                    width: 18,
-                    height: 18,
-                    color: AppColors.textBrand,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          body: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    children: [
-                      for (var index = 0; index < mockRanks.length; index++) ...[
-                        if (mockRanks[index].thresholdLabelAbove != null)
-                          _RankThresholdLabel(
-                            label: mockRanks[index].thresholdLabelAbove!,
-                          ),
-                        RankCard(rank: mockRanks[index]),
-                        if (index < mockRanks.length - 1) const Gap(20),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  State<RangsPage> createState() => _RangsPageState();
 }
 
-class _RankThresholdLabel extends StatelessWidget {
-  const _RankThresholdLabel({required this.label});
+class _RangsPageState extends State<RangsPage> {
+  late final PageController _pageController;
+  int _currentPage = 0;
 
-  final String label;
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: TextStyles.bodyLarge.copyWith(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          height: 1.2,
-          color: const Color(0xFFDBD6C9),
+    return Scaffold(
+      backgroundColor: AppColors.mainBackground,
+      appBar: const CustomAppBar(title: 'Rang'),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        child: Column(
+          children: [
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                scrollDirection: Axis.vertical,
+                onPageChanged: (index) {
+                  setState(() {
+                    _currentPage = index;
+                  });
+                },
+                itemCount: mockRanks.length,
+                itemBuilder: (context, index) {
+                  final rank = mockRanks[index];
+                  final nextRank = index < mockRanks.length - 1
+                      ? mockRanks[index + 1]
+                      : null;
+
+                  return Center(
+                    child: RankCard(rank: rank, nextRank: nextRank),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(mockRanks.length, (index) {
+                final isActive = index == _currentPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  margin: const EdgeInsets.symmetric(horizontal: 5),
+                  width: isActive ? 18 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    color: isActive
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.24),
+                  ),
+                );
+              }),
+            ),
+          ],
         ),
       ),
     );

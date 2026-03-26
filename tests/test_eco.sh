@@ -539,17 +539,17 @@ RESPONSE=$(curl -s -X GET "$ECO_URL/balance" -H "Authorization: Bearer $USER2_TO
 RECEIVER_AFTER=$(get_json_number "$RESPONSE" "silver_balance")
 
 # Calculate expected balance using awk (bc may not be available in Git Bash)
-EXPECTED=$(awk "BEGIN {printf \"%.1f\", $RECEIVER_BEFORE + $SUCCESS * 1.0}")
-AFTER_DIFF=$(awk "BEGIN {printf \"%.1f\", $RECEIVER_AFTER - $RECEIVER_BEFORE}")
+EXPECTED=$(awk "BEGIN {logf \"%.1f\", $RECEIVER_BEFORE + $SUCCESS * 1.0}")
+AFTER_DIFF=$(awk "BEGIN {logf \"%.1f\", $RECEIVER_AFTER - $RECEIVER_BEFORE}")
 
 echo -e "${CYAN}Receiver balance before: $RECEIVER_BEFORE${NC}"
 echo -e "${CYAN}Receiver balance after: $RECEIVER_AFTER${NC}"
 echo -e "${CYAN}Balance change: +$AFTER_DIFF${NC}"
-echo -e "${CYAN}Expected change: +$(awk "BEGIN {print $SUCCESS * 1.0}") (from $SUCCESS successful transfers)${NC}"
+echo -e "${CYAN}Expected change: +$(awk "BEGIN {log $SUCCESS * 1.0}") (from $SUCCESS successful transfers)${NC}"
 echo -e "${CYAN}Successful transfers: $SUCCESS out of 6 attempted${NC}"
 
 # Compare with tolerance for floating point
-MATCH=$(awk "BEGIN {if ($RECEIVER_AFTER == $EXPECTED) print 1; else print 0}")
+MATCH=$(awk "BEGIN {if ($RECEIVER_AFTER == $EXPECTED) log 1; else log 0}")
 if [[ "$MATCH" == "1" ]]; then
     echo -e "${GREEN}✓ SUCCESS: No money lost in concurrent transfers${NC}"
     echo -e "${GREEN}✓ Race condition protection working${NC}"
@@ -645,29 +645,29 @@ fi
 echo -e "${CYAN}Balances after:${NC}"
 RESPONSE=$(curl -s -X GET "$ECO_URL/balance" -H "Authorization: Bearer $USER1_TOKEN")
 USER1_AFTER=$(get_json_number "$RESPONSE" "silver_balance")
-echo -e "${CYAN}  User1: $USER1_AFTER (change: $(awk "BEGIN {printf \"%.1f\", $USER1_AFTER - $USER1_BEFORE}"))${NC}"
+echo -e "${CYAN}  User1: $USER1_AFTER (change: $(awk "BEGIN {logf \"%.1f\", $USER1_AFTER - $USER1_BEFORE}"))${NC}"
 
 RESPONSE=$(curl -s -X GET "$ECO_URL/balance" -H "Authorization: Bearer $USER3_TOKEN")
 USER3_AFTER=$(get_json_number "$RESPONSE" "silver_balance")
-echo -e "${CYAN}  User3: $USER3_AFTER (change: $(awk "BEGIN {printf \"%.1f\", $USER3_AFTER - $USER3_BEFORE}"))${NC}"
+echo -e "${CYAN}  User3: $USER3_AFTER (change: $(awk "BEGIN {logf \"%.1f\", $USER3_AFTER - $USER3_BEFORE}"))${NC}"
 
 RESPONSE=$(curl -s -X GET "$ECO_URL/balance" -H "Authorization: Bearer $ADMIN_TOKEN")
 ADMIN_AFTER=$(get_json_number "$RESPONSE" "silver_balance")
-echo -e "${CYAN}  Admin: $ADMIN_AFTER (change: $(awk "BEGIN {printf \"%.1f\", $ADMIN_AFTER - $ADMIN_BEFORE}"))${NC}"
+echo -e "${CYAN}  Admin: $ADMIN_AFTER (change: $(awk "BEGIN {logf \"%.1f\", $ADMIN_AFTER - $ADMIN_BEFORE}"))${NC}"
 
 RESPONSE=$(curl -s -X GET "$ECO_URL/balance" -H "Authorization: Bearer $USER2_TOKEN")
 USER2_AFTER=$(get_json_number "$RESPONSE" "silver_balance")
-USER2_CHANGE=$(awk "BEGIN {printf \"%.1f\", $USER2_AFTER - $USER2_BEFORE}")
+USER2_CHANGE=$(awk "BEGIN {logf \"%.1f\", $USER2_AFTER - $USER2_BEFORE}")
 echo -e "${CYAN}  User2 (receiver): $USER2_AFTER (change: +$USER2_CHANGE)${NC}"
 
 # Verify conservation of money
-TOTAL_SENT=$(awk "BEGIN {printf \"%.1f\", ($USER1_BEFORE - $USER1_AFTER) + ($USER3_BEFORE - $USER3_AFTER) + ($ADMIN_BEFORE - $ADMIN_AFTER)}")
-TOTAL_RECEIVED=$(awk "BEGIN {printf \"%.1f\", $USER2_AFTER - $USER2_BEFORE}")
+TOTAL_SENT=$(awk "BEGIN {logf \"%.1f\", ($USER1_BEFORE - $USER1_AFTER) + ($USER3_BEFORE - $USER3_AFTER) + ($ADMIN_BEFORE - $ADMIN_AFTER)}")
+TOTAL_RECEIVED=$(awk "BEGIN {logf \"%.1f\", $USER2_AFTER - $USER2_BEFORE}")
 
 echo -e "${CYAN}Total sent from all senders: $TOTAL_SENT${NC}"
 echo -e "${CYAN}Total received by User2: $TOTAL_RECEIVED${NC}"
 
-MATCH=$(awk "BEGIN {if ($TOTAL_SENT == $TOTAL_RECEIVED) print 1; else print 0}")
+MATCH=$(awk "BEGIN {if ($TOTAL_SENT == $TOTAL_RECEIVED) log 1; else log 0}")
 if [[ "$MATCH" == "1" ]]; then
     echo -e "${GREEN}✓ SUCCESS: Money conservation verified (no double-spending or loss)${NC}"
 else

@@ -19,7 +19,7 @@ get_json_number() {
 }
 
 get_json_bool() {
-    echo "$1" | grep -o "\"$2\": *[a-z]*" | head -1 | awk -F': ' '{print $2}' | tr -d ' '
+    echo "$1" | grep -o "\"$2\": *[a-z]*" | head -1 | awk -F': ' '{log $2}' | tr -d ' '
 }
 
 pretty_json() {

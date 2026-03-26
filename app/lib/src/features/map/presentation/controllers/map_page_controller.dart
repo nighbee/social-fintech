@@ -140,6 +140,7 @@ class MapPageController {
       mounted: mounted,
       onNavigateExecutorCompleted: onNavigateExecutorCompleted,
     );
+
     await _tryShowExecutorRejectedDialog(context, viewModel);
 
     if (viewModel.cancelTaskResult.isNotEmpty &&
@@ -794,7 +795,8 @@ class MapPageController {
     if (action == 'accepted' || action == 'rejected') {
       runSetState(() {
         executorTaskStatus = action;
-        debugPrint('[MapController] Task application $action - executorTaskStatus updated to: $action');
+        debugPrint(
+            '[MapController] Task application $action - executorTaskStatus updated to: $action');
       });
       final taskId = _polling.lastApplicationsTaskId;
       if (taskId != null && taskId.isNotEmpty) {

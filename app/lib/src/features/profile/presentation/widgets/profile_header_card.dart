@@ -13,6 +13,7 @@ class ProfileHeaderCard extends StatelessWidget {
     required this.displayName,
     required this.userId,
     required this.avatarUrl,
+    required this.bio,
     required this.city,
     required this.country,
     required this.rankTier,
@@ -25,13 +26,13 @@ class ProfileHeaderCard extends StatelessWidget {
     this.onFollow,
     this.onUnfollow,
     this.onUnblock,
-    this.onOpenStats,
     super.key,
   });
 
   final String displayName;
   final String userId;
   final String avatarUrl;
+  final String bio;
   final String city;
   final String country;
   final String rankTier;
@@ -44,10 +45,16 @@ class ProfileHeaderCard extends StatelessWidget {
   final VoidCallback? onFollow;
   final VoidCallback? onUnfollow;
   final VoidCallback? onUnblock;
-  final VoidCallback? onOpenStats;
 
   @override
   Widget build(BuildContext context) {
+    final locationParts = <String>[
+      if (city.trim().isNotEmpty) city.trim(),
+      if (region.trim().isNotEmpty) region.trim(),
+      if (country.trim().isNotEmpty) country.trim(),
+    ];
+    final resolvedBio = bio.trim();
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -84,30 +91,55 @@ class ProfileHeaderCard extends StatelessWidget {
                       ),
                     ),
                     const Gap(10),
-                    Text(
-                      region.isNotEmpty
-                          ? '$city, $region | $country'
-                          : '$city | $country',
-                      style: TextStyles.bodyMain.copyWith(color: Colors.grey),
-                    ),
-                    const Gap(10),
-                    // Tags/Bio placeholder
-                    Text(
-                      rankTier.isNotEmpty ? rankTier : 'No rank tier yet.',
-                      style: TextStyles.bodySecondary.copyWith(
-                        color: const Color(
-                          0xFF6C9EFF,
-                        ), // Blueish tint link color
+                    if (locationParts.isNotEmpty) ...[
+                      Text(
+                        locationParts.join(' | '),
+                        style: TextStyles.bodyMain.copyWith(
+                          color: Colors.grey,
+                        ),
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Gap(10),
-
-                    ProfileStatsRow(
-                      reputationScore: reputationScore,
-                      onStatsTap: onOpenStats,
-                    ),
+                      const Gap(10),
+                    ],
+                    if (rankTier.trim().isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF6C9EFF),
+                              Color(0xFF9B7BFF),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          rankTier,
+                          style: TextStyles.bodySecondary.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Gap(10),
+                    ],
+                    if (resolvedBio.isNotEmpty) ...[
+                      Text(
+                        resolvedBio,
+                        style: TextStyles.bodyMain.copyWith(
+                          color: const Color(0xFFD9D9D9),
+                          height: 1.4,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Gap(12),
+                    ],
+                    ProfileStatsRow(goldenSeals: reputationScore),
                   ],
                 ),
               ),

@@ -15,7 +15,7 @@ mixin ShowChampionLeaderboardBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.9,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         showDivider: false,
         child: MapChampionBottomSheet(
           selectedChampion: selectedChampion,

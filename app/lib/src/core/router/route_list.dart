@@ -39,6 +39,15 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             name: RouteNames.rangs,
             builder: (context, state) => const RangsPage(),
           ),
+          // Public Profile route (protected by auth guard)
+          GoRoute(
+            path: RoutePaths.publicProfile,
+            name: RouteNames.publicProfile,
+            builder: (context, state) {
+              final userId = state.pathParameters['userId'] ?? '';
+              return PublicProfilePage(userId: userId);
+            },
+          ),
         ],
       ),
 
@@ -178,37 +187,6 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 redirect: AuthGuard,
                 builder: (context, state) => const CreatePostPage(),
               ),
-              GoRoute(
-                path: RoutePaths.search,
-                name: RouteNames.search,
-                redirect: AuthGuard,
-                pageBuilder: (context, state) {
-                  return const NoTransitionPage(child: SearchPage());
-                },
-              ),
-              GoRoute(
-                path: RoutePaths.store,
-                name: RouteNames.store,
-                redirect: AuthGuard,
-                pageBuilder: (context, state) {
-                  return const NoTransitionPage(child: StorePage());
-                },
-              ),
-              GoRoute(
-                path: RoutePaths.profilePublications,
-                name: RouteNames.profilePublications,
-                redirect: AuthGuard,
-                builder: (context, state) {
-                  final extra = state.extra as Map<String, dynamic>?;
-                  return ProfilePublicationsPage(
-                    userId: extra?['userId'] as String?,
-                    displayName: extra?['displayName'] as String? ?? '',
-                    initialPostId: extra?['initialPostId'] as String? ?? '',
-                    isCurrentUser:
-                        extra?['isCurrentUser'] as bool? ?? false,
-                  );
-                },
-              ),
 
               // Map route (protected by auth guard)
               GoRoute(
@@ -225,7 +203,8 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 redirect: AuthGuard,
                 builder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
-                  final latitude = (extra?['latitude'] as num?)?.toDouble() ?? 50.4501;
+                  final latitude =
+                      (extra?['latitude'] as num?)?.toDouble() ?? 50.4501;
                   final longitude =
                       (extra?['longitude'] as num?)?.toDouble() ?? 30.5234;
                   return CreateRequestPage(
@@ -271,74 +250,6 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: ChatsPage());
                 },
-                routes: [
-                  GoRoute(
-                    path: 'requests',
-                    name: RouteNames.chatRequests,
-                    builder: (context, state) => const ChatRequestsPage(),
-                  ),
-                  GoRoute(
-                    path: ':chatId',
-                    name: RouteNames.chatConversation,
-                    builder: (context, state) {
-                      final chatId = state.pathParameters['chatId'] ?? '';
-                      return ChatConversationPage(chatId: chatId);
-                    },
-                    routes: [
-                      GoRoute(
-                        path: 'forward',
-                        name: RouteNames.chatConversationForward,
-                        builder: (context, state) {
-                          final chatId = state.pathParameters['chatId'] ?? '';
-                          return ChatForwardMessagePage(chatId: chatId);
-                        },
-                      ),
-                      GoRoute(
-                        path: 'select',
-                        name: RouteNames.chatConversationSelect,
-                        builder: (context, state) {
-                          final chatId = state.pathParameters['chatId'] ?? '';
-                          return ChatSelectMessagePage(chatId: chatId);
-                        },
-                      ),
-                      GoRoute(
-                        path: 'blocked',
-                        name: RouteNames.chatConversationBlocked,
-                        builder: (context, state) {
-                          final chatId = state.pathParameters['chatId'] ?? '';
-                          return ChatBlockedPage(chatId: chatId);
-                        },
-                      ),
-                      GoRoute(
-                        path: 'deleted',
-                        name: RouteNames.chatConversationDeleted,
-                        builder: (context, state) {
-                          final chatId = state.pathParameters['chatId'] ?? '';
-                          return ChatDeletedPage(chatId: chatId);
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-
-              // Notifications route (protected by auth guard)
-              GoRoute(
-                path: RoutePaths.notifications,
-                name: RouteNames.notifications,
-                redirect: AuthGuard,
-                pageBuilder: (context, state) {
-                  return const NoTransitionPage(child: NotificationsPage());
-                },
-              ),
-              GoRoute(
-                path: RoutePaths.publicProfile,
-                name: RouteNames.publicProfile,
-                redirect: AuthGuard,
-                builder: (context, state) {
-                  final userId = state.pathParameters['userId'] ?? '';
-                  return PublicProfilePage(userId: userId);
-                },
               ),
 
               // Profile route (protected by auth guard)
@@ -351,232 +262,20 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 },
                 routes: [
                   GoRoute(
-                    path: 'stats',
-                    name: RouteNames.profileStats,
-                    redirect: AuthGuard,
-                    builder: (context, state) {
-                      final extra = state.extra as Map<String, dynamic>?;
-                      return UserStatsPage(
-                        userId: extra?['userId'] as String?,
-                        isCurrentUser:
-                            extra?['isCurrentUser'] as bool? ?? true,
-                      );
-                    },
-                  ),
-                  GoRoute(
                     path: 'settings',
                     name: RouteNames.settings,
                     redirect: AuthGuard,
                     builder: (context, state) {
-                      final extra = state.extra as Map<String, dynamic>?;
-                      return SettingsPage(
-                        currentUserId: extra?['userId'] as String?,
+                      return Scaffold(
+                        appBar: AppBar(title: const Text('Settings')),
+                        body: const Center(child: Text('Settings Page')),
                       );
                     },
-                    routes: [
-                      GoRoute(
-                        path: 'interactions',
-                        name: RouteNames.profileInteractions,
-                        builder: (context, state) => const InteractionsPage(),
-                        routes: [
-                          GoRoute(
-                            path: 'messages',
-                            name: RouteNames.profileInteractionMessages,
-                            builder: (context, state) =>
-                                const MessagesInteractionPage(),
-                          ),
-                          GoRoute(
-                            path: 'comments',
-                            name: RouteNames.profileInteractionComments,
-                            builder: (context, state) =>
-                                const CommentsInteractionPage(),
-                          ),
-                          GoRoute(
-                            path: 'mentions',
-                            name: RouteNames.profileInteractionMentions,
-                            builder: (context, state) =>
-                                const MentionsInteractionPage(),
-                          ),
-                          GoRoute(
-                            path: 'blocked-accounts',
-                            name: RouteNames.profileBlockedAccounts,
-                            builder: (context, state) =>
-                                const BlockedAccountsPage(),
-                          ),
-                        ],
-                      ),
-                      GoRoute(
-                        path: 'security',
-                        name: RouteNames.profileSecurity,
-                        builder: (context, state) => const SecurityPage(),
-                        routes: [
-                          GoRoute(
-                            path: 'change-password',
-                            name: RouteNames.profileSecurityChangePassword,
-                            builder: (context, state) =>
-                                const ProfileChangePasswordPage(),
-                          ),
-                          GoRoute(
-                            path: 'two-factor-authentication',
-                            name: RouteNames.profileSecurityTwoFactor,
-                            builder: (context, state) {
-                              final extra = state.extra as Map<String, dynamic>?;
-                              return TwoFactorAuthenticationPage(
-                                initialSelectedMethodIds:
-                                    (extra?['selectedMethodIds'] as List<dynamic>?)
-                                        ?.whereType<String>()
-                                        .toList() ??
-                                    const <String>[],
-                              );
-                            },
-                          ),
-                          GoRoute(
-                            path: 'active-sessions',
-                            name: RouteNames.profileSecurityActiveSessions,
-                            builder: (context, state) {
-                              final extra = state.extra as Map<String, dynamic>?;
-                              return ActiveSessionsPage(
-                                sessions:
-                                    (extra?['sessions'] as List<dynamic>?)
-                                        ?.whereType<Map<String, dynamic>>()
-                                        .toList() ??
-                                    const <Map<String, dynamic>>[],
-                              );
-                            },
-                          ),
-                          GoRoute(
-                            path: 'delete-account',
-                            name: RouteNames.profileSecurityDeleteAccount,
-                            builder: (context, state) {
-                              return DeleteAccountReasonPage(
-                                flowData: DeleteAccountFlowData.fromExtra(
-                                  state.extra,
-                                ),
-                              );
-                            },
-                            routes: [
-                              GoRoute(
-                                path: 'password',
-                                name:
-                                    RouteNames.profileSecurityDeleteAccountPassword,
-                                builder: (context, state) {
-                                  return DeleteAccountPasswordPage(
-                                    flowData: DeleteAccountFlowData.fromExtra(
-                                      state.extra,
-                                    ),
-                                  );
-                                },
-                              ),
-                              GoRoute(
-                                path: 'code',
-                                name: RouteNames.profileSecurityDeleteAccountOtp,
-                                builder: (context, state) {
-                                  return DeleteAccountOtpPage(
-                                    flowData: DeleteAccountFlowData.fromExtra(
-                                      state.extra,
-                                    ),
-                                  );
-                                },
-                              ),
-                              GoRoute(
-                                path: 'confirm',
-                                name:
-                                    RouteNames.profileSecurityDeleteAccountConfirm,
-                                builder: (context, state) {
-                                  return DeleteAccountConfirmationPage(
-                                    flowData: DeleteAccountFlowData.fromExtra(
-                                      state.extra,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      GoRoute(
-                        path: 'contact-us',
-                        name: RouteNames.profileContactUs,
-                        builder: (context, state) => const ContactUsPage(),
-                      ),
-                      GoRoute(
-                        path: 'location-access',
-                        name: RouteNames.profileLocationAccess,
-                        builder: (context, state) {
-                          final extra = state.extra as Map<String, dynamic>?;
-                          return LocationAccessPage(
-                            initialSelectionLabel:
-                                extra?['initialSelectionLabel'] as String? ??
-                                'Never',
-                            initialPreciseLocationEnabled:
-                                extra?['initialPreciseLocationEnabled']
-                                    as bool? ??
-                                false,
-                          );
-                        },
-                      ),
-                      GoRoute(
-                        path: 'report-bug',
-                        name: RouteNames.profileReportBug,
-                        builder: (context, state) => const ReportBugPage(),
-                      ),
-                      GoRoute(
-                        path: 'feed-time-limit',
-                        name: RouteNames.profileFeedTimeLimit,
-                        builder: (context, state) {
-                          final extra = state.extra as Map<String, dynamic>?;
-                          return FeedTimeLimitPage(
-                            initialSelectionLabel:
-                                extra?['initialSelectionLabel'] as String? ??
-                                'No limit',
-                          );
-                        },
-                      ),
-                      GoRoute(
-                        path: 'terms-conditions',
-                        name: RouteNames.profileTermsConditions,
-                        builder: (context, state) =>
-                            const TermsConditionsPage(),
-                      ),
-                      GoRoute(
-                        path: 'invite-golden-honor',
-                        name: RouteNames.profileInviteGoldenHonor,
-                        builder: (context, state) {
-                          final extra = state.extra as Map<String, dynamic>?;
-                          return InviteGoldenHonorPage(
-                            currentUserId: extra?['userId'] as String?,
-                          );
-                        },
-                      ),
-                    ],
                   ),
                   GoRoute(
                     path: RoutePaths.editProfile,
                     name: RouteNames.editProfile,
                     builder: (context, state) => const EditProfilePage(),
-                    routes: [
-                      GoRoute(
-                        path: 'nickname',
-                        name: RouteNames.editProfileNickname,
-                        builder: (context, state) {
-                          final extra = state.extra as Map<String, dynamic>?;
-                          return EditProfileNicknamePage(
-                            initialDisplayName:
-                                extra?['displayName'] as String? ?? '',
-                          );
-                        },
-                      ),
-                      GoRoute(
-                        path: 'bio',
-                        name: RouteNames.editProfileBio,
-                        builder: (context, state) {
-                          final extra = state.extra as Map<String, dynamic>?;
-                          return EditProfileBioPage(
-                            initialBio: extra?['bio'] as String? ?? '',
-                          );
-                        },
-                      ),
-                    ],
                   ),
                   GoRoute(
                     path: 'allies',
@@ -615,4 +314,3 @@ class LogPushButton extends StatelessWidget {
     );
   }
 }
-

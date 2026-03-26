@@ -39,8 +39,8 @@ class LocationServiceImpl implements ILocationService {
     position ??= await geo.Geolocator.getCurrentPosition(
       locationSettings: const geo.LocationSettings(
         accuracy: geo.LocationAccuracy.medium,
+        timeLimit: Duration(seconds: 8),
       ),
-      timeLimit: const Duration(seconds: 8),
     );
 
     return LocationServiceResult.success(

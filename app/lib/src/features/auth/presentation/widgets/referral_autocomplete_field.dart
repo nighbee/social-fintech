@@ -62,15 +62,11 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
       if (_lastQuery == query) return;
       _lastQuery = query;
 
-      final parts = query.split(' ');
-      final firstName = parts.isNotEmpty ? parts.first : '';
-      final lastName = parts.length > 1 ? parts.sublist(1).join(' ') : '';
-
       getIt<AuthBloc>().add(
         AuthEvent.searchUsers(
           request: SearchUsersRequest(
-            firstName: firstName,
-            lastName: lastName,
+            firstName: query,
+            lastName: '',
           ),
         ),
       );
@@ -88,8 +84,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
     return RawAutocomplete<UserSearchEntity>(
       textEditingController: widget.controller,
       focusNode: widget.focusNode,
-      displayStringForOption: (option) =>
-          '${option.firstName} ${option.lastName}'.trim(),
+      displayStringForOption: _displayLabel,
       optionsBuilder: (TextEditingValue textEditingValue) {
         final query = textEditingValue.text.trim();
         if (query.isEmpty) {
@@ -98,10 +93,10 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
         return widget.searchData;
       },
       onSelected: (UserSearchEntity selection) {
-        final fullName = '${selection.firstName} ${selection.lastName}'.trim();
-        widget.controller.text = fullName;
+        final label = _displayLabel(selection);
+        widget.controller.text = label;
         widget.controller.selection = TextSelection.fromPosition(
-          TextPosition(offset: fullName.length),
+          TextPosition(offset: label.length),
         );
         widget.onSelectedUser(selection);
         _validateIfNeeded();
@@ -118,7 +113,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
             width: 30,
             height: 30,
             colorFilter: const ColorFilter.mode(
-              AppColors.colorffffffff,
+              AppColors.whiteBackground,
               BlendMode.srcIn,
             ),
           ),
@@ -145,7 +140,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                         width: 16,
                         height: 16,
                         colorFilter: const ColorFilter.mode(
-                          AppColors.colorff838383,
+                          AppColors.textGray2,
                           BlendMode.srcIn,
                         ),
                       ),
@@ -179,7 +174,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                   color: context.theme.mainBackground,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.colorff838383.withOpacity(0.25),
+                    color: AppColors.textGray2.withValues(alpha: 0.25),
                   ),
                   boxShadow: const [
                     BoxShadow(
@@ -197,7 +192,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                         child: Text(
                           'No users found',
                           style: TextStyles.bodyLarge.copyWith(
-                            color: AppColors.colorffffffff,
+                            color: AppColors.whiteBackground,
                           ),
                         ),
                       )
@@ -207,10 +202,12 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                         itemCount: options.length,
                         separatorBuilder: (_, __) => Divider(
                           height: 1,
-                          color: AppColors.colorff838383.withOpacity(0.2),
+                          color: AppColors.textGray2.withValues(alpha: 0.2),
                         ),
                         itemBuilder: (context, index) {
                           final option = options.elementAt(index);
+                          final displayLabel = _displayLabel(option);
+                          final fullName = _fullName(option);
                           return InkWell(
                             onTap: () => onSelected(option),
                             child: Padding(
@@ -218,11 +215,27 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
                                 horizontal: 14,
                                 vertical: 12,
                               ),
-                              child: Text(
-                                "${option.firstName} ${option.lastName}",
-                                style: TextStyles.bodyLarge.copyWith(
-                                  color: AppColors.colorffffffff,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    displayLabel,
+                                    style: TextStyles.bodyLarge.copyWith(
+                                      color: AppColors.whiteBackground,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  if (fullName.isNotEmpty &&
+                                      fullName != displayLabel) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      fullName,
+                                      style: TextStyles.bodySecondary.copyWith(
+                                        color: AppColors.textGray2,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           );
@@ -234,5 +247,17 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
         );
       },
     );
+  }
+
+  String _displayLabel(UserSearchEntity user) {
+    final displayName = user.displayName.trim();
+    if (displayName.isNotEmpty) {
+      return displayName;
+    }
+    return _fullName(user);
+  }
+
+  String _fullName(UserSearchEntity user) {
+    return '${user.firstName} ${user.lastName}'.trim();
   }
 }

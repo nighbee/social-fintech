@@ -1,55 +1,44 @@
-import 'dart:io';
+import 'dart:math' as math;
+
+import 'package:app/src/core/widgets/gap_extension.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:gap/gap.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:app/gen/assets.gen.dart';
-import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
 import 'package:app/src/core/widgets/action_bottom_sheet.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
-import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
-import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
-import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
-import 'package:app/src/features/home/domain/requests/get_post_comments_request.dart';
-import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
-import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
+import 'package:app/src/features/home/domain/entities/comment_entity.dart';
+import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 mixin ShowPostCommentsBottomSheet {
   void showPostCommentsBottomSheet(
     BuildContext context, {
-    required HomeBloc bloc,
-    required PostResponseEntity post,
+    required PostEntity post,
   }) {
     context.showRoundedModalBottomSheet(
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.92,
       child: ActionBottomSheet(
         backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
-        child: PostCommentsBottomSheet(
-          bloc: bloc,
-          post: post,
-        ),
+        child: PostCommentsBottomSheet(post: post),
       ),
     );
   }
 }
 
 class PostCommentsBottomSheet extends StatefulWidget {
-  const PostCommentsBottomSheet({
-    required this.bloc,
-    required this.post,
-    super.key,
-  });
+  const PostCommentsBottomSheet({super.key, required this.post});
 
-  final HomeBloc bloc;
-  final PostResponseEntity post;
+  final PostEntity post;
 
   @override
   State<PostCommentsBottomSheet> createState() =>
@@ -59,46 +48,17 @@ class PostCommentsBottomSheet extends StatefulWidget {
 class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
   late final TextEditingController _commentController;
   late final FocusNode _focusNode;
-
-  final Set<String> _expandedReplyCommentIds = <String>{};
-  final Set<String> _loadingReplyCommentIds = <String>{};
-  final Map<String, List<CommentResponseEntity>> _repliesByParent = {};
-  List<CommentResponseEntity> _topLevelComments = const [];
-
-  String? _pendingReplyParentId;
-  bool _pendingTopLevelRequest = false;
-  String? _replyToCommentId;
-  String? _replyToUsername;
-  String? _commentError;
-  final List<_DraftCommentPhoto> _pendingPhotos = <_DraftCommentPhoto>[];
-
-  void _openPublicProfile(String userId) {
-    final normalizedUserId = userId.trim();
-    if (normalizedUserId.isEmpty) return;
-
-    final router = GoRouter.of(context);
-    Navigator.of(context).pop();
-    router.pushNamed(
-      RouteNames.publicProfile,
-      pathParameters: {'userId': normalizedUserId},
-    );
-  }
+  late final HomeBloc _bloc;
 
   @override
   void initState() {
     super.initState();
     _commentController = TextEditingController();
     _focusNode = FocusNode();
-    final existing = widget.bloc.state.maybeWhen(
-      loaded: (viewModel) => viewModel.comments.comments,
-      orElse: () => const <CommentResponseEntity>[],
-    );
-    if (existing.isNotEmpty) {
-      _topLevelComments = _dedupeById(
-        existing.where((item) => item.parentCommentId.trim().isEmpty).toList(),
-      );
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fetchTopLevelComments());
+    _bloc = getIt<HomeBloc>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bloc.add(HomeEvent.loadComments(widget.post.id));
+    });
   }
 
   @override
@@ -108,477 +68,233 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
     super.dispose();
   }
 
-  void _fetchTopLevelComments() {
-    _pendingTopLevelRequest = true;
-    widget.bloc.add(
-      HomeEvent.getPostComments(
-        request: GetPostCommentsRequest(postId: widget.post.postId),
-      ),
+  String? _currentReplyTargetId() {
+    return _bloc.state.maybeWhen(
+      loading: (viewModel) => viewModel.replyingToCommentId,
+      loaded: (viewModel) => viewModel.replyingToCommentId,
+      orElse: () => null,
     );
   }
 
-  void _fetchReplies(String parentId) {
-    _pendingReplyParentId = parentId;
-    _loadingReplyCommentIds.add(parentId);
-    widget.bloc.add(
-      HomeEvent.getPostComments(
-        request: GetPostCommentsRequest(
-          postId: widget.post.postId,
-          parentId: parentId,
-        ),
-      ),
+  List<CommentComposerPhoto> _currentComposerPhotos() {
+    return _bloc.state.maybeWhen(
+      loading: (viewModel) => viewModel.composerPhotos,
+      loaded: (viewModel) => viewModel.composerPhotos,
+      orElse: () => const [],
     );
   }
 
-  void _toggleReplies(String commentId) {
-    setState(() {
-      if (_expandedReplyCommentIds.contains(commentId)) {
-        _expandedReplyCommentIds.remove(commentId);
-      } else {
-        _expandedReplyCommentIds.add(commentId);
-        if (!_repliesByParent.containsKey(commentId)) {
-          _fetchReplies(commentId);
-        }
-      }
-    });
-  }
-
-  Future<void> _onSendComment() async {
-    final text = _commentController.text.trim();
-    final hasPhoto = _pendingPhotos.isNotEmpty;
-    if (text.isEmpty && !hasPhoto) return;
-
-    List<MediaAttachmentRequest> mediaAttachments = const [];
-    if (hasPhoto) {
-      final uploaded = <MediaAttachmentRequest>[];
-      for (final item in _pendingPhotos) {
-        final bytes = await File(item.filePath).readAsBytes();
-        final uploadResult = await widget.bloc.uploadCommentMediaDirect(
-          UploadFeedMediaRequest(
-            bytes: bytes,
-            fileName: item.fileName,
-            fallbackType: 'image',
-          ),
-        );
-        if (!mounted) return;
-
-        if (uploadResult.isLeft()) {
-          uploadResult.fold(
-            (error) => ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(error.message)),
-            ),
-            (_) {},
-          );
-          return;
-        }
-        uploadResult.fold((_) {}, (attachment) => uploaded.add(attachment));
-      }
-      mediaAttachments = uploaded;
-    }
-
-    final parentId = _replyToCommentId;
-    final createResult = await widget.bloc.createPostCommentDirect(
-      widget.post.postId,
-      CreateCommentRequest(
-        parentId: parentId,
-        contentText: text,
-        mediaAttachments: mediaAttachments,
-      ),
-    );
-    if (!mounted) return;
-
-    if (createResult.isLeft()) {
-      createResult.fold(
-        (error) {
-          final normalized = error.message.toLowerCase();
-          final blocked = normalized.contains('comment_not_allowed') ||
-              normalized.contains('not allowed') ||
-              normalized.contains('forbidden') ||
-              normalized.contains('403');
-          setState(() {
-            _commentError = blocked
-                ? "You can\u2019t comment on this post"
-                : error.message;
-          });
-        },
-        (_) {},
-      );
-      return;
-    }
-
-    _commentController.clear();
-    createResult.fold((_) {}, (createdComment) {
-      _applyIncomingCommentUpdates([createdComment]);
-    });
-    setState(() {
-      _replyToCommentId = null;
-      _replyToUsername = null;
-      _commentError = null;
-      _pendingPhotos.clear();
-      if (parentId != null && parentId.isNotEmpty) {
-        _expandedReplyCommentIds.add(parentId);
-      }
-    });
-
-    // Reconcile after create to keep reply counts and ordering in sync with backend.
-    if (parentId != null && parentId.isNotEmpty) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          _fetchReplies(parentId);
-        }
-      });
-    }
-  }
-
-  Future<void> _onPickPhoto() async {
-    await ImagePickerHelper.showImagePickerFile(
+  Future<void> _pickPhoto() async {
+    await ImagePickerHelper.showImagePicker(
       context: context,
-      imageQuality: 60,
-      maxWidth: 1280,
-      maxHeight: 1280,
-      onImageSelected: (file) {
-        setState(() {
-          _pendingPhotos.add(
-            _DraftCommentPhoto(filePath: file.path, fileName: file.name),
-          );
-        });
+      onImageSelected: (bytes, fileName) {
+        _bloc.add(HomeEvent.addCommentPhoto(bytes, fileName));
       },
     );
   }
 
-  Future<void> _onToggleCommentLike(CommentResponseEntity comment) async {
-    final before = _findCommentById(comment.commentId);
-    _applyLocalLikeToggle(comment.commentId);
+  void _onSendComment() {
+    final text = _commentController.text.trim();
+    final photoFileNames =
+        _currentComposerPhotos().map((photo) => photo.fileName).toList();
+    if (text.isEmpty && photoFileNames.isEmpty) return;
 
-    final result = await widget.bloc.toggleCommentLikeDirect(
-      comment.commentId,
+    _bloc.add(
+      HomeEvent.addComment(
+        postId: widget.post.id,
+        content: text,
+        parentCommentId: _currentReplyTargetId(),
+      ),
     );
-    result.fold(
-      (error) {
-        if (!mounted) return;
-        if (before != null) {
-          setState(() {
-            _applyIncomingCommentUpdates([before]);
-          });
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
-      },
-      (updatedComment) {
-        if (!mounted) return;
-        setState(() {
-          _applyIncomingCommentUpdates([updatedComment]);
-        });
-        _fetchTopLevelComments();
-      },
-    );
-  }
-
-  CommentResponseEntity? _findCommentById(String commentId) {
-    for (final comment in _topLevelComments) {
-      if (comment.commentId == commentId) return comment;
-    }
-    for (final replies in _repliesByParent.values) {
-      for (final comment in replies) {
-        if (comment.commentId == commentId) return comment;
-      }
-    }
-    return null;
-  }
-
-  void _applyLocalLikeToggle(String commentId) {
-    setState(() {
-      _topLevelComments = _topLevelComments
-          .map((comment) => _toggleIfTarget(comment, commentId))
-          .toList();
-
-      _repliesByParent.updateAll(
-        (_, replies) => replies
-            .map((comment) => _toggleIfTarget(comment, commentId))
-            .toList(),
-      );
-    });
-  }
-
-  CommentResponseEntity _toggleIfTarget(
-    CommentResponseEntity comment,
-    String commentId,
-  ) {
-    if (comment.commentId != commentId) return comment;
-    final nextLiked = !comment.viewerHasLiked;
-    final nextCount = nextLiked
-        ? comment.likesCount + 1
-        : (comment.likesCount > 0 ? comment.likesCount - 1 : 0);
-    return comment.copyWith(
-      viewerHasLiked: nextLiked,
-      likesCount: nextCount,
-    );
-  }
-
-  void _applyIncomingComments(HomeViewModel viewModel) {
-    final incoming = _dedupeById(viewModel.comments.comments);
-    final pendingParentId = _pendingReplyParentId;
-    if (pendingParentId != null) {
-      _pendingReplyParentId = null;
-      _loadingReplyCommentIds.remove(pendingParentId);
-      _repliesByParent[pendingParentId] = incoming;
-      _pendingTopLevelRequest = false;
-      return;
-    }
-
-    if (_pendingTopLevelRequest) {
-      _pendingTopLevelRequest = false;
-      _topLevelComments = _dedupeById(incoming);
-      return;
-    }
-
-    _applyIncomingCommentUpdates(incoming);
-  }
-
-  void _applyIncomingCommentUpdates(List<CommentResponseEntity> incoming) {
-    if (incoming.isEmpty) return;
-
-    final byId = <String, CommentResponseEntity>{
-      for (final comment in incoming) comment.commentId: comment,
-    };
-
-    _topLevelComments = _topLevelComments
-        .map((comment) => byId[comment.commentId] ?? comment)
-        .toList();
-
-    _repliesByParent.updateAll(
-      (_, replies) =>
-          replies.map((comment) => byId[comment.commentId] ?? comment).toList(),
-    );
-
-    for (final comment in incoming) {
-      final parentId = comment.parentCommentId.trim();
-      if (parentId.isEmpty) {
-        _topLevelComments = _prependUniqueById(comment, _topLevelComments);
-        continue;
-      }
-
-      final existing = _repliesByParent[parentId] ?? const <CommentResponseEntity>[];
-      _repliesByParent[parentId] = _appendUniqueById(comment, existing);
-    }
-  }
-
-  List<CommentResponseEntity> _prependUniqueById(
-    CommentResponseEntity comment,
-    List<CommentResponseEntity> source,
-  ) {
-    final filtered = source
-        .where((item) => item.commentId != comment.commentId)
-        .toList();
-    return [comment, ...filtered];
-  }
-
-  List<CommentResponseEntity> _appendUniqueById(
-    CommentResponseEntity comment,
-    List<CommentResponseEntity> source,
-  ) {
-    final exists = source.any((item) => item.commentId == comment.commentId);
-    if (exists) {
-      return source
-          .map((item) => item.commentId == comment.commentId ? comment : item)
-          .toList();
-    }
-    return [...source, comment];
-  }
-
-  List<CommentResponseEntity> _dedupeById(List<CommentResponseEntity> comments) {
-    final map = <String, CommentResponseEntity>{};
-    for (final item in comments) {
-      map[item.commentId] = item;
-    }
-    return map.values.toList();
+    _commentController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
-    return BlocListener<HomeBloc, HomeState>(
-      bloc: widget.bloc,
-      listener: (context, state) {
-        state.maybeWhen(
-          loaded: (viewModel) {
-            setState(() {
-              _applyIncomingComments(viewModel);
-            });
-          },
-          orElse: () {},
-        );
-      },
-      child: SafeArea(
-        top: false,
-        child: AnimatedPadding(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Comments',
-                    style: TextStyles.titleHeadline.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
+
+    return SafeArea(
+      top: false,
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Comments',
+                  style: TextStyles.titleHeadline.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
-              ),
-              const Gap(16),
-              Flexible(
-                child: _topLevelComments.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No comments yet',
-                          style: TextStyles.bodyMain.copyWith(
-                            color: Colors.white70,
+                ),
+              ],
+            ),
+            const Gap(16),
+            Flexible(
+              child: BlocBuilder<HomeBloc, HomeState>(
+                bloc: _bloc,
+                builder: (context, state) {
+                  return state.when(
+                    initial: () => const SizedBox.shrink(),
+                    loading: (_) => const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                    loadingError: (_) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Failed to load comments',
+                            style: TextStyles.bodyMain.copyWith(
+                              color: Colors.white70,
+                            ),
                           ),
-                        ),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: _topLevelComments.length,
-                        separatorBuilder: (_, __) => const Gap(12),
-                        itemBuilder: (context, index) {
-                          final comment = _topLevelComments[index];
-                          return _CommentItem(
-                            comment: comment,
-                            depth: 0,
-                            isExpanded: _expandedReplyCommentIds
-                                .contains(comment.commentId),
-                            isLoadingReplies: _loadingReplyCommentIds
-                                .contains(comment.commentId),
-                            replies: _repliesByParent[comment.commentId] ??
-                                const <CommentResponseEntity>[],
-                            onReply: () {
-                              setState(() {
-                                _replyToCommentId = comment.commentId;
-                                _replyToUsername = comment.author.username;
-                                _commentError = null;
-                              });
-                              _focusNode.requestFocus();
+                          const Gap(8),
+                          IconButton(
+                            icon:
+                                const Icon(Icons.refresh, color: Colors.white),
+                            onPressed: () {
+                              _bloc.add(HomeEvent.loadComments(widget.post.id));
                             },
-                            onToggleLike: () => _onToggleCommentLike(comment),
-                            onToggleReplies: () =>
-                                _toggleReplies(comment.commentId),
-                            onReplyToChild: (child) {
-                              setState(() {
-                                _replyToCommentId = child.commentId;
-                                _replyToUsername = child.author.username;
-                                _commentError = null;
-                              });
-                              _focusNode.requestFocus();
-                            },
-                            childRepliesFor: (id) =>
-                                _repliesByParent[id] ??
-                                const <CommentResponseEntity>[],
-                            onOpenProfile: _openPublicProfile,
-                            isChildExpanded: (id) =>
-                                _expandedReplyCommentIds.contains(id),
-                            isChildLoading: (id) =>
-                                _loadingReplyCommentIds.contains(id),
-                            onToggleChildReplies: _toggleReplies,
-                            onToggleChildLike: _onToggleCommentLike,
-                          );
-                        },
+                          ),
+                        ],
                       ),
+                    ),
+                    loaded: (viewModel) {
+                      final topLevelComments =
+                          viewModel.getTopLevelCommentsForPost(widget.post.id);
+                      final replyTarget = viewModel.replyingToCommentId == null
+                          ? null
+                          : viewModel.getCommentById(
+                              viewModel.replyingToCommentId!,
+                            );
+
+                      return Column(
+                        children: [
+                          Expanded(
+                            child: topLevelComments.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      'No comments yet',
+                                      style: TextStyles.bodyMain.copyWith(
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.separated(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 20,
+                                    ),
+                                    shrinkWrap: true,
+                                    itemCount: topLevelComments.length,
+                                    separatorBuilder: (_, __) => const Gap(12),
+                                    itemBuilder: (context, index) {
+                                      final comment = topLevelComments[index];
+                                      return PostCommentItem(
+                                        comment: comment,
+                                        postId: widget.post.id,
+                                        viewModel: viewModel,
+                                        depth: 0,
+                                        onReply: (target) {
+                                          _bloc.add(
+                                            HomeEvent.setReplyTarget(target.id),
+                                          );
+                                          _focusNode.requestFocus();
+                                        },
+                                      );
+                                    },
+                                  ),
+                          ),
+                          const Gap(12),
+                          _CommentInputBar(
+                            controller: _commentController,
+                            focusNode: _focusNode,
+                            onSend: _onSendComment,
+                            onPickPhoto: _pickPhoto,
+                            replyToUsername: replyTarget?.username,
+                            composerPhotos: viewModel.composerPhotos,
+                            onRemovePhoto: (fileName) {
+                              _bloc.add(HomeEvent.removeCommentPhoto(fileName));
+                            },
+                            onCancelReply: () {
+                              _bloc.add(const HomeEvent.setReplyTarget(null));
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
-              _CommentInputBar(
-                controller: _commentController,
-                focusNode: _focusNode,
-                onSend: _onSendComment,
-                onPickPhoto: _onPickPhoto,
-                photos: _pendingPhotos,
-                onRemovePhoto: (index) {
-                  setState(() {
-                    _pendingPhotos.removeAt(index);
-                  });
-                },
-                errorText: _commentError,
-                onChanged: (_) {
-                  if (_commentError == null) return;
-                  setState(() {
-                    _commentError = null;
-                  });
-                },
-                replyToUsername: _replyToUsername,
-                onCancelReply: () {
-                  setState(() {
-                    _replyToCommentId = null;
-                    _replyToUsername = null;
-                    _commentError = null;
-                  });
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _CommentItem extends StatelessWidget {
-  const _CommentItem({
+class PostCommentItem extends StatelessWidget {
+  const PostCommentItem({
+    super.key,
     required this.comment,
+    required this.postId,
+    required this.viewModel,
     required this.depth,
-    required this.isExpanded,
-    required this.isLoadingReplies,
-    required this.replies,
     required this.onReply,
-    required this.onToggleLike,
-    required this.onToggleReplies,
-    required this.onReplyToChild,
-    required this.childRepliesFor,
-    required this.onOpenProfile,
-    required this.isChildExpanded,
-    required this.isChildLoading,
-    required this.onToggleChildReplies,
-    required this.onToggleChildLike,
   });
 
-  final CommentResponseEntity comment;
+  final CommentEntity comment;
+  final String postId;
+  final HomeViewModel viewModel;
   final int depth;
-  final bool isExpanded;
-  final bool isLoadingReplies;
-  final List<CommentResponseEntity> replies;
-  final VoidCallback onReply;
-  final VoidCallback onToggleLike;
-  final VoidCallback onToggleReplies;
-  final ValueChanged<CommentResponseEntity> onReplyToChild;
-  final List<CommentResponseEntity> Function(String id) childRepliesFor;
-  final ValueChanged<String> onOpenProfile;
-  final bool Function(String id) isChildExpanded;
-  final bool Function(String id) isChildLoading;
-  final ValueChanged<String> onToggleChildReplies;
-  final ValueChanged<CommentResponseEntity> onToggleChildLike;
+  final ValueChanged<CommentEntity> onReply;
 
   @override
   Widget build(BuildContext context) {
-    final hasReplies = comment.replyCount > 0 || replies.isNotEmpty;
-    final mediaUrls = comment.mediaAttachments
-        .map((item) => item.url.trim())
-        .where((url) => url.isNotEmpty)
-        .toList();
-    final hasMedia = mediaUrls.isNotEmpty;
+    final bloc = getIt<HomeBloc>();
+    final replies = viewModel.getRepliesForComment(postId, comment.id);
+    final hasReplies = replies.isNotEmpty || comment.repliesCount > 0;
+    final isExpanded = viewModel.isRepliesExpanded(comment.id);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: depth * 14),
-            GestureDetector(
-              onTap: () => onOpenProfile(comment.author.id),
-              child: _CommentAvatar(url: comment.author.profilePicUrl),
-            ),
+            _ThreadConnector(depth: depth),
+            if (comment.userAvatar != null && comment.userAvatar!.isNotEmpty)
+              CustomNetworkImage(
+                imageUrl: comment.userAvatar!,
+                width: 36,
+                height: 36,
+                borderRadius: BorderRadius.circular(18),
+              )
+            else
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  comment.username.isNotEmpty
+                      ? comment.username[0].toUpperCase()
+                      : '?',
+                  style: TextStyles.bodyMain.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             const Gap(10),
             Expanded(
               child: Column(
@@ -588,39 +304,35 @@ class _CommentItem extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Flexible(
-                        child: GestureDetector(
-                          onTap: () => onOpenProfile(comment.author.id),
-                          child: Text(
-                            comment.author.username,
-                            style: TextStyles.bodyMain.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        child: Text(
+                          comment.username,
+                          style: TextStyles.bodyMain.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const Gap(6),
                       Text(
-                        _commentDisplayTime(comment),
+                        timeago.format(comment.createdAt),
                         style: TextStyles.bodyMain.copyWith(
-                          color: const Color(0xFF838383),
+                          color: const Color(0xFF565656),
                         ),
                       ),
-                    ],
+                    ].addGap(4),
                   ),
                   const Gap(6),
                   Text(
-                    comment.contentText,
+                    comment.content,
                     style: TextStyles.bodyMain.copyWith(color: Colors.white),
                   ),
-                  if (hasMedia) const Gap(8),
-                  if (hasMedia)
-                    _CommentImageGrid(imageUrls: mediaUrls),
+                  if (comment.imageUrls.isNotEmpty) const Gap(8),
+                  if (comment.imageUrls.isNotEmpty)
+                    _CommentImageGrid(imageUrls: comment.imageUrls),
                   const Gap(8),
                   Row(
                     children: [
                       GestureDetector(
-                        onTap: onReply,
+                        onTap: () => onReply(comment),
                         child: Text(
                           'Reply',
                           style: TextStyles.bodyMain.copyWith(
@@ -629,15 +341,17 @@ class _CommentItem extends StatelessWidget {
                         ),
                       ),
                       if (hasReplies) ...[
-                        const Gap(18),
+                        const Gap(20),
                         GestureDetector(
-                          onTap: onToggleReplies,
+                          onTap: () {
+                            bloc.add(
+                              HomeEvent.toggleRepliesVisibility(comment.id),
+                            );
+                          },
                           child: Text(
                             isExpanded
                                 ? 'Hide replies'
-                                : (isLoadingReplies
-                                    ? 'Loading replies...'
-                                    : 'View ${comment.replyCount} replies'),
+                                : 'View ${math.max(replies.length, comment.repliesCount)} replies',
                             style: TextStyles.bodyMain.copyWith(
                               color: const Color(0xFF838383),
                             ),
@@ -649,131 +363,189 @@ class _CommentItem extends StatelessWidget {
                 ],
               ),
             ),
-            _CommentLikeButton(
-              isLiked: comment.viewerHasLiked,
+            CommentLikeButton(
+              commentId: comment.id,
+              isLiked: comment.isLiked,
               count: comment.likesCount,
-              onTap: onToggleLike,
             ),
           ],
         ),
-        if (isExpanded && replies.isNotEmpty) ...[
-          const Gap(10),
-          ...replies.map(
-            (reply) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _CommentItem(
-                comment: reply,
-                depth: depth + 1,
-                isExpanded: isChildExpanded(reply.commentId),
-                isLoadingReplies: isChildLoading(reply.commentId),
-                replies: childRepliesFor(reply.commentId),
-                onReply: () => onReplyToChild(reply),
-                onToggleLike: () => onToggleChildLike(reply),
-                onToggleReplies: () => onToggleChildReplies(reply.commentId),
-                onReplyToChild: onReplyToChild,
-                childRepliesFor: childRepliesFor,
-                onOpenProfile: onOpenProfile,
-                isChildExpanded: isChildExpanded,
-                isChildLoading: isChildLoading,
-                onToggleChildReplies: onToggleChildReplies,
-                onToggleChildLike: onToggleChildLike,
-              ),
+        if (hasReplies && isExpanded && replies.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Column(
+              children: replies
+                  .map(
+                    (reply) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: PostCommentItem(
+                        comment: reply,
+                        postId: postId,
+                        viewModel: viewModel,
+                        depth: depth + 1,
+                        onReply: onReply,
+                      ),
+                    ),
+                  )
+                  .toList(),
             ),
           ),
-        ],
       ],
     );
   }
 }
 
-String _commentDisplayTime(CommentResponseEntity comment) {
-  final createdAt = comment.createdAt.trim();
-  if (createdAt.isNotEmpty) {
-    final parsed = DateTime.tryParse(createdAt);
-    if (parsed != null) {
-      return timeago.format(parsed);
-    }
+class _ThreadConnector extends StatelessWidget {
+  const _ThreadConnector({required this.depth});
+
+  final int depth;
+
+  @override
+  Widget build(BuildContext context) {
+    if (depth == 0) return const SizedBox.shrink();
+    return SizedBox(
+      width: depth * 16 + 8,
+      height: 46,
+      child: CustomPaint(
+        painter: _ThreadConnectorPainter(
+          depth: depth,
+          color: const Color(0xFF3A3A3A),
+        ),
+      ),
+    );
   }
-  return comment.timeAgo;
 }
 
-class _CommentLikeButton extends StatelessWidget {
-  const _CommentLikeButton({
-    required this.isLiked,
-    required this.count,
-    required this.onTap,
+class _ThreadConnectorPainter extends CustomPainter {
+  _ThreadConnectorPainter({
+    required this.depth,
+    required this.color,
   });
 
-  final bool isLiked;
-  final int count;
-  final VoidCallback onTap;
+  final int depth;
+  final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        children: [
-          Icon(
-            isLiked ? Icons.favorite : Icons.favorite_border,
-            size: 16,
-            color: isLiked ? Colors.red : const Color(0xFF838383),
-          ),
-          const Gap(4),
-          Text(
-            count.toString(),
-            style: TextStyles.bodyMain.copyWith(
-              color: isLiked ? Colors.red : const Color(0xFF838383),
-            ),
-          ),
-        ],
-      ),
-    );
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    final halfY = size.height * 0.55;
+    for (int i = 0; i < depth - 1; i++) {
+      final x = 8 + (i * 16.0);
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    final branchX = 8 + ((depth - 1) * 16.0);
+    canvas.drawLine(Offset(branchX, 0), Offset(branchX, halfY), paint);
+    canvas.drawLine(Offset(branchX, halfY), Offset(branchX + 10, halfY), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThreadConnectorPainter oldDelegate) {
+    return oldDelegate.depth != depth || oldDelegate.color != color;
   }
 }
 
-class _CommentAvatar extends StatelessWidget {
-  const _CommentAvatar({required this.url});
+class CommentLikeButton extends StatelessWidget {
+  const CommentLikeButton({
+    super.key,
+    required this.commentId,
+    required this.isLiked,
+    required this.count,
+  });
 
-  final String url;
+  final String commentId;
+  final bool isLiked;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    if (url.trim().isEmpty) {
-      return Container(
-        width: 36,
-        height: 36,
-        decoration: BoxDecoration(
-          color: AppColors.colorff2A2A2B,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        alignment: Alignment.center,
-        child: const Icon(Icons.person, color: Colors.white70, size: 18),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: Image.network(
-        url,
-        width: 36,
-        height: 36,
-        fit: BoxFit.cover,
-        cacheWidth: 108,
-        cacheHeight: 108,
-        filterQuality: FilterQuality.low,
-        errorBuilder: (_, __, ___) => Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: AppColors.colorff2A2A2B,
-            borderRadius: BorderRadius.circular(18),
+    final bloc = getIt<HomeBloc>();
+
+    return BlocBuilder<HomeBloc, HomeState>(
+      bloc: bloc,
+      builder: (context, state) {
+        return state.maybeWhen(
+          loaded: (viewModel) {
+            final targetComment = viewModel.getCommentById(commentId);
+            if (targetComment == null) {
+              return Column(
+                children: [
+                  Assets.icons.like.svg(),
+                  Text(
+                    count.toString(),
+                    style: TextStyles.bodyMain.copyWith(
+                      color: const Color(0xFF838383),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            final currentlyLiked = targetComment.isLiked;
+            final currentCount = targetComment.likesCount;
+
+            return GestureDetector(
+              onTap: () {
+                if (currentlyLiked) {
+                  bloc.add(HomeEvent.unlikeComment(commentId));
+                } else {
+                  bloc.add(HomeEvent.likeComment(commentId));
+                }
+              },
+              child: Column(
+                children: [
+                  SvgPicture.string(
+                    currentlyLiked ? _filledLikeIcon : _outlineLikeIcon,
+                    width: 16,
+                    height: 16,
+                    colorFilter: ColorFilter.mode(
+                      currentlyLiked ? Colors.red : const Color(0xFF838383),
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  const Gap(2),
+                  Text(
+                    currentCount.toString(),
+                    style: TextStyles.bodyMain.copyWith(
+                      color:
+                          currentlyLiked ? Colors.red : const Color(0xFF838383),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+          orElse: () => Column(
+            children: [
+              Assets.icons.like.svg(),
+              Text(
+                count.toString(),
+                style: TextStyles.bodyMain.copyWith(
+                  color: const Color(0xFF838383),
+                ),
+              ),
+            ],
           ),
-          alignment: Alignment.center,
-          child: const Icon(Icons.person, color: Colors.white70, size: 18),
-        ),
-      ),
+        );
+      },
     );
   }
+
+  static const String _outlineLikeIcon = '''
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+</svg>
+''';
+
+  static const String _filledLikeIcon = '''
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+  <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
+</svg>
+''';
 }
 
 class _CommentInputBar extends StatelessWidget {
@@ -782,22 +554,18 @@ class _CommentInputBar extends StatelessWidget {
     required this.focusNode,
     required this.onSend,
     required this.onPickPhoto,
+    required this.composerPhotos,
     required this.onRemovePhoto,
-    required this.onChanged,
-    required this.photos,
-    this.errorText,
     this.replyToUsername,
     this.onCancelReply,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
-  final Future<void> Function() onSend;
+  final VoidCallback onSend;
   final VoidCallback onPickPhoto;
-  final ValueChanged<int> onRemovePhoto;
-  final ValueChanged<String> onChanged;
-  final List<_DraftCommentPhoto> photos;
-  final String? errorText;
+  final List<CommentComposerPhoto> composerPhotos;
+  final ValueChanged<String> onRemovePhoto;
   final String? replyToUsername;
   final VoidCallback? onCancelReply;
 
@@ -806,26 +574,11 @@ class _CommentInputBar extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 168, 168, 168).withValues(
-          alpha: 0.08,
-        ),
+        color: const Color.fromARGB(255, 168, 168, 168).withValues(alpha: 0.08),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (errorText != null && errorText!.trim().isNotEmpty)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  errorText!,
-                  style: TextStyles.bodyMain.copyWith(
-                    color: const Color(0xFFEF4444),
-                  ),
-                ),
-              ),
-            ),
           if (replyToUsername != null && replyToUsername!.isNotEmpty)
             Row(
               children: [
@@ -848,37 +601,31 @@ class _CommentInputBar extends StatelessWidget {
             ),
           if (replyToUsername != null && replyToUsername!.isNotEmpty)
             const Gap(8),
-          if (photos.isNotEmpty)
+          if (composerPhotos.isNotEmpty)
             SizedBox(
               height: 68,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemCount: photos.length,
+                itemCount: composerPhotos.length,
                 separatorBuilder: (_, __) => const Gap(8),
                 itemBuilder: (context, index) {
-                  final photo = photos[index];
-                  final cacheSize =
-                      (68 * MediaQuery.of(context).devicePixelRatio).round();
+                  final photo = composerPhotos[index];
                   return Stack(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.file(
-                          File(photo.filePath),
+                        child: Image.memory(
+                          photo.bytes,
                           width: 68,
                           height: 68,
                           fit: BoxFit.cover,
-                          cacheWidth: cacheSize,
-                          cacheHeight: cacheSize,
-                          filterQuality: FilterQuality.low,
-                          gaplessPlayback: true,
                         ),
                       ),
                       Positioned(
                         top: 2,
                         right: 2,
                         child: GestureDetector(
-                          onTap: () => onRemovePhoto(index),
+                          onTap: () => onRemovePhoto(photo.fileName),
                           child: Container(
                             decoration: const BoxDecoration(
                               color: Colors.black87,
@@ -898,7 +645,7 @@ class _CommentInputBar extends StatelessWidget {
                 },
               ),
             ),
-          if (photos.isNotEmpty) const Gap(8),
+          if (composerPhotos.isNotEmpty) const Gap(8),
           Row(
             children: [
               GestureDetector(
@@ -912,29 +659,20 @@ class _CommentInputBar extends StatelessWidget {
                   child: Assets.icons.plusIcon.svg(),
                 ),
               ),
-              const Gap(13),
               Expanded(
                 child: CustomTextField(
                   controller: controller,
                   focusNode: focusNode,
-                  onChanged: onChanged,
-                  labelText: 'Add a comment...',
+                  labelText: "Add a comment...",
                   showLabel: false,
                   height: 40,
                 ),
               ),
-              const Gap(13),
               GestureDetector(
-                onTap: () {
-                  onSend();
-                },
-                child: const Icon(
-                  Icons.send_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                onTap: onSend,
+                child: Assets.icons.sendIcon.svg(),
               ),
-            ],
+            ].addGap(13),
           ),
         ],
       ),
@@ -949,71 +687,41 @@ class _CommentImageGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
-        final maxWidth = constraints.maxWidth.isFinite
-            ? constraints.maxWidth
-            : MediaQuery.of(context).size.width;
-        final singleCacheWidth = (maxWidth * devicePixelRatio).round();
-        final singleCacheHeight = (170 * devicePixelRatio).round();
+    if (imageUrls.length == 1) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: CustomNetworkImage(
+          imageUrl: imageUrls.first,
+          width: double.infinity,
+          height: 170,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
 
-        if (imageUrls.length == 1) {
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: CustomNetworkImage(
-              imageUrl: imageUrls.first,
-              width: maxWidth,
-              height: 170,
-              fit: BoxFit.cover,
-              cacheWidth: singleCacheWidth,
-              cacheHeight: singleCacheHeight,
-            ),
-          );
-        }
-
-        final previewImages = imageUrls.take(3).toList();
-        final perItemWidth =
-            ((maxWidth - 12) / 3).clamp(1, double.infinity).toDouble();
-        final itemCacheWidth = (perItemWidth * devicePixelRatio).round();
-        final itemCacheHeight = (120 * devicePixelRatio).round();
-
-        return SizedBox(
-          height: 120,
-          child: Row(
-            children: previewImages
-                .map(
-                  (url) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: CustomNetworkImage(
-                          imageUrl: url,
-                          width: perItemWidth,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          cacheWidth: itemCacheWidth,
-                          cacheHeight: itemCacheHeight,
-                        ),
-                      ),
+    final previewImages = imageUrls.take(3).toList();
+    return SizedBox(
+      height: 120,
+      child: Row(
+        children: previewImages
+            .map(
+              (url) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CustomNetworkImage(
+                      imageUrl: url,
+                      width: double.infinity,
+                      height: 120,
+                      fit: BoxFit.cover,
                     ),
                   ),
-                )
-                .toList(),
-          ),
-        );
-      },
+                ),
+              ),
+            )
+            .toList(),
+      ),
     );
   }
-}
-
-class _DraftCommentPhoto {
-  const _DraftCommentPhoto({
-    required this.filePath,
-    required this.fileName,
-  });
-
-  final String filePath;
-  final String fileName;
 }

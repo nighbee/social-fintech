@@ -1,87 +1,241 @@
+import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/features/profile/presentation/models/rank_card_item.dart';
+import 'package:app/src/features/profile/domain/entities/rank_entity.dart';
 import 'package:app/src/features/profile/presentation/widgets/rangs/gemstone_sphere.dart';
 import 'package:app/src/features/profile/presentation/widgets/rangs/tier_indicators.dart';
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 
 class RankCard extends StatelessWidget {
-  const RankCard({super.key, required this.rank});
+  const RankCard({super.key, required this.rank, this.nextRank});
 
-  final RankCardItem rank;
+  final RankEntity rank;
+  final RankEntity? nextRank;
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.height < 760;
+    final gradient = _gradientFor(rank.name);
+    final accentColor = gradient.first;
+    final sphereSize = isCompact ? 180.0 : 220.0;
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(isCompact ? 18 : 22),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            gradient.first.withValues(alpha: 0.38),
+            gradient.last.withValues(alpha: 0.2),
+            const Color(0xFF12151C),
+          ],
+          stops: const [0.0, 0.34, 1.0],
         ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFA9A9A9).withValues(alpha: 0.16),
-            blurRadius: 5,
+            color: accentColor.withValues(alpha: 0.18),
+            blurRadius: 36,
+            offset: const Offset(0, 18),
           ),
         ],
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Column(
+          Row(
             children: [
-              Text(
-                '${rank.name} | ${rank.tier}',
-                textAlign: TextAlign.center,
-                style: TextStyles.bodyLarge.copyWith(
-                  fontSize: 18,
-                  height: 1,
-                  color: AppColors.textBrand.withValues(alpha: 0.7),
+              Expanded(
+                child: _InfoChip(
+                  icon: Assets.icons.ratingIcon.svg(
+                    width: 16,
+                    height: 16,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  label: 'Level ${rank.level}',
                 ),
               ),
-              const Gap(20),
-              Text(
-                '${rank.headline}\n${rank.description}',
-                textAlign: TextAlign.center,
-                style: TextStyles.bodyMain.copyWith(
-                  fontSize: 12,
-                  height: 1.2,
-                  color: const Color(0xFFA3A3A3).withValues(alpha: 0.82),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _InfoChip(
+                  icon: Assets.icons.rewardIndicator.svg(
+                    width: 16,
+                    height: 16,
+                    colorFilter: ColorFilter.mode(
+                      accentColor,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  label: '${rank.requiredExp} seals',
+                  alignment: Alignment.centerRight,
                 ),
               ),
             ],
           ),
-          const Gap(32),
-          SizedBox(
-            width: 230,
-            child: Column(
+          SizedBox(height: isCompact ? 22 : 28),
+          Text(
+            rank.name,
+            style: TextStyles.titleHeadline.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: isCompact ? 28 : 34,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          Text(
+            rank.tier.toUpperCase(),
+            style: TextStyles.titleTag.copyWith(
+              color: accentColor,
+              letterSpacing: 1.1,
+              fontWeight: FontWeight.w700,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: isCompact ? 24 : 30),
+          Container(
+            width: sphereSize + 30,
+            height: sphereSize + 30,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: [
+                  accentColor.withValues(alpha: 0.28),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+            child: Center(
+              child:
+                  GemstoneSphere(imagePath: rank.imagePath, size: sphereSize),
+            ),
+          ),
+          SizedBox(height: isCompact ? 24 : 30),
+          Text(
+            rank.description,
+            style: TextStyles.bodyLarge.copyWith(
+              color: AppColors.textSecondary,
+              height: 1.55,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: isCompact ? 20 : 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: Row(
               children: [
-                GemstoneSphere(
-                  image: rank.image,
-                  style: rank.gemStyle,
+                Assets.icons.statsIcon.svg(
+                  width: 18,
+                  height: 18,
+                  colorFilter: ColorFilter.mode(accentColor, BlendMode.srcIn),
                 ),
-                const Gap(16),
-                Text(
-                  'Required: ${rank.requiredHonorLabel} honor',
-                  textAlign: TextAlign.center,
-                  style: TextStyles.bodyMain.copyWith(
-                    fontSize: 12,
-                    height: 1,
-                    color: AppColors.textBrand.withValues(alpha: 0.8),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Next milestone',
+                        style: TextStyles.bodySecondary.copyWith(
+                          color: Colors.white60,
+                        ),
+                      ),
+                      Text(
+                        nextRank == null
+                            ? 'Legendary peak reached'
+                            : nextRank!.name,
+                        style: TextStyles.bodyMain.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 32),
-            child: TierIndicators(
-              filledTierCount: rank.filledTierCount,
-            ),
+          SizedBox(height: isCompact ? 20 : 24),
+          TierIndicators(
+            tiers: rank.tierBadges,
+            activeTiers: rank.tierBadges,
+            accentColor: accentColor,
           ),
         ],
+      ),
+    );
+  }
+
+  List<Color> _gradientFor(String rankName) {
+    switch (rankName.toLowerCase()) {
+      case 'pearl':
+        return const [Color(0xFFE6DCCF), Color(0xFFB8A6A2)];
+      case 'moonstone':
+        return const [Color(0xFF8FB0FF), Color(0xFF5362D8)];
+      case 'jade':
+        return const [Color(0xFF57D38A), Color(0xFF0D7B5D)];
+      case 'lapis lazuli':
+        return const [Color(0xFF6FA0FF), Color(0xFF2144B2)];
+      case 'ammolite':
+        return const [Color(0xFFFF9E66), Color(0xFFB63D72)];
+      case 'onyx':
+        return const [Color(0xFF9EA7B4), Color(0xFF404958)];
+      case 'sunstone':
+        return const [Color(0xFFFFC75A), Color(0xFFFF6A2A)];
+      case 'diamond':
+        return const [Color(0xFFC6F1FF), Color(0xFF7D8BFF)];
+      default:
+        return const [Color(0xFF9D8BFF), Color(0xFF5567FF)];
+    }
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    this.alignment = Alignment.centerLeft,
+  });
+
+  final Widget icon;
+  final String label;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: alignment,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            icon,
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyles.bodySecondary.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
