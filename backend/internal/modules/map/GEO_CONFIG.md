@@ -144,6 +144,19 @@ Response:
 - Boundary data population (no loader visible; requires OSM import)
 - Boundary ownership now uses executable 50%+ H3 polygon overlap (with deterministic center-point fallback when no 50% winner exists)
 
+## Deterministic Business Rules
+
+1. **Equal-overlap H3 ownership rule**  
+   If multiple boundaries on the same level have identical overlap ratio, winner is chosen by:
+   `overlap_ratio DESC -> boundary_name ASC -> boundary_id ASC`.
+
+2. **Weekly region stability rule**  
+   For district/city (`res5/res4`), if country (`res2`) is unchanged and the user is still inside the same ISO week, previous region is kept.
+   Country changes are applied immediately.
+
+3. **Champion tie-break rule (equal score)**  
+   When multiple users have the same weekly top score in a region, champion is the lexicographically smallest `user_id`.
+
 ### Future Enhancements
 - Admin-boundary-based feed scoping (instead of distance rings)
 - Batch H3→admin resolution API

@@ -975,6 +975,65 @@ func (r *repository) HideTargetByReports(ctx context.Context, targetType string,
 	}
 }
 
+func (r *repository) HardBlockAuthorByTarget(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	var authorID uuid.UUID
+	switch targetType {
+	case ReportTargetPost:
+		err = tx.QueryRowContext(ctx, `SELECT user_id FROM posts WHERE id = $1`, targetID).Scan(&authorID)
+	case ReportTargetComment:
+		err = tx.QueryRowContext(ctx, `SELECT user_id FROM post_comments WHERE id = $1`, targetID).Scan(&authorID)
+	default:
+		err = ErrInvalidReportReason
+		return err
+	}
+	if err != nil {
+		return err
+	}
+
+	// Hard moderation: fully shadow-ban the author and remove all their content from public feeds.
+	if _, err = tx.ExecContext(ctx, `
+		UPDATE users
+		SET is_shadow_banned = true,
+		    updated_at = NOW()
+		WHERE id = $1
+	`, authorID); err != nil {
+		return err
+	}
+
+	if _, err = tx.ExecContext(ctx, `
+		UPDATE posts
+		SET is_hidden_by_reports = true,
+		    report_control_level = GREATEST(COALESCE(report_control_level, 0), 4),
+		    distribution_multiplier = 0.0,
+		    updated_at = NOW()
+		WHERE user_id = $1
+	`, authorID); err != nil {
+		return err
+	}
+
+	if _, err = tx.ExecContext(ctx, `
+		UPDATE post_comments
+		SET is_hidden_by_reports = true,
+		    updated_at = NOW()
+		WHERE user_id = $1
+	`, authorID); err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	return err
+}
+
 func (r *repository) ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) ([]ReportItem, int, error) {
 	baseWhere := []string{"1=1"}
 	args := make([]interface{}, 0, 6)

@@ -31,6 +31,7 @@ type testRepo struct {
 	applyReputationDeltaFn  func(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error
 	markReputationAppliedFn func(ctx context.Context, targetType string, targetID uuid.UUID) error
 	createPolicyStrikeFn    func(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error
+	hardBlockAuthorFn       func(ctx context.Context, targetType string, targetID uuid.UUID) error
 
 	batchFlushLikesFn    func(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 	batchFlushSealsFn    func(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
@@ -217,6 +218,13 @@ func (r *testRepo) CreateAuthorPolicyStrikeForTarget(ctx context.Context, target
 func (r *testRepo) HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error {
 	if r.hideTargetByReportsFn != nil {
 		return r.hideTargetByReportsFn(ctx, targetType, targetID)
+	}
+	return nil
+}
+
+func (r *testRepo) HardBlockAuthorByTarget(ctx context.Context, targetType string, targetID uuid.UUID) error {
+	if r.hardBlockAuthorFn != nil {
+		return r.hardBlockAuthorFn(ctx, targetType, targetID)
 	}
 	return nil
 }
@@ -916,6 +924,42 @@ func TestReportPost_AppliesPolicyForPostReports(t *testing.T) {
 	}
 }
 
+func TestReportPost_Level4TriggersHardBlock(t *testing.T) {
+	reporterID := uuid.New()
+	postID := uuid.New()
+	hardBlocked := false
+
+	repo := &testRepo{
+		postImpressions: func(ctx context.Context, gotPostID uuid.UUID) (int, error) {
+			return 100, nil
+		},
+		weightedReportsForPost: func(ctx context.Context, gotPostID uuid.UUID) (float64, error) {
+			return 13, nil // ratio 0.13 => level 4
+		},
+		setPostReportControl: func(ctx context.Context, gotPostID uuid.UUID, level int, distributionMultiplier float64) error {
+			if level != 4 {
+				t.Fatalf("expected level 4, got %d", level)
+			}
+			return nil
+		},
+		hardBlockAuthorFn: func(ctx context.Context, targetType string, targetID uuid.UUID) error {
+			hardBlocked = true
+			if targetType != ReportTargetPost || targetID != postID {
+				t.Fatalf("unexpected hard block target: %s %s", targetType, targetID)
+			}
+			return nil
+		},
+	}
+
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+	if err := svc.ReportPost(context.Background(), reporterID, postID, ReportReasonSpam, ""); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !hardBlocked {
+		t.Fatal("expected hard block when post reaches moderation level 4")
+	}
+}
+
 func TestReviewReports_AcceptedAliasBehavesAsActioned(t *testing.T) {
 	targetID := uuid.New()
 	reporterID := uuid.New()
@@ -926,6 +970,7 @@ func TestReviewReports_AcceptedAliasBehavesAsActioned(t *testing.T) {
 	markedReputationApplied := false
 	strikeCalled := false
 	reputationAccepted := false
+	hardBlockCalled := false
 
 	repo := &testRepo{
 		hideTargetByReportsFn: func(ctx context.Context, targetType string, gotTargetID uuid.UUID) error {
@@ -942,6 +987,13 @@ func TestReviewReports_AcceptedAliasBehavesAsActioned(t *testing.T) {
 			}
 			if level != 4 || distributionMultiplier != 0.0 {
 				t.Fatalf("expected hard hide control level 4 with 0 multiplier, got level=%d multiplier=%v", level, distributionMultiplier)
+			}
+			return nil
+		},
+		hardBlockAuthorFn: func(ctx context.Context, targetType string, gotTargetID uuid.UUID) error {
+			hardBlockCalled = true
+			if targetType != ReportTargetPost || gotTargetID != targetID {
+				t.Fatalf("unexpected hard block args: %s %s", targetType, gotTargetID)
 			}
 			return nil
 		},
@@ -1004,6 +1056,9 @@ func TestReviewReports_AcceptedAliasBehavesAsActioned(t *testing.T) {
 	}
 	if !strikeCalled {
 		t.Fatal("expected author policy strike for actioned outcome")
+	}
+	if !hardBlockCalled {
+		t.Fatal("expected hard block for actioned moderation outcome")
 	}
 }
 

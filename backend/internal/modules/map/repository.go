@@ -585,6 +585,7 @@ func (r *repository) GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT
 		),
 		intersections AS (
 			SELECT
+				ab.id,
 				ab.name,
 				ab.level,
 				ab.country_code,
@@ -596,13 +597,18 @@ func (r *repository) GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT
 		),
 		ranked AS (
 			SELECT
+				id,
 				name,
 				level,
 				country_code,
 				overlap_ratio,
 				ROW_NUMBER() OVER (
 					PARTITION BY level
-					ORDER BY overlap_ratio DESC, name ASC
+					-- Business tie-break rule for equal overlap:
+					-- 1) highest overlap_ratio
+					-- 2) lexicographically smallest boundary name
+					-- 3) stable boundary id as last deterministic tie-breaker
+					ORDER BY overlap_ratio DESC, name ASC, id ASC
 				) AS rn
 			FROM intersections
 			WHERE overlap_ratio >= 0.5

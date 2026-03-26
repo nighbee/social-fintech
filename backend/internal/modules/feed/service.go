@@ -539,6 +539,9 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 
 		level, policyErr := s.applyPostReportPolicy(ctx, targetID, reason)
 		if policyErr == nil && level >= 4 {
+			if err := s.repo.HardBlockAuthorByTarget(ctx, ReportTargetPost, targetID); err != nil {
+				return err
+			}
 			_ = s.finalizeAutoModerationOutcome(ctx, ReportTargetPost, targetID, ReportDecisionActioned)
 		}
 	}
@@ -716,6 +719,9 @@ func (s *Service) ReviewReports(ctx context.Context, targetType string, targetID
 			if err := s.repo.SetPostReportControl(ctx, targetID, 4, 0.0); err != nil {
 				return err
 			}
+		}
+		if err := s.repo.HardBlockAuthorByTarget(ctx, targetType, targetID); err != nil {
+			return err
 		}
 	}
 

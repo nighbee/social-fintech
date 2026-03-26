@@ -286,6 +286,8 @@ func pickChampionUserID(fallback string, tiedMembers []string) string {
 	if len(tiedMembers) == 0 {
 		return fallback
 	}
+	// Business tie-break rule for equal score:
+	// champion is the lexicographically smallest user_id among tied members.
 	sort.Strings(tiedMembers)
 	return tiedMembers[0]
 }

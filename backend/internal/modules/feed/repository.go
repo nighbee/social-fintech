@@ -46,6 +46,7 @@ type Repository interface {
 	MarkReportReputationApplied(ctx context.Context, targetType string, targetID uuid.UUID) error
 	CreateAuthorPolicyStrikeForTarget(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error
 	HideTargetByReports(ctx context.Context, targetType string, targetID uuid.UUID) error
+	HardBlockAuthorByTarget(ctx context.Context, targetType string, targetID uuid.UUID) error
 	ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) ([]ReportItem, int, error)
 	IsAlly(ctx context.Context, userID, targetUserID uuid.UUID) (bool, error)
 	IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, error)

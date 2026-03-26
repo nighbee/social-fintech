@@ -236,6 +236,13 @@ func TestShouldKeepWeeklyRegion(t *testing.T) {
 			t.Fatal("expected immediate switch on country change")
 		}
 	})
+
+	t.Run("allow switch on new week even in same country", func(t *testing.T) {
+		nextWeek := now.AddDate(0, 0, 8)
+		if shouldKeepWeeklyRegion(prev, "852b6523fffffff", "842b653ffffffff", prevRes2, nextWeek) {
+			t.Fatal("expected switch when ISO week changes")
+		}
+	})
 }
 
 // Utility validation function.

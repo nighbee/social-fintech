@@ -268,18 +268,23 @@ func (s *Service) resolveInitialActivation(ctx context.Context, deviceID, ip str
 		return "", nil, err
 	}
 
+	status, until := classifyInitialActivation(deviceCount, ipCount, time.Now())
+	return status, until, nil
+}
+
+func classifyInitialActivation(deviceCount, ipCount int, now time.Time) (string, *time.Time) {
 	if deviceCount > activationDeviceRegistrationsLimit || ipCount > activationIPRegistrationsLimit {
 		// Escalate to suspicious when device/IP signal is far above baseline.
 		if deviceCount > activationDeviceSuspiciousLimit || ipCount > activationIPSuspiciousLimit {
-			until := time.Now().Add(120 * time.Hour)
-			return "suspicious", &until, nil
+			until := now.Add(120 * time.Hour)
+			return "suspicious", &until
 		}
-		until := time.Now().Add(72 * time.Hour)
-		return "restricted", &until, nil
+		until := now.Add(72 * time.Hour)
+		return "restricted", &until
 	}
 
-	unlockedAt := time.Now()
-	return "active", &unlockedAt, nil
+	unlockedAt := now
+	return "active", &unlockedAt
 }
 
 func isTrustedRegistrationIP(rawIP string) bool {
