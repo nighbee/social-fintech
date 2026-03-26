@@ -25,6 +25,7 @@ const (
 	taskCooldownDays  = 7
 	maxWorkersNeeded  = 20
 	autoShutdownHours = 24
+	leaderboardTieTTL = 14 * 24 * time.Hour
 )
 
 // validRewards lists the allowed Silver Seal reward values for a task.
@@ -766,20 +767,31 @@ func (s *Service) updateLeaderboards(userID string, task *Task) {
 		return
 	}
 
-	year, week := time.Now().ISOWeek()
+	now := time.Now().UTC()
+	year, week := now.ISOWeek()
 	score := economy.CentinelsToSeals(task.Reward)
 
 	if task.H3Res5 != nil && *task.H3Res5 != "" {
 		key := fmt.Sprintf("leaderboard:arena:%s:week:%d:%d", *task.H3Res5, year, week)
-		_, _ = s.cache.ZIncrBy(context.Background(), key, score, userID)
+		s.recordLeaderboardScore(key, userID, score, now)
 	}
 	if task.H3Res4 != nil && *task.H3Res4 != "" {
 		key := fmt.Sprintf("leaderboard:city:%s:week:%d:%d", *task.H3Res4, year, week)
-		_, _ = s.cache.ZIncrBy(context.Background(), key, score, userID)
+		s.recordLeaderboardScore(key, userID, score, now)
 	}
 
 	globalKey := fmt.Sprintf("leaderboard:global:week:%d:%d", year, week)
-	_, _ = s.cache.ZIncrBy(context.Background(), globalKey, score, userID)
+	s.recordLeaderboardScore(globalKey, userID, score, now)
+}
+
+func (s *Service) recordLeaderboardScore(leaderboardKey, userID string, score float64, now time.Time) {
+	ctx := context.Background()
+	_, _ = s.cache.ZIncrBy(ctx, leaderboardKey, score, userID)
+
+	// Business tie-break anchor: first contribution timestamp in this weekly leaderboard.
+	firstSeenKey := leaderboardKey + ":first_seen"
+	_, _ = s.cache.HSetNX(ctx, firstSeenKey, userID, now.Unix())
+	_ = s.cache.Expire(ctx, firstSeenKey, leaderboardTieTTL)
 }
 
 func computeH3Indices(lat, lon float64) (string, string, string) {

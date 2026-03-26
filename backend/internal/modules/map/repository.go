@@ -591,7 +591,11 @@ func (r *repository) GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT
 				ab.country_code,
 				ST_Area(
 					ST_Intersection(ab.boundary::geography, hex.geom::geography)
-				) / NULLIF(ST_Area(hex.geom::geography), 0) AS overlap_ratio
+				) / NULLIF(ST_Area(hex.geom::geography), 0) AS overlap_ratio,
+				ST_Distance(
+					ST_Centroid(ab.boundary)::geography,
+					ST_Centroid(hex.geom)::geography
+				) AS centroid_distance_meters
 			FROM administrative_boundaries ab, hex
 			WHERE ST_Intersects(ab.boundary, hex.geom)
 		),
@@ -606,9 +610,9 @@ func (r *repository) GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT
 					PARTITION BY level
 					-- Business tie-break rule for equal overlap:
 					-- 1) highest overlap_ratio
-					-- 2) lexicographically smallest boundary name
-					-- 3) stable boundary id as last deterministic tie-breaker
-					ORDER BY overlap_ratio DESC, name ASC, id ASC
+					-- 2) closest boundary centroid to H3 centroid (stable geographic choice)
+					-- 3) stable boundary id as final deterministic tie-breaker
+					ORDER BY overlap_ratio DESC, centroid_distance_meters ASC, id ASC
 				) AS rn
 			FROM intersections
 			WHERE overlap_ratio >= 0.5

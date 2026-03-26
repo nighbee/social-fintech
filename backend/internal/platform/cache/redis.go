@@ -51,6 +51,10 @@ func (c *Cache) Set(ctx context.Context, key string, value interface{}, ttl time
 	return c.Client.Set(ctx, key, value, ttl).Err()
 }
 
+func (c *Cache) SetNX(ctx context.Context, key string, value interface{}, ttl time.Duration) (bool, error) {
+	return c.Client.SetNX(ctx, key, value, ttl).Result()
+}
+
 func (c *Cache) Delete(ctx context.Context, key string) error {
 	return c.Client.Del(ctx, key).Err()
 }
@@ -95,6 +99,18 @@ func (c *Cache) ZRangeByExactScore(ctx context.Context, key string, score float6
 
 func (c *Cache) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {
 	return c.Client.ZIncrBy(ctx, key, increment, member).Result()
+}
+
+func (c *Cache) HSetNX(ctx context.Context, key, field string, value interface{}) (bool, error) {
+	return c.Client.HSetNX(ctx, key, field, value).Result()
+}
+
+func (c *Cache) HGet(ctx context.Context, key, field string) (string, error) {
+	return c.Client.HGet(ctx, key, field).Result()
+}
+
+func (c *Cache) Expire(ctx context.Context, key string, ttl time.Duration) error {
+	return c.Client.Expire(ctx, key, ttl).Err()
 }
 
 func (c *Cache) ScanKeys(ctx context.Context, pattern string, count int64) ([]string, error) {

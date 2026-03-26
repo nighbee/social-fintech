@@ -75,7 +75,8 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				)
 			  )
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
-			  AND COALESCE(p.report_control_level, 0) < 3
+			  -- Hard exclusion from feed starts at level 4.
+			  AND COALESCE(p.report_control_level, 0) < 4
 			  AND (
 				-- DISTRIBUTION FILTER (NON-SILENT SHADOW-BAN)
 				-- If report_control_level > 0 (restricted/shadowbanned user):

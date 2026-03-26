@@ -137,13 +137,19 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 	src, err := file.Open()
 	if err != nil {
 		logger.Error("failed to open file", zap.Error(err))
-		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
+		return c.Status(400).JSON(fiber.Map{
+			"error":   "invalid_file_payload",
+			"message": "Failed to read uploaded file",
+		})
 	}
 	defer src.Close()
 
 	if h.storage == nil {
 		logger.Error("object storage not configured")
-		return c.Status(500).JSON(fiber.Map{"error": "upload_failed"})
+		return c.Status(503).JSON(fiber.Map{
+			"error":   "storage_unavailable",
+			"message": "Storage service is temporarily unavailable",
+		})
 	}
 
 	// Attempt upload with error differentiation for storage failures
@@ -163,6 +169,21 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 			return c.Status(507).JSON(fiber.Map{
 				"error":   "insufficient_storage",
 				"message": "Server storage full, please try later",
+			})
+		}
+		if strings.Contains(strings.ToLower(errMsg), "timeout") ||
+			strings.Contains(strings.ToLower(errMsg), "connection refused") ||
+			strings.Contains(strings.ToLower(errMsg), "unavailable") {
+			return c.Status(503).JSON(fiber.Map{
+				"error":   "storage_unavailable",
+				"message": "Storage service unavailable, please retry",
+			})
+		}
+		if strings.Contains(strings.ToLower(errMsg), "access denied") ||
+			strings.Contains(strings.ToLower(errMsg), "forbidden") {
+			return c.Status(500).JSON(fiber.Map{
+				"error":   "storage_permission_denied",
+				"message": "Storage rejected upload operation",
 			})
 		}
 

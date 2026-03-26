@@ -121,7 +121,8 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 
 		// Deterministic tie-break for equal scores.
 		if tiedMembers, tieErr := w.cache.ZRangeByExactScore(ctx, key, score); tieErr == nil {
-			userID = pickChampionUserID(userID, tiedMembers)
+			firstSeen := w.getLeaderboardFirstSeen(ctx, key, tiedMembers)
+			userID = pickChampionUserID(userID, tiedMembers, firstSeen)
 		}
 
 		champion := &RegionChampion{
@@ -282,12 +283,57 @@ func parseLeaderboardKey(key string, resolution int) (string, int, int, bool) {
 	return h3Index, year, week, true
 }
 
-func pickChampionUserID(fallback string, tiedMembers []string) string {
+func (w *Worker) getLeaderboardFirstSeen(ctx context.Context, leaderboardKey string, members []string) map[string]int64 {
+	out := make(map[string]int64, len(members))
+	firstSeenKey := leaderboardKey + ":first_seen"
+
+	for _, member := range members {
+		raw, err := w.cache.HGet(ctx, firstSeenKey, member)
+		if err != nil || raw == "" {
+			continue
+		}
+		ts, convErr := strconv.ParseInt(raw, 10, 64)
+		if convErr != nil {
+			continue
+		}
+		out[member] = ts
+	}
+
+	return out
+}
+
+func pickChampionUserID(fallback string, tiedMembers []string, firstSeen map[string]int64) string {
 	if len(tiedMembers) == 0 {
 		return fallback
 	}
+
 	// Business tie-break rule for equal score:
-	// champion is the lexicographically smallest user_id among tied members.
-	sort.Strings(tiedMembers)
-	return tiedMembers[0]
+	// 1) earliest first contribution in the current weekly leaderboard
+	// 2) if equal/missing timestamps -> lexicographically smallest user_id
+	best := fallback
+	bestTS := int64(0)
+	bestHasTS := false
+
+	for _, member := range tiedMembers {
+		ts, hasTS := firstSeen[member]
+		switch {
+		case !bestHasTS && hasTS:
+			best = member
+			bestTS = ts
+			bestHasTS = true
+		case bestHasTS && hasTS && ts < bestTS:
+			best = member
+			bestTS = ts
+		case bestHasTS && hasTS && ts == bestTS && member < best:
+			best = member
+		case !bestHasTS && !hasTS && member < best:
+			best = member
+		}
+	}
+
+	if !bestHasTS {
+		sort.Strings(tiedMembers)
+		return tiedMembers[0]
+	}
+	return best
 }

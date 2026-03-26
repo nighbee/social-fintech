@@ -94,7 +94,7 @@ func TestUploadMedia_RejectsOversizedImage(t *testing.T) {
 func TestUploadMedia_ReturnsStorageFailure(t *testing.T) {
 	app := newUploadTestApp(&mockUploadStorage{
 		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
-			return "", errors.New("storage unreachable")
+			return "", errors.New("storage service unavailable")
 		},
 	})
 	body, ctype := buildMultipartRequest(t, "file", "image.png", "image/png", []byte("abc"))
@@ -105,8 +105,8 @@ func TestUploadMedia_ReturnsStorageFailure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("app.Test: %v", err)
 	}
-	if resp.StatusCode != fiber.StatusInternalServerError {
-		t.Fatalf("expected 500, got %d", resp.StatusCode)
+	if resp.StatusCode != fiber.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", resp.StatusCode)
 	}
 }
 
