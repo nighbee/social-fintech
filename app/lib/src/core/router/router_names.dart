@@ -25,6 +25,7 @@ class RouteNames {
   static const String search = 'search';
   static const String store = 'store';
   static const String profilePublications = 'profilePublications';
+  static const String notifications = 'notifications';
 
   // Map routes
   static const String map = 'map';
@@ -83,14 +84,12 @@ class RouteNames {
   static const String editProfileNickname = 'editProfileNickname';
   static const String editProfileBio = 'editProfileBio';
 
-  // Notifications routes
-  static const String notifications = 'notifications';
-
   // Developer features
   static const String developerFeatures = 'developer_features';
   static const String log = 'log';
   static const String widgetBook = 'widget_book';
   static const String rangs = 'rangs';
+  static const String feedPreview = 'feedPreview';
 
   // Add more route names as needed
 }

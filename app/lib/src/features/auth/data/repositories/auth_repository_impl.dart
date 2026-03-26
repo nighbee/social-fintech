@@ -1,5 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+// import 'package:firebase_core/firebase_core.dart';
+// import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
@@ -24,6 +26,12 @@ class AuthRepositoryImpl implements IAuthRepository {
 
   final IAuthRemote _authRemote;
   final IAuthLocal _authLocal;
+  // static const String _googleServerClientId =
+  //     '493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com';
+  // static const String _googleWebClientId = String.fromEnvironment(
+  //   'GOOGLE_WEB_CLIENT_ID',
+  //   defaultValue: _googleServerClientId,
+  // );
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
     serverClientId:

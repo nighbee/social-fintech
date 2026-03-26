@@ -93,6 +93,13 @@ class _DeveloperFeaturesPageState extends State<DeveloperFeaturesPage> {
             iconRight: true,
             onTap: () => context.pushNamed(RouteNames.widgetBook),
           ),
+          CustomListItem(
+            title: 'Feed (Home)',
+            subtitle: 'Открыть текущую ленту',
+            isStroke: true,
+            iconRight: true,
+            onTap: () => context.go(RoutePaths.feedPreview),
+          ),
           // User Id Input Section
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16.0),

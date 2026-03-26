@@ -4,7 +4,7 @@ import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
 import 'package:flutter/material.dart';
 
 enum PostVisibilityOption {
-  everyone('Everyone'),
+  everyone('Anyone'),
   allies('Allies only');
 
   const PostVisibilityOption(this.label);
@@ -30,9 +30,12 @@ mixin ShowPostVisibilityBottomSheet {
   }) {
     context.showRoundedModalBottomSheet(
       backgroundColor: Colors.transparent,
-      maxHeightFactor: 0.52,
+      maxHeightFactor: 0.48,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
+        backgroundColor: const Color(0xFF161616),
+        backgroundOpacity: 1,
+        enableGlassEffect: false,
+        enableDropShadow: false,
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(
@@ -74,9 +77,12 @@ mixin ShowPostVisibilityBottomSheet {
   }) {
     context.showRoundedModalBottomSheet(
       backgroundColor: Colors.transparent,
-      maxHeightFactor: 0.62,
+      maxHeightFactor: 0.54,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
+        backgroundColor: const Color(0xFF161616),
+        backgroundOpacity: 1,
+        enableGlassEffect: false,
+        enableDropShadow: false,
         child: _CommentControlSheetBody(
           selected: selected,
           onSelected: onSelected,

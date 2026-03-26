@@ -36,7 +36,12 @@ class EnvironmentManager {
       _currentEnvironment ??= _loadEnvironment();
 
   bool get isDevelopment => currentEnvironment == EnvironmentType.dev;
-  String get baseUrl => currentEnvironment.url;
+  String get baseUrl {
+    if (kIsWeb && currentEnvironment == EnvironmentType.dev) {
+      return EndPoints.baseUrl;
+    }
+    return currentEnvironment.url;
+  }
 
   EnvironmentType _loadEnvironment() {
     try {

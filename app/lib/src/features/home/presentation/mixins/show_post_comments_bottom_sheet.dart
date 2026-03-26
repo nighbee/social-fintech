@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:app/src/core/widgets/gap_extension.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -13,7 +14,6 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
 import 'package:app/src/core/widgets/action_bottom_sheet.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
-import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
@@ -28,7 +28,10 @@ mixin ShowPostCommentsBottomSheet {
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.92,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
+        backgroundColor: const Color(0xFF161616),
+        backgroundOpacity: 1,
+        enableGlassEffect: false,
+        enableDropShadow: false,
         child: PostCommentsBottomSheet(post: post),
       ),
     );
@@ -247,6 +250,8 @@ class PostCommentItem extends StatelessWidget {
     required this.viewModel,
     required this.depth,
     required this.onReply,
+    this.isLastInThread = true,
+    this.connectsToParent = false,
   });
 
   final CommentEntity comment;
@@ -254,6 +259,17 @@ class PostCommentItem extends StatelessWidget {
   final HomeViewModel viewModel;
   final int depth;
   final ValueChanged<CommentEntity> onReply;
+  final bool isLastInThread;
+  final bool connectsToParent;
+
+  double _actionInset(int targetDepth) {
+    final connectorWidth = targetDepth == 0 ? 0.0 : (targetDepth * 16 + 8.0);
+    return connectorWidth + 46.0;
+  }
+
+  double _hideActionInset(int targetDepth) {
+    return math.max(0, _actionInset(targetDepth) - 12);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -268,7 +284,11 @@ class PostCommentItem extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ThreadConnector(depth: depth),
+            _ThreadConnector(
+              depth: depth,
+              isLastInThread: isLastInThread,
+              connectsToParent: connectsToParent,
+            ),
             if (comment.userAvatar != null && comment.userAvatar!.isNotEmpty)
               CustomNetworkImage(
                 imageUrl: comment.userAvatar!,
@@ -340,26 +360,44 @@ class PostCommentItem extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (hasReplies) ...[
-                        const Gap(20),
-                        GestureDetector(
-                          onTap: () {
-                            bloc.add(
-                              HomeEvent.toggleRepliesVisibility(comment.id),
-                            );
-                          },
-                          child: Text(
-                            isExpanded
-                                ? 'Hide replies'
-                                : 'View ${math.max(replies.length, comment.repliesCount)} replies',
-                            style: TextStyles.bodyMain.copyWith(
-                              color: const Color(0xFF838383),
-                            ),
-                          ),
+                      const Gap(18),
+                      Text(
+                        'See Translation',
+                        style: TextStyles.bodyMain.copyWith(
+                          color: const Color(0xFF6F6F6F),
+                          fontSize: 12,
                         ),
-                      ],
+                      ),
                     ],
                   ),
+                  if (hasReplies && !isExpanded) const Gap(8),
+                  if (hasReplies && !isExpanded)
+                    Padding(
+                      padding: EdgeInsets.only(left: _actionInset(depth)),
+                      child: GestureDetector(
+                        onTap: () {
+                          bloc.add(
+                              HomeEvent.toggleRepliesVisibility(comment.id));
+                        },
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 1,
+                              color: const Color(0xFF4A4A4A),
+                            ),
+                            const Gap(8),
+                            Text(
+                              'View ${math.max(replies.length, comment.repliesCount)} replies',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: const Color(0xFF8A8A8A),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -372,22 +410,54 @@ class PostCommentItem extends StatelessWidget {
         ),
         if (hasReplies && isExpanded && replies.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.only(top: 8),
             child: Column(
-              children: replies
-                  .map(
-                    (reply) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ...replies.asMap().entries.map(
+                  (entry) {
+                    final replyIndex = entry.key;
+                    final reply = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: PostCommentItem(
                         comment: reply,
                         postId: postId,
                         viewModel: viewModel,
                         depth: depth + 1,
                         onReply: onReply,
+                        isLastInThread: replyIndex == replies.length - 1,
+                        connectsToParent: replyIndex == 0,
                       ),
+                    );
+                  },
+                ),
+                GestureDetector(
+                  onTap: () {
+                    bloc.add(HomeEvent.toggleRepliesVisibility(comment.id));
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(left: _hideActionInset(depth + 1)),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 1,
+                          color: const Color(0xFF4A4A4A),
+                        ),
+                        const Gap(8),
+                        Text(
+                          'Hide',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFF8A8A8A),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                  .toList(),
+                  ),
+                ),
+              ],
             ),
           ),
       ],
@@ -396,20 +466,28 @@ class PostCommentItem extends StatelessWidget {
 }
 
 class _ThreadConnector extends StatelessWidget {
-  const _ThreadConnector({required this.depth});
+  const _ThreadConnector({
+    required this.depth,
+    required this.isLastInThread,
+    required this.connectsToParent,
+  });
 
   final int depth;
+  final bool isLastInThread;
+  final bool connectsToParent;
 
   @override
   Widget build(BuildContext context) {
     if (depth == 0) return const SizedBox.shrink();
     return SizedBox(
       width: depth * 16 + 8,
-      height: 46,
+      height: 58,
       child: CustomPaint(
         painter: _ThreadConnectorPainter(
           depth: depth,
-          color: const Color(0xFF3A3A3A),
+          isLastInThread: isLastInThread,
+          connectsToParent: connectsToParent,
+          color: const Color(0xFF474747),
         ),
       ),
     );
@@ -419,28 +497,48 @@ class _ThreadConnector extends StatelessWidget {
 class _ThreadConnectorPainter extends CustomPainter {
   _ThreadConnectorPainter({
     required this.depth,
+    required this.isLastInThread,
+    required this.connectsToParent,
     required this.color,
   });
 
   final int depth;
+  final bool isLastInThread;
+  final bool connectsToParent;
   final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..strokeWidth = 1
+      ..strokeWidth = 1.15
+      ..strokeCap = StrokeCap.round
+      ..isAntiAlias = true
       ..style = PaintingStyle.stroke;
 
-    final halfY = size.height * 0.55;
+    const baseX = 9.0;
+    const elbowY = 22.0;
+    final topY = connectsToParent ? -20.0 : 0.0;
     for (int i = 0; i < depth - 1; i++) {
-      final x = 8 + (i * 16.0);
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+      final x = baseX + (i * 16.0);
+      canvas.drawLine(Offset(x, topY), Offset(x, size.height), paint);
     }
 
-    final branchX = 8 + ((depth - 1) * 16.0);
-    canvas.drawLine(Offset(branchX, 0), Offset(branchX, halfY), paint);
-    canvas.drawLine(Offset(branchX, halfY), Offset(branchX + 10, halfY), paint);
+    final branchX = baseX + ((depth - 1) * 16.0);
+    final path = Path()
+      ..moveTo(branchX, topY)
+      ..lineTo(branchX, elbowY - 4)
+      ..quadraticBezierTo(branchX, elbowY, branchX + 5, elbowY)
+      ..lineTo(size.width, elbowY);
+    canvas.drawPath(path, paint);
+
+    if (!isLastInThread) {
+      canvas.drawLine(
+        Offset(branchX, elbowY),
+        Offset(branchX, size.height),
+        paint,
+      );
+    }
   }
 
   @override
@@ -571,81 +669,21 @@ class _CommentInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasReply = replyToUsername != null && replyToUsername!.isNotEmpty;
+    final hasPhotos = composerPhotos.isNotEmpty;
+    final inputMinHeight = hasPhotos ? 92.0 : 44.0;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 168, 168, 168).withValues(alpha: 0.08),
+        color: const Color(0xFF161616),
+        border: const Border(
+          top: BorderSide(color: Color(0x2AFFFFFF), width: 1),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (replyToUsername != null && replyToUsername!.isNotEmpty)
-            Row(
-              children: [
-                Text(
-                  'Replying to @$replyToUsername',
-                  style: TextStyles.bodyMain.copyWith(
-                    color: const Color(0xFFB8B8B8),
-                  ),
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: onCancelReply,
-                  child: const Icon(
-                    Icons.close,
-                    color: Color(0xFFB8B8B8),
-                    size: 16,
-                  ),
-                ),
-              ],
-            ),
-          if (replyToUsername != null && replyToUsername!.isNotEmpty)
-            const Gap(8),
-          if (composerPhotos.isNotEmpty)
-            SizedBox(
-              height: 68,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: composerPhotos.length,
-                separatorBuilder: (_, __) => const Gap(8),
-                itemBuilder: (context, index) {
-                  final photo = composerPhotos[index];
-                  return Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.memory(
-                          photo.bytes,
-                          width: 68,
-                          height: 68,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: GestureDetector(
-                          onTap: () => onRemovePhoto(photo.fileName),
-                          child: Container(
-                            decoration: const BoxDecoration(
-                              color: Colors.black87,
-                              shape: BoxShape.circle,
-                            ),
-                            padding: const EdgeInsets.all(2),
-                            child: const Icon(
-                              Icons.close,
-                              size: 12,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          if (composerPhotos.isNotEmpty) const Gap(8),
           Row(
             children: [
               GestureDetector(
@@ -660,12 +698,74 @@ class _CommentInputBar extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: CustomTextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  labelText: "Add a comment...",
-                  showLabel: false,
-                  height: 40,
+                child: Container(
+                  constraints: BoxConstraints(minHeight: inputMinHeight),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0x61FFFFFF),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CupertinoTheme(
+                        data: CupertinoTheme.of(context).copyWith(
+                          primaryColor: const Color(0xFFE6E6E6),
+                        ),
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            textSelectionTheme: const TextSelectionThemeData(
+                              cursorColor: Color(0xFFE6E6E6),
+                              selectionColor: Color(0x40FFFFFF),
+                              selectionHandleColor: Color(0xFFE6E6E6),
+                            ),
+                          ),
+                          child: TextField(
+                            controller: controller,
+                            focusNode: focusNode,
+                            style: TextStyles.bodyMain.copyWith(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                            cursorColor: const Color(0xFFE6E6E6),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              filled: false,
+                              fillColor: Colors.transparent,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              disabledBorder: InputBorder.none,
+                              errorBorder: InputBorder.none,
+                              focusedErrorBorder: InputBorder.none,
+                              contentPadding: EdgeInsets.zero,
+                              hintText: hasReply
+                                  ? 'Replying to $replyToUsername'
+                                  : 'Add a comment...',
+                              hintStyle: TextStyles.bodyMain.copyWith(
+                                color: const Color(0xFF8C8C8C),
+                                fontSize: 14,
+                              ),
+                            ),
+                            onSubmitted: (_) => onSend(),
+                          ),
+                        ),
+                      ),
+                      if (hasPhotos) const SizedBox(height: 8),
+                      if (hasPhotos)
+                        _ComposerPhotoThumb(
+                          photo: composerPhotos.first,
+                          extraCount: composerPhotos.length - 1,
+                          onRemove: onRemovePhoto,
+                        ),
+                    ],
+                  ),
                 ),
               ),
               GestureDetector(
@@ -676,6 +776,73 @@ class _CommentInputBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ComposerPhotoThumb extends StatelessWidget {
+  const _ComposerPhotoThumb({
+    required this.photo,
+    required this.extraCount,
+    required this.onRemove,
+  });
+
+  final CommentComposerPhoto photo;
+  final int extraCount;
+  final ValueChanged<String> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Image.memory(
+            photo.bytes,
+            width: 48,
+            height: 48,
+            fit: BoxFit.cover,
+          ),
+        ),
+        Positioned(
+          top: 2,
+          right: 2,
+          child: GestureDetector(
+            onTap: () => onRemove(photo.fileName),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.black87,
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(2),
+              child: const Icon(
+                Icons.close,
+                size: 11,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+        if (extraCount > 0)
+          Positioned(
+            left: 3,
+            bottom: 3,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '+$extraCount',
+                style: TextStyles.bodyMain.copyWith(
+                  color: Colors.white,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

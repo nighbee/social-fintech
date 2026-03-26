@@ -8,6 +8,7 @@ class ActionBottomSheet extends StatelessWidget {
     this.appBar,
     required this.child,
     this.backgroundColor = Colors.white,
+    this.backgroundOpacity,
     this.isExpanded = false,
     this.enableGlassEffect = true,
     this.enableDropShadow = true,
@@ -17,6 +18,7 @@ class ActionBottomSheet extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final Widget child;
   final Color backgroundColor;
+  final double? backgroundOpacity;
   final bool isExpanded;
   final bool enableGlassEffect;
   final bool enableDropShadow;
@@ -43,7 +45,8 @@ class ActionBottomSheet extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: backgroundColor.withValues(
-                alpha: enableGlassEffect ? 0.4 : 0.3),
+              alpha: backgroundOpacity ?? (enableGlassEffect ? 0.4 : 0.3),
+            ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             border: Border(
               top: BorderSide(

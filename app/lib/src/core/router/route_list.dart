@@ -51,6 +51,18 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
         ],
       ),
 
+      GoRoute(
+        path: RoutePaths.feedPreview,
+        name: RouteNames.feedPreview,
+        builder: (context, state) => const FeedPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.notifications,
+        name: RouteNames.notifications,
+        redirect: AuthGuard,
+        builder: (context, state) => const NotificationsPage(),
+      ),
+
       // Main app routes wrapped in StatefulShellRoute for LogPushButton
       StatefulShellRoute.indexedStack(
         builder: (context, state, child) {

@@ -1,259 +1,127 @@
-import 'dart:ui';
-
 import 'package:app/gen/assets.gen.dart';
-import 'package:app/src/core/enums/notification_type.dart';
-import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/core/widgets/custom_app_bar.dart';
-import 'package:app/src/core/widgets/glass_container.dart';
-import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
-import 'package:app/src/features/home/presentation/widgets/notification_item_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 
-extension SvgRotation on SvgGenImage {
-  Widget svgRotated({
-    double degrees = 0,
-    double? width,
-    double? height,
-    BoxFit fit = BoxFit.contain,
-    Color? color,
-  }) {
-    return Transform.rotate(
-      angle: degrees * 3.14159 / 180,
-      child: svg(
-        width: width,
-        height: height,
-        fit: fit,
-        color: color,
-      ),
-    );
+enum NotificationFilter { all, like, comment, help, subscriptions, post }
+
+extension _NotificationFilterLabel on NotificationFilter {
+  String get label {
+    switch (this) {
+      case NotificationFilter.all:
+        return 'All';
+      case NotificationFilter.like:
+        return 'Like';
+      case NotificationFilter.comment:
+        return 'Comment';
+      case NotificationFilter.help:
+        return 'Help';
+      case NotificationFilter.subscriptions:
+        return 'Subscriptions';
+      case NotificationFilter.post:
+        return 'Post';
+    }
   }
 }
 
-class NotificationsPage extends StatelessWidget {
+class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const _NotificationsPageContent();
-  }
+  State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsPageContent extends StatefulWidget {
-  const _NotificationsPageContent();
+class _NotificationsPageState extends State<NotificationsPage> {
+  NotificationFilter _selectedFilter = NotificationFilter.all;
 
-  @override
-  State<_NotificationsPageContent> createState() =>
-      _NotificationsPageContentState();
-}
-
-class _NotificationsPageContentState extends State<_NotificationsPageContent> {
-  final GlobalKey _actionKey = GlobalKey();
-  bool _showMenu = false;
-  String _selectedCategory = 'All';
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final bloc = getIt<HomeBloc>();
-      bloc.add(const HomeEvent.loadNotifications());
-    });
-  }
-
-  void _toggleMenu() {
-    setState(() {
-      _showMenu = !_showMenu;
-    });
-  }
-
-  void _hideMenu() {
-    setState(() {
-      _showMenu = false;
-    });
-  }
+  static final List<_NotificationItemData> _items = <_NotificationItemData>[
+    _NotificationItemData(
+      category: NotificationFilter.help,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1516302752625-fcc3c50ae61f?w=240&h=240&fit=crop',
+      title:
+          'You earned the Founder medal for being among our first 3000 members.',
+      timeAgo: '3 day ago',
+    ),
+    _NotificationItemData(
+      category: NotificationFilter.post,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?w=240&h=240&fit=crop',
+      title: 'Your post has been successfully published.',
+      timeAgo: '3 day ago',
+      trailingImage: Assets.images.image.path,
+    ),
+    _NotificationItemData(
+      category: NotificationFilter.post,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?w=240&h=240&fit=crop',
+      title: 'Your post was not verified',
+      highlightText: 'reason',
+      timeAgo: '3 day ago',
+      trailingImage: Assets.images.image.path,
+    ),
+    _NotificationItemData(
+      category: NotificationFilter.subscriptions,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop',
+      title: '@Isabbekov',
+      subtitle: 'Moonstone - Intention - A',
+      body: 'I sent you a honor for your post “If f...”',
+      timeAgo: '3 day ago',
+      trailingImage:
+          'https://images.unsplash.com/photo-1472162072942-cd5147eb3902?w=220&h=220&fit=crop',
+    ),
+    _NotificationItemData(
+      category: NotificationFilter.like,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=240&h=240&fit=crop',
+      title: '@Ahanov',
+      subtitle: 'Moonstone - Intention - A',
+      body: 'I sent you a honor for your post “If f...”',
+      timeAgo: '3 day ago',
+      trailingImage:
+          'https://images.unsplash.com/photo-1472162072942-cd5147eb3902?w=220&h=220&fit=crop',
+    ),
+    _NotificationItemData(
+      category: NotificationFilter.help,
+      avatarUrl:
+          'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=240&h=240&fit=crop',
+      title: '@Ahanov',
+      subtitle: 'Ammolite - Intention - A',
+      body: 'Request “Son\'s birthday”',
+      timeAgo: '3 day ago',
+      trailingCta: 'View',
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final visibleItems = _selectedFilter == NotificationFilter.all
+        ? _items
+        : _items.where((item) => item.category == _selectedFilter).toList();
+
     return Scaffold(
-      backgroundColor: AppColors.colorff19191A,
-      appBar: CustomAppBar(
-        title: 'Notification',
-        actions: [
-          GestureDetector(
-            key: _actionKey,
-            onTap: _toggleMenu,
-            child: Assets.icons.more.svgRotated(
-              width: 24,
-              height: 24,
-              degrees: 90,
-            ),
-          ),
-          Gap(20),
-        ],
-      ),
-      body: Stack(
-        children: [
-          SafeArea(
-            child: BlocBuilder<HomeBloc, HomeState>(
-              bloc: getIt<HomeBloc>(),
-              builder: (context, state) {
-                return state.when(
-                  initial: () => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  loading: (viewModel) => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  loadingError: (message) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.error_outline,
-                          size: 64,
-                          color: AppColors.colorffa43337,
-                        ),
-                        const Gap(16),
-                        Text(
-                          'Ошибка загрузки',
-                          style: TextStyles.titleTag,
-                        ),
-                        const Gap(8),
-                        Text(
-                          message,
-                          style: TextStyles.bodyMain.copyWith(
-                            color: AppColors.colorff838383,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const Gap(24),
-                        ElevatedButton(
-                          onPressed: () {
-                            getIt<HomeBloc>().add(
-                              const HomeEvent.loadNotifications(),
-                            );
-                          },
-                          child: const Text('Повторить'),
-                        ),
-                      ],
-                    ),
-                  ),
-                  loaded: (viewModel) {
-                    final selectedType =
-                        NotificationType.fromString(_selectedCategory);
-                    final notifications = selectedType == NotificationType.all
-                        ? viewModel.notifications
-                        : viewModel.notifications
-                            .where(
-                              (notification) =>
-                                  notification.notificationType == selectedType,
-                            )
-                            .toList();
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _selectedCategory,
-                            style: TextStyles.titleBig.copyWith(
-                              color: AppColors.colorffffffff,
-                            ),
-                          ),
-                          Container(),
-                          Gap(20),
-                          Expanded(
-                            child: ListView.separated(
-                              itemCount: notifications.length,
-                              separatorBuilder: (context, index) => Gap(20),
-                              itemBuilder: (context, index) {
-                                final notification = notifications[index];
-                                return NotificationItemWidget(
-                                  notification: notification,
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
+      backgroundColor: AppColors.mainBackground,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _NotificationsHeader(
+              selectedFilter: _selectedFilter,
+              onFilterChanged: (filter) {
+                setState(() {
+                  _selectedFilter = filter;
+                });
               },
             ),
-          ),
-          if (_showMenu)
-            Positioned.fill(
-              child: Stack(
-                children: [
-                  GestureDetector(
-                    onTap: _hideMenu,
-                    behavior: HitTestBehavior.opaque,
-                    child: const SizedBox.expand(),
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 38,
-                    child: SelectCategoryMenu(
-                      onSelectCategory: (category) {
-                        setState(() {
-                          _selectedCategory = category;
-                        });
-                        _hideMenu();
-                      },
-                    ),
-                  ),
-                ],
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                itemCount: visibleItems.length,
+                separatorBuilder: (_, __) => const Gap(14),
+                itemBuilder: (context, index) {
+                  return _NotificationTile(item: visibleItems[index]);
+                },
               ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class SelectCategoryMenu extends StatelessWidget {
-  const SelectCategoryMenu({
-    required this.onSelectCategory,
-  });
-
-  final ValueChanged<String> onSelectCategory;
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicWidth(
-      child: GlassContainer(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _MenuItem(
-              title: 'All',
-              onTap: () => onSelectCategory('All'),
-            ),
-            _MenuItem(
-              title: 'Like',
-              onTap: () => onSelectCategory('Like'),
-            ),
-            _MenuItem(
-              title: 'Comment',
-              onTap: () => onSelectCategory('Comment'),
-            ),
-            _MenuItem(
-              title: 'Help',
-              onTap: () => onSelectCategory('Help'),
-            ),
-            _MenuItem(
-              title: 'Subscriptions',
-              onTap: () => onSelectCategory('Subscriptions'),
-            ),
-            _MenuItem(
-              title: 'Posts',
-              onTap: () => onSelectCategory('Posts'),
             ),
           ],
         ),
@@ -262,31 +130,228 @@ class SelectCategoryMenu extends StatelessWidget {
   }
 }
 
-class _MenuItem extends StatelessWidget {
-  const _MenuItem({
-    required this.title,
-    required this.onTap,
+class _NotificationsHeader extends StatelessWidget {
+  const _NotificationsHeader({
+    required this.selectedFilter,
+    required this.onFilterChanged,
   });
 
-  final String title;
-  final VoidCallback onTap;
+  final NotificationFilter selectedFilter;
+  final ValueChanged<NotificationFilter> onFilterChanged;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 5),
-          child: Text(
-            title,
-            style: TextStyles.bodyLarge.copyWith(
-              color: AppColors.colorffffffff,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+              ),
+              Expanded(
+                child: Text(
+                  'Notification',
+                  textAlign: TextAlign.center,
+                  style: TextStyles.titleHeadline.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 34 / 1.9,
+                  ),
+                ),
+              ),
+              PopupMenuButton<NotificationFilter>(
+                color: const Color(0xFF17191F),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: const BorderSide(color: Color(0x28FFFFFF)),
+                ),
+                icon: const Icon(Icons.more_vert, color: Colors.white),
+                onSelected: onFilterChanged,
+                itemBuilder: (context) => NotificationFilter.values
+                    .map(
+                      (filter) => PopupMenuItem<NotificationFilter>(
+                        value: filter,
+                        child: Text(
+                          filter.label,
+                          style: TextStyles.bodyLarge.copyWith(
+                            color: filter == selectedFilter
+                                ? Colors.white
+                                : Colors.white70,
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ],
+          ),
+          const Gap(8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              selectedFilter.label,
+              style: TextStyles.titleBig.copyWith(
+                color: Colors.white,
+                fontSize: 40 / 1.9,
+              ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
+}
+
+class _NotificationTile extends StatelessWidget {
+  const _NotificationTile({required this.item});
+
+  final _NotificationItemData item;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasTrailingImage = item.trailingImage != null;
+    final hasTrailingCta = item.trailingCta != null;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.network(
+            item.avatarUrl,
+            width: 42,
+            height: 42,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              width: 42,
+              height: 42,
+              color: AppColors.surface,
+              alignment: Alignment.center,
+              child: Text(
+                item.title.isNotEmpty ? item.title[0] : '?',
+                style: TextStyles.bodyMain.copyWith(color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+        const Gap(12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: item.title,
+                      style: TextStyles.bodyLarge.copyWith(
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
+                    ),
+                    if (item.highlightText != null)
+                      TextSpan(
+                        text: ' ${item.highlightText!}',
+                        style: TextStyles.bodyLarge.copyWith(
+                          color: AppColors.blueText1,
+                          height: 1.2,
+                        ),
+                      ),
+                  ],
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (item.subtitle != null) ...[
+                const Gap(2),
+                Text(
+                  item.subtitle!,
+                  style: TextStyles.bodyMain.copyWith(
+                    color: const Color(0xFF8E95A8),
+                  ),
+                ),
+              ],
+              if (item.body != null) ...[
+                const Gap(2),
+                Text(
+                  item.body!,
+                  style: TextStyles.bodyLarge.copyWith(
+                    color: Colors.white70,
+                    height: 1.2,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              const Gap(2),
+              Text(
+                item.timeAgo,
+                style: TextStyles.bodyMain.copyWith(
+                  color: const Color(0xFF8C8C8C),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (hasTrailingImage)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: item.trailingImage!.startsWith('http')
+                ? Image.network(
+                    item.trailingImage!,
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                  )
+                : Image.asset(
+                    item.trailingImage!,
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                  ),
+          ),
+        if (hasTrailingCta)
+          Container(
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: const Color(0xFF23242A),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0x33FFFFFF)),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              item.trailingCta!,
+              style: TextStyles.bodyLarge.copyWith(color: Colors.white),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _NotificationItemData {
+  const _NotificationItemData({
+    required this.category,
+    required this.avatarUrl,
+    required this.title,
+    required this.timeAgo,
+    this.highlightText,
+    this.subtitle,
+    this.body,
+    this.trailingImage,
+    this.trailingCta,
+  });
+
+  final NotificationFilter category;
+  final String avatarUrl;
+  final String title;
+  final String timeAgo;
+  final String? highlightText;
+  final String? subtitle;
+  final String? body;
+  final String? trailingImage;
+  final String? trailingCta;
 }

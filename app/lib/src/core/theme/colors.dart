@@ -48,6 +48,21 @@ class AppColors {
   static const textDisabledDefault = Color(0xff757575);
   static const textNeutral = Color(0xff242424);
   static const borderDefault = Color(0xff444444);
+  static const textPrimary = Color(0xffE5E5E5);
+  static const textSecondary = Color(0xff9CA3AF);
+  static const surface = Color(0xff2A2A2B);
+  static const border = Color(0xff3F3F40);
+  static const error = Color(0xffEF4444);
+
+  static const feedMoonstoneBase = Color(0xFF242528);
+  static const feedMoonstoneBorder = Color(0x26D7E1EA);
+  static const List<Color> feedMoonstoneGradient = <Color>[
+    Color(0x04D7E1EA),
+    Color(0x0693CAFC), 
+    Color(0x1052ACE1),
+    Color(0x1094BEE2),
+    Color(0x0CCEDBE6),
+  ];
 }
 
 extension ColorThemeDataExtension on ThemeData {

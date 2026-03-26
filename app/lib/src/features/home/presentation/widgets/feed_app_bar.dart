@@ -1,123 +1,69 @@
 import 'package:app/gen/assets.gen.dart';
-import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/core/widgets/silver_balance_chip.dart';
-import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 
 class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
   const FeedAppBar({
     super.key,
     this.onCreatePostTap,
-    this.onSearchTap,
-    this.feedState = const FeedStateEntity.empty(),
-    this.silverHonorCount = 0,
+    this.onNotificationsTap,
   });
 
   final VoidCallback? onCreatePostTap;
-  final VoidCallback? onSearchTap;
-  final FeedStateEntity feedState;
-  final int silverHonorCount;
+  final VoidCallback? onNotificationsTap;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
   Widget build(BuildContext context) {
-    final maxAllowedSeconds =
-        feedState.maxAllowedSeconds > 0 ? feedState.maxAllowedSeconds : 20 * 60;
-    final remainingSeconds =
-        (maxAllowedSeconds - feedState.accumulatedActiveSeconds).clamp(
-      0,
-      maxAllowedSeconds,
-    );
-    final remainingMinutes = (remainingSeconds / 60).ceil();
-    final isBreak = feedState.shouldEnforceCooldown;
-    final isTimeEnding = !isBreak && remainingSeconds <= 60;
-    final breakRemainingSeconds = feedState.safeBreakSecondsRemaining;
-    final breakMinutesRaw = breakRemainingSeconds ~/ 60;
-    final breakMinutes = breakRemainingSeconds > 0
-        ? (breakMinutesRaw == 0 ? 1 : breakMinutesRaw)
-        : 0;
-    final timerLabel = isBreak
-        ? '$breakMinutes min break'
-        : '${remainingMinutes <= 0 ? 1 : remainingMinutes} min';
-
-    final endingGradient = const LinearGradient(
-      colors: [
-        Color(0xFFFFE3C8),
-        Color(0xFFB18D67),
-        Color(0xFFD6A673),
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-    final breakGradient = const LinearGradient(
-      colors: [
-        Color(0xFFCEAC89),
-        Color(0xFFB4814A),
-        Color(0xFF72410A),
-      ],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
-
     return AppBar(
-      backgroundColor: AppColors.colorff19191A,
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       elevation: 0,
       title: Row(
         children: [
-          GestureDetector(
-            onTap: () => context.push(RoutePaths.store),
-            child: SilverBalanceChip(count: silverHonorCount),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: AppColors.border, width: 1),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Assets.icons.silverCoin.svg(width: 24, height: 24),
+                const Gap(4),
+                Text(
+                  '27',
+                  style: TextStyles.titleTag.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
           ),
           const Gap(12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: (isTimeEnding || isBreak)
-                ? ShaderMask(
-                    blendMode: BlendMode.srcIn,
-                    shaderCallback: (bounds) {
-                      final gradient = isBreak ? breakGradient : endingGradient;
-                      return gradient.createShader(
-                        Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-                      );
-                    },
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Assets.icons.timer.svg(
-                          width: 24,
-                          height: 24,
-                          color: Colors.white,
-                        ),
-                        const Gap(4),
-                        Text(
-                          timerLabel,
-                          style: TextStyles.titleHeadline.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Assets.icons.timer.svg(width: 24, height: 24),
-                      const Gap(4),
-                      Text(
-                        timerLabel,
-                        style: TextStyles.titleHeadline.copyWith(
-                          color: AppColors.colorffE5E5E5,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Assets.icons.timer.svg(width: 24, height: 24),
+                const Gap(4),
+                Text(
+                  '20 min',
+                  style: TextStyles.titleHeadline.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
                   ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -125,30 +71,28 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
         GestureDetector(
           onTap: onCreatePostTap,
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppColors.colorff2A2A2B,
-              border: Border.all(color: AppColors.colorff3F3F40, width: 1),
+              color: AppColors.surface,
+              border: Border.all(color: AppColors.border, width: 1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Assets.icons.plusIcon.svg(width: 24, height: 24),
           ),
         ),
-        const Gap(14),
+        Gap(14),
         GestureDetector(
-          onTap: () {
-            context.push(RoutePaths.notifications);
-          },
+          onTap: onNotificationsTap,
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(6),
             child: Assets.icons.bell.svg(width: 24, height: 24),
           ),
         ),
-        const Gap(7),
+        Gap(7),
         GestureDetector(
-          onTap: onSearchTap,
+          onTap: () {},
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: EdgeInsets.all(6),
             child: Assets.icons.search.svg(width: 24, height: 24),
           ),
         ),

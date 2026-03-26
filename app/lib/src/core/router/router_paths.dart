@@ -22,6 +22,7 @@ class RoutePaths {
   // Home routes
   static const String home = '/home';
   static const String createPost = '/create-post';
+  static const String notifications = '/notifications';
   static const String search = '/search';
   static const String store = '/store';
   static const String profilePublications = '/profile-publications';
@@ -29,7 +30,8 @@ class RoutePaths {
   // Map routes
   static const String map = '/map';
   static const String mapCreateRequest = '/map/create-request';
-  static const String mapCreateRequestPublished = '/map/create-request/published';
+  static const String mapCreateRequestPublished =
+      '/map/create-request/published';
   static const String mapRequestCanceled = '/map/request-canceled';
   static const String mapRequestCompleted = '/map/request-completed';
 
@@ -46,14 +48,12 @@ class RoutePaths {
   static const String publicProfile = '/public-profile/:userId';
   static const String editProfile = 'edit-profile';
 
-  // Notifications routes
-  static const String notifications = '/notifications';
-
   // Developer features
   static const String developerFeatures = '/developer_features';
   static const String log = '/log';
   static const String widgetBook = '/widget_book';
   static const String rangs = '/rangs';
+  static const String feedPreview = '/feed-preview';
 
   // Add more routes as needed
 }
