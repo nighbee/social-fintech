@@ -92,7 +92,7 @@ class HomeRemoteImpl implements IHomeRemote {
       );
 
       final response = await _restClient.post(
-        EndPoints.feed,
+        EndPoints.posts,
         data: formData ?? mergedRequest.toJson(),
       );
       return response.fold((error) => Left(error), (result) {

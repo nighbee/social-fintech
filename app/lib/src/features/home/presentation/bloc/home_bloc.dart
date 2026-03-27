@@ -163,8 +163,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     final request = CreatePostRequest(
       caption: event.content,
       mediaAttachments: const <MediaAttachmentRequest>[],
-      visibility: 'EVERYONE',
-      commentPermission: 'EVERYONE',
+      visibility: 'ANYONE',
+      commentPermission: 'ANYONE',
       hideLikesCount: false,
     );
     final payloads = _viewModel.postComposerPhotos

@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:app/src/features/map/domain/entities/map_task_entity.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 class MapRequestMarkerService {
@@ -123,12 +123,12 @@ class MapRequestMarkerService {
     final manager = _annotationManager;
     _annotationManager = null;
     if (manager != null) {
-      await manager.deleteAll();
+      await _deleteAllSafely(manager);
     }
     final selectionManager = _selectionIndicatorManager;
     _selectionIndicatorManager = null;
     if (selectionManager != null) {
-      await selectionManager.deleteAll();
+      await _deleteAllSafely(selectionManager);
     }
     _selectionIndicator = null;
     _selectionIndicatorShowsGlow = null;
@@ -144,6 +144,17 @@ class MapRequestMarkerService {
     _selectedTaskId = null;
     _onSelectionChanged = null;
     _mapboxMap = null;
+  }
+
+  Future<void> _deleteAllSafely(PointAnnotationManager manager) async {
+    try {
+      await manager.deleteAll();
+    } on PlatformException catch (error) {
+      if (error.code == 'channel-error') {
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<void> _handleTap(String taskId) async {

@@ -1,12 +1,4 @@
 {
-  "dart.flutterRunAdditionalArgs": [
-    "--flavor",
-    "dev"
-  ],
-  "dart.flutterDebugAdditionalArgs": [
-    "--flavor",
-    "dev"
-  ],
   "dart.flutterHotReloadOnSave": "always"
 }
 

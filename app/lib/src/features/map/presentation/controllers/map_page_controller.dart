@@ -75,6 +75,7 @@ class MapPageController {
   String? _lastChampionsRegionKey;
   String? selectedNearbyTaskId;
   DateTime? _lastMarkerSelectionAt;
+  Future<void>? _teardownFuture;
 
   void onInit() {
     _mapBloc.add(const MapEvent.loadMap());
@@ -84,10 +85,19 @@ class MapPageController {
     _mapBloc.add(const MapEvent.getAppliedTasks());
   }
 
+  Future<void> teardownMapResources() {
+    return _teardownFuture ??= _teardownMapResourcesOnce();
+  }
+
   void onDispose() {
+    unawaited(teardownMapResources());
+  }
+
+  Future<void> _teardownMapResourcesOnce() async {
     _polling.dispose();
-    unawaited(_championService.dispose());
-    unawaited(_requestMarkerService.dispose());
+    await _championService.dispose();
+    await _requestMarkerService.dispose();
+    mapboxMap = null;
   }
 
   void toggleRequestExpanded() {

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui';
 import 'dart:ui' as ui;
@@ -92,6 +92,12 @@ class _MapPageState extends State<MapPage>
     if (_mapboxAccessToken.isNotEmpty) {
       MapboxOptions.setAccessToken(_mapboxAccessToken);
     }
+  }
+
+  @override
+  void deactivate() {
+    unawaited(_controller.teardownMapResources());
+    super.deactivate();
   }
 
   @override

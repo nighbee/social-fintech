@@ -1,10 +1,10 @@
-import 'dart:typed_data';
 import 'dart:ui';
 
 import 'package:app/src/features/auth/domain/entities/user_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 /// Service for managing champion markers on the map
@@ -130,7 +130,7 @@ class MapChampionService {
       return;
     }
 
-    await manager.deleteAll();
+    await _deleteAllSafely(manager);
     _annotations.clear();
     _annotationIdsToH3Index.clear();
     _championsByIndex.clear();
@@ -143,6 +143,17 @@ class MapChampionService {
     _onChampionTap = null;
     await clear();
     _annotationManager = null;
+  }
+
+  Future<void> _deleteAllSafely(PointAnnotationManager manager) async {
+    try {
+      await manager.deleteAll();
+    } on PlatformException catch (error) {
+      if (error.code == 'channel-error') {
+        return;
+      }
+      rethrow;
+    }
   }
 
   /// Create champion marker image
