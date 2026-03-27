@@ -4,6 +4,7 @@
 ALTER TABLE posts
     ADD COLUMN IF NOT EXISTS report_control_level INTEGER NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS distribution_multiplier DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+    ADD COLUMN IF NOT EXISTS is_hidden_by_reports BOOLEAN NOT NULL DEFAULT false,
     ADD COLUMN IF NOT EXISTS impressions_count BIGINT NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS moderation_queue_at TIMESTAMP NULL;
 
@@ -12,6 +13,17 @@ CREATE INDEX IF NOT EXISTS idx_posts_report_control_level
 
 CREATE INDEX IF NOT EXISTS idx_posts_moderation_queue_at
     ON posts(moderation_queue_at);
+
+ALTER TABLE post_comments
+    ADD COLUMN IF NOT EXISTS is_hidden_by_reports BOOLEAN NOT NULL DEFAULT false;
+
+CREATE INDEX IF NOT EXISTS idx_posts_hidden_by_reports
+    ON posts(is_hidden_by_reports)
+    WHERE is_hidden_by_reports = true;
+
+CREATE INDEX IF NOT EXISTS idx_post_comments_hidden_by_reports
+    ON post_comments(is_hidden_by_reports)
+    WHERE is_hidden_by_reports = true;
 
 -- Reports table baseline (safety net if 039 was skipped/marked only)
 CREATE TABLE IF NOT EXISTS reports (
