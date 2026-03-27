@@ -2,25 +2,53 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "brightbund (dev, env: dev)",
+      "name": "brightbund (dev, Android emulator)",
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main_dev.dart",
       "args": [
         "--flavor",
         "dev",
+        "--dart-define-from-file=${workspaceFolder}/app/.env",
+        "--dart-define",
+        "DEV_BASE_URL=http://10.0.2.2:8081/api/v1"
+      ]
+    },
+    {
+      "name": "brightbund (dev, iOS simulator)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main_dev.dart",
+      "args": [
+        "--dart-define-from-file=${workspaceFolder}/app/.env",
+        "--dart-define",
+        "DEV_BASE_URL=http://127.0.0.1:8081/api/v1",
         "--dart-define",
         "MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoienRrdHNuIiwiYSI6ImNtbjdwbjNlbjAyeDMycHF1eHp4NGM3bDUifQ.8S_7m_dx6_Idqy0nYgqb5w"
       ]
     },
     {
-      "name": "brightbund (dev, env: prod)",
+      "name": "brightbund (dev, Android physical device)",
       "request": "launch",
       "type": "dart",
-      "program": "app/lib/main_prod.dart",
+      "program": "app/lib/main_dev.dart",
       "args": [
         "--flavor",
         "dev",
+        "--dart-define-from-file=${workspaceFolder}/app/.env",
+        "--dart-define",
+        "DEV_BASE_URL=http://${input:devHostIp}:8081/api/v1"
+      ]
+    },
+    {
+      "name": "brightbund (dev, iOS physical device)",
+      "request": "launch",
+      "type": "dart",
+      "program": "app/lib/main_dev.dart",
+      "args": [
+        "--dart-define-from-file=${workspaceFolder}/app/.env",
+        "--dart-define",
+        "DEV_BASE_URL=http://${input:devHostIp}:8081/api/v1",
         "--dart-define",
         "MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoienRrdHNuIiwiYSI6ImNtbjdwbjNlbjAyeDMycHF1eHp4NGM3bDUifQ.8S_7m_dx6_Idqy0nYgqb5w"
       ]
@@ -34,8 +62,7 @@
       "args": [
         "--flavor",
         "prod",
-        "--dart-define",
-        "MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoienRrdHNuIiwiYSI6ImNtbjdwbjNlbjAyeDMycHF1eHp4NGM3bDUifQ.8S_7m_dx6_Idqy0nYgqb5w"
+        "--dart-define-from-file=${workspaceFolder}/app/.env"
       ]
     },
     {
@@ -47,9 +74,15 @@
       "args": [
         "--flavor",
         "prod",
-        "--dart-define",
-        "MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoienRrdHNuIiwiYSI6ImNtbjdwbjNlbjAyeDMycHF1eHp4NGM3bDUifQ.8S_7m_dx6_Idqy0nYgqb5w"
+        "--dart-define-from-file=${workspaceFolder}/app/.env"
       ]
+    }
+  ],
+  "inputs": [
+    {
+      "id": "devHostIp",
+      "type": "promptString",
+      "description": "LAN IP for backend (example: 192.168.1.23)"
     }
   ]
 }
