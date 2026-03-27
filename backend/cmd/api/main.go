@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -19,9 +20,11 @@ import (
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
+	"github.com/brightbund-backend/internal/platform/database/migrate"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/storage"
 	"github.com/brightbund-backend/internal/server"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -91,6 +94,13 @@ func main() {
 		zap.Int("port", cfg.Database.Port),
 		zap.String("database", cfg.Database.Name),
 	)
+
+	if cfg.Server.AutoMigrate {
+		if err := runStartupMigrations(db.DB); err != nil {
+			logger.Fatal("auto migrations failed", zap.Error(err))
+		}
+		logger.Info("auto migrations applied successfully")
+	}
 
 	redisCache, err := cache.New(cache.Config{
 		Address:      cfg.Redis.Address,
@@ -263,4 +273,30 @@ func main() {
 	}
 
 	logger.Info("shutdown complete")
+}
+
+func runStartupMigrations(db *sqlx.DB) error {
+	paths := []string{
+		"migrations",
+		filepath.Join("backend", "migrations"),
+		filepath.Join("..", "migrations"),
+	}
+
+	var lastErr error
+	for _, path := range paths {
+		if _, err := os.Stat(path); err != nil {
+			lastErr = err
+			continue
+		}
+		if err := migrate.Run(db, path); err != nil {
+			lastErr = err
+			continue
+		}
+		return nil
+	}
+
+	if lastErr != nil {
+		return fmt.Errorf("failed to run migrations from known paths: %w", lastErr)
+	}
+	return fmt.Errorf("migrations directory not found in known paths")
 }

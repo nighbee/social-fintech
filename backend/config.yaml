@@ -1,6 +1,7 @@
-﻿server:
+server:
   port: 8080
   environment: development
+  auto_migrate: true
   read_timeout: 30s
   write_timeout: 30s
 
@@ -117,3 +118,4 @@ activation:
   required_distinct_login_days: 3
   required_meaningful_actions: 5
   max_registrations_per_device_day: 3
+

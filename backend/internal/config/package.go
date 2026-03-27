@@ -116,6 +116,7 @@ type StorageConfig struct {
 type ServerConfig struct {
 	Port         int           `yaml:"port"`
 	Environment  string        `yaml:"environment"`
+	AutoMigrate  bool          `yaml:"auto_migrate"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
 	IdleTimeout  time.Duration `yaml:"idle_timeout"`
@@ -199,6 +200,9 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("SERVER_ENV"); v != "" {
 		cfg.Server.Environment = v
+	}
+	if v := os.Getenv("AUTO_MIGRATE"); v != "" {
+		cfg.Server.AutoMigrate = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")
 	}
 
 	// Database
