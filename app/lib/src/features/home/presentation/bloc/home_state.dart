@@ -37,9 +37,14 @@ class HomeViewModel with _$HomeViewModel {
     @Default('') String profileSearchError,
     @Default(<LocalMediaPayload>[]) List<LocalMediaPayload> localMediaPayloads,
     @Default([]) List<CommentComposerPhoto> postComposerPhotos,
+    String? replyingToCommentId,
+    @Default(<String>[]) List<String> expandedReplyCommentIds,
     @Default([]) List<NotificationEntity> notifications,
     @Default(FeedStateEntity.empty()) FeedStateEntity feedState,
   }) = _HomeViewModel;
+
+  List<PostResponseEntity> get posts => feed.items;
+  List<CommentComposerPhoto> get composerPhotos => postComposerPhotos;
 
   HomeViewModel addPostComposerPhoto(CommentComposerPhoto photo) {
     if (postComposerPhotos.any((item) => item.fileName == photo.fileName)) {
@@ -53,6 +58,62 @@ class HomeViewModel with _$HomeViewModel {
       postComposerPhotos: postComposerPhotos
           .where((photo) => photo.fileName != fileName)
           .toList(),
+    );
+  }
+
+  List<CommentEntity> getTopLevelCommentsForPost(String postId) {
+    return comments.comments
+        .where((item) => (item.parentCommentId).trim().isEmpty)
+        .map((item) => _toLegacyComment(item, postId: postId))
+        .toList(growable: false);
+  }
+
+  List<CommentEntity> getRepliesForComment(String postId, String commentId) {
+    return comments.comments
+        .where(
+          (item) => item.parentCommentId.trim() == commentId,
+        )
+        .map((item) => _toLegacyComment(item, postId: postId))
+        .toList(growable: false);
+  }
+
+  bool isRepliesExpanded(String commentId) {
+    return expandedReplyCommentIds.contains(commentId);
+  }
+
+  CommentEntity? getCommentById(String commentId) {
+    for (final item in comments.comments) {
+      if (item.commentId == commentId) {
+        return _toLegacyComment(item, postId: '');
+      }
+    }
+    return null;
+  }
+
+  CommentEntity _toLegacyComment(
+    CommentResponseEntity comment, {
+    required String postId,
+  }) {
+    return CommentEntity(
+      id: comment.commentId,
+      postId: postId,
+      parentCommentId: comment.parentCommentId.trim().isEmpty
+          ? null
+          : comment.parentCommentId,
+      rootCommentId: comment.rootCommentId.trim().isEmpty
+          ? null
+          : comment.rootCommentId,
+      userId: comment.author.id,
+      username: comment.author.username,
+      userAvatar: comment.author.profilePicUrl.trim().isEmpty
+          ? null
+          : comment.author.profilePicUrl,
+      content: comment.contentText,
+      imageUrls: comment.mediaAttachments.map((item) => item.url).toList(),
+      likesCount: comment.likesCount,
+      isLiked: comment.viewerHasLiked,
+      repliesCount: comment.replyCount,
+      createdAt: DateTime.tryParse(comment.createdAt) ?? DateTime.now(),
     );
   }
 }

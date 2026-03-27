@@ -2,6 +2,7 @@ part of 'home_bloc.dart';
 
 @freezed
 class HomeEvent with _$HomeEvent {
+  const factory HomeEvent.loadPosts() = _LoadPosts;
   const factory HomeEvent.loadFeed({
     required FeedRequest request,
   }) = _LoadFeed;
@@ -21,9 +22,29 @@ class HomeEvent with _$HomeEvent {
     required CreatePostRequest request,
     @Default(<LocalMediaPayload>[]) List<LocalMediaPayload> localMediaPayloads,
   }) = _CreateFeedPost;
+  const factory HomeEvent.createPost({
+    required String content,
+  }) = _CreatePost;
+  const factory HomeEvent.loadComments(String postId) = _LoadComments;
   const factory HomeEvent.getPostComments({
     required GetPostCommentsRequest request,
   }) = _GetPostComments;
+  const factory HomeEvent.addComment({
+    required String postId,
+    required String content,
+    String? parentCommentId,
+  }) = _AddComment;
+  const factory HomeEvent.setReplyTarget(String? commentId) = _SetReplyTarget;
+  const factory HomeEvent.addCommentPhoto(
+    Uint8List bytes,
+    String fileName,
+  ) = _AddCommentPhoto;
+  const factory HomeEvent.removeCommentPhoto(String fileName) =
+      _RemoveCommentPhoto;
+  const factory HomeEvent.toggleRepliesVisibility(String commentId) =
+      _ToggleRepliesVisibility;
+  const factory HomeEvent.likeComment(String commentId) = _LikeComment;
+  const factory HomeEvent.unlikeComment(String commentId) = _UnlikeComment;
   const factory HomeEvent.createPostComment({
     required String postId,
     required CreateCommentRequest request,

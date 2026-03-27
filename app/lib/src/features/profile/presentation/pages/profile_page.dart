@@ -8,8 +8,8 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
-import 'package:app/src/features/profile/presentation/models/profile_post_item.dart';
 import 'package:app/src/features/profile/presentation/utils/profile_posts_grid_mapper.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_post_grid.dart';
@@ -34,7 +34,7 @@ class _ProfilePageContent extends StatefulWidget {
 }
 
 class _ProfilePageContentState extends State<_ProfilePageContent> {
-  List<ProfilePostItem> _myPosts = const [];
+  List<PostEntity> _myPosts = const [];
   bool _isPostsLoading = false;
   String? _postsError;
 
@@ -46,19 +46,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     context.pushNamed(
       RouteNames.settings,
       extra: {'userId': currentUserId},
-    );
-  }
-
-  void _openStats({
-    required String userId,
-    required bool isCurrentUser,
-  }) {
-    context.pushNamed(
-      RouteNames.profileStats,
-      extra: {
-        'userId': userId,
-        'isCurrentUser': isCurrentUser,
-      },
     );
   }
 
@@ -102,26 +89,23 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         });
       },
       (result) {
-        final mapped = mapProfilePostsGridItems(result.data);
+        final mapped = mapProfilePostsGridItems(result.data)
+            .map(
+              (item) => PostEntity(
+                id: item.id,
+                userId: '',
+                username: '',
+                content: '',
+                imageUrls: item.imageUrls,
+                createdAt: DateTime.now(),
+              ),
+            )
+            .toList(growable: false);
 
         setState(() {
           _myPosts = mapped;
           _isPostsLoading = false;
         });
-      },
-    );
-  }
-
-  void _openPublications({
-    required String displayName,
-    required ProfilePostItem post,
-  }) {
-    context.pushNamed(
-      RouteNames.profilePublications,
-      extra: {
-        'displayName': displayName,
-        'initialPostId': post.id,
-        'isCurrentUser': true,
       },
     );
   }
@@ -191,10 +175,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                               region: profile.region,
                               rankTier: profile.rankTier,
                               reputationScore: profile.reputationScore,
-                              onOpenStats: () => _openStats(
-                                userId: profile.userId,
-                                isCurrentUser: true,
-                              ),
                             ),
                           ),
                         ),
@@ -227,10 +207,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                         else
                           ProfilePostGrid(
                             posts: _myPosts,
-                            onTapPost: (post) => _openPublications(
-                              displayName: profile.displayName,
-                              post: post,
-                            ),
                           ),
                       ],
                     );

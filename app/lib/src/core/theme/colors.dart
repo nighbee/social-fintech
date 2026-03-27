@@ -34,6 +34,16 @@ class AppColors {
   static const colorff6D6D6Dop35 = Color(0x596D6D6D);
   static const colorff656565op25 = Color(0x40656565);
 
+  // Backward-compatible aliases used across the app.
+  static const whiteBackground = colorffffffff;
+  static const blackBackground = colorff000000;
+  static const backgroundGray = colorffd9d9;
+  static const textGray2 = colorff838383;
+  static const redText = colorffa43337;
+  static const blueText1 = colorff74afe3;
+  static const blueText2 = colorff819dff;
+  static const greenText = colorff028a66;
+
   // Additional colors for notifications page
   static const colorff232324 = Color(0xff232324);
   static const colorff7E8086 = Color(0xff7E8086);
@@ -53,6 +63,7 @@ class AppColors {
   static const surface = Color(0xff2A2A2B);
   static const border = Color(0xff3F3F40);
   static const error = Color(0xffEF4444);
+  static const mainBackground = colorff19191A;
 
   static const feedMoonstoneBase = Color(0xFF242528);
   static const feedMoonstoneBorder = Color(0x26D7E1EA);

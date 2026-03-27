@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
@@ -19,15 +19,19 @@ class PostCardWidget extends StatelessWidget
         ShowPostCommentsBottomSheet,
         ShowPostReportBottomSheet,
         ShowSilverHonorBottomSheet {
-  final PostEntity post;
+  final PostResponseEntity post;
 
   const PostCardWidget({super.key, required this.post});
 
   @override
   Widget build(BuildContext context) {
-    final hasImages = post.imageUrls.isNotEmpty;
+    final imageUrls = post.mediaAttachments.map((item) => item.url).toList();
+    final hasImages = imageUrls.isNotEmpty;
     final avatarUrl =
-        post.userAvatar ?? (hasImages ? post.imageUrls.first : '');
+        post.author.profilePicUrl.trim().isNotEmpty
+        ? post.author.profilePicUrl
+        : (hasImages ? imageUrls.first : '');
+    final legacyPost = _toLegacyPost(post, imageUrls);
 
     return Container(
       width: double.infinity,
@@ -67,14 +71,14 @@ class PostCardWidget extends StatelessWidget
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      post.username,
+                      post.author.username,
                       style: TextStyles.titleHeadline.copyWith(
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     Text(
-                      timeago.format(post.createdAt),
+                      post.timeAgo,
                       style: TextStyles.bodySecondary.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -85,7 +89,7 @@ class PostCardWidget extends StatelessWidget
               GestureDetector(
                 onTap: () => showPostReportBottomSheet(
                   context,
-                  username: post.username,
+                  username: post.author.username,
                 ),
                 child: Assets.icons.more.svg(width: 16, height: 16),
               ),
@@ -94,21 +98,21 @@ class PostCardWidget extends StatelessWidget
           const Gap(12),
           // Content
           Text(
-            post.content,
+            post.contentText,
             style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
           ),
           if (hasImages) ...[
             const Gap(12),
-            PostImageGrid(imageUrls: post.imageUrls),
+            PostImageGrid(imageUrls: imageUrls),
           ],
           const Gap(12),
           // Actions: Like, Comment, Share
           Row(
             children: [
               PostLikeButton(
-                postId: post.id,
-                isLiked: post.isLiked,
-                count: post.likesCount,
+                postId: post.postId,
+                isLiked: post.viewerHasLiked,
+                count: post.metrics.likes,
               ),
               const Gap(16),
               PostActionButton(
@@ -120,8 +124,11 @@ class PostCardWidget extends StatelessWidget
                     BlendMode.srcIn,
                   ),
                 ),
-                count: post.commentsCount,
-                onTap: () => showPostCommentsBottomSheet(context, post: post),
+                count: post.metrics.comments,
+                onTap: () => showPostCommentsBottomSheet(
+                  context,
+                  post: legacyPost,
+                ),
               ),
               const Gap(16),
               PostActionButton(
@@ -139,7 +146,8 @@ class PostCardWidget extends StatelessWidget
               PostActionButton(
                 icon: Assets.icons.silverCoin.svg(width: 24, height: 24),
                 count: 45,
-                onTap: () => showSilverHonorBottomSheet(context, post: post),
+                onTap: () =>
+                    showSilverHonorBottomSheet(context, post: legacyPost),
               ),
             ],
           ),
@@ -207,30 +215,20 @@ class PostLikeButton extends StatelessWidget {
         return state.maybeWhen(
           loaded: (viewModel) {
             // Get the most up-to-date post from state
-            final currentPost = viewModel.posts.firstWhere(
-              (p) => p.id == postId,
-              orElse: () => PostEntity(
-                id: postId,
-                userId: '',
-                username: '',
-                content: '',
-                createdAt: DateTime.now(),
-                isLiked: isLiked,
-                likesCount: count,
-                commentsCount: 0,
-              ),
-            );
+            PostResponseEntity? currentPost;
+            for (final item in viewModel.feed.items) {
+              if (item.postId == postId) {
+                currentPost = item;
+                break;
+              }
+            }
 
-            final currentlyLiked = currentPost.isLiked;
-            final currentCount = currentPost.likesCount;
+            final currentlyLiked = currentPost?.viewerHasLiked ?? isLiked;
+            final currentCount = currentPost?.metrics.likes ?? count;
 
             return InkWell(
               onTap: () {
-                if (currentlyLiked) {
-                  bloc.add(HomeEvent.unlikePost(postId));
-                } else {
-                  bloc.add(HomeEvent.likePost(postId));
-                }
+                bloc.add(HomeEvent.togglePostLike(postId: postId));
               },
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -262,7 +260,7 @@ class PostLikeButton extends StatelessWidget {
           },
           orElse: () => InkWell(
             onTap: () {
-              bloc.add(HomeEvent.likePost(postId));
+              bloc.add(HomeEvent.togglePostLike(postId: postId));
             },
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -303,6 +301,23 @@ class PostLikeButton extends StatelessWidget {
   <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
 </svg>
 ''';
+}
+
+PostEntity _toLegacyPost(PostResponseEntity post, List<String> imageUrls) {
+  return PostEntity(
+    id: post.postId,
+    userId: post.author.id,
+    username: post.author.username,
+    userAvatar: post.author.profilePicUrl.trim().isNotEmpty
+        ? post.author.profilePicUrl
+        : null,
+    content: post.contentText,
+    imageUrls: imageUrls,
+    likesCount: post.metrics.likes,
+    commentsCount: post.metrics.comments,
+    isLiked: post.viewerHasLiked,
+    createdAt: DateTime.now(),
+  );
 }
 
 class _PostAvatar extends StatelessWidget {

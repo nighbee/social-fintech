@@ -31,112 +31,12 @@ class CustomNavBar extends StatelessWidget {
 
     return Container(
       clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+      decoration: const BoxDecoration(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
         color: AppColors.colorff000000,
-        border:
-            const Border(top: BorderSide(color: AppColors.border, width: 1)),
-        color: AppColors.blackBackground,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-          ),
-          child: BottomNavigationBar(
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            currentIndex: paths.indexOf(currentTab),
-            unselectedItemColor: AppColors.colorff838383,
-            selectedItemColor: AppColors.colorff74afe3,
-            type: BottomNavigationBarType.fixed,
-            selectedLabelStyle: TextStyles.titleTag.copyWith(
-              color: AppColors.colorff74afe3,
-            ),
-            unselectedLabelStyle:
-                TextStyles.titleTag.copyWith(color: AppColors.colorff838383),
-            onTap: (int index) {
-              context.go(paths[index]);
-            },
-            items: titles.asMap().entries.map((entry) {
-              final int index = entry.key;
-              final title = entry.value;
-              final isSelected = index == paths.indexOf(currentTab);
-
-              Widget iconWidget;
-              switch (index) {
-                case 0:
-                  iconWidget = Assets.icons.feedIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected
-                          ? AppColors.colorff74afe3
-                          : AppColors.colorff838383,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 1:
-                  iconWidget = Assets.icons.mapIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected
-                          ? AppColors.colorff74afe3
-                          : AppColors.colorff838383,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 2:
-                  iconWidget = Assets.icons.ratingIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected
-                          ? AppColors.colorff74afe3
-                          : AppColors.colorff838383,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 3:
-                  iconWidget = Assets.icons.chatsIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected
-                          ? AppColors.colorff74afe3
-                          : AppColors.colorff838383,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 4:
-                  iconWidget = Assets.icons.profileIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected
-                          ? AppColors.colorff74afe3
-                          : AppColors.colorff838383,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                default:
-                  iconWidget = const SizedBox();
-              }
-
-              return BottomNavigationBarItem(
-                label: title,
-                icon: SizedBox(width: 24, height: 24, child: iconWidget),
-              );
-            }).toList(),
-          ),
         padding: EdgeInsets.only(
           left: 12,
           right: 12,

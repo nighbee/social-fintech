@@ -1,6 +1,6 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/features/profile/domain/entities/rank_entity.dart';
+import 'package:app/src/features/profile/presentation/models/rank_card_item.dart';
 import 'package:app/src/features/profile/presentation/widgets/rangs/gemstone_sphere.dart';
 import 'package:app/src/features/profile/presentation/widgets/rangs/tier_indicators.dart';
 import 'package:flutter/material.dart';
@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 class RankCard extends StatelessWidget {
   const RankCard({super.key, required this.rank, this.nextRank});
 
-  final RankEntity rank;
-  final RankEntity? nextRank;
+  final RankCardItem rank;
+  final RankCardItem? nextRank;
 
   @override
   Widget build(BuildContext context) {
@@ -17,6 +17,9 @@ class RankCard extends StatelessWidget {
     final gradient = _gradientFor(rank.name);
     final accentColor = gradient.first;
     final sphereSize = isCompact ? 180.0 : 220.0;
+    const tiers = ['C', 'B', 'A', 'S'];
+    final activeCount = rank.filledTierCount.clamp(0, tiers.length).toInt();
+    final activeTiers = tiers.take(activeCount);
 
     return Container(
       padding: EdgeInsets.all(isCompact ? 18 : 22),
@@ -56,7 +59,7 @@ class RankCard extends StatelessWidget {
                       BlendMode.srcIn,
                     ),
                   ),
-                  label: 'Level ${rank.level}',
+                  label: rank.headline,
                 ),
               ),
               const SizedBox(width: 10),
@@ -70,7 +73,7 @@ class RankCard extends StatelessWidget {
                       BlendMode.srcIn,
                     ),
                   ),
-                  label: '${rank.requiredExp} seals',
+                  label: '${rank.requiredHonorLabel} seals',
                   alignment: Alignment.centerRight,
                 ),
               ),
@@ -110,8 +113,11 @@ class RankCard extends StatelessWidget {
               ),
             ),
             child: Center(
-              child:
-                  GemstoneSphere(imagePath: rank.imagePath, size: sphereSize),
+              child: GemstoneSphere(
+                image: rank.image,
+                style: rank.gemStyle,
+                size: sphereSize,
+              ),
             ),
           ),
           SizedBox(height: isCompact ? 24 : 30),
@@ -167,8 +173,8 @@ class RankCard extends StatelessWidget {
           ),
           SizedBox(height: isCompact ? 20 : 24),
           TierIndicators(
-            tiers: rank.tierBadges,
-            activeTiers: rank.tierBadges,
+            tiers: tiers,
+            activeTiers: activeTiers.toList(growable: false),
             accentColor: accentColor,
           ),
         ],

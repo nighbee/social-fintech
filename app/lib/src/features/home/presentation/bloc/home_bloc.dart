@@ -10,6 +10,7 @@ import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
 import 'package:app/src/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:app/src/features/home/domain/entities/claim_daily_accrual_result_entity.dart';
+import 'package:app/src/features/home/domain/entities/comment_entity.dart';
 import 'package:app/src/features/home/domain/entities/comment_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/profile_search_recent_item_entity.dart';
 import 'package:app/src/features/home/domain/entities/store_summary_entity.dart';
@@ -77,6 +78,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   @override
   Future<void> onEventHandler(HomeEvent event, Emitter emit) async {
     await event.when(
+      loadPosts: () => _loadPosts(emit),
       loadFeed: (_) => _loadFeed(event as _LoadFeed, emit),
       addPostPhoto: (_, __) => _addPostPhoto(event as _AddPostPhoto, emit),
       removePostPhoto: (_) => _removePostPhoto(event as _RemovePostPhoto, emit),
@@ -87,8 +89,23 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       syncFeedState: (_, __) => _syncFeedState(event as _SyncFeedState, emit),
       createFeedPost: (_, __) =>
           _createFeedPost(event as _CreateFeedPost, emit),
+      createPost: (_) => _createPostCompat(event as _CreatePost, emit),
+      loadComments: (_) => _loadCommentsCompat(event as _LoadComments, emit),
       getPostComments: (_) =>
           _getPostComments(event as _GetPostComments, emit),
+      addComment: (_, __, ___) =>
+          _addCommentCompat(event as _AddComment, emit),
+      setReplyTarget: (_) => _setReplyTargetCompat(event as _SetReplyTarget, emit),
+      addCommentPhoto: (_, __) =>
+          _addCommentPhotoCompat(event as _AddCommentPhoto, emit),
+      removeCommentPhoto: (_) =>
+          _removeCommentPhotoCompat(event as _RemoveCommentPhoto, emit),
+      toggleRepliesVisibility: (_) => _toggleRepliesVisibilityCompat(
+        event as _ToggleRepliesVisibility,
+        emit,
+      ),
+      likeComment: (_) => _likeCommentCompat(event as _LikeComment, emit),
+      unlikeComment: (_) => _unlikeCommentCompat(event as _UnlikeComment, emit),
       createPostComment: (_, __) =>
           _createPostComment(event as _CreatePostComment, emit),
       getPostLikes: (_) => _getPostLikes(event as _GetPostLikes, emit),
@@ -136,6 +153,159 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   Future<void> _clearPostPhotos(Emitter emit) async {
     _viewModel = _viewModel.copyWith(postComposerPhotos: const []);
     emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _loadPosts(Emitter emit) async {
+    await _loadFeed(const _LoadFeed(request: FeedRequest()), emit);
+  }
+
+  Future<void> _createPostCompat(_CreatePost event, Emitter emit) async {
+    final request = CreatePostRequest(
+      caption: event.content,
+      mediaAttachments: const <MediaAttachmentRequest>[],
+      visibility: 'EVERYONE',
+      commentPermission: 'EVERYONE',
+      hideLikesCount: false,
+    );
+    final payloads = _viewModel.postComposerPhotos
+        .map(
+          (photo) => LocalMediaPayload(
+            localUrl: photo.fileName,
+            bytes: photo.bytes,
+          ),
+        )
+        .toList(growable: false);
+    await _createFeedPost(
+      _CreateFeedPost(request: request, localMediaPayloads: payloads),
+      emit,
+    );
+    _viewModel = _viewModel.copyWith(
+      postComposerPhotos: const [],
+    );
+  }
+
+  Future<void> _loadCommentsCompat(_LoadComments event, Emitter emit) async {
+    await _getPostComments(
+      _GetPostComments(
+        request: GetPostCommentsRequest(postId: event.postId),
+      ),
+      emit,
+    );
+  }
+
+  Future<void> _addCommentCompat(_AddComment event, Emitter emit) async {
+    final mediaAttachments = _viewModel.postComposerPhotos
+        .map(
+          (photo) => MediaAttachmentRequest(
+            type: 'image',
+            url: 'local://${photo.fileName}',
+          ),
+        )
+        .toList(growable: false);
+    await _createPostComment(
+      _CreatePostComment(
+        postId: event.postId,
+        request: CreateCommentRequest(
+          parentId: event.parentCommentId,
+          contentText: event.content,
+          mediaAttachments: mediaAttachments,
+        ),
+      ),
+      emit,
+    );
+    _viewModel = _viewModel.copyWith(
+      replyingToCommentId: null,
+      postComposerPhotos: const [],
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _setReplyTargetCompat(_SetReplyTarget event, Emitter emit) async {
+    _viewModel = _viewModel.copyWith(replyingToCommentId: event.commentId);
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _addCommentPhotoCompat(
+    _AddCommentPhoto event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.addPostComposerPhoto(
+      CommentComposerPhoto(bytes: event.bytes, fileName: event.fileName),
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _removeCommentPhotoCompat(
+    _RemoveCommentPhoto event,
+    Emitter emit,
+  ) async {
+    _viewModel = _viewModel.removePostComposerPhoto(event.fileName);
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _toggleRepliesVisibilityCompat(
+    _ToggleRepliesVisibility event,
+    Emitter emit,
+  ) async {
+    final current = _viewModel.expandedReplyCommentIds;
+    final contains = current.contains(event.commentId);
+    _viewModel = _viewModel.copyWith(
+      expandedReplyCommentIds: contains
+          ? current.where((id) => id != event.commentId).toList(growable: false)
+          : <String>[...current, event.commentId],
+    );
+    emit(HomeState.loaded(viewModel: _viewModel));
+  }
+
+  Future<void> _likeCommentCompat(_LikeComment event, Emitter emit) async {
+    CommentResponseEntity? current;
+    for (final item in _viewModel.comments.comments) {
+      if (item.commentId == event.commentId) {
+        current = item;
+        break;
+      }
+    }
+    if (current?.viewerHasLiked == true) {
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+    await _toggleCommentLikeCompat(event.commentId, emit);
+  }
+
+  Future<void> _unlikeCommentCompat(_UnlikeComment event, Emitter emit) async {
+    CommentResponseEntity? current;
+    for (final item in _viewModel.comments.comments) {
+      if (item.commentId == event.commentId) {
+        current = item;
+        break;
+      }
+    }
+    if (current?.viewerHasLiked != true) {
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+    await _toggleCommentLikeCompat(event.commentId, emit);
+  }
+
+  Future<void> _toggleCommentLikeCompat(String commentId, Emitter emit) async {
+    final result = await _repository.toggleCommentLike(
+      CommentIdRequest(commentId: commentId),
+    );
+    result.fold(
+      (error) => emit(HomeState.loadingError(error.message)),
+      (updatedComment) {
+        final updatedComments = _viewModel.comments.comments.map((item) {
+          if (item.commentId != updatedComment.commentId) {
+            return item;
+          }
+          return updatedComment;
+        }).toList(growable: false);
+        _viewModel = _viewModel.copyWith(
+          comments: _viewModel.comments.copyWith(comments: updatedComments),
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
   }
 
   Future<void> _loadNotifications(
