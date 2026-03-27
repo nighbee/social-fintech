@@ -122,7 +122,8 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 		// Deterministic tie-break for equal scores.
 		if tiedMembers, tieErr := w.cache.ZRangeByExactScore(ctx, key, score); tieErr == nil {
 			firstSeen := w.getLeaderboardFirstSeen(ctx, key, tiedMembers)
-			userID = pickChampionUserID(userID, tiedMembers, firstSeen)
+			createdAtByUser, _ := w.repo.GetUsersCreatedAt(ctx, tiedMembers)
+			userID = pickChampionUserID(userID, tiedMembers, firstSeen, createdAtByUser)
 		}
 
 		champion := &RegionChampion{
@@ -302,14 +303,15 @@ func (w *Worker) getLeaderboardFirstSeen(ctx context.Context, leaderboardKey str
 	return out
 }
 
-func pickChampionUserID(fallback string, tiedMembers []string, firstSeen map[string]int64) string {
+func pickChampionUserID(fallback string, tiedMembers []string, firstSeen map[string]int64, createdAt map[string]time.Time) string {
 	if len(tiedMembers) == 0 {
 		return fallback
 	}
 
 	// Business tie-break rule for equal score:
 	// 1) earliest first contribution in the current weekly leaderboard
-	// 2) if equal/missing timestamps -> lexicographically smallest user_id
+	// 2) if equal/missing timestamps -> earliest account created_at
+	// 3) final deterministic fallback -> lexicographically smallest user_id
 	best := fallback
 	bestTS := int64(0)
 	bestHasTS := false
@@ -332,6 +334,31 @@ func pickChampionUserID(fallback string, tiedMembers []string, firstSeen map[str
 	}
 
 	if !bestHasTS {
+		// Choose the oldest account among tied users for a human-readable deterministic rule.
+		best = ""
+		var bestCreatedAt time.Time
+		hasCreatedAt := false
+		for _, member := range tiedMembers {
+			cAt, ok := createdAt[member]
+			switch {
+			case !hasCreatedAt && ok:
+				best = member
+				bestCreatedAt = cAt
+				hasCreatedAt = true
+			case hasCreatedAt && ok && cAt.Before(bestCreatedAt):
+				best = member
+				bestCreatedAt = cAt
+			case hasCreatedAt && ok && cAt.Equal(bestCreatedAt) && member < best:
+				best = member
+			case !hasCreatedAt && !ok:
+				if best == "" || member < best {
+					best = member
+				}
+			}
+		}
+		if best != "" {
+			return best
+		}
 		sort.Strings(tiedMembers)
 		return tiedMembers[0]
 	}

@@ -1004,8 +1004,20 @@ func (r *repository) HardBlockAuthorByTarget(ctx context.Context, targetType str
 	if _, err = tx.ExecContext(ctx, `
 		UPDATE users
 		SET is_shadow_banned = true,
+		    activation_status = 'suspicious',
+		    restrictions_until = NOW() + INTERVAL '365 days',
 		    updated_at = NOW()
 		WHERE id = $1
+	`, authorID); err != nil {
+		return err
+	}
+
+	// Immediately invalidate all active sessions so existing tokens stop working.
+	if _, err = tx.ExecContext(ctx, `
+		UPDATE sessions
+		SET revoked_at = NOW()
+		WHERE user_id = $1
+		  AND revoked_at IS NULL
 	`, authorID); err != nil {
 		return err
 	}

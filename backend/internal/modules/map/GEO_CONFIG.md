@@ -155,7 +155,8 @@ Response:
    Country changes are applied immediately.
 
 3. **Champion tie-break rule (equal score)**  
-   When multiple users have the same weekly top score in a region, champion is the user who first contributed to that weekly leaderboard (`first_seen` timestamp).
+   When multiple users have the same weekly top score in a region, champion is chosen by:
+   `first_seen ASC -> account_created_at ASC -> user_id ASC`.
    If timestamp is equal/missing, fallback is lexicographically smallest `user_id`.
 
 ### Future Enhancements

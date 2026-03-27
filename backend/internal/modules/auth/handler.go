@@ -53,6 +53,8 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_provider_token"})
 		case ErrEmailRequired:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "email_required"})
+		case ErrAccountBlocked:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "account_blocked"})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
 		}
@@ -136,6 +138,8 @@ func (h *Handler) LoginEmail(c *fiber.Ctx) error {
 		switch err {
 		case ErrInvalidCredentials:
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_credentials"})
+		case ErrAccountBlocked:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "account_blocked"})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error", "message": err.Error()})
 		}
@@ -237,6 +241,8 @@ func (h *Handler) VerifyPhoneCode(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_code"})
 		case ErrUserNotFound:
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user_not_found"})
+		case ErrAccountBlocked:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "account_blocked"})
 		default:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_verification"})
 		}
@@ -377,6 +383,8 @@ func (h *Handler) FirebasePhoneAuth(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user_not_found", "message": "Please register first"})
 		case ErrInvalidCredentials:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
+		case ErrAccountBlocked:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "account_blocked"})
 		default:
 			log.Printf("FirebasePhoneAuth unexpected error: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})

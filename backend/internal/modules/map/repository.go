@@ -45,6 +45,7 @@ type Repository interface {
 	// Champions
 	UpsertRegionChampion(ctx context.Context, champion *RegionChampion) error
 	GetRegionChampions(ctx context.Context, h3Indexes []string, resolution, year, week int) ([]RegionChampion, error)
+	GetUsersCreatedAt(ctx context.Context, userIDs []string) (map[string]time.Time, error)
 
 	// Administrative Layer
 	GetAdministrativeHierarchy(ctx context.Context, lat, lon float64) (*H3GeoMetadata, error)
@@ -551,6 +552,35 @@ func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string,
 	return champs, nil
 }
 
+func (r *repository) GetUsersCreatedAt(ctx context.Context, userIDs []string) (map[string]time.Time, error) {
+	if len(userIDs) == 0 {
+		return map[string]time.Time{}, nil
+	}
+
+	query := `
+		SELECT id, created_at
+		FROM users
+		WHERE id = ANY($1::uuid[])
+	`
+
+	rows, err := r.executor().QueryContext(ctx, query, pq.Array(userIDs))
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch users created_at: %w", err)
+	}
+	defer rows.Close()
+
+	out := make(map[string]time.Time, len(userIDs))
+	for rows.Next() {
+		var id string
+		var createdAt time.Time
+		if err := rows.Scan(&id, &createdAt); err != nil {
+			return nil, fmt.Errorf("failed to scan user created_at: %w", err)
+		}
+		out[id] = createdAt
+	}
+	return out, nil
+}
+
 func (r *repository) GetAdministrativeHierarchy(ctx context.Context, lat, lon float64) (*H3GeoMetadata, error) {
 	// Priority: (1) direct point-in-polygon (exact), (2) try intersecting boundaries for edge points
 	// The 50%+ rule is implemented in the database via trigger or spatial index materialization.
@@ -611,8 +641,9 @@ func (r *repository) GetAdministrativeHierarchyByHex(ctx context.Context, hexWKT
 					-- Business tie-break rule for equal overlap:
 					-- 1) highest overlap_ratio
 					-- 2) closest boundary centroid to H3 centroid (stable geographic choice)
-					-- 3) stable boundary id as final deterministic tie-breaker
-					ORDER BY overlap_ratio DESC, centroid_distance_meters ASC, id ASC
+					-- 3) alphabetically smallest boundary name (human-readable deterministic choice)
+					-- 4) stable boundary id as final deterministic tie-breaker
+					ORDER BY overlap_ratio DESC, centroid_distance_meters ASC, name ASC, id ASC
 				) AS rn
 			FROM intersections
 			WHERE overlap_ratio >= 0.5

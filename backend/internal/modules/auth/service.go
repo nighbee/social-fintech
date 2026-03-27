@@ -181,6 +181,10 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 		}
 	}
 
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
+	}
+
 	last, err := s.repo.GetLastSessionByUser(ctx, user.ID)
 	if err == nil && last != nil {
 		if last.DeviceID != "" && last.DeviceID != req.DeviceID {
@@ -298,6 +302,17 @@ func isTrustedRegistrationIP(rawIP string) bool {
 	}
 
 	return false
+}
+
+func ensureUserCanAuthenticate(user *User) error {
+	if user == nil {
+		return ErrInvalidCredentials
+	}
+	// Hard moderation block: account is fully blocked from authentication flows.
+	if user.IsShadowBanned {
+		return ErrAccountBlocked
+	}
+	return nil
 }
 
 // регистрация с имелйлом и паролем + запрос данных. Хэш пароля + токены + сессия
@@ -459,6 +474,9 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 		s.logger.Warn("email_login_no_password_hash", zap.String("email", req.Email))
 		return nil, ErrInvalidCredentials
 	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
+	}
 
 	hashPrefix := user.PasswordHash
 	if len(hashPrefix) > 10 {
@@ -618,6 +636,9 @@ func (s *Service) VerifyPhoneCode(ctx context.Context, req PhoneVerifyRequest, i
 	user, err := s.repo.GetUserByPhone(ctx, v.PhoneCountry, v.PhoneNumber)
 	if err != nil {
 		return nil, ErrUserNotFound
+	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
 	}
 
 	session := &Session{
@@ -902,6 +923,9 @@ func (s *Service) FirebasePhoneAuth(ctx context.Context, req FirebasePhoneAuthRe
 			// User doesn't exist - need to register
 			return nil, ErrUserNotFound
 		}
+		return nil, err
+	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
 		return nil, err
 	}
 

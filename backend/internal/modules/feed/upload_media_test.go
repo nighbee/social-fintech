@@ -110,6 +110,44 @@ func TestUploadMedia_ReturnsStorageFailure(t *testing.T) {
 	}
 }
 
+func TestUploadMedia_ReturnsInsufficientStorage(t *testing.T) {
+	app := newUploadTestApp(&mockUploadStorage{
+		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+			return "", errors.New("disk full")
+		},
+	})
+	body, ctype := buildMultipartRequest(t, "file", "image.png", "image/png", []byte("abc"))
+
+	req := httptest.NewRequest("POST", "/upload", body)
+	req.Header.Set("Content-Type", ctype)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusInsufficientStorage {
+		t.Fatalf("expected 507, got %d", resp.StatusCode)
+	}
+}
+
+func TestUploadMedia_ReturnsStoragePermissionDenied(t *testing.T) {
+	app := newUploadTestApp(&mockUploadStorage{
+		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+			return "", errors.New("access denied by storage policy")
+		},
+	})
+	body, ctype := buildMultipartRequest(t, "file", "image.png", "image/png", []byte("abc"))
+
+	req := httptest.NewRequest("POST", "/upload", body)
+	req.Header.Set("Content-Type", ctype)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test: %v", err)
+	}
+	if resp.StatusCode != fiber.StatusInternalServerError {
+		t.Fatalf("expected 500, got %d", resp.StatusCode)
+	}
+}
+
 func TestUploadMedia_Success(t *testing.T) {
 	app := newUploadTestApp(&mockUploadStorage{
 		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
