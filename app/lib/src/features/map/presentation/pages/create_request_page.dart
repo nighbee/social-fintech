@@ -9,6 +9,7 @@ import 'package:app/src/features/map/domain/requests/map_create_task_request.dar
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
@@ -60,7 +61,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
       appBar: CustomAppBar(
         title: "Create a request",
         actions: [
-          const SilverBalanceChip(count: 27),
+          const SilverBalanceChip.live(),
           const Gap(15),
         ],
       ),
@@ -119,6 +120,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                               label: 'Title',
                               hint: 'Enter a short request title',
                               controller: _titleController,
+                              maxLength: 80,
                             ),
                             const SizedBox(height: 12),
                             _RequestField(
@@ -140,6 +142,10 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                               child: TextField(
                                 controller: _heroesController,
                                 keyboardType: TextInputType.number,
+                                inputFormatters: <TextInputFormatter>[
+                                  FilteringTextInputFormatter.digitsOnly,
+                                  LengthLimitingTextInputFormatter(2),
+                                ],
                                 style: TextStyles.bodyLarge
                                     .copyWith(color: Colors.white),
                                 textAlign: TextAlign.center,
@@ -239,14 +245,30 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                       text: isCreating ? 'Creating...' : 'Create',
                       onTap: () {
                         if (!isCreating) {
-                          final heroesCount =
-                              int.tryParse(_heroesController.text) ?? 1;
+                          final title = _titleController.text.trim();
+                          final description = _descriptionController.text.trim();
+                          final rawHeroes =
+                              int.tryParse(_heroesController.text.trim()) ?? 0;
+                          final heroesCount = rawHeroes.clamp(1, 20);
+                          final reward = _reward.round().clamp(1, 3);
+
+                          if (rawHeroes < 1 || rawHeroes > 20) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Number of heroes must be between 1 and 20.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
                           _mapBloc.add(MapEvent.createTask(
                             MapCreateTaskRequest(
-                              title: _titleController.text,
-                              description: _descriptionController.text,
+                              title: title,
+                              description: description,
                               heroesCount: heroesCount,
-                              reward: _reward.toInt(),
+                              reward: reward,
                               latitude: widget.latitude,
                               longitude: widget.longitude,
                               autoShutdown: _autoShutdown,
@@ -256,9 +278,9 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                       },
                       borderRadius: 8,
                       backgroundColor:
-                          isCreating ? Colors.white24 : Colors.white,
+                          isCreating ? const Color(0xFF848B99) : const Color(0xFFB0B7C5),
                       textStyle: TextStyles.bodyLarge.copyWith(
-                        color: Colors.black,
+                        color: const Color(0xFF12161F),
                         fontWeight: FontWeight.w600,
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -449,7 +471,7 @@ class _RewardSlider extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyles.bodyMain.copyWith(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 13,
                           ),
                         ),
                       );
@@ -553,17 +575,11 @@ class _RewardMarker extends StatelessWidget {
 }
 
 class _ContainerThumbShape extends SfThumbShape {
-  const _ContainerThumbShape({
-    this.width = 18,
-    this.height = 18,
-  });
-
-  final double width;
-  final double height;
+  const _ContainerThumbShape();
 
   @override
   Size getPreferredSize(SfSliderThemeData themeData) {
-    return Size(width, height);
+    return const Size(18, 18);
   }
 
   @override
@@ -581,7 +597,7 @@ class _ContainerThumbShape extends SfThumbShape {
     required SfThumb? thumb,
   }) {
     final canvas = context.canvas;
-    final radius = width / 2;
+    const radius = 9.0;
     final outerRect = Rect.fromCircle(center: thumbCenter, radius: radius);
 
     // Metallic outer circle: brighter top/bottom, darker left/right.
@@ -591,8 +607,8 @@ class _ContainerThumbShape extends SfThumbShape {
         radius: 1.0,
         colors: [
           Color(0xFFF3F3F3),
-          Color.fromARGB(255, 195, 13, 13),
-          Color.fromARGB(255, 139, 8, 8),
+          Color(0xFFD3D8E2),
+          Color(0xFFADB5C4),
         ],
         stops: [0.0, 0.62, 1.0],
       ).createShader(outerRect);
@@ -626,7 +642,7 @@ class _ContainerThumbShape extends SfThumbShape {
         end: Alignment.bottomCenter,
         colors: [
           Color(0xFFF7F7F7),
-          Color.fromARGB(255, 95, 13, 194),
+          Color(0xFFDCE2EE),
         ],
       ).createShader(innerRect);
     canvas.drawCircle(thumbCenter, innerRadius, innerPaint);

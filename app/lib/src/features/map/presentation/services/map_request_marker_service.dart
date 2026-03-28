@@ -31,37 +31,61 @@ class MapRequestMarkerService {
 
   String? _selectedTaskId;
   void Function(String? selectedTaskId)? _onSelectionChanged;
+  int _lifecycleToken = 0;
+  static const int _managerInitAttempts = 3;
 
   Future<void> initialize(
     MapboxMap map, {
     required void Function(String? selectedTaskId) onSelectionChanged,
   }) async {
-    await dispose();
-    _mapboxMap = map;
-    _onSelectionChanged = onSelectionChanged;
-    _normalMarkerImage ??= await _createTriangleMarkerImage(isSelected: false);
-    _selectedMarkerImage ??= await _createTriangleMarkerImage(isSelected: true);
+    final token = ++_lifecycleToken;
+    await _disposeInternal();
+    if (!_isTokenActive(token)) {
+      return;
+    }
 
-    // Create selection-indicator manager first so it renders under task markers.
-    final selectionManager =
-        await map.annotations.createPointAnnotationManager();
-    _selectionIndicatorManager = selectionManager;
-    await selectionManager.setIconAllowOverlap(true);
-    await selectionManager.setIconIgnorePlacement(true);
+    try {
+      _mapboxMap = map;
+      _onSelectionChanged = onSelectionChanged;
+      _normalMarkerImage ??= await _createTriangleMarkerImage(isSelected: false);
+      _selectedMarkerImage ??= await _createTriangleMarkerImage(isSelected: true);
+      if (!_isTokenActive(token)) {
+        return;
+      }
 
-    final manager = await map.annotations.createPointAnnotationManager();
-    _annotationManager = manager;
-    await manager.setIconAllowOverlap(true);
-    await manager.setIconIgnorePlacement(true);
-    _tapCancelable = manager.tapEvents(
-      onTap: (annotation) async {
-        final taskId = _taskIdByAnnotationId[annotation.id];
-        if (taskId == null) {
-          return;
-        }
-        await _handleTap(taskId);
-      },
-    );
+      // Create selection-indicator manager first so it renders under task markers.
+      final selectionManager =
+          await _createManagerWithRetry(map, token: token);
+      if (selectionManager == null || !_isTokenActive(token)) {
+        return;
+      }
+      _selectionIndicatorManager = selectionManager;
+      await selectionManager.setIconAllowOverlap(true);
+      await selectionManager.setIconIgnorePlacement(true);
+
+      final manager = await _createManagerWithRetry(map, token: token);
+      if (manager == null || !_isTokenActive(token)) {
+        return;
+      }
+      _annotationManager = manager;
+      await manager.setIconAllowOverlap(true);
+      await manager.setIconIgnorePlacement(true);
+      _tapCancelable = manager.tapEvents(
+        onTap: (annotation) async {
+          final taskId = _taskIdByAnnotationId[annotation.id];
+          if (taskId == null) {
+            return;
+          }
+          await _handleTap(taskId);
+        },
+      );
+    } on PlatformException catch (error) {
+      if (error.code == 'channel-error') {
+        await _disposeInternal();
+        return;
+      }
+      rethrow;
+    }
   }
 
   Future<void> syncTasks(List<MapTaskEntity> tasks) async {
@@ -118,6 +142,11 @@ class MapRequestMarkerService {
   }
 
   Future<void> dispose() async {
+    _lifecycleToken++;
+    await _disposeInternal();
+  }
+
+  Future<void> _disposeInternal() async {
     _tapCancelable?.cancel();
     _tapCancelable = null;
     final manager = _annotationManager;
@@ -144,6 +173,32 @@ class MapRequestMarkerService {
     _selectedTaskId = null;
     _onSelectionChanged = null;
     _mapboxMap = null;
+  }
+
+  bool _isTokenActive(int token) => token == _lifecycleToken;
+
+  Future<PointAnnotationManager?> _createManagerWithRetry(
+    MapboxMap map, {
+    required int token,
+  }) async {
+    for (var attempt = 0; attempt < _managerInitAttempts; attempt++) {
+      if (!_isTokenActive(token)) {
+        return null;
+      }
+      try {
+        return await map.annotations.createPointAnnotationManager();
+      } on MissingPluginException {
+        if (attempt == _managerInitAttempts - 1) {
+          return null;
+        }
+      } on PlatformException catch (error) {
+        if (error.code != 'channel-error' || attempt == _managerInitAttempts - 1) {
+          rethrow;
+        }
+      }
+      await Future<void>.delayed(Duration(milliseconds: 120 * (attempt + 1)));
+    }
+    return null;
   }
 
   Future<void> _deleteAllSafely(PointAnnotationManager manager) async {
@@ -393,19 +448,19 @@ class MapRequestMarkerService {
               ? const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFFFFFF), Color(0xFFECECEC)],
+                  colors: [Color(0xFFFFFFFF), Color(0xFFF2F6FF)],
                 )
               : const LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFF0F0F0), Color(0xFFDADADA)],
+                  colors: [Color(0xFFF7F9FD), Color(0xFFDCE2EE)],
                 ))
           .createShader(triangleRect);
 
     final strokePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = isSelected ? 1.5 : 1.2
-      ..color = isSelected ? const Color(0xFF7E7E7E) : const Color(0xFF8F8F8F);
+      ..color = isSelected ? const Color(0xFF8B97AB) : const Color(0xFF9CA8BC);
 
     canvas.drawPath(path, fillPaint);
     canvas.drawPath(path, strokePaint);

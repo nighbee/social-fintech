@@ -1,15 +1,45 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/api/client/dio/rest_client.dart';
+import 'package:app/src/core/api/client/endpoints.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
-class SilverBalanceChip extends StatelessWidget {
+class SilverBalanceChip extends StatefulWidget {
   const SilverBalanceChip({
     required this.count,
     super.key,
-  });
+  })  : useLiveBalance = false,
+        initialCount = 0;
 
-  final int count;
+  const SilverBalanceChip.live({
+    super.key,
+    this.initialCount = 0,
+  })  : count = null,
+        useLiveBalance = true;
+
+  final int? count;
+  final bool useLiveBalance;
+  final int initialCount;
+
+  @override
+  State<SilverBalanceChip> createState() => _SilverBalanceChipState();
+}
+
+class _SilverBalanceChipState extends State<SilverBalanceChip> {
+  late int _count;
+  RestClient? _restClient;
+
+  @override
+  void initState() {
+    super.initState();
+    _count = widget.count ?? widget.initialCount;
+    if (widget.useLiveBalance) {
+      _restClient = getIt<RestClient>(instanceName: 'DioClient');
+      _loadLiveBalance();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +56,7 @@ class SilverBalanceChip extends StatelessWidget {
           Assets.icons.silverCoin.svg(width: 24, height: 24),
           const Gap(4),
           Text(
-            count.toString(),
+            _count.toString(),
             style: TextStyles.titleTag.copyWith(
               color: AppColors.colorffE5E5E5,
               fontWeight: FontWeight.w500,
@@ -36,5 +66,28 @@ class SilverBalanceChip extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _loadLiveBalance() async {
+    final client = _restClient;
+    if (client == null) {
+      return;
+    }
+    final response = await client.get(EndPoints.economyBalance);
+    response.fold((_) {}, (result) {
+      final raw = result.data;
+      if (raw is! Map) {
+        return;
+      }
+      final data = Map<String, dynamic>.from(raw);
+      final value = data['silver_balance'];
+      final silverBalance = value is num ? value.toDouble() : null;
+      if (silverBalance == null || !mounted) {
+        return;
+      }
+      setState(() {
+        _count = silverBalance.floor();
+      });
+    });
   }
 }

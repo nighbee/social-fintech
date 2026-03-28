@@ -10,6 +10,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 /// Service for managing champion markers on the map
 class MapChampionService {
   MapChampionService();
+  static const int _managerInitAttempts = 3;
 
   PointAnnotationManager? _annotationManager;
   final Map<String, PointAnnotation> _annotations = {};
@@ -18,30 +19,50 @@ class MapChampionService {
   final Map<String, UserEntity> _usersById = {};
   Cancelable? _tapCancelable;
   void Function(MapChampionEntity champion)? _onChampionTap;
+  int _lifecycleToken = 0;
 
   /// Initialize the annotation manager
   Future<void> initialize(
     MapboxMap mapboxMap, {
     void Function(MapChampionEntity champion)? onChampionTap,
   }) async {
-    _annotationManager =
-        await mapboxMap.annotations.createPointAnnotationManager();
-    _onChampionTap = onChampionTap;
+    final token = ++_lifecycleToken;
+    await dispose(invalidateToken: false);
+    if (!_isTokenActive(token)) {
+      return;
+    }
+    try {
+      final manager = await _createManagerWithRetry(
+        mapboxMap,
+        token: token,
+      );
+      if (manager == null || !_isTokenActive(token)) {
+        return;
+      }
+      _annotationManager = manager;
+      _onChampionTap = onChampionTap;
 
-    _tapCancelable?.cancel();
-    _tapCancelable = _annotationManager?.tapEvents(
-      onTap: (annotation) {
-        final h3Index = _annotationIdsToH3Index[annotation.id];
-        if (h3Index == null) {
-          return;
-        }
-        final champion = _championsByIndex[h3Index];
-        if (champion == null) {
-          return;
-        }
-        _onChampionTap?.call(champion);
-      },
-    );
+      _tapCancelable?.cancel();
+      _tapCancelable = _annotationManager?.tapEvents(
+        onTap: (annotation) {
+          final h3Index = _annotationIdsToH3Index[annotation.id];
+          if (h3Index == null) {
+            return;
+          }
+          final champion = _championsByIndex[h3Index];
+          if (champion == null) {
+            return;
+          }
+          _onChampionTap?.call(champion);
+        },
+      );
+    } on PlatformException catch (error) {
+      if (error.code == 'channel-error') {
+        await dispose(invalidateToken: false);
+        return;
+      }
+      rethrow;
+    }
   }
 
   /// Update champions on the map
@@ -137,12 +158,41 @@ class MapChampionService {
   }
 
   /// Dispose the service
-  Future<void> dispose() async {
+  Future<void> dispose({bool invalidateToken = true}) async {
+    if (invalidateToken) {
+      _lifecycleToken++;
+    }
     _tapCancelable?.cancel();
     _tapCancelable = null;
     _onChampionTap = null;
     await clear();
     _annotationManager = null;
+  }
+
+  bool _isTokenActive(int token) => token == _lifecycleToken;
+
+  Future<PointAnnotationManager?> _createManagerWithRetry(
+    MapboxMap mapboxMap, {
+    required int token,
+  }) async {
+    for (var attempt = 0; attempt < _managerInitAttempts; attempt++) {
+      if (!_isTokenActive(token)) {
+        return null;
+      }
+      try {
+        return await mapboxMap.annotations.createPointAnnotationManager();
+      } on MissingPluginException {
+        if (attempt == _managerInitAttempts - 1) {
+          return null;
+        }
+      } on PlatformException catch (error) {
+        if (error.code != 'channel-error' || attempt == _managerInitAttempts - 1) {
+          rethrow;
+        }
+      }
+      await Future<void>.delayed(Duration(milliseconds: 120 * (attempt + 1)));
+    }
+    return null;
   }
 
   Future<void> _deleteAllSafely(PointAnnotationManager manager) async {

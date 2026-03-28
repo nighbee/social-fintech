@@ -504,7 +504,7 @@ class _SilverHonorComposerDialogState
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: SilverBalanceChip(count: widget.currentSealCount),
+                      child: const SilverBalanceChip.live(),
                     ),
                     const Gap(16),
                     Text(

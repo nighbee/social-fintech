@@ -127,6 +127,18 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       emit(const MapState.loadingError('Please enter a description'));
       return;
     }
+    if (event.request.reward < 1 || event.request.reward > 3) {
+      emit(const MapState.loadingError('Reward must be 1, 2 or 3.'));
+      return;
+    }
+    if (event.request.heroesCount < 1 || event.request.heroesCount > 20) {
+      emit(const MapState.loadingError('Workers count must be between 1 and 20.'));
+      return;
+    }
+    if (!event.request.latitude.isFinite || !event.request.longitude.isFinite) {
+      emit(const MapState.loadingError('Coordinates are invalid.'));
+      return;
+    }
 
     _viewModel = _viewModel.copyWith(
       isCreatingTask: true,

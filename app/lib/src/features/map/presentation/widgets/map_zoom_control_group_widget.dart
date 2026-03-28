@@ -1,4 +1,4 @@
-﻿part of 'package:app/src/features/map/presentation/pages/map_page.dart';
+part of 'package:app/src/features/map/presentation/pages/map_page.dart';
 
 class _MapZoomControlGroup extends StatelessWidget {
   const _MapZoomControlGroup({
@@ -12,23 +12,23 @@ class _MapZoomControlGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(6),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          width: 42,
+          width: 44,
           decoration: BoxDecoration(
-            color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF656565)),
+            color: MapUiPalette.controlPanelBackground,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: MapUiPalette.controlPanelBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: MapUiPalette.panelTopGlow,
                 blurRadius: 12,
                 offset: const Offset(0, -3),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: MapUiPalette.panelDropShadow,
                 blurRadius: 25,
                 offset: const Offset(0, 8),
               ),
@@ -42,20 +42,18 @@ class _MapZoomControlGroup extends StatelessWidget {
                 icon: Assets.icons.plusIcon.svg(
                   width: 28,
                   height: 28,
-                  colorFilter: const ColorFilter.mode(
-                    Color.fromARGB(255, 189, 188, 188),
-                    BlendMode.srcIn,
-                  ),
+                  colorFilter:
+                      const ColorFilter.mode(MapUiPalette.controlIcon, BlendMode.srcIn),
                 ),
               ),
-              const Divider(height: 1, thickness: 1, color: Color(0xFF656565)),
+              const Divider(height: 1, thickness: 1, color: MapUiPalette.controlPanelBorder),
               _MapZoomHalfButton(
                 onTap: onTapMinus,
                 icon: Container(
                   width: 28,
                   height: 1,
                   decoration: BoxDecoration(
-                    color: const Color.fromARGB(255, 189, 188, 188),
+                    color: MapUiPalette.controlIcon,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),

@@ -112,8 +112,8 @@ class MapRemoteImpl implements IMapRemote {
   ) async {
     try {
       final payload = <String, dynamic>{
-        'title': request.title,
-        'description': request.description,
+        'title': request.title.trim(),
+        'description': request.description.trim(),
         'reward': request.reward,
         'workers_needed': request.heroesCount,
         'latitude': request.latitude,

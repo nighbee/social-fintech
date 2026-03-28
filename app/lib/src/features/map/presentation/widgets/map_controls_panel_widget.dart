@@ -1,4 +1,4 @@
-﻿part of 'package:app/src/features/map/presentation/pages/map_page.dart';
+part of 'package:app/src/features/map/presentation/pages/map_page.dart';
 
 class _MapControlsPanel extends StatelessWidget {
   const _MapControlsPanel({
@@ -23,10 +23,9 @@ class _MapControlsPanel extends StatelessWidget {
         _MapControlButton(
           icon: Assets.icons.location.svg(
             width: 35,
-
-
             height: 35,
-            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+            colorFilter:
+                const ColorFilter.mode(MapUiPalette.controlIcon, BlendMode.srcIn),
           ),
           onTap: onCurrentLocation,
         ),

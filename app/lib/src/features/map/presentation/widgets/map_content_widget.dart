@@ -61,10 +61,11 @@ class _MapContent extends StatelessWidget {
     final safeTop = mediaQuery.padding.top;
     final safeBottom = mediaQuery.padding.bottom;
     final horizontalInset = screenHeight < 720 ? 12.0 : 14.0;
-    final topBannerInset = screenHeight < 720 ? 14.0 : 18.0;
+    final topBannerInset = 15.0;
     final topBannerTop = safeTop + 12;
     final overlayTop = topBannerTop + 104;
     final controlsTop = screenHeight < 720 ? overlayTop + 88 : overlayTop + 126;
+    final ctaHorizontalInset = 15.0;
     final floatingActionBottom = safeBottom + 18;
     final floatingPanelBottom = floatingActionBottom + 74;
     final myRequest = MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks);
@@ -186,6 +187,7 @@ class _MapContent extends StatelessWidget {
                 )
               : MapWidget(
                   key: const ValueKey('mapbox-map-widget'),
+                  styleUri: MapUiPalette.mapStyleUri,
                   cameraOptions: CameraOptions(
                     center: Point(
                         coordinates: Position(viewModel.centerLongitude,
@@ -204,48 +206,67 @@ class _MapContent extends StatelessWidget {
           top: topBannerTop,
           left: topBannerInset,
           right: topBannerInset,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF656565)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, -3),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 25,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'GLOBAL RANKINGS UPDATE',
-                      style: TextStyles.bodySecondary.copyWith(
-                        color: Colors.white54,
-                        letterSpacing: 0.35,
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: SizedBox(
+                width: 400,
+                height: 107,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        gradient: const RadialGradient(
+                          center: Alignment.center,
+                          radius: 0.95,
+                          colors: [
+                            MapUiPalette.bannerGradientInner,
+                            MapUiPalette.bannerGradientOuter,
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: MapUiPalette.panelBorder.withValues(alpha: 0.55),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: MapUiPalette.bannerShadow,
+                            blurRadius: 5,
+                            spreadRadius: 1,
+                            offset: Offset(0, 0),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'GLOBAL RANKING CYCLE',
+                            style: TextStyles.bodySecondary.copyWith(
+                              color: MapUiPalette.subtleText,
+                              letterSpacing: 0.35,
+                            ),
+                          ),
+                          const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: RankingCountdownWidget(),
+                          ),
+                          Text(
+                            'Regional champions update worldwide...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyles.bodySecondary.copyWith(
+                              color: MapUiPalette.mutedText,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 6),
-                    const RankingCountdownWidget(),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Regional champions update worldwide...',
-                      style:
-                          TextStyles.bodyMain.copyWith(color: Colors.white54),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -281,21 +302,18 @@ class _MapContent extends StatelessWidget {
                                   padding:
                                       const EdgeInsets.fromLTRB(14, 16, 14, 12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF6D6D6D)
-                                        .withValues(alpha: 0.35),
+                                    color: MapUiPalette.panelBackground,
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                        color: const Color(0xFF656565)),
+                                    border:
+                                        Border.all(color: MapUiPalette.panelBorder),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.15),
+                                        color: MapUiPalette.panelTopGlow,
                                         blurRadius: 12,
                                         offset: const Offset(0, -3),
                                       ),
                                       BoxShadow(
-                                        color:
-                                            Colors.black.withValues(alpha: 0.4),
+                                        color: MapUiPalette.panelDropShadow,
                                         blurRadius: 25,
                                         offset: const Offset(0, 8),
                                       ),
@@ -410,8 +428,8 @@ class _MapContent extends StatelessWidget {
             ),
           ),
         Positioned(
-          left: horizontalInset,
-          right: horizontalInset,
+          left: ctaHorizontalInset,
+          right: ctaHorizontalInset,
           bottom: floatingActionBottom,
           child: isAwaitingCodeEntry
               ? CustomButton(
@@ -441,24 +459,26 @@ class _MapContent extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     )
-                  : CustomButton(
-                      text: 'Create a request for help',
-                      onTap: onOpenCreateRequest,
-                      borderRadius: 12,
-                      backgroundColor:
-                          viewModel.isBusy || viewModel.isCreatingTask
-                              ? Colors.black.withValues(alpha: 0.45)
-                              : Colors.black.withValues(alpha: 0.78),
-                      border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1)),
-                      textStyle: TextStyles.bodyLarge.copyWith(
-                        color: viewModel.isBusy || viewModel.isCreatingTask
-                            ? Colors.white54
-                            : Colors.white,
+                  : SizedBox(
+                      height: 50,
+                      child: CustomButton(
+                        text: 'Create a request for help',
+                        onTap: onOpenCreateRequest,
+                        borderRadius: 6,
+                        backgroundColor:
+                            viewModel.isBusy || viewModel.isCreatingTask
+                                ? MapUiPalette.ctaDisabledBackground
+                                : MapUiPalette.ctaBackground,
+                        border: Border.all(color: MapUiPalette.ctaBorder),
+                        textStyle: TextStyles.bodyLarge.copyWith(
+                          color: viewModel.isBusy || viewModel.isCreatingTask
+                              ? Colors.white54
+                              : Colors.white,
+                        ),
+                        prefixIcon:
+                            const Icon(Icons.add, color: Colors.white, size: 18),
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
                       ),
-                      prefixIcon:
-                          const Icon(Icons.add, color: Colors.white, size: 18),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
         ),
       ],
@@ -613,16 +633,6 @@ class _NearbyTaskMarkersLayerState extends State<_NearbyTaskMarkersLayer> {
         unawaited(_syncAnnotations());
       });
     }
-  }
-
-  void _clearHighlight() {
-    _highlightTimer?.cancel();
-    _highlightTimer = null;
-    if (_highlightedTaskId == null) {
-      return;
-    }
-    _highlightedTaskId = null;
-    unawaited(_syncAnnotations());
   }
 
   Future<void> _syncAnnotations() async {

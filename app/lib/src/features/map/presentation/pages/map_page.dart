@@ -16,6 +16,7 @@ import 'package:app/src/features/map/domain/requests/map_task_application_id_req
 import 'package:app/src/features/map/domain/requests/map_task_id_request.dart';
 import 'package:app/src/features/map/domain/requests/map_verify_code_request.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
+import 'package:app/src/features/map/presentation/constants/map_ui_palette.dart';
 import 'package:app/src/features/map/presentation/controllers/map_page_controller.dart';
 import 'package:app/src/features/map/presentation/mixins/show_champion_leaderboard_bottom_sheet.dart';
 import 'package:app/src/features/map/presentation/services/map_dialog_service.dart';
@@ -92,12 +93,6 @@ class _MapPageState extends State<MapPage>
     if (_mapboxAccessToken.isNotEmpty) {
       MapboxOptions.setAccessToken(_mapboxAccessToken);
     }
-  }
-
-  @override
-  void deactivate() {
-    unawaited(_controller.teardownMapResources());
-    super.deactivate();
   }
 
   @override

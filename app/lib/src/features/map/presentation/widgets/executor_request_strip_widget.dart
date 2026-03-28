@@ -1,4 +1,4 @@
-﻿part of 'package:app/src/features/map/presentation/pages/map_page.dart';
+part of 'package:app/src/features/map/presentation/pages/map_page.dart';
 
 class _ExecutorRequestStrip extends StatelessWidget {
   const _ExecutorRequestStrip({
@@ -18,17 +18,17 @@ class _ExecutorRequestStrip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
+            color: MapUiPalette.panelBackground,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFF656565)),
+            border: Border.all(color: MapUiPalette.panelBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: MapUiPalette.panelTopGlow,
                 blurRadius: 12,
                 offset: const Offset(0, -3),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: MapUiPalette.panelDropShadow,
                 blurRadius: 25,
                 offset: const Offset(0, 8),
               ),

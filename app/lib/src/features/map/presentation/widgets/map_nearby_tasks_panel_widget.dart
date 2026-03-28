@@ -25,17 +25,17 @@ class _MyRequestPanel extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
+            color: MapUiPalette.panelBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF656565)),
+            border: Border.all(color: MapUiPalette.panelBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: MapUiPalette.panelTopGlow,
                 blurRadius: 12,
                 offset: const Offset(0, -3),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: MapUiPalette.panelDropShadow,
                 blurRadius: 25,
                 offset: const Offset(0, 8),
               ),
@@ -193,17 +193,17 @@ class _NearbyTasksPanel extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
+            color: MapUiPalette.panelBackground,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF656565)),
+            border: Border.all(color: MapUiPalette.panelBorder),
             boxShadow: [
               BoxShadow(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: MapUiPalette.panelTopGlow,
                 blurRadius: 12,
                 offset: const Offset(0, -3),
               ),
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.4),
+                color: MapUiPalette.panelDropShadow,
                 blurRadius: 25,
                 offset: const Offset(0, 8),
               ),
