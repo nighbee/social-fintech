@@ -8,7 +8,10 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 class MapRequestMarkerService {
   static const double _defaultIconSize = 1.0;
-  static const double _selectedIconSize = 1.45;
+  static const double _selectedIconSize = 1.2;
+  static const double _figmaTriangleW = 37.327468872070455;
+  static const double _figmaTriangleH = 32.99999618530286;
+  static const double _triangleBorderWidth = 2.0;
 
   PointAnnotationManager? _annotationManager;
   PointAnnotationManager? _selectionIndicatorManager;
@@ -420,53 +423,61 @@ class MapRequestMarkerService {
   }) async {
     final recorder = ui.PictureRecorder();
     final canvas = ui.Canvas(recorder);
-    const width = 90.0;
-    const height = 90.0;
-    final triangleSize =
-        isSelected ? const ui.Size(44, 34) : const ui.Size(30, 23);
-    const triangleCenter = ui.Offset(width / 2, 62);
+    const pad = 4.0;
+    final scale = isSelected ? 1.12 : 1.0;
+    final tw = _figmaTriangleW * scale;
+    final th = _figmaTriangleH * scale;
+    final width = tw + pad * 2 + _triangleBorderWidth * 2;
+    final height = th + pad * 2 + _triangleBorderWidth * 2;
 
+    final cx = width / 2;
+    final bottomY = height - pad - _triangleBorderWidth;
+    final topY = bottomY - th;
     final path = Path()
-      ..moveTo(triangleCenter.dx, triangleCenter.dy + triangleSize.height / 2)
-      ..lineTo(
-        triangleCenter.dx - triangleSize.width / 2 + 1,
-        triangleCenter.dy - triangleSize.height / 2 + 1,
-      )
-      ..lineTo(
-        triangleCenter.dx + triangleSize.width / 2 - 1,
-        triangleCenter.dy - triangleSize.height / 2 + 1,
-      )
+      ..moveTo(cx, bottomY)
+      ..lineTo(cx - tw / 2, topY)
+      ..lineTo(cx + tw / 2, topY)
       ..close();
 
-    final triangleRect = Rect.fromCenter(
-      center: triangleCenter,
-      width: triangleSize.width,
-      height: triangleSize.height,
+    final triangleBounds = Rect.fromLTRB(
+      cx - tw / 2,
+      topY,
+      cx + tw / 2,
+      bottomY,
     );
     final fillPaint = Paint()
-      ..shader = (isSelected
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFFFFFF), Color(0xFFF2F6FF)],
-                )
-              : const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xFFF7F9FD), Color(0xFFDCE2EE)],
-                ))
-          .createShader(triangleRect);
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFFEEEEEE),
+          Color(0xFFA3A3A3),
+        ],
+      ).createShader(triangleBounds);
+
+    canvas.drawPath(path, fillPaint);
+
+    canvas.save();
+    canvas.clipPath(path);
+    canvas.drawRect(
+      triangleBounds,
+      Paint()..color = const Color(0x33000000),
+    );
+    canvas.restore();
 
     final strokePaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = isSelected ? 1.5 : 1.2
-      ..color = isSelected ? const Color(0xFF8B97AB) : const Color(0xFF9CA8BC);
+      ..strokeWidth = _triangleBorderWidth
+      ..strokeJoin = StrokeJoin.round
+      ..color = const Color(0xFF333333);
 
-    canvas.drawPath(path, fillPaint);
     canvas.drawPath(path, strokePaint);
 
     final picture = recorder.endRecording();
-    final image = await picture.toImage(width.toInt(), height.toInt());
+    final image = await picture.toImage(
+      width.ceil(),
+      height.ceil(),
+    );
     final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
     return byteData!.buffer.asUint8List();
   }

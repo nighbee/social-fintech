@@ -1,5 +1,6 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/widgets/silver_balance_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
@@ -24,29 +25,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       title: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: AppColors.border, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Assets.icons.silverCoin.svg(width: 24, height: 24),
-                const Gap(4),
-                Text(
-                  '27',
-                  style: TextStyles.titleTag.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w500,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SilverBalanceChip.live(),
           const Gap(12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

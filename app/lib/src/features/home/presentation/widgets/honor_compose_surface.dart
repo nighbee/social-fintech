@@ -2,6 +2,17 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+/// Поле ввода и вторичные элементы поверх [HonorComposeSurface] — те же
+/// полупрозрачные токены, что и у панели (Figma glass), без лишнего «чёрного слоя».
+abstract final class HonorComposeGlass {
+  HonorComposeGlass._();
+
+  static final Color messageFieldFill =
+      Colors.white.withValues(alpha: 0.06);
+  static final Color messageFieldBorder =
+      Colors.white.withValues(alpha: 0.14);
+}
+
 class HonorComposeSurface extends StatelessWidget {
   const HonorComposeSurface({
     super.key,

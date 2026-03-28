@@ -586,6 +586,16 @@ class _SilverHonorComposerDialogState
                       isDisabled: !canSend,
                       borderRadius: 8,
                       padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: AppColors.backgroundBrandLight,
+                      textStyle: TextStyles.bodyMain.copyWith(
+                        color: AppColors.textNeutral,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      disabledBackgroundColor: AppColors.backgroundDisabledDefault,
+                      disabledTextStyle: TextStyles.bodyMain.copyWith(
+                        color: AppColors.textDisabledDefault,
+                        fontWeight: FontWeight.w600,
+                      ),
                       prefixIcon: _isSending
                           ? const SizedBox(
                               width: 16,
@@ -601,9 +611,17 @@ class _SilverHonorComposerDialogState
                     CustomButton(
                       text: 'Cancel',
                       onTap: () => Navigator.of(context).pop(),
-                      backgroundColor: const Color(0xFF303030),
                       borderRadius: 8,
                       padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: AppColors.backgroundNeutralSecondary,
+                      border: Border.all(
+                        color: AppColors.borderDefault,
+                        width: 0.8,
+                      ),
+                      textStyle: TextStyles.bodyMain.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -665,25 +683,26 @@ class _SilverHonorSuccessDialog extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                CustomOutlinedButton(
+                CustomButton(
                   text: 'Great !',
-                  width: double.infinity,
-                  borderRadius: 12,
-                  borderColor: Colors.white.withValues(alpha: 0.55),
-                  backgroundColor: Colors.transparent,
-                  textStyle: TextStyles.titleMain.copyWith(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                    height: 1.1,
-                    color: AppColors.textBrand,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
                   onTap: () {
                     Navigator.of(context).pop();
                     if (sheetContext.mounted) {
                       Navigator.of(sheetContext).pop();
                     }
                   },
+                  borderRadius: 12,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: Colors.transparent,
+                  border: Border.all(
+                    color: AppColors.whiteBackground.withValues(alpha: 0.88),
+                    width: 0.8,
+                  ),
+                  textStyle: TextStyles.titleHeadline.copyWith(
+                    color: AppColors.whiteBackground,
+                    fontWeight: FontWeight.w600,
+                    height: 1.1,
+                  ),
                 ),
               ],
             ),

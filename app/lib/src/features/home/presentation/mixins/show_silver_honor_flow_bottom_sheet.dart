@@ -1,5 +1,9 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/widgets/custom_button.dart';
+import 'package:app/src/core/widgets/silver_balance_chip.dart';
 import 'package:app/src/core/widgets/action_bottom_sheet.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
@@ -48,11 +52,13 @@ mixin ShowSilverHonorBottomSheet {
     showDialog<void>(
       context: context,
       useRootNavigator: true,
-      barrierColor: Colors.black.withValues(alpha: 0.2),
+      useSafeArea: false,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
       builder: (dialogContext) {
-        return const Material(
-          type: MaterialType.transparency,
-          child: _SilverHonorComposeFlowDialog(),
+        return Dialog(
+          insetPadding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          child: const _SilverHonorComposeFlowDialog(),
         );
       },
     );
@@ -115,20 +121,23 @@ class _SilverHonorComposeFlowDialogState
   Widget build(BuildContext context) {
     if (_stage == _SilverHonorDialogStage.success) {
       return _SilverHonorSuccessSheet(
-          onDoneTap: () => Navigator.of(context).pop());
+        onDoneTap: () => Navigator.of(context).pop(),
+      );
     }
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 22),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: HonorComposeSurface(
-            child: _SilverHonorSendSheet(
-              controller: _messageController,
-              onCancel: () => Navigator.of(context).pop(),
-              onSend: () => setState(
-                () => _stage = _SilverHonorDialogStage.success,
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 360),
+            child: HonorComposeSurface(
+              child: _SilverHonorSendSheet(
+                controller: _messageController,
+                onCancel: () => Navigator.of(context).pop(),
+                onSend: () => setState(
+                  () => _stage = _SilverHonorDialogStage.success,
+                ),
               ),
             ),
           ),
@@ -341,35 +350,16 @@ class _SilverHonorSendSheetState extends State<_SilverHonorSendSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 1),
-          Container(
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-              color: Colors.black.withValues(alpha: 0.22),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Assets.icons.silverCoin.svg(width: 16, height: 16),
-                const SizedBox(width: 4),
-                Text(
-                  '27',
-                  style: TextStyles.bodyMain.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          const SilverBalanceChip.live(compact: true),
           const SizedBox(height: 12),
           Center(
             child: Text(
               'What would you like to convey along with\nthe honor?',
               textAlign: TextAlign.center,
-              style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+              style: TextStyles.titleHeadline.copyWith(
+                color: AppColors.whiteBackground,
+                height: 1.25,
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -392,9 +382,9 @@ class _SilverHonorSendSheetState extends State<_SilverHonorSendSheet> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.22),
+              color: HonorComposeGlass.messageFieldFill,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+              border: Border.all(color: HonorComposeGlass.messageFieldBorder),
             ),
             child: Stack(
               children: [
@@ -444,41 +434,37 @@ class _SilverHonorSendSheetState extends State<_SilverHonorSendSheet> {
             ),
           ),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: canSend ? widget.onSend : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFB8B8B8),
-                foregroundColor: Colors.black87,
-                disabledBackgroundColor: const Color(0xFF67676A),
-                disabledForegroundColor: const Color(0xFFBEBEBE),
-                minimumSize: const Size.fromHeight(38),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              child: const Text('Send'),
+          CustomButton(
+            text: 'Send',
+            onTap: widget.onSend,
+            isDisabled: !canSend,
+            borderRadius: 8,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            backgroundColor: AppColors.backgroundBrandLight,
+            textStyle: TextStyles.bodyMain.copyWith(
+              color: AppColors.textNeutral,
+              fontWeight: FontWeight.w600,
+            ),
+            disabledBackgroundColor: AppColors.backgroundDisabledDefault,
+            disabledTextStyle: TextStyles.bodyMain.copyWith(
+              color: AppColors.textDisabledDefault,
+              fontWeight: FontWeight.w600,
             ),
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: widget.onCancel,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black.withValues(alpha: 0.28),
-                foregroundColor: Colors.white70,
-                elevation: 0,
-                minimumSize: const Size.fromHeight(38),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              child: Text(
-                'Cancel',
-                style: TextStyles.bodyMain.copyWith(color: Colors.white70),
-              ),
+          CustomButton(
+            text: 'Cancel',
+            onTap: widget.onCancel,
+            borderRadius: 8,
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            backgroundColor: Colors.transparent,
+            border: Border.all(
+              color: AppColors.borderDefault,
+              width: 0.8,
+            ),
+            textStyle: TextStyles.bodyMain.copyWith(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -494,120 +480,98 @@ class _SilverHonorSuccessSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: Stack(
-        children: [
-          const _HonorSuccessBackground(),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
-            child: Column(
-              children: [
-                const Spacer(),
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.78),
-                      width: 2,
-                    ),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: onDoneTap,
-                    child: const Icon(
-                      Icons.check_rounded,
-                      color: Colors.white,
-                      size: 32,
-                    ),
-                  ),
+    final size = MediaQuery.sizeOf(context);
+    final padding = MediaQuery.paddingOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: SizedBox(
+        width: size.width,
+        height: size.height,
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0x45282930),
+                    const Color(0x52111418),
+                    const Color(0x451F232A),
+                  ],
+                  stops: const [0.0, 0.52, 1.0],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  'Thank you',
-                  style: TextStyles.titleHeadline.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  padding.top + 8,
+                  24,
+                  16 + padding.bottom,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Your silver honor has been sent\nsuccessfully.',
-                  textAlign: TextAlign.center,
-                  style: TextStyles.bodyMain.copyWith(color: Colors.white70),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: onDoneTap,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.4)),
-                      minimumSize: const Size.fromHeight(40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                child: Column(
+                  children: [
+                    const Spacer(),
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          width: 2,
+                        ),
+                      ),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(999),
+                        onTap: onDoneTap,
+                        child: const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
                     ),
-                    child: Text(
-                      'Great',
-                      style: TextStyles.titleTag.copyWith(
-                        color: Colors.white,
+                    const SizedBox(height: 14),
+                    Text(
+                      'Thank you!',
+                      style: TextStyles.titleHeadline.copyWith(
+                        color: AppColors.whiteBackground,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Your silver honor has been sent successfully.',
+                      textAlign: TextAlign.center,
+                      style: TextStyles.bodyMain.copyWith(
+                        color: AppColors.textPrimary,
+                        height: 1.35,
+                      ),
+                    ),
+                    const Spacer(),
+                    CustomButton(
+                      text: 'Great!',
+                      onTap: onDoneTap,
+                      borderRadius: 12,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: Colors.transparent,
+                      border: Border.all(
+                        color: AppColors.whiteBackground.withValues(alpha: 0.88),
+                        width: 0.8,
+                      ),
+                      textStyle: TextStyles.titleHeadline.copyWith(
+                        color: AppColors.whiteBackground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HonorSuccessBackground extends StatelessWidget {
-  const _HonorSuccessBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xD90B0E12),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xCC2B3038), Color(0xE6111418), Color(0xCC1F232A)],
-          stops: [0.0, 0.52, 1.0],
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-              top: -16, left: 40, child: _bgBlob(Color(0x52A8672A), 150)),
-          Positioned(
-              top: 88, right: -28, child: _bgBlob(Color(0x3C84552A), 120)),
-          Positioned(
-              bottom: -24, left: 60, child: _bgBlob(Color(0x2B5D6B80), 130)),
-          const Positioned.fill(
-            child: ColoredBox(color: Color(0x66080A0E)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  static Widget _bgBlob(Color color, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [color, Colors.transparent],
-          stops: const [0, 1],
         ),
       ),
     );

@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/api/client/dio/rest_client.dart';
+import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -7,6 +11,7 @@ import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/silver_balance_chip.dart';
 import 'package:app/src/features/map/domain/requests/map_create_task_request.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
+import 'package:app/src/features/map/presentation/constants/map_ui_palette.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
@@ -31,6 +36,7 @@ class CreateRequestPage extends StatefulWidget {
 
 class _CreateRequestPageState extends State<CreateRequestPage> {
   late final MapBloc _mapBloc;
+  int? _silverBalanceSeals;
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -40,14 +46,140 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
   double _reward = 2;
   bool _autoShutdown = false;
 
+  void _onFormFieldChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  bool get _canSubmitCreate =>
+      _titleController.text.trim().isNotEmpty &&
+      _descriptionController.text.trim().isNotEmpty;
+
   @override
   void initState() {
     super.initState();
     _mapBloc = getIt<MapBloc>();
+    _titleController.addListener(_onFormFieldChanged);
+    _descriptionController.addListener(_onFormFieldChanged);
+    unawaited(_refreshSilverBalance());
+  }
+
+  Future<void> _refreshSilverBalance() async {
+    final client = getIt<RestClient>(instanceName: 'DioClient');
+    final response = await client.get(EndPoints.economyBalance);
+    response.fold((_) {}, (result) {
+      final raw = result.data;
+      if (raw is! Map) {
+        return;
+      }
+      final v = raw['silver_balance'];
+      if (v is! num || !mounted) {
+        return;
+      }
+      setState(() {
+        _silverBalanceSeals = v.toDouble().floor();
+      });
+    });
+  }
+
+  Future<void> _showInsufficientHonorsDialog() async {
+    if (!mounted) {
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 384),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 384,
+                constraints: const BoxConstraints(minHeight: 184),
+                padding: const EdgeInsets.fromLTRB(12, 20, 12, 20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A2A2B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      'Not enough Honors. Top up your balance to continue.',
+                      textAlign: TextAlign.center,
+                      style: TextStyles.bodyLarge.copyWith(
+                        color: Colors.white,
+                        height: 1.35,
+                      ),
+                    ),
+                    const Gap(20),
+                    SizedBox(
+                      height: 44,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(dialogContext).pop();
+                          if (context.mounted) {
+                            context.push(RoutePaths.store);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor: MapUiPalette.createRequestDialogBuyBackground,
+                          foregroundColor: MapUiPalette.createRequestPrimaryOnEnabled,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Buy',
+                          style: TextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: MapUiPalette.createRequestPrimaryOnEnabled,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Gap(20),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(dialogContext).pop(),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(
+                            color: MapUiPalette.createRequestDialogCancelBorder,
+                            width: 1.5,
+                          ),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyles.bodyLarge.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
   void dispose() {
+    _titleController.removeListener(_onFormFieldChanged);
+    _descriptionController.removeListener(_onFormFieldChanged);
     _titleController.dispose();
     _descriptionController.dispose();
     _heroesController.dispose();
@@ -57,7 +189,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121418),
+      backgroundColor: MapUiPalette.createRequestScaffoldBackground,
       appBar: CustomAppBar(
         title: "Create a request",
         actions: [
@@ -105,6 +237,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
               loaded: (viewModel) => viewModel.isCreatingTask,
               orElse: () => false,
             );
+            final createEnabled = _canSubmitCreate && !isCreating;
 
             return SafeArea(
               child: Padding(
@@ -151,7 +284,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                                 textAlign: TextAlign.center,
                                 decoration: InputDecoration(
                                   filled: true,
-                                  fillColor: const Color(0xFF121418),
+                                  fillColor: MapUiPalette.createRequestFieldFill,
                                   contentPadding:
                                       const EdgeInsets.symmetric(vertical: 8),
                                   isDense: true,
@@ -243,27 +376,38 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                     const SizedBox(height: 10),
                     CustomButton(
                       text: isCreating ? 'Creating...' : 'Create',
+                      isDisabled: !createEnabled,
                       onTap: () {
-                        if (!isCreating) {
-                          final title = _titleController.text.trim();
-                          final description = _descriptionController.text.trim();
-                          final rawHeroes =
-                              int.tryParse(_heroesController.text.trim()) ?? 0;
-                          final heroesCount = rawHeroes.clamp(1, 20);
-                          final reward = _reward.round().clamp(1, 3);
+                        if (!createEnabled) {
+                          return;
+                        }
+                        final title = _titleController.text.trim();
+                        final description = _descriptionController.text.trim();
+                        final rawHeroes =
+                            int.tryParse(_heroesController.text.trim()) ?? 0;
+                        final heroesCount = rawHeroes.clamp(1, 20);
+                        final reward = _reward.round().clamp(1, 3);
 
-                          if (rawHeroes < 1 || rawHeroes > 20) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content:
-                                    Text('Number of heroes must be between 1 and 20.'),
-                                backgroundColor: Colors.red,
+                        if (_silverBalanceSeals != null &&
+                            _silverBalanceSeals! < reward) {
+                          unawaited(_showInsufficientHonorsDialog());
+                          return;
+                        }
+
+                        if (rawHeroes < 1 || rawHeroes > 20) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Number of heroes must be between 1 and 20.',
                               ),
-                            );
-                            return;
-                          }
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
 
-                          _mapBloc.add(MapEvent.createTask(
+                        _mapBloc.add(
+                          MapEvent.createTask(
                             MapCreateTaskRequest(
                               title: title,
                               description: description,
@@ -273,14 +417,19 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                               longitude: widget.longitude,
                               autoShutdown: _autoShutdown,
                             ),
-                          ));
-                        }
+                          ),
+                        );
                       },
                       borderRadius: 8,
-                      backgroundColor:
-                          isCreating ? const Color(0xFF848B99) : const Color(0xFFB0B7C5),
+                      backgroundColor: MapUiPalette.createRequestPrimaryEnabled,
                       textStyle: TextStyles.bodyLarge.copyWith(
-                        color: const Color(0xFF12161F),
+                        color: MapUiPalette.createRequestPrimaryOnEnabled,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      disabledBackgroundColor:
+                          MapUiPalette.createRequestPrimaryDisabled,
+                      disabledTextStyle: TextStyles.bodyLarge.copyWith(
+                        color: MapUiPalette.createRequestPrimaryOnDisabled,
                         fontWeight: FontWeight.w600,
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -351,7 +500,7 @@ class _RequestField extends StatelessWidget {
             hintText: hint,
             hintStyle: TextStyles.bodyMain.copyWith(color: Colors.white38),
             filled: true,
-            fillColor: const Color(0xFF121418),
+            fillColor: MapUiPalette.createRequestFieldFill,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 10,
               vertical: 10,

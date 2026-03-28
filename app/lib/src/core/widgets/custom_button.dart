@@ -15,6 +15,8 @@ class CustomButton extends StatelessWidget {
     this.prefixIcon,
     this.suffixIcon,
     this.isDisabled = false,
+    this.disabledBackgroundColor,
+    this.disabledTextStyle,
   });
 
   final String text;
@@ -22,6 +24,9 @@ class CustomButton extends StatelessWidget {
   final double? width;
   final Color? backgroundColor;
   final TextStyle? textStyle;
+  /// When [isDisabled] is true, overrides default gray disabled colors.
+  final Color? disabledBackgroundColor;
+  final TextStyle? disabledTextStyle;
   final EdgeInsets? padding;
   final double borderRadius;
   final Border? border;
@@ -32,8 +37,16 @@ class CustomButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final effectiveBackgroundColor = isDisabled
-        ? AppColors.backgroundDisabledDefault
+        ? (disabledBackgroundColor ?? AppColors.backgroundDisabledDefault)
         : (backgroundColor ?? AppColors.backgroundBrandLight);
+
+    final effectiveTextStyle = isDisabled
+        ? (disabledTextStyle ??
+            TextStyles.titleMain.copyWith(
+              color: AppColors.textDisabledDefault,
+            ))
+        : (textStyle ??
+            TextStyles.titleMain.copyWith(color: AppColors.textNeutral));
 
     return Container(
       width: width ?? double.infinity,
@@ -58,12 +71,7 @@ class CustomButton extends StatelessWidget {
                     if (prefixIcon != null) prefixIcon!,
                     Text(
                       text,
-                      style: textStyle ??
-                          TextStyles.titleMain.copyWith(
-                            color: isDisabled
-                                ? AppColors.textDisabledDefault
-                                : AppColors.textNeutral,
-                          ),
+                      style: effectiveTextStyle,
                     ),
                     if (suffixIcon != null) suffixIcon!,
                   ],

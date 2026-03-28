@@ -23,4 +23,15 @@ class MapUiPalette {
   static const Color ctaBackground = Color(0xFF101010);
   static const Color ctaBorder = Color(0x1AFFFFFF);
   static const Color ctaDisabledBackground = Color(0xB0101010);
+
+  /// Create request screen (Figma)
+  static const Color createRequestScaffoldBackground = Color(0xFF19191A);
+  static const Color createRequestFieldFill = Color(0xFF19191A);
+  /// Primary CTA when form is valid — var(--white)
+  static const Color createRequestPrimaryEnabled = Color(0xFFFFFFFF);
+  static const Color createRequestPrimaryOnEnabled = Color(0xFF12161F);
+  static const Color createRequestPrimaryDisabled = Color(0xFF4A4A4E);
+  static const Color createRequestPrimaryOnDisabled = Color(0xFF9A9A9C);
+  static const Color createRequestDialogBuyBackground = Color(0xFFDBDBDB);
+  static const Color createRequestDialogCancelBorder = Color(0xFFCACACA);
 }

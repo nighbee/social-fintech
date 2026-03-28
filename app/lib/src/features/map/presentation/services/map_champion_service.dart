@@ -128,6 +128,7 @@ class MapChampionService {
     final pointAnnotationOptions = PointAnnotationOptions(
       geometry: Point(coordinates: Position(coords.lng, coords.lat)),
       image: await _createChampionMarkerImage(),
+      iconAnchor: IconAnchor.BOTTOM,
     );
 
     final pointAnnotation = await manager.create(pointAnnotationOptions);
@@ -206,72 +207,93 @@ class MapChampionService {
     }
   }
 
-  /// Create champion marker image
+  /// Figma: 86×86 circle, 2px border rgba(206,165,72), shadow 0/0/4 gold.
   Future<Uint8List> _createChampionMarkerImage() async {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
-    const width = 92.0;
-    const height = 114.0;
-    const avatarRadius = 24.0;
-    const avatarCenter = Offset(width / 2, 32);
+    const gold = Color(0xFFCEA548);
+    const circleSize = 86.0;
+    const strokeW = 2.0;
+    const shadowBlur = 4.0;
+    const pad = shadowBlur + 2.0;
+    const width = circleSize + pad * 2;
+    const circleCx = width / 2;
+    const circleCy = pad + circleSize / 2;
+    const fillRadius = 41.0;
 
-    final outerRingPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Color(0xFFFFE08A),
-          Color(0xFFE0A92F),
-        ],
-      ).createShader(
-        Rect.fromCircle(center: avatarCenter, radius: avatarRadius + 3),
-      );
-    canvas.drawCircle(avatarCenter, avatarRadius + 3, outerRingPaint);
-
-    final innerBgPaint = Paint()
-      ..color = const Color(0xFF2E3D50)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(avatarCenter, avatarRadius, innerBgPaint);
-
-    final personPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(
-      Offset(avatarCenter.dx, avatarCenter.dy - 7),
-      7.2,
-      personPaint,
+    final circleRect = Rect.fromCircle(
+      center: Offset(circleCx, circleCy),
+      radius: circleSize / 2,
     );
 
+    final glowPaint = Paint()
+      ..color = gold.withValues(alpha: 0.42)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, shadowBlur);
+    canvas.drawCircle(Offset(circleCx, circleCy), circleSize / 2, glowPaint);
+
+    final fillPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF3D4F66),
+          Color(0xFF2A3544),
+        ],
+      ).createShader(circleRect);
+    canvas.drawCircle(Offset(circleCx, circleCy), fillRadius, fillPaint);
+
+    final personPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.92)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(
+      Offset(circleCx, circleCy - 10),
+      9.0,
+      personPaint,
+    );
     final bodyPath = Path()
-      ..moveTo(avatarCenter.dx - 14, avatarCenter.dy + 12)
+      ..moveTo(circleCx - 17, circleCy + 14)
       ..quadraticBezierTo(
-        avatarCenter.dx,
-        avatarCenter.dy - 2,
-        avatarCenter.dx + 14,
-        avatarCenter.dy + 12,
+        circleCx,
+        circleCy - 2,
+        circleCx + 17,
+        circleCy + 14,
       )
-      ..lineTo(avatarCenter.dx + 14, avatarCenter.dy + 18)
-      ..lineTo(avatarCenter.dx - 14, avatarCenter.dy + 18)
+      ..lineTo(circleCx + 17, circleCy + 22)
+      ..lineTo(circleCx - 17, circleCy + 22)
       ..close();
     canvas.drawPath(bodyPath, personPaint);
+
+    final ringPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeW
+      ..color = gold;
+    canvas.drawCircle(
+      Offset(circleCx, circleCy),
+      fillRadius + strokeW / 2,
+      ringPaint,
+    );
 
     final textPainter = TextPainter(
       text: const TextSpan(
         text: 'Champion',
         style: TextStyle(
-          color: Color(0xFFFFCF5A),
-          fontSize: 17,
+          color: gold,
+          fontSize: 14,
           fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
+          letterSpacing: 0.15,
         ),
       ),
       textDirection: TextDirection.ltr,
     )..layout(maxWidth: width);
-    final textX = (width - textPainter.width) / 2;
-    textPainter.paint(canvas, Offset(textX, 72));
+    final labelY = circleCy + fillRadius + 10;
+    textPainter.paint(
+      canvas,
+      Offset((width - textPainter.width) / 2, labelY),
+    );
 
+    final height = labelY + textPainter.height + 8;
     final picture = recorder.endRecording();
-    final image = await picture.toImage(width.toInt(), height.toInt());
+    final image = await picture.toImage(width.ceil(), height.ceil());
     final byteData = await image.toByteData(format: ImageByteFormat.png);
     return byteData!.buffer.asUint8List();
   }
