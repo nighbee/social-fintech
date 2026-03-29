@@ -2,12 +2,19 @@ import 'dart:io';
 
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/gen/fonts.gen.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
+import 'package:app/src/core/exceptions/domain_exception.dart';
+import 'package:app/src/features/profile/data/sources/remote/i_interaction_settings_remote.dart';
 import 'package:flutter/material.dart';
+import 'package:fpdart/fpdart.dart' hide State;
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+const int _kMaxBugAttachments = 5;
 
 class ReportBugPage extends StatefulWidget {
   const ReportBugPage({super.key});
@@ -18,9 +25,13 @@ class ReportBugPage extends StatefulWidget {
 
 class _ReportBugPageState extends State<ReportBugPage> {
   final TextEditingController _controller = TextEditingController();
-  XFile? _attachment;
+  final IInteractionSettingsRemote _remote =
+      getIt<IInteractionSettingsRemote>();
+  final List<XFile> _attachments = [];
+  bool _isSending = false;
 
-  bool get _canSend => _controller.text.trim().isNotEmpty;
+  bool get _canSend =>
+      _controller.text.trim().isNotEmpty && !_isSending;
 
   @override
   void initState() {
@@ -41,22 +52,101 @@ class _ReportBugPageState extends State<ReportBugPage> {
   }
 
   Future<void> _pickAttachment() async {
+    if (_attachments.length >= _kMaxBugAttachments) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'You can add up to $_kMaxBugAttachments photos.',
+            style: TextStyles.bodyMain.copyWith(color: AppColors.colorffffffff),
+          ),
+          backgroundColor: AppColors.colorff202020,
+        ),
+      );
+      return;
+    }
+
     await ImagePickerHelper.showImagePickerFile(
       context: context,
-      imageQuality: 70,
-      maxWidth: 1280,
-      maxHeight: 1280,
+      imageQuality: 85,
+      maxWidth: null,
+      maxHeight: null,
       onImageSelected: (file) {
         setState(() {
-          _attachment = file;
+          _attachments.add(file);
         });
       },
     );
   }
 
-  void _send() {
-    if (!_canSend) return;
-    context.pop(true);
+  void _removeAttachment(int index) {
+    setState(() {
+      _attachments.removeAt(index);
+    });
+  }
+
+  Future<void> _send() async {
+    final description = _controller.text.trim();
+    if (description.isEmpty || _isSending) return;
+
+    setState(() => _isSending = true);
+
+    final packageInfo = await PackageInfo.fromPlatform();
+    final deviceOS =
+        '${Platform.isAndroid ? 'Android' : 'iOS'} ${Platform.operatingSystemVersion}';
+
+    try {
+      late final Either<DomainException, void> outcome;
+
+      if (_attachments.isEmpty) {
+        outcome = await _remote.reportBug(
+          description: description,
+          screenshotFilePath: null,
+          appVersion: packageInfo.version,
+          deviceOS: deviceOS,
+        );
+      } else {
+        Either<DomainException, void> last = const Right(null);
+        for (final file in _attachments) {
+          last = await _remote.reportBug(
+            description: description,
+            screenshotFilePath: file.path,
+            appVersion: packageInfo.version,
+            deviceOS: deviceOS,
+          );
+          if (last.isLeft()) {
+            break;
+          }
+        }
+        outcome = last;
+      }
+
+      if (!mounted) return;
+
+      await outcome.fold(
+        (err) async {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                err.message,
+                style: TextStyles.bodyMain
+                    .copyWith(color: AppColors.colorffffffff),
+              ),
+              backgroundColor: AppColors.colorff202020,
+            ),
+          );
+        },
+        (_) async {
+          if (!mounted) return;
+          context.pop(true);
+        },
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
   }
 
   @override
@@ -145,30 +235,23 @@ class _ReportBugPageState extends State<ReportBugPage> {
                         ),
                       ),
                     ),
-                    if (_attachment != null) ...[
-                      const Gap(20),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Image.file(
-                          File(_attachment!.path),
-                          width: 60,
-                          height: 130,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 60,
-                            height: 130,
-                            decoration: BoxDecoration(
-                              color: AppColors.colorff202020,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.broken_image_outlined,
-                              color: AppColors.colorff838383,
-                            ),
-                          ),
+                    if (_attachments.isNotEmpty) ...[
+                      const Gap(16),
+                      SizedBox(
+                        height: 130,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _attachments.length,
+                          separatorBuilder: (_, __) => const Gap(12),
+                          itemBuilder: (context, index) {
+                            return _BugAttachmentTile(
+                              path: _attachments[index].path,
+                              onRemove: () => _removeAttachment(index),
+                            );
+                          },
                         ),
                       ),
-                      const Gap(24),
+                      const Gap(16),
                     ],
                   ],
                 ),
@@ -217,6 +300,74 @@ class _ReportBugPageState extends State<ReportBugPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BugAttachmentTile extends StatelessWidget {
+  const _BugAttachmentTile({
+    required this.path,
+    required this.onRemove,
+  });
+
+  final String path;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxHeight: 130,
+              maxWidth: 200,
+            ),
+            child: Image.file(
+              File(path),
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              errorBuilder: (_, __, ___) => Container(
+                height: 130,
+                width: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.colorff202020,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.broken_image_outlined,
+                  color: AppColors.colorff838383,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onRemove,
+              customBorder: const CircleBorder(),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.55),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close,
+                  size: 16,
+                  color: AppColors.colorffffffff,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

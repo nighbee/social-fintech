@@ -18,7 +18,7 @@ class SettingsOptionCard extends StatelessWidget {
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
+        color: AppColors.colorff202020,
         borderRadius: BorderRadius.circular(6),
       ),
       child: child,

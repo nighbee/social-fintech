@@ -1,9 +1,11 @@
-import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/styled_message_dialog.dart';
+import 'package:app/src/features/auth/presentation/widgets/password_visibility_toggle.dart';
+import 'package:app/src/features/profile/data/sources/remote/i_interaction_settings_remote.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -17,6 +19,9 @@ class ProfileChangePasswordPage extends StatefulWidget {
 }
 
 class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
+  final IInteractionSettingsRemote _remote =
+      getIt<IInteractionSettingsRemote>();
+
   final TextEditingController _currentPasswordController =
       TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
@@ -26,6 +31,7 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
   bool _isCurrentPasswordVisible = false;
   bool _isNewPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
+  bool _submitting = false;
 
   @override
   void initState() {
@@ -64,6 +70,31 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
     setState(() {});
   }
 
+  Future<void> _onContinue() async {
+    if (!_isFormValid || _submitting) return;
+
+    setState(() => _submitting = true);
+    final result = await _remote.changePassword(
+      currentPassword: _currentPasswordController.text,
+      newPassword: _newPasswordController.text,
+    );
+    if (!mounted) return;
+    setState(() => _submitting = false);
+
+    result.fold(
+      (e) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      },
+      (_) => context.pop(true),
+    );
+  }
+
   Future<void> _handleForgotPassword() async {
     await showStyledMessageDialog<void>(
       context: context,
@@ -82,6 +113,9 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
     super.dispose();
   }
 
+  static const _borderIdle = AppColors.colorff838383;
+  static const _borderActive = AppColors.colorffffffff;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -92,7 +126,7 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -110,12 +144,13 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
                 'Your password must be at least 6 characters and should include '
                 'a combination of numbers, letters and special characters '
                 '(!\$@%).',
-                style: TextStyles.bodyLarge.copyWith(
-                  color: const Color(0xFFA3A3A3),
-                  height: 1.4,
+                style: TextStyles.bodyMain.copyWith(
+                  color: AppColors.colorff838383,
+                  fontSize: 13,
+                  height: 20 / 13,
                 ),
               ),
-              const Gap(48),
+              const Gap(32),
               _PasswordInputField(
                 controller: _currentPasswordController,
                 labelText: 'Current password',
@@ -126,6 +161,8 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
                     _isCurrentPasswordVisible = !_isCurrentPasswordVisible;
                   });
                 },
+                inactiveBorderColor: _borderIdle,
+                activeBorderColor: _borderActive,
               ),
               const Gap(12),
               _PasswordInputField(
@@ -138,6 +175,8 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
                     _isNewPasswordVisible = !_isNewPasswordVisible;
                   });
                 },
+                inactiveBorderColor: _borderIdle,
+                activeBorderColor: _borderActive,
               ),
               const Gap(12),
               _PasswordInputField(
@@ -150,18 +189,29 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
                     _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
                   });
                 },
+                inactiveBorderColor: _borderIdle,
+                activeBorderColor: _borderActive,
               ),
-              const Gap(20),
+              const Gap(24),
               CustomButton(
                 text: 'Continue',
-                onTap: () => context.pop(true),
-                isDisabled: !_isFormValid,
+                onTap: _onContinue,
+                isDisabled: !_isFormValid || _submitting,
                 borderRadius: 6,
                 padding: const EdgeInsets.symmetric(vertical: 11),
+                backgroundColor: AppColors.backgroundBrandLight,
                 textStyle: TextStyles.titleMain.copyWith(
                   fontSize: 20,
                   fontWeight: FontWeight.w500,
                   height: 1.1,
+                  color: AppColors.textNeutral,
+                ),
+                disabledBackgroundColor: AppColors.backgroundDisabledDefault,
+                disabledTextStyle: TextStyles.titleMain.copyWith(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w500,
+                  height: 1.1,
+                  color: AppColors.textDisabledDefault,
                 ),
               ),
               const Gap(8),
@@ -200,6 +250,8 @@ class _PasswordInputField extends StatelessWidget {
     required this.obscureText,
     required this.isVisible,
     required this.onVisibilityTap,
+    required this.inactiveBorderColor,
+    required this.activeBorderColor,
   });
 
   final TextEditingController controller;
@@ -207,60 +259,33 @@ class _PasswordInputField extends StatelessWidget {
   final bool obscureText;
   final bool isVisible;
   final VoidCallback onVisibilityTap;
+  final Color inactiveBorderColor;
+  final Color activeBorderColor;
 
   @override
   Widget build(BuildContext context) {
     return CustomTextField(
       controller: controller,
       labelText: labelText,
+      showLabel: false,
+      height: 68,
       obscureText: obscureText,
       backgroundColor: Colors.transparent,
-      customBorder: Border.all(color: AppColors.textBrand, width: 1),
-      textStyle: TextStyles.titleMain.copyWith(
+      inactiveBorderColor: inactiveBorderColor,
+      activeBorderColor: activeBorderColor,
+      containerPadding: const EdgeInsets.fromLTRB(16, 10, 0, 10),
+      textStyle: TextStyles.bodyLarge.copyWith(
         color: AppColors.textBrand,
-        fontSize: 20,
-        height: 1.1,
+        height: 1.25,
       ),
-      suffixIcon: _PasswordVisibilityToggle(
+      hintStyle: TextStyles.bodyLarge.copyWith(
+        color: AppColors.colorff838383,
+        height: 1.25,
+      ),
+      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      suffixIcon: PasswordVisibilityToggle(
         isVisible: isVisible,
         onTap: onVisibilityTap,
-      ),
-    );
-  }
-}
-
-class _PasswordVisibilityToggle extends StatelessWidget {
-  const _PasswordVisibilityToggle({
-    required this.isVisible,
-    required this.onTap,
-  });
-
-  final bool isVisible;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 12),
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: isVisible
-              ? Assets.icons.eyeOpened.svg(
-                  colorFilter: const ColorFilter.mode(
-                    AppColors.textBrand,
-                    BlendMode.srcIn,
-                  ),
-                )
-              : Assets.icons.eyeClosed.svg(
-                  colorFilter: const ColorFilter.mode(
-                    AppColors.textBrand,
-                    BlendMode.srcIn,
-                  ),
-                ),
-        ),
       ),
     );
   }

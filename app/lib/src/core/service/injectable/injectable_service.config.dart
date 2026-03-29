@@ -39,8 +39,12 @@ import '../../../features/map/domain/repositories/i_map_repository.dart'
     as _i593;
 import '../../../features/profile/data/repositories/profile_repository_impl.dart'
     as _i695;
+import '../../../features/profile/data/sources/remote/i_interaction_settings_remote.dart'
+    as _i748;
 import '../../../features/profile/data/sources/remote/i_profile_remote.dart'
     as _i964;
+import '../../../features/profile/data/sources/remote/interaction_settings_remote_impl.dart'
+    as _i371;
 import '../../../features/profile/data/sources/remote/profile_remote_impl.dart'
     as _i236;
 import '../../../features/profile/domain/repositories/i_profile_repository.dart'
@@ -100,6 +104,9 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i877.RestClient>(instanceName: 'DioClient')),
       instanceName: 'ProfileRemoteImpl',
     );
+    gh.lazySingleton<_i748.IInteractionSettingsRemote>(() =>
+        _i371.InteractionSettingsRemoteImpl(
+            gh<_i877.RestClient>(instanceName: 'DioClient')));
     gh.lazySingleton<_i664.IAuthRepository>(
       () => _i365.AuthRepositoryImpl(
         gh<_i387.IAuthRemote>(instanceName: 'AuthRemoteImpl'),

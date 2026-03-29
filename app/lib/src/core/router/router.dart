@@ -15,6 +15,7 @@ import 'package:app/src/features/profile/presentation/pages/interaction_settings
 import 'package:app/src/features/profile/presentation/pages/public_profile_page.dart';
 import 'package:app/src/features/profile/presentation/pages/contact_us_page.dart';
 import 'package:app/src/features/profile/presentation/pages/feed_time_limit_page.dart';
+import 'package:app/src/features/profile/presentation/pages/enter_invite_code_page.dart';
 import 'package:app/src/features/profile/presentation/pages/invite_golden_honor_page.dart';
 import 'package:app/src/features/profile/presentation/pages/location_access_page.dart';
 import 'package:app/src/features/profile/presentation/pages/report_bug_page.dart';

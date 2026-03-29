@@ -16,6 +16,7 @@ class UserDto extends BaseDto with _$UserDto {
     @JsonKey(name: 'last_name') required String lastName,
     @JsonKey(name: 'date_of_birth') String? dateOfBirth,
     @JsonKey(name: 'avatar_url') required String avatarUrl,
+    @JsonKey(name: 'referral_code') @Default('') String referralCode,
     // @JsonKey(name: 'created_at') required String? createdAt,
     // @JsonKey(name: 'updated_at') required String? updatedAt,
   }) = _UserDto;
@@ -31,6 +32,7 @@ class UserDto extends BaseDto with _$UserDto {
     lastName: lastName,
     dateOfBirth: dateOfBirth ?? "",
     avatarUrl: avatarUrl,
+    referralCode: referralCode,
     // createdAt: createdAt != null ? DateTime.tryParse(createdAt!) : null,
     // updatedAt: updatedAt != null ? DateTime.tryParse(updatedAt!) : null,
   );

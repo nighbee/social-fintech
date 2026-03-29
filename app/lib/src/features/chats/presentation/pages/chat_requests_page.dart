@@ -12,7 +12,8 @@ class ChatRequestsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final requestThread = ChatMockStore.requestThreads.first;
+    final requests = ChatMockStore.requestThreads;
+    final requestThread = requests.isNotEmpty ? requests.first : null;
 
     return ChatScaffold(
       appBar: ChatTitleAppBar(
@@ -35,20 +36,24 @@ class ChatRequestsPage extends StatelessWidget {
           children: [
             const ChatSectionLabel(label: 'Requests'),
             const Gap(12),
-            ChatThreadCard(
-              thread: requestThread,
-              onTap: () {
-                context.pushNamed(
-                  RouteNames.chatConversation,
-                  pathParameters: <String, String>{
-                    'chatId': requestThread.id,
-                  },
-                );
-              },
-            ),
-            const Gap(24),
+            if (requestThread != null) ...[
+              ChatThreadCard(
+                thread: requestThread,
+                onTap: () {
+                  context.pushNamed(
+                    RouteNames.chatConversation,
+                    pathParameters: <String, String>{
+                      'chatId': requestThread.id,
+                    },
+                  );
+                },
+              ),
+              const Gap(24),
+            ],
             Text(
-              'Messages from people you don\'t follow appear here.',
+              requestThread == null
+                  ? 'No message requests right now.'
+                  : 'Messages from people you don\'t follow appear here.',
               style: TextStyles.bodyLarge.copyWith(
                 color: AppColors.textBrand.withValues(alpha: 0.56),
                 height: 1.45,

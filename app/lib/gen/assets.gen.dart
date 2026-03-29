@@ -228,6 +228,10 @@ class $AssetsImagesGen {
   AssetGenImage get ammolite =>
       const AssetGenImage('assets/images/ammolite.png');
 
+  /// File path: assets/images/golden_honor.png
+  AssetGenImage get goldenHonor =>
+      const AssetGenImage('assets/images/golden_honor.png');
+
   /// File path: assets/images/image.png
   AssetGenImage get image => const AssetGenImage('assets/images/image.png');
 
@@ -253,8 +257,17 @@ class $AssetsImagesGen {
       const AssetGenImage('assets/images/supernova.png');
 
   /// List of all assets
-  List<AssetGenImage> get values =>
-      [ammolite, image, jade, lapislazuli, moonstone, onyx, pearl, supernova];
+  List<AssetGenImage> get values => [
+        ammolite,
+        goldenHonor,
+        image,
+        jade,
+        lapislazuli,
+        moonstone,
+        onyx,
+        pearl,
+        supernova,
+      ];
 }
 
 class $AssetsFontsCanelaDeckTrialGen {

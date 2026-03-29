@@ -16,4 +16,8 @@ class KeyStore {
   static const String mapActiveExecutorTaskId = 'MAP_ACTIVE_EXECUTOR_TASK_ID';
   static const String mapActiveExecutorApplicationId =
       'MAP_ACTIVE_EXECUTOR_APPLICATION_ID';
+
+  //* Profile — Location access (client-only until API exists)
+  static const String locationAccessLabel = 'LOCATION_ACCESS_LABEL';
+  static const String locationAccessPrecise = 'LOCATION_ACCESS_PRECISE';
 }

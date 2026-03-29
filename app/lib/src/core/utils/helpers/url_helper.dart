@@ -43,10 +43,22 @@ class UrlHelper {
       return false;
     }
 
-    return tryLaunchUrl(
-      url: 'tel:$trimmedPhone',
-      context: context,
-      errorText: errorText,
+    final uri = Uri.parse('tel:$trimmedPhone');
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launched) return true;
+    } catch (_) {}
+
+    if (!context.mounted) return false;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(errorText),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
+    return false;
   }
 }

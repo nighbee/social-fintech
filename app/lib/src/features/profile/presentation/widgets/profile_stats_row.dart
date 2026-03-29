@@ -1,4 +1,5 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/constants/ui_constants.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -8,91 +9,124 @@ class ProfileStatsRow extends StatelessWidget {
 
   final int goldenSeals;
 
+  static const _pillBg = Color(0xFF3A3533);
+  static const _pillBorder = Color(0xFF4B4643);
+
+  static const double _honorW = 70;
+  static const double _honorH = 41;
+  static const double _statsW = 118;
+  static const double _statsH = 41;
+
+  static const double _radius = 4;
+  static const double _borderWidth = 1;
+  static const double _innerGap = 6;
+  static const double _betweenChips = 6;
+
+  static const EdgeInsets _honorPadding =
+      EdgeInsets.all(UIConstants.defaultGap1);
+  static const EdgeInsets _statsPadding = EdgeInsets.fromLTRB(10, 4, 10, 4);
+
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFFF0C14D).withValues(alpha: 0.25),
-                  const Color(0xFF7A4F11).withValues(alpha: 0.22),
-                ],
-              ),
-              border: Border.all(
-                color: const Color(0xFFF0C14D).withValues(alpha: 0.28),
-              ),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Assets.icons.rewardIndicator.svg(
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFF6D46B),
-                    BlendMode.srcIn,
-                  ),
+        Opacity(
+          opacity: 0.8,
+          child: SizedBox(
+            width: _honorW,
+            height: _honorH,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: _pillBg,
+                borderRadius: BorderRadius.circular(_radius),
+                border: Border.all(
+                  color: _pillBorder,
+                  width: _borderWidth,
                 ),
-                const Gap(8),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              child: Padding(
+                padding: _honorPadding,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      goldenSeals.toString(),
-                      style: TextStyles.titleHeadline.copyWith(
-                        color: Colors.white,
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: Assets.images.goldenHonor.image(
+                        width: 22,
+                        height: 22,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        isAntiAlias: true,
+                        excludeFromSemantics: true,
                       ),
                     ),
-                    Text(
-                      'Golden Seals',
-                      style: TextStyles.bodySecondary.copyWith(
-                        color: const Color(0xFFF6D46B),
+                    const Gap(_innerGap),
+                    Flexible(
+                      child: Text(
+                        goldenSeals.toString(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: TextStyles.bodyMain.copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                          height: 18 / 15,
+                          color: AppColors.colorffE5E5E5,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
-        const Gap(12),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        const Gap(_betweenChips),
+        SizedBox(
+          width: _statsW,
+          height: _statsH,
+          child: DecoratedBox(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              border: Border.all(color: Colors.white24),
-              borderRadius: BorderRadius.circular(8),
+              color: _pillBg,
+              borderRadius: BorderRadius.circular(_radius),
+              border: Border.all(
+                color: _pillBorder,
+                width: _borderWidth,
+              ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Assets.icons.statsIcon.svg(
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFFCACACA),
-                    BlendMode.srcIn,
+            child: Padding(
+              padding: _statsPadding,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Assets.icons.statsIcon.svg(
+                    width: 16,
+                    height: 16,
+                    colorFilter: const ColorFilter.mode(
+                      Color(0xFFCACACA),
+                      BlendMode.srcIn,
+                    ),
                   ),
-                ),
-                const Gap(8),
-                Flexible(
-                  child: Text(
-                    'Profile Stats',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyles.titleTag.copyWith(color: Colors.grey),
+                  const Gap(_innerGap),
+                  Expanded(
+                    child: Text(
+                      'Your Stats',
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyles.bodyMain.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        height: 17 / 14,
+                        color: AppColors.colorffE5E5E5,
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

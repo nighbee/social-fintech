@@ -1,245 +1,268 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
+import 'package:app/src/core/widgets/styled_message_dialog.dart';
+import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class InviteGoldenHonorPage extends StatefulWidget {
+/// Экран «мой реферальный код» + шаринг.
+/// Отображаемый код: в приоритете `referral_code` с бэка; если пусто — username (пока бэкенд не выдал код).
+class InviteGoldenHonorPage extends StatelessWidget {
   const InviteGoldenHonorPage({
     super.key,
     this.currentUserId,
   });
 
+  /// Оставлено для совместимости с `extra` в роутере; код берётся из [AuthBloc].
   final String? currentUserId;
 
-  @override
-  State<InviteGoldenHonorPage> createState() => _InviteGoldenHonorPageState();
-}
-
-class _InviteGoldenHonorPageState extends State<InviteGoldenHonorPage> {
-  bool _isLinkCopied = false;
-
-  String get _inviteLink {
-    final userId = widget.currentUserId?.trim() ?? '';
-    // Replace this placeholder URL once the backend exposes the real invite link contract.
-    final inviteUri = Uri(
-      scheme: 'https',
-      host: 'brightbund.app',
-      path: 'invite',
-      queryParameters: userId.isEmpty ? null : {'ref': userId},
+  String _displayCode(AuthState auth) {
+    return auth.maybeWhen(
+      authenticated: (login) {
+        final code = login.user.referralCode.trim();
+        if (code.isNotEmpty) return code;
+        final u = login.user.username.trim();
+        if (u.isNotEmpty) return u;
+        return '—';
+      },
+      orElse: () => '—',
     );
-    return inviteUri.toString();
   }
 
-  String get _shareMessage =>
-      'Join BrightBund using my invitation link:\n$_inviteLink';
-
-  Future<void> _shareInvitationLink() async {
-    try {
-      final smsUri = Uri(
-        scheme: 'sms',
-        queryParameters: {'body': _shareMessage},
+  Future<void> _copyCode(BuildContext context, String code) async {
+    if (code == '—') {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Referral code is not available yet'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.colorff202020,
+        ),
       );
-      final didLaunch = await launchUrl(
-        smsUri,
-        mode: LaunchMode.externalApplication,
-      );
-      if (didLaunch || !mounted) {
-        return;
-      }
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-    }
-
-    await Clipboard.setData(ClipboardData(text: _shareMessage));
-    if (!mounted) {
       return;
     }
-
-    _showFeedbackMessage('Invitation message copied. Share it anywhere.');
-  }
-
-  Future<void> _copyInvitationLink() async {
-    await Clipboard.setData(ClipboardData(text: _inviteLink));
-    if (!mounted) {
-      return;
-    }
-
-    setState(() {
-      _isLinkCopied = true;
-    });
-    _showFeedbackMessage('Invitation link copied.');
-  }
-
-  void _showFeedbackMessage(String message) {
+    await Clipboard.setData(ClipboardData(text: code));
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: const Text('Code copied'),
         behavior: SnackBarBehavior.floating,
         backgroundColor: AppColors.colorff202020,
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.colorff19191A,
-      appBar: const CustomAppBar(
-        backgroundColor: AppColors.colorff19191A,
-        centerTitle: false,
-      ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _InviteGoldenHonorHeader(),
-              const Gap(24),
-              const _InviteGoldenHonorRewardCard(),
-              const Gap(32),
-              _InviteGoldenHonorActionGroup(
-                isLinkCopied: _isLinkCopied,
-                onShareTap: _shareInvitationLink,
-                onCopyTap: _copyInvitationLink,
-              ),
-            ],
-          ),
+  Future<void> _shareCode(BuildContext context, String code) async {
+    if (code == '—') {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Referral code is not available yet'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.colorff202020,
         ),
+      );
+      return;
+    }
+    final message =
+        'Join BrightBund with my code: $code\nhttps://brightbund.app/invite';
+    try {
+      final smsUri = Uri(
+        scheme: 'sms',
+        queryParameters: {'body': message},
+      );
+      final launched = await launchUrl(
+        smsUri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (launched && context.mounted) return;
+    } catch (_) {}
+
+    await Clipboard.setData(ClipboardData(text: message));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Message copied — share it anywhere'),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.colorff202020,
       ),
     );
   }
-}
 
-class _InviteGoldenHonorHeader extends StatelessWidget {
-  const _InviteGoldenHonorHeader();
+  Future<void> _onChangeCode(BuildContext context) async {
+    await showStyledMessageDialog<void>(
+      context: context,
+      title: 'Change code',
+      message:
+          'Custom referral codes are not editable yet. This option will be available in a future update.',
+      barrierColor: Colors.black.withValues(alpha: 0.72),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Text(
-                'Invite & Earn Golden Honor',
-                style: TextStyles.titleBig.copyWith(
-                  fontSize: 24,
-                  height: 1.2,
-                  letterSpacing: -0.48,
-                  color: AppColors.textBrand,
+    return BlocBuilder<AuthBloc, AuthState>(
+      bloc: getIt<AuthBloc>(),
+      builder: (context, auth) {
+        final code = _displayCode(auth);
+
+        return Scaffold(
+          backgroundColor: AppColors.colorff19191A,
+          appBar: const CustomAppBar(
+            backgroundColor: AppColors.colorff19191A,
+            centerTitle: false,
+          ),
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Earn a Golden Honor when your invite joins.',
+                              style: TextStyles.titleHeadline.copyWith(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w500,
+                                height: 1.25,
+                                color: AppColors.textBrand,
+                              ),
+                            ),
+                          ),
+                          const Gap(8),
+                          Assets.images.goldenHonor.image(
+                            width: 22,
+                            height: 22,
+                            fit: BoxFit.contain,
+                          ),
+                        ],
+                      ),
+                      const Gap(12),
+                      Text(
+                        "Share your code. You'll earn 1 Golden Honor as soon as your friend redeems it.",
+                        style: TextStyles.bodyMain.copyWith(
+                          fontSize: 13,
+                          height: 1.4,
+                          color: const Color(0xFFA3A3A3),
+                        ),
+                      ),
+                      const Gap(22),
+                      _ReferralCodeCard(
+                        code: code,
+                        onCopy: () => _copyCode(context, code),
+                      ),
+                      const Gap(22),
+                      CustomButton(
+                        text: 'Share your code',
+                        onTap: () => _shareCode(context, code),
+                        borderRadius: 8,
+                        backgroundColor: AppColors.backgroundBrandLight,
+                        textStyle: TextStyles.bodyLarge.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                          color: AppColors.textNeutral,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      const Gap(8),
+                      CustomButton(
+                        text: 'Change code',
+                        onTap: () => _onChangeCode(context),
+                        borderRadius: 8,
+                        backgroundColor: const Color(0xFF2C2C2E),
+                        textStyle: TextStyles.bodyLarge.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                          color: AppColors.textBrand,
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const Gap(12),
-            Assets.icons.silverCoin.svg(
-              width: 25,
-              height: 25,
-            ),
-          ],
-        ),
-        const Gap(16),
-        Text(
-          'Invite people to join BrightBund.\n'
-          'When someone registers, they can find your profile\n'
-          'and select you as the person who invited them.',
-          style: TextStyles.bodyLarge.copyWith(
-            color: const Color(0xFFA3A3A3),
-            height: 1.4,
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
-class _InviteGoldenHonorRewardCard extends StatelessWidget {
-  const _InviteGoldenHonorRewardCard();
+class _ReferralCodeCard extends StatelessWidget {
+  const _ReferralCodeCard({
+    required this.code,
+    required this.onCopy,
+  });
+
+  final String code;
+  final VoidCallback onCopy;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderDefault),
+        border: Border.all(color: AppColors.borderDefault, width: 1),
+        color: const Color(0xFF141414),
       ),
-      child: Text(
-        'After their account is verified, you will receive a\n'
-        'Golden Honor as a reward!\n\n'
-        'Verification may take a few days.',
-        style: TextStyles.bodyLarge.copyWith(
-          color: const Color(0xFFA3A3A3),
-          height: 1.4,
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Your unique code',
+                  style: TextStyles.bodyMain.copyWith(
+                    fontSize: 11,
+                    height: 1.2,
+                    color: const Color(0xFF8E8E93),
+                  ),
+                ),
+                const Gap(6),
+                SelectableText(
+                  code,
+                  style: TextStyles.bodyLarge.copyWith(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    height: 1.3,
+                    color: AppColors.textBrand,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onCopy,
+            icon: const Icon(
+              Icons.copy_rounded,
+              size: 20,
+              color: AppColors.textBrand,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _InviteGoldenHonorActionGroup extends StatelessWidget {
-  const _InviteGoldenHonorActionGroup({
-    required this.isLinkCopied,
-    required this.onShareTap,
-    required this.onCopyTap,
-  });
-
-  final bool isLinkCopied;
-  final VoidCallback onShareTap;
-  final VoidCallback onCopyTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        CustomButton(
-          text: 'Share your invitation link',
-          onTap: onShareTap,
-          borderRadius: 6,
-          backgroundColor: AppColors.backgroundBrandLight,
-          textStyle: TextStyles.titleMain.copyWith(
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
-            height: 1.1,
-            color: AppColors.textNeutral,
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 11),
-        ),
-        const Gap(8),
-        CustomButton(
-          text: isLinkCopied ? 'Link copied' : 'Copy link',
-          onTap: onCopyTap,
-          borderRadius: 6,
-          backgroundColor: AppColors.backgroundNeutralSecondary,
-          border: Border.all(
-            color: AppColors.borderDefault,
-            width: 0.8,
-          ),
-          textStyle: TextStyles.titleMain.copyWith(
-            fontSize: 20,
-            fontWeight: FontWeight.w500,
-            height: 1.1,
-            color: AppColors.textBrand,
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 11),
-          suffixIcon: Icon(
-            isLinkCopied ? Icons.check_rounded : Icons.content_copy_rounded,
-            size: 20,
-            color: AppColors.textBrand,
-          ),
-        ),
-      ],
     );
   }
 }

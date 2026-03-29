@@ -12,12 +12,14 @@ Future<T?> showStyledMessageDialog<T>({
   String actionText = 'Ok',
   VoidCallback? onActionTap,
   bool barrierDismissible = true,
+  Color? barrierColor,
 }) {
   assert(title != null || message != null || content != null);
 
   return showDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
+    barrierColor: barrierColor,
     builder: (dialogContext) {
       return StyledMessageDialog(
         title: title,

@@ -58,6 +58,8 @@ class RouteNames {
   static const String profileInteractionMentions =
       'profileInteractionMentions';
   static const String profileBlockedAccounts = 'profileBlockedAccounts';
+  static const String profileMessageFilteredKeywords =
+      'profileMessageFilteredKeywords';
   static const String profileSecurity = 'profileSecurity';
   static const String profileSecurityChangePassword =
       'profileSecurityChangePassword';
@@ -78,6 +80,7 @@ class RouteNames {
   static const String profileTermsConditions = 'profileTermsConditions';
   static const String profileFeedTimeLimit = 'profileFeedTimeLimit';
   static const String profileInviteGoldenHonor = 'profileInviteGoldenHonor';
+  static const String profileEnterInviteCode = 'profileEnterInviteCode';
   static const String allies = 'allies';
   static const String publicProfile = 'publicProfile';
   static const String editProfile = 'editProfile';

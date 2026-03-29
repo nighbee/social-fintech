@@ -279,10 +279,10 @@ class EditProfileBioInput extends StatelessWidget {
       showLabel: false,
       minLines: 5,
       maxLines: 5,
-      height: 143,
+      height: 152,
       backgroundColor: Colors.transparent,
       borderRadius: 12,
-      customBorder: Border.all(color: AppColors.colorffEF4444),
+      customBorder: Border.all(color: AppColors.textBrand),
       containerPadding: const EdgeInsets.all(16),
       contentPadding: EdgeInsets.zero,
       textStyle: TextStyles.bodyLarge.copyWith(

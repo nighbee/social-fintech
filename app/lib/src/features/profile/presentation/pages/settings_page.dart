@@ -2,8 +2,13 @@ import 'dart:async';
 
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/core/service/storage/app_storage/storage_service.dart';
+import 'package:app/src/features/profile/data/local/location_access_prefs.dart';
+import 'package:app/src/features/profile/data/models/interaction_settings_dto.dart';
+import 'package:app/src/features/profile/data/sources/remote/i_interaction_settings_remote.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
+import 'package:app/src/core/widgets/neutral_track_switch.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +29,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _participateInDistrictRankings = false;
+  bool _participateInDistrictRankings = true;
   String _feedTimeLimitLabel = 'No limit';
   String _locationAccessLabel = 'Never';
   bool _isPreciseLocationEnabled = false;
@@ -36,6 +41,32 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _loadAppVersion();
+    _loadFeedTimeLimitLabel();
+    _loadLocationAccessFromPrefs();
+  }
+
+  Future<void> _loadFeedTimeLimitLabel() async {
+    final result = await getIt<IInteractionSettingsRemote>().getFeedSettings();
+    if (!mounted) return;
+    result.fold((_) {}, (dto) {
+      setState(() {
+        _feedTimeLimitLabel =
+            feedTimeLimitLabelFromMins(effectiveFeedLimitMins(dto));
+      });
+    });
+  }
+
+  Future<void> _loadLocationAccessFromPrefs() async {
+    await prefsInstance.initialize();
+    if (!mounted) return;
+    final loaded = readLocationAccessPrefs(
+      initialLabel: _locationAccessLabel,
+      initialPrecise: _isPreciseLocationEnabled,
+    );
+    setState(() {
+      _locationAccessLabel = loaded.label;
+      _isPreciseLocationEnabled = loaded.precise;
+    });
   }
 
   Future<void> _loadAppVersion() async {
@@ -46,16 +77,6 @@ class _SettingsPageState extends State<SettingsPage> {
       _appVersion =
           packageInfo.version.isEmpty ? _appVersion : packageInfo.version;
     });
-  }
-
-  void _showPlaceholderMessage(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$title is not available yet.'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.colorff202020,
-      ),
-    );
   }
 
   String? _resolveCurrentUserId() {
@@ -160,7 +181,10 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Stack(
           children: [
             SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -190,7 +214,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ],
                     ),
                   ),
-                  const Gap(24),
+                  const Gap(28),
                   _SettingsSection(
                     title: 'Account & System',
                     child: _SettingsGroupCard(
@@ -209,22 +233,29 @@ class _SettingsPageState extends State<SettingsPage> {
                       ],
                     ),
                   ),
-                  const Gap(24),
+                  const Gap(28),
                   _SettingsSection(
                     title: 'Invitations',
                     child: _SettingsGroupCard(
                       children: [
                         _SettingsRow(
-                          title: 'Invite & Earn Golden Honor',
+                          title: 'My referral code',
                           onTap: () => context.pushNamed(
                             RouteNames.profileInviteGoldenHonor,
                             extra: {'userId': _resolveCurrentUserId()},
                           ),
                         ),
+                        _SettingsRow(
+                          title: 'Have you been invited?',
+                          compact: true,
+                          onTap: () => context.pushNamed(
+                            RouteNames.profileEnterInviteCode,
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const Gap(24),
+                  const Gap(28),
                   _SettingsSection(
                     title: 'Support & About',
                     child: _SettingsGroupCard(
@@ -251,7 +282,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ],
                     ),
                   ),
-                  const Gap(24),
+                  const Gap(20),
                   _SettingsGroupCard(
                     children: [
                       _SettingsRow.destructive(
@@ -260,6 +291,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -340,12 +372,12 @@ class _SettingsSection extends StatelessWidget {
         Text(
           title,
           style: TextStyles.bodyMain.copyWith(
-            color: AppColors.colorffa9a9a9,
-            fontSize: 14,
-            height: 20 / 14,
+            color: const Color(0xFFA3A3A3),
+            fontSize: 13,
+            height: 18 / 13,
           ),
         ),
-        const Gap(10),
+        const Gap(12),
         child,
       ],
     );
@@ -357,30 +389,30 @@ class _SettingsGroupCard extends StatelessWidget {
 
   final List<Widget> children;
 
+  static const _fill = Color(0xFF202020);
+  static const _radius = 6.0;
+  static const _padding = EdgeInsets.fromLTRB(12, 14, 12, 14);
+  static const _rowGap = 16.0;
+
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.colorff202020,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: AppColors.colorff3F3F40,
-        ),
+        color: _fill,
+        borderRadius: BorderRadius.circular(_radius),
       ),
-      child: Column(
-        children: [
-          for (var i = 0; i < children.length; i++) ...[
-            children[i],
-            if (i != children.length - 1)
-              const Divider(
-                height: 1,
-                thickness: 1,
-                color: AppColors.colorff2A2A2B,
-                indent: 16,
-                endIndent: 16,
-              ),
+      child: Padding(
+        padding: _padding,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < children.length; i++) ...[
+              children[i],
+              if (i != children.length - 1) SizedBox(height: _rowGap),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -395,6 +427,7 @@ class _SettingsRow extends StatelessWidget {
     this.destructive = false,
     this.switchValue,
     this.onSwitchChanged,
+    this.compact = false,
   });
 
   const _SettingsRow.switchTile({
@@ -406,7 +439,8 @@ class _SettingsRow extends StatelessWidget {
         showChevron = false,
         destructive = false,
         switchValue = value,
-        onSwitchChanged = onChanged;
+        onSwitchChanged = onChanged,
+        compact = false;
 
   const _SettingsRow.value({
     required this.title,
@@ -416,7 +450,8 @@ class _SettingsRow extends StatelessWidget {
         showChevron = false,
         destructive = false,
         switchValue = null,
-        onSwitchChanged = null;
+        onSwitchChanged = null,
+        compact = false;
 
   const _SettingsRow.destructive({
     required this.title,
@@ -425,7 +460,8 @@ class _SettingsRow extends StatelessWidget {
         showChevron = false,
         destructive = true,
         switchValue = null,
-        onSwitchChanged = null;
+        onSwitchChanged = null,
+        compact = false;
 
   final String title;
   final VoidCallback? onTap;
@@ -434,6 +470,8 @@ class _SettingsRow extends StatelessWidget {
   final bool destructive;
   final bool? switchValue;
   final ValueChanged<bool>? onSwitchChanged;
+  /// Второстепенная строка (меньше шрифт) — например «Have you been invited?»
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -443,21 +481,35 @@ class _SettingsRow extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: switchValue != null && onSwitchChanged != null
-            ? () => onSwitchChanged!(!switchValue!)
-            : onTap,
+        borderRadius: BorderRadius.circular(4),
+        onTap: destructive
+            ? onTap
+            : switchValue != null && onSwitchChanged != null
+                ? null
+                : onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: EdgeInsets.symmetric(
+            vertical: switchValue != null
+                ? 4
+                : (compact ? 4 : 10),
+          ),
           child: Row(
             children: [
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyles.bodyLarge.copyWith(
-                    color: rowTextColor,
-                    height: 20 / 16,
-                  ),
+                  style: compact
+                      ? TextStyles.bodyMain.copyWith(
+                          fontSize: 13,
+                          height: 1.25,
+                          color: destructive
+                              ? rowTextColor
+                              : const Color(0xFF9A9A9A),
+                        )
+                      : TextStyles.bodyLarge.copyWith(
+                          color: rowTextColor,
+                          height: 20 / 16,
+                        ),
                 ),
               ),
               if (trailingValue != null)
@@ -473,23 +525,16 @@ class _SettingsRow extends StatelessWidget {
                   ),
                 ),
               if (switchValue != null)
-                Transform.scale(
-                  scale: 0.84,
-                  child: Switch(
-                    value: switchValue!,
-                    onChanged: onSwitchChanged,
-                    activeTrackColor: AppColors.colorff74afe3,
-                    inactiveTrackColor: AppColors.colorff3F3F40,
-                    inactiveThumbColor: AppColors.colorffffffff,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
+                NeutralTrackSwitch(
+                  value: switchValue!,
+                  onChanged: onSwitchChanged!,
                 ),
               if (showChevron)
-                const Padding(
-                  padding: EdgeInsets.only(left: 8),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
                   child: Icon(
                     Icons.chevron_right_rounded,
-                    size: 20,
+                    size: compact ? 18 : 20,
                     color: AppColors.colorff838383,
                   ),
                 ),

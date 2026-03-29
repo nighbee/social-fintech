@@ -1,4 +1,3 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -43,9 +42,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
       loaded: (viewModel) => viewModel.profile.userId,
       orElse: () => null,
     );
-    context.pushNamed(
-      RouteNames.settings,
-      extra: {'userId': currentUserId},
+    // Полный путь + корневой стек (см. parentNavigatorKey у GoRoute settings) —
+    // иначе в shell иногда остаётся старая заглушка / не тот билд.
+    context.push(
+      '${RoutePaths.profile}/settings',
+      extra: <String, dynamic>{'userId': currentUserId},
     );
   }
 
@@ -138,7 +139,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             actions: [
               GestureDetector(
                 onTap: _openSettings,
-                child: Assets.icons.settingsIcon.svg(),
+                child: const Icon(
+                  Icons.menu_rounded,
+                  color: Colors.white,
+                  size: 26,
+                ),
               ),
               const Gap(16),
             ],

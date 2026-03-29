@@ -14,16 +14,9 @@ class ActiveSessionsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final currentSessions = sessions.isEmpty
-        ? const <_ActiveSessionItem>[
-            _ActiveSessionItem(
-              deviceName: 'iPhone 17 Pro Max',
-              details: 'Almaty, Kazakhstan - online',
-            ),
-          ]
-        : sessions
-              .map(_ActiveSessionItem.fromMap)
-              .toList(growable: false);
+    final currentSessions = sessions
+        .map(_ActiveSessionItem.fromMap)
+        .toList(growable: false);
 
     return Scaffold(
       backgroundColor: AppColors.colorff19191A,
@@ -34,28 +27,35 @@ class ActiveSessionsPage extends StatelessWidget {
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
                 'Current device',
-                style: TextStyles.bodyLarge.copyWith(
-                  color: const Color(0xFFA3A3A3),
-                  height: 1.4,
+                style: TextStyles.bodyMain.copyWith(
+                  color: AppColors.colorff838383,
+                  fontSize: 13,
+                  height: 20 / 13,
                 ),
               ),
               const Gap(12),
-              for (var index = 0; index < currentSessions.length; index++) ...[
-                if (index > 0) const Gap(12),
-                SettingsOptionCard(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 16,
+              if (currentSessions.isEmpty)
+                Text(
+                  'No active sessions.',
+                  style: TextStyles.bodyLarge.copyWith(
+                    color: AppColors.colorff838383,
+                    height: 1.4,
                   ),
-                  child: _ActiveSessionCard(item: currentSessions[index]),
-                ),
-              ],
+                )
+              else
+                for (var index = 0; index < currentSessions.length; index++) ...[
+                  if (index > 0) const Gap(12),
+                  SettingsOptionCard(
+                    padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+                    child: _ActiveSessionCard(item: currentSessions[index]),
+                  ),
+                ],
             ],
           ),
         ),
@@ -73,30 +73,27 @@ class _ActiveSessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            item.deviceName,
-            style: TextStyles.bodyLarge.copyWith(
-              color: AppColors.textBrand,
-              height: 1.4,
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          item.deviceName,
+          style: TextStyles.bodyLarge.copyWith(
+            color: AppColors.textBrand,
+            height: 1.35,
           ),
-          const Gap(4),
-          Text(
-            item.details,
-            style: TextStyles.bodyMain.copyWith(
-              fontSize: 12,
-              height: 1,
-              color: const Color(0xFFA3A3A3),
-            ),
+        ),
+        const Gap(4),
+        Text(
+          item.details,
+          style: TextStyles.bodyMain.copyWith(
+            fontSize: 12,
+            height: 16 / 12,
+            color: AppColors.colorff838383,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -110,7 +107,7 @@ class _ActiveSessionItem {
   factory _ActiveSessionItem.fromMap(Map<String, dynamic> map) {
     return _ActiveSessionItem(
       deviceName: map['deviceName'] as String? ?? 'Unknown device',
-      details: map['details'] as String? ?? 'Unknown location',
+      details: map['details'] as String? ?? '',
     );
   }
 

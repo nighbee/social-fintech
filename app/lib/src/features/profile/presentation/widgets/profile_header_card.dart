@@ -3,7 +3,9 @@ import 'package:app/src/core/widgets/custom_network_image.dart';
 
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_action_buttons.dart';
+import 'package:app/src/features/profile/presentation/widgets/profile_expandable_bio.dart';
 import 'package:app/src/features/profile/presentation/widgets/public_user_action_buttons.dart';
+import 'package:app/src/features/profile/presentation/widgets/profile_rank_meta_line.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_stats_row.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -53,13 +55,32 @@ class ProfileHeaderCard extends StatelessWidget {
       if (region.trim().isNotEmpty) region.trim(),
       if (country.trim().isNotEmpty) country.trim(),
     ];
-    final resolvedBio = bio.trim();
+    final locationLine =
+        locationParts.isNotEmpty ? locationParts.join(' | ') : null;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E), // Dark card background
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.feedMoonstoneBase,
+        gradient: const RadialGradient(
+          center: Alignment(-1.84, -1.0),
+          radius: 2.6,
+          stops: <double>[0.0, 0.2404, 0.4423, 0.6683, 0.899],
+          colors: AppColors.feedMoonstoneGradient,
+        ),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: AppColors.feedMoonstoneBorder,
+          width: 1,
+        ),
+        boxShadow: const <BoxShadow>[
+          BoxShadow(
+            color: Color(0x29000000),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,7 +88,6 @@ class ProfileHeaderCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar
               CustomNetworkImage(
                 imageUrl: avatarUrl.isNotEmpty
                     ? avatarUrl
@@ -77,76 +97,41 @@ class ProfileHeaderCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
               const Gap(16),
-              // User Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      displayName.isNotEmpty
-                          ? displayName
-                          : '@$userId', // Fallback to ID/Username
+                      displayName.isNotEmpty ? displayName : '@$userId',
                       style: TextStyles.titleHeadline.copyWith(
                         color: Colors.white,
                       ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const Gap(10),
-                    if (locationParts.isNotEmpty) ...[
+                    if (rankTier.trim().isNotEmpty) ...[
+                      const Gap(8),
+                      ProfileRankMetaLine(rankTier: rankTier),
+                    ],
+                    if (locationLine != null) ...[
+                      const Gap(8),
                       Text(
-                        locationParts.join(' | '),
+                        locationLine,
                         style: TextStyles.bodyMain.copyWith(
                           color: Colors.grey,
                         ),
                       ),
-                      const Gap(10),
                     ],
-                    if (rankTier.trim().isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              Color(0xFF6C9EFF),
-                              Color(0xFF9B7BFF),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          rankTier,
-                          style: TextStyles.bodySecondary.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const Gap(10),
-                    ],
-                    if (resolvedBio.isNotEmpty) ...[
-                      Text(
-                        resolvedBio,
-                        style: TextStyles.bodyMain.copyWith(
-                          color: const Color(0xFFD9D9D9),
-                          height: 1.4,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const Gap(12),
-                    ],
+                    const Gap(8),
+                    ProfileExpandableBio(text: bio),
+                    const Gap(8),
                     ProfileStatsRow(goldenSeals: reputationScore),
                   ],
                 ),
               ),
             ],
           ),
-          const Gap(16),
-          // Action Buttons
+          const Gap(12),
           isPublicProfile
               ? PublicUserActionButtons(
                   userId: userId,
@@ -154,7 +139,7 @@ class ProfileHeaderCard extends StatelessWidget {
                   onFollow: onFollow,
                   onUnfollow: onUnfollow,
                   onUnblock: onUnblock,
-                  onMessage: () {}, // TODO: Implement message callback
+                  onMessage: () {},
                 )
               : const ProfileActionButtons(),
         ],

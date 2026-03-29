@@ -108,4 +108,32 @@ class EndPoints {
   static String profileReport(String userId) => '/profiles/$userId/report';
   static String profileRelationship(String userId) =>
       '/profiles/$userId/relationship';
+
+  //* Settings — feed (see backend /settings/feed)
+  static const String settingsFeed = '/settings/feed';
+
+  //* Settings — security (see backend /settings/security/*)
+  static const String settingsSecurity = '/settings/security';
+  static const String settingsSecurityPassword = '/settings/security/password';
+  static const String settingsSecuritySessions = '/settings/security/sessions';
+
+  //* Settings — interactions (see backend /settings/interactions/*)
+  static const String settingsInteractions = '/settings/interactions';
+  static const String settingsInteractionsMessages =
+      '/settings/interactions/messages';
+  static const String settingsInteractionsComments =
+      '/settings/interactions/comments';
+  static const String settingsInteractionsMentions =
+      '/settings/interactions/mentions';
+  static const String settingsInteractionsBlocked =
+      '/settings/interactions/blocked';
+  static String settingsInteractionsBlockedUser(String userId) =>
+      '/settings/interactions/blocked/$userId';
+  static String settingsInteractionsMessageKeyword(String id) =>
+      '/settings/interactions/messages/keywords/$id';
+  static const String settingsInteractionsMessageKeywords =
+      '/settings/interactions/messages/keywords';
+
+  //* Support — bug reports (see backend POST /settings/support/bugs)
+  static const String settingsSupportBugs = '/settings/support/bugs';
 }

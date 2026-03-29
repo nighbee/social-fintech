@@ -38,6 +38,8 @@ class CustomTextField extends StatefulWidget {
     this.expands = false,
     this.textCapitalization = TextCapitalization.none,
     this.footer,
+    this.inactiveBorderColor,
+    this.activeBorderColor,
   });
 
   final TextEditingController controller;
@@ -72,15 +74,41 @@ class CustomTextField extends StatefulWidget {
   final bool expands;
   final TextCapitalization textCapitalization;
   final Widget? footer;
+  final Color? inactiveBorderColor;
+  final Color? activeBorderColor;
 
   @override
   State<CustomTextField> createState() => _CustomTextFieldState();
 }
 
 class _CustomTextFieldState extends State<CustomTextField> {
+  FocusNode? _internalFocusNode;
+
   bool _hasValidationError = false;
   String? _errorText;
   bool? _lastReportedLabelVisibility;
+
+  FocusNode get _effectiveFocusNode =>
+      widget.focusNode ?? (_internalFocusNode ??= FocusNode());
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  BoxBorder _resolveNormalBorder(bool hasText) {
+    final inactive = widget.inactiveBorderColor;
+    final active = widget.activeBorderColor;
+    if (inactive != null && active != null) {
+      final highlighted =
+          _effectiveFocusNode.hasFocus || hasText;
+      return Border.all(
+        color: highlighted ? active : inactive,
+        width: 1,
+      );
+    }
+    return widget.customBorder ??
+        Border.all(color: AppColors.colorffffffff, width: 1);
+  }
 
   bool _isLabelVisible(bool hasText) {
     if (!widget.showLabel) return false;
@@ -121,6 +149,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   void initState() {
     super.initState();
+    _effectiveFocusNode.addListener(_onFocusChanged);
     _notifyLabelVisibilityIfChanged();
     widget.controller.addListener(_onTextChanged);
   }
@@ -136,6 +165,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
   @override
   void dispose() {
+    _effectiveFocusNode.removeListener(_onFocusChanged);
+    _internalFocusNode?.dispose();
     widget.controller.removeListener(_onTextChanged);
     super.dispose();
   }
@@ -149,7 +180,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
     final textField = TextFormField(
       controller: widget.controller,
-      focusNode: widget.focusNode,
+      focusNode: _effectiveFocusNode,
       onChanged: (value) {
         widget.onChanged?.call(value);
       },
@@ -220,8 +251,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
             border: widget.showBorder
                 ? (_hasValidationError
                     ? Border.all(color: AppColors.colorffEF4444, width: 1)
-                    : (widget.customBorder ??
-                        Border.all(color: AppColors.colorffffffff, width: 1)))
+                    : _resolveNormalBorder(hasText))
                 : null,
             borderRadius: BorderRadius.circular(widget.borderRadius),
             color: widget.backgroundColor ?? context.theme.mainBackground,

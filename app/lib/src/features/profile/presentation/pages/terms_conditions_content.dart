@@ -61,8 +61,6 @@ const List<TermsSectionData> kTermsSections = <TermsSectionData>[
         'In short: If you buy a premium plan, here is how billing works.',
     paragraphs: <String>[
       'Some parts of the Service are billed on a subscription basis ("Subscription(s)"). You will be billed in advance on a recurring and periodic basis (such as daily, weekly, monthly, or annually), depending on the type of subscription plan you select when purchasing the Subscription.',
-    ],
-    bullets: <String>[
       'Free Trial: We may offer a Subscription with a free trial for a limited period of time.',
       'Cancellation: You may cancel your Subscription renewal either through your Account settings page or by contacting us.',
     ],

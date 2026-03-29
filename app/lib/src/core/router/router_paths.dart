@@ -47,6 +47,8 @@ class RoutePaths {
   static const String allies = '/allies';
   static const String publicProfile = '/public-profile/:userId';
   static const String editProfile = 'edit-profile';
+  static const String editProfileNickname = 'edit-profile-nickname';
+  static const String editProfileBio = 'edit-profile-bio';
 
   // Developer features
   static const String developerFeatures = '/developer_features';
