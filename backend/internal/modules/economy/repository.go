@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -466,6 +467,12 @@ func (r *repository) GetUserActivationState(ctx context.Context, userID string) 
 		Restrictions     sql.NullTime `db:"restrictions_until"`
 	}{}
 	if err := sqlx.GetContext(ctx, r.getExecutor(), &row, `SELECT activation_status, restrictions_until FROM users WHERE id = $1`, userID); err != nil {
+		// Backward compatibility for stale local DBs where activation columns are missing.
+		// In this case treat user as active to avoid hard 500 on task/economy flows.
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "activation_status") || strings.Contains(errMsg, "restrictions_until") {
+			return "active", nil, nil
+		}
 		return "", nil, fmt.Errorf("failed to scan activation state: %w", err)
 	}
 	return row.ActivationStatus, &row.Restrictions, nil
