@@ -116,6 +116,12 @@ class EndPoints {
   static const String settingsSecurity = '/settings/security';
   static const String settingsSecurityPassword = '/settings/security/password';
   static const String settingsSecuritySessions = '/settings/security/sessions';
+  static const String settingsSecurityDeleteAccountReason =
+      '/settings/security/delete-account/reason';
+  static const String settingsSecurityDeleteAccountVerify =
+      '/settings/security/delete-account/verify';
+  static const String settingsSecurityDeleteAccount =
+      '/settings/security/delete-account';
 
   //* Settings — interactions (see backend /settings/interactions/*)
   static const String settingsInteractions = '/settings/interactions';

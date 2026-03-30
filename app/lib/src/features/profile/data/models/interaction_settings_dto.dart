@@ -257,6 +257,40 @@ class SecurityOverviewDto {
   }
 }
 
+class DeleteAccountReasonResponseDto {
+  const DeleteAccountReasonResponseDto({
+    required this.verificationMethod,
+  });
+
+  final String verificationMethod;
+
+  factory DeleteAccountReasonResponseDto.fromJson(Map<String, dynamic> json) {
+    return DeleteAccountReasonResponseDto(
+      verificationMethod:
+          (json['verification_method'] as String? ?? 'password').trim().toLowerCase(),
+    );
+  }
+}
+
+class DeleteAccountVerifyResponseDto {
+  const DeleteAccountVerifyResponseDto({
+    required this.verificationToken,
+    required this.expiresAt,
+  });
+
+  final String verificationToken;
+  final DateTime? expiresAt;
+
+  factory DeleteAccountVerifyResponseDto.fromJson(Map<String, dynamic> json) {
+    final rawExpires = json['expires_at'] as String?;
+    return DeleteAccountVerifyResponseDto(
+      verificationToken: (json['verification_token'] as String? ?? '').trim(),
+      expiresAt:
+          (rawExpires == null || rawExpires.isEmpty) ? null : DateTime.tryParse(rawExpires),
+    );
+  }
+}
+
 /// Элемент GET /settings/security/sessions
 class SessionItemDto {
   const SessionItemDto({

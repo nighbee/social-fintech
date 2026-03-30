@@ -12,6 +12,21 @@ abstract interface class IInteractionSettingsRemote {
 
   Future<Either<DomainException, List<SessionItemDto>>> listSessions();
 
+  Future<Either<DomainException, DeleteAccountReasonResponseDto>>
+      deleteAccountReason({
+    required String reason,
+  });
+
+  Future<Either<DomainException, DeleteAccountVerifyResponseDto>>
+      deleteAccountVerify({
+    String? password,
+    String? otp,
+  });
+
+  Future<Either<DomainException, void>> deleteAccountFinalize({
+    required String verificationToken,
+  });
+
   Future<Either<DomainException, FeedSettingsDto>> getFeedSettings();
 
   Future<Either<DomainException, void>> patchFeedSettings(int newLimitMins);

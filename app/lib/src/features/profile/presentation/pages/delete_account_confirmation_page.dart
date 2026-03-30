@@ -1,8 +1,12 @@
+import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/styled_message_dialog.dart';
+import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:app/src/features/profile/data/sources/remote/i_interaction_settings_remote.dart';
 import 'package:app/src/features/profile/presentation/models/delete_account_flow_data.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -23,22 +27,47 @@ class DeleteAccountConfirmationPage extends StatefulWidget {
 
 class _DeleteAccountConfirmationPageState
     extends State<DeleteAccountConfirmationPage> {
+  final IInteractionSettingsRemote _remote =
+      getIt<IInteractionSettingsRemote>();
   bool _isAcknowledged = false;
+  bool _isSubmitting = false;
 
   Future<void> _handleDelete() async {
-    if (!_isAcknowledged) {
+    if (!_isAcknowledged || _isSubmitting) {
       return;
     }
-
-    await showStyledMessageDialog<void>(
-      context: context,
-      message: 'Account deletion is not available yet.',
+    final token = widget.flowData.verificationToken.trim();
+    if (token.isEmpty) {
+      await showStyledMessageDialog<void>(
+        context: context,
+        message: 'Verification expired. Please restart delete account flow.',
+      );
+      return;
+    }
+    setState(() => _isSubmitting = true);
+    final finalizeResult = await _remote.deleteAccountFinalize(
+      verificationToken: token,
     );
     if (!mounted) {
       return;
     }
+    setState(() => _isSubmitting = false);
 
-    context.pop(true);
+    var success = false;
+    finalizeResult.fold(
+      (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      },
+      (_) => success = true,
+    );
+    if (!success) {
+      return;
+    }
+
+    getIt<AuthBloc>().add(const AuthEvent.logout());
+    context.go(RoutePaths.loginWithEmail);
   }
 
   @override
@@ -92,7 +121,7 @@ class _DeleteAccountConfirmationPageState
               CustomButton(
                 text: 'Delete',
                 onTap: _handleDelete,
-                isDisabled: !_isAcknowledged,
+                isDisabled: !_isAcknowledged || _isSubmitting,
                 backgroundColor: AppColors.backgroundBrandLight,
                 borderRadius: 6,
                 padding: const EdgeInsets.symmetric(vertical: 11),

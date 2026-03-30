@@ -238,6 +238,12 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 builder: (context, state) => const MapRequestCanceledPage(),
               ),
               GoRoute(
+                path: RoutePaths.mapRequestClosed,
+                name: RouteNames.mapRequestClosed,
+                redirect: AuthGuard,
+                builder: (context, state) => const MapRequestClosedPage(),
+              ),
+              GoRoute(
                 path: RoutePaths.mapRequestCompleted,
                 name: RouteNames.mapRequestCompleted,
                 redirect: AuthGuard,

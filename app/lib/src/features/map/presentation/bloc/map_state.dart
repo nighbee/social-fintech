@@ -23,6 +23,7 @@ class MapViewModel with _$MapViewModel {
     @Default(<MapTaskEntity>[]) List<MapTaskEntity> appliedTasks,
     @Default(false) bool hasAppliedTasksLoaded,
     @Default(<MapTaskEntity>[]) List<MapTaskEntity> myTasks,
+    @Default(false) bool hasMyTasksLoaded,
     @Default(MapTaskEntity.empty()) MapTaskEntity selectedTask,
     @Default(<MapTaskApplicationEntity>[]) List<MapTaskApplicationEntity>
         taskApplications,

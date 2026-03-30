@@ -33,6 +33,7 @@ class RoutePaths {
   static const String mapCreateRequestPublished =
       '/map/create-request/published';
   static const String mapRequestCanceled = '/map/request-canceled';
+  static const String mapRequestClosed = '/map/request-closed';
   static const String mapRequestCompleted = '/map/request-completed';
 
   // Rating routes

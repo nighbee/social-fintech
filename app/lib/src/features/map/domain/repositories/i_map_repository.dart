@@ -22,6 +22,10 @@ abstract interface class IMapRepository {
   Future<Either<DomainException, List<MapChampionEntity>>> getChampions(
     MapChampionsRequest request,
   );
+
+  /// Чемпионы по всем уровням H3 региона (5 / 4 / 2) — отдельные запросы, merge на клиенте.
+  Future<Either<DomainException, List<MapChampionEntity>>>
+      getChampionsMergedForRegion(MapRegionAssignmentEntity region);
   Future<Either<DomainException, MapTaskEntity>> createTask(
     MapCreateTaskRequest request,
   );

@@ -187,14 +187,18 @@ class _NearbyTasksPanel extends StatelessWidget {
         ? task.description
         : 'No description provided for this request.';
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 410),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(6),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
           decoration: BoxDecoration(
-            color: MapUiPalette.panelBackground,
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0x33202020),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(color: MapUiPalette.panelBorder),
             boxShadow: [
               BoxShadow(
@@ -210,18 +214,17 @@ class _NearbyTasksPanel extends StatelessWidget {
             ],
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            padding: const EdgeInsets.fromLTRB(12, 16, 12, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
-                    const CircleAvatar(
-                      radius: 15,
-                      backgroundColor: Color(0xFF2A3341),
-                      child:
-                          Icon(Icons.person, color: Colors.white70, size: 16),
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: const Color(0xFF2A3341),
+                      backgroundImage: Assets.images.image.provider(),
                     ),
                     const Gap(10),
                     Expanded(
@@ -240,14 +243,12 @@ class _NearbyTasksPanel extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   description,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyles.bodyMain.copyWith(
                     color: Colors.white70,
                     height: 1.35,
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 20),
                 Row(
                   children: [
                     Expanded(
@@ -259,11 +260,7 @@ class _NearbyTasksPanel extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const Icon(
-                      Icons.monetization_on_outlined,
-                      color: Colors.white60,
-                      size: 14,
-                    ),
+                    Assets.icons.silverCoin.svg(width: 18, height: 18),
                     const SizedBox(width: 4),
                     Text(
                       task.reward.toStringAsFixed(0),
@@ -274,18 +271,18 @@ class _NearbyTasksPanel extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 25),
                 SizedBox(
                   width: double.infinity,
                   child: InkWell(
                     onTap: () => onApply(task.id),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                     child: Container(
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
                         color: const Color(0xFFE5E5E5),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         'I can help',
@@ -300,6 +297,8 @@ class _NearbyTasksPanel extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
         ),
       ),
     );

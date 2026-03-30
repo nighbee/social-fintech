@@ -1,11 +1,12 @@
 import 'dart:async';
 
 import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_task_application_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_task_entity.dart';
-import 'package:app/src/features/map/domain/requests/map_champions_request.dart';
 import 'package:app/src/features/map/domain/requests/map_nearby_tasks_request.dart';
 import 'package:app/src/features/map/domain/requests/map_region_assignment_request.dart';
 import 'package:app/src/features/map/domain/requests/map_task_application_id_request.dart';
@@ -17,6 +18,11 @@ import 'package:app/src/features/map/presentation/services/map_dialog_service.da
 import 'package:app/src/features/map/presentation/services/map_persistence_service.dart';
 import 'package:app/src/features/map/presentation/services/map_polling_service.dart';
 import 'package:app/src/features/map/presentation/services/map_request_marker_service.dart';
+import 'package:app/src/features/map/presentation/services/map_location_settings.dart';
+import 'package:app/src/features/map/presentation/services/map_self_marker_service.dart';
+import 'package:app/src/features/map/presentation/utils/map_flow_evaluator.dart';
+import 'package:app/src/features/map/presentation/utils/map_marker_zoom_scale.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:go_router/go_router.dart';
@@ -39,6 +45,7 @@ class MapPageController {
         _dialogs = dialogs,
         _championService = MapChampionService(),
         _requestMarkerService = MapRequestMarkerService(),
+        _selfMarkerService = MapSelfMarkerService(),
         _requestSetState = requestSetState,
         _onChampionTapCallback = onChampionTap;
 
@@ -48,6 +55,7 @@ class MapPageController {
   final MapDialogService _dialogs;
   final MapChampionService _championService;
   final MapRequestMarkerService _requestMarkerService;
+  final MapSelfMarkerService _selfMarkerService;
   final void Function(VoidCallback fn) _requestSetState;
   final void Function(
     MapChampionEntity champion,
@@ -70,14 +78,24 @@ class MapPageController {
   int consecutiveMissingAppliedTaskChecks = 0;
   double currentLatitude = 50.4501;
   double currentLongitude = 30.5234;
+  double? _deviceLatitude;
+  double? _deviceLongitude;
+  var _didAssignRegionWithDeviceLocation = false;
+  var _didCameraFollowFirstDeviceFix = false;
   bool isRequestExpanded = false;
   bool hasSavedCenter = false;
   String? _lastChampionsRegionKey;
+  DateTime? _lastEmptyChampionsFetchAt;
+  String? _lastHandledAutoClosedTaskId;
+  String? _lastSelfPinAvatarUrl;
   String? selectedNearbyTaskId;
   DateTime? _lastMarkerSelectionAt;
   Future<void>? _teardownFuture;
+  int? _lastMarkerZoomStep;
 
   void onInit() {
+    _lastChampionsRegionKey = null;
+    _lastEmptyChampionsFetchAt = null;
     _mapBloc.add(const MapEvent.loadMap());
     unawaited(_restoreSavedMapCenter());
     unawaited(_restoreActiveExecutorApplication());
@@ -95,8 +113,10 @@ class MapPageController {
 
   Future<void> _teardownMapResourcesOnce() async {
     _polling.dispose();
+    _lastMarkerZoomStep = null;
     await _championService.dispose();
     await _requestMarkerService.dispose();
+    await _selfMarkerService.dispose();
     mapboxMap = null;
   }
 
@@ -137,11 +157,13 @@ class MapPageController {
     required bool mounted,
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
-    _reconcileSelectedNearbyTask(viewModel.nearbyTasks);
-    await _requestMarkerService.syncTasks(viewModel.nearbyTasks);
+    final nearbyForMarkers = _nearbyTasksWithMyStatuses(viewModel);
+    _reconcileSelectedNearbyTask(nearbyForMarkers);
+    await _requestMarkerService.syncTasks(nearbyForMarkers);
     await _requestMarkerService.setSelectedTask(selectedNearbyTaskId);
     _ensureChampionsLoaded(viewModel);
     _refreshTaskApplications(viewModel);
+    await _tryHandleCreatorAutoClosedTask(context, viewModel);
     await _tryShowCreatorConfirmDialog(context, viewModel);
     _tryCheckExecutorCompletion(
       context,
@@ -212,22 +234,71 @@ class MapPageController {
       );
     }
 
-    // Update champion markers when champions are loaded
-    if (viewModel.champions.isNotEmpty) {
-      unawaited(
-        _championService.updateChampions(
-          viewModel.champions,
-          viewModel.assignedRegion,
-        ),
-      );
+    // Чемпионы: пустой список тоже синхронизировать (убрать старые пины после loadMap).
+    unawaited(
+      _championService.updateChampions(
+        viewModel.champions,
+        viewModel.assignedRegion,
+      ),
+    );
+
+    final avatar = _resolveProfileAvatarUrl();
+    if (avatar != _lastSelfPinAvatarUrl) {
+      _lastSelfPinAvatarUrl = avatar;
+      unawaited(_selfMarkerService.reloadAppearance(avatarUrl: avatar));
     }
+  }
+
+  /// В nearby с бэка часто `open`, а в myTasks — `mine|…`; иначе маркер моргает «чужой → свой».
+  List<MapTaskEntity> _nearbyTasksWithMyStatuses(MapViewModel viewModel) {
+    final nearby = viewModel.nearbyTasks;
+    final my = viewModel.myTasks;
+    if (my.isEmpty) {
+      return nearby;
+    }
+    final byId = {for (final t in my) t.id: t};
+    return [
+      for (final t in nearby)
+        _applyMyTaskStatusIfSameId(t, byId[t.id]),
+    ];
+  }
+
+  MapTaskEntity _applyMyTaskStatusIfSameId(
+    MapTaskEntity nearby,
+    MapTaskEntity? mine,
+  ) {
+    if (mine == null || mine.id != nearby.id) {
+      return nearby;
+    }
+    return nearby.copyWith(status: mine.status);
+  }
+
+  String? _resolveProfileAvatarUrl() {
+    return getIt<ProfileBloc>().state.maybeWhen(
+          loaded: (vm) {
+            final u = vm.profile.avatarUrl;
+            return u.isEmpty ? null : u;
+          },
+          loading: (vm) {
+            final u = vm.profile.avatarUrl;
+            return u.isEmpty ? null : u;
+          },
+          orElse: () => null,
+        ) ??
+        getIt<AuthBloc>().state.maybeWhen(
+          authenticated: (login) {
+            final u = login.user.avatarUrl;
+            return u.isEmpty ? null : u;
+          },
+          orElse: () => null,
+        );
   }
 
   void onMapCreated(MapboxMap map) {
     mapboxMap = map;
     unawaited(
       map.location.updateSettings(
-        LocationComponentSettings(enabled: true),
+        LocationComponentSettings(enabled: false),
       ),
     );
     if (hasSavedCenter) {
@@ -243,13 +314,9 @@ class MapPageController {
       );
     }
 
-    // Initialize champion service
-    unawaited(
-      _championService.initialize(
-        map,
-        onChampionTap: _onChampionTap,
-      ),
-    );
+    // Чемпионы: сначала создаём менеджер аннотаций, иначе onLoaded мог вызвать
+    // updateChampions раньше — там manager == null и пины тихо не создаются.
+    unawaited(_initChampionLayer(map));
 
     _refreshNearbyTasks();
     _polling.startNearbyRefreshTimer(
@@ -265,14 +332,155 @@ class MapPageController {
         onSelectionChanged: _onRequestMarkerSelectionChanged,
       ),
     );
+
+    unawaited(_initSelfMarker(map));
+    unawaited(_watchForLateFirstGpsCameraSync());
+    unawaited(_syncMarkerScaleToCamera(map));
   }
+
+  Future<void> _syncMarkerScaleToCamera(MapboxMap map) async {
+    try {
+      final cam = await map.getCameraState();
+      _lastMarkerZoomStep = (cam.zoom * 40).round();
+      final m = mapMarkerSizeMultiplier(cam.zoom);
+      await _applyMarkerSizeMultiplier(m);
+    } catch (_) {}
+  }
+
+  Future<void> _applyMarkerSizeMultiplier(double multiplier) async {
+    await Future.wait<void>([
+      _championService.applyMarkerSizeMultiplier(multiplier),
+      _selfMarkerService.applyMarkerSizeMultiplier(multiplier),
+      _requestMarkerService.applyMarkerSizeMultiplier(multiplier),
+    ]);
+  }
+
+  Future<void> _initChampionLayer(MapboxMap map) async {
+    await _championService.initialize(
+      map,
+      onChampionTap: _onChampionTap,
+    );
+    final vm = _mapBloc.viewModel;
+    await _championService.updateChampions(
+      vm.champions,
+      vm.assignedRegion,
+    );
+  }
+
+  Future<void> _initSelfMarker(MapboxMap map) async {
+    await _selfMarkerService.initialize(map);
+    await _selfMarkerService.startLocationUpdates(
+      _resolveProfileAvatarUrl,
+      onPosition: _onDeviceLocationUpdated,
+    );
+  }
+
+  /// GPS может прийти после создания карты — пробуем подвинуть камеру в течение ~2 с.
+  Future<void> _watchForLateFirstGpsCameraSync() async {
+    for (var i = 0; i < 8; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      final lat = _deviceLatitude;
+      final lon = _deviceLongitude;
+      if (lat != null && lon != null) {
+        await _maybeMoveCameraToFirstDeviceFix(lat, lon);
+        return;
+      }
+      if (mapboxMap == null) {
+        return;
+      }
+    }
+  }
+
+  Future<void> _maybeMoveCameraToFirstDeviceFix(double lat, double lon) async {
+    if (_didCameraFollowFirstDeviceFix) {
+      return;
+    }
+    if (hasSavedCenter) {
+      return;
+    }
+    final map = mapboxMap;
+    if (map == null) {
+      return;
+    }
+    _didCameraFollowFirstDeviceFix = true;
+    currentLatitude = lat;
+    currentLongitude = lon;
+    _requestSetState(() {});
+
+    await map.easeTo(
+      CameraOptions(
+        center: Point(coordinates: Position(lon, lat)),
+        zoom: 14.5,
+      ),
+      MapAnimationOptions(duration: 550),
+    );
+
+    hasSavedCenter = true;
+    await _persistence.writeSavedCenter(lat, lon);
+  }
+
+  void _onDeviceLocationUpdated(double lat, double lon) {
+    _deviceLatitude = lat;
+    _deviceLongitude = lon;
+    unawaited(_maybeMoveCameraToFirstDeviceFix(lat, lon));
+    _refreshNearbyTasks();
+    if (!_didAssignRegionWithDeviceLocation) {
+      _didAssignRegionWithDeviceLocation = true;
+      _mapBloc.add(
+        MapEvent.assignRegion(
+          MapRegionAssignmentRequest(latitude: lat, longitude: lon),
+        ),
+      );
+    }
+  }
+
+  double get _latitudeForGeoContext =>
+      _deviceLatitude ?? currentLatitude;
+  double get _longitudeForGeoContext =>
+      _deviceLongitude ?? currentLongitude;
 
   void onCameraChanged(CameraChangedEventData eventData) {
     currentLatitude = eventData.cameraState.center.coordinates.lat.toDouble();
     currentLongitude = eventData.cameraState.center.coordinates.lng.toDouble();
+    final zoom = eventData.cameraState.zoom;
+    final step = (zoom * 40).round();
+    if (_lastMarkerZoomStep == step) {
+      return;
+    }
+    _lastMarkerZoomStep = step;
+    final m = mapMarkerSizeMultiplier(zoom);
+    unawaited(_applyMarkerSizeMultiplier(m));
   }
 
   void openCreateRequest(BuildContext context) {
+    final viewModel = _mapBloc.viewModel;
+    if (!viewModel.hasMyTasksLoaded) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Checking request availability...'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final lockMessage = MapFlowEvaluator.buildCreateTaskLockMessage(
+      viewModel.myTasks,
+      nearbyTasks: viewModel.nearbyTasks,
+      nowUtc: DateTime.now().toUtc(),
+    );
+    if (lockMessage != null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(lockMessage),
+          ),
+        );
+      }
+      return;
+    }
+
     context.push(
       RoutePaths.mapCreateRequest,
       extra: <String, dynamic>{
@@ -333,17 +541,7 @@ class MapPageController {
         return;
       }
 
-      geo.Position? position;
-      try {
-        position = await geo.Geolocator.getCurrentPosition(
-          locationSettings: const geo.LocationSettings(
-            accuracy: geo.LocationAccuracy.high,
-            timeLimit: Duration(seconds: 8),
-          ),
-        );
-      } catch (_) {
-        position = await geo.Geolocator.getLastKnownPosition();
-      }
+      final position = await MapGeo.getBestCurrentPosition();
 
       if (position == null) {
         if (context.mounted) {
@@ -358,10 +556,21 @@ class MapPageController {
       final lat = position.latitude;
       final lon = position.longitude;
 
+      _deviceLatitude = lat;
+      _deviceLongitude = lon;
       currentLatitude = lat;
       currentLongitude = lon;
       hasSavedCenter = true;
       await _persistence.writeSavedCenter(lat, lon);
+
+      if (!_didAssignRegionWithDeviceLocation) {
+        _didAssignRegionWithDeviceLocation = true;
+        _mapBloc.add(
+          MapEvent.assignRegion(
+            MapRegionAssignmentRequest(latitude: lat, longitude: lon),
+          ),
+        );
+      }
 
       await map.easeTo(
         CameraOptions(
@@ -369,6 +578,14 @@ class MapPageController {
           zoom: 14.5,
         ),
         MapAnimationOptions(duration: 500),
+      );
+
+      unawaited(
+        _selfMarkerService.updatePosition(
+          lat,
+          lon,
+          avatarUrl: _resolveProfileAvatarUrl(),
+        ),
       );
 
       _refreshNearbyTasks();
@@ -502,8 +719,8 @@ class MapPageController {
     _mapBloc.add(
       MapEvent.getNearbyTasks(
         MapNearbyTasksRequest(
-          lat: currentLatitude,
-          lon: currentLongitude,
+          lat: _latitudeForGeoContext,
+          lon: _longitudeForGeoContext,
           radiusM: 2000,
           limit: 50,
         ),
@@ -562,6 +779,45 @@ class MapPageController {
         );
       },
     );
+  }
+
+  Future<void> _tryHandleCreatorAutoClosedTask(
+    BuildContext context,
+    MapViewModel viewModel,
+  ) async {
+    final expired = _findAutoClosedWithoutResponses(viewModel.myTasks);
+    if (expired == null) {
+      return;
+    }
+    if (_lastHandledAutoClosedTaskId == expired.id) {
+      return;
+    }
+    _lastHandledAutoClosedTaskId = expired.id;
+
+    await _dialogs.showCreatorNoResponsesDialog(context);
+    if (!context.mounted) {
+      return;
+    }
+    context.push(RoutePaths.mapRequestClosed);
+  }
+
+  MapTaskEntity? _findAutoClosedWithoutResponses(List<MapTaskEntity> myTasks) {
+    final now = DateTime.now().toUtc();
+    for (final task in myTasks) {
+      final status = task.status.trim().toLowerCase();
+      if (status != 'cancelled' && status != 'completed') {
+        continue;
+      }
+      if (task.workersFilled > 0) {
+        continue;
+      }
+      final shutdownAt = DateTime.tryParse(task.autoShutdownAt)?.toUtc();
+      if (shutdownAt == null || shutdownAt.isAfter(now)) {
+        continue;
+      }
+      return task;
+    }
+    return null;
   }
 
   Future<void> _tryShowExecutorRejectedDialog(
@@ -684,43 +940,18 @@ class MapPageController {
       _mapBloc.add(
         MapEvent.assignRegion(
           MapRegionAssignmentRequest(
-            latitude: currentLatitude,
-            longitude: currentLongitude,
+            latitude: _latitudeForGeoContext,
+            longitude: _longitudeForGeoContext,
           ),
         ),
       );
       return;
     }
 
-    // Get H3 indices from the assigned region
     final region = assignedRegion;
-    final h3Indices = <String>[];
 
-    // Add available H3 indices at different resolutions
-    if (region.h3Res5.isNotEmpty) {
-      h3Indices.add(region.h3Res5);
-    }
-    if (region.h3Res4.isNotEmpty) {
-      h3Indices.add(region.h3Res4);
-    }
-    if (region.h3Res2.isNotEmpty) {
-      h3Indices.add(region.h3Res2);
-    }
-
-    if (h3Indices.isEmpty) {
-      return;
-    }
-
-    // Load champions for these H3 indices
     _lastChampionsRegionKey = _regionKey(region);
-    _mapBloc.add(
-      MapEvent.getChampions(
-        MapChampionsRequest(
-          h3Indices: h3Indices,
-          resolution: 5, // Use resolution 5 for detailed champions
-        ),
-      ),
-    );
+    _mapBloc.add(const MapEvent.getRegionalChampions());
   }
 
   void _ensureChampionsLoaded(MapViewModel viewModel) {
@@ -735,36 +966,23 @@ class MapPageController {
     final regionKey = _regionKey(region);
     if (viewModel.champions.isNotEmpty) {
       _lastChampionsRegionKey = regionKey;
+      _lastEmptyChampionsFetchAt = null;
       return;
     }
 
+    // Уже запрашивали этого региона и API вернул [] — не ддосить onLoaded, но
+    // дать шанс воркеру/БД (повтор раз в 20 с).
     if (_lastChampionsRegionKey == regionKey) {
-      return;
-    }
-
-    final h3Indices = <String>[];
-    if (region.h3Res5.isNotEmpty) {
-      h3Indices.add(region.h3Res5);
-    }
-    if (region.h3Res4.isNotEmpty) {
-      h3Indices.add(region.h3Res4);
-    }
-    if (region.h3Res2.isNotEmpty) {
-      h3Indices.add(region.h3Res2);
-    }
-    if (h3Indices.isEmpty) {
-      return;
+      final t = _lastEmptyChampionsFetchAt;
+      if (t != null &&
+          DateTime.now().difference(t) < const Duration(seconds: 20)) {
+        return;
+      }
     }
 
     _lastChampionsRegionKey = regionKey;
-    _mapBloc.add(
-      MapEvent.getChampions(
-        MapChampionsRequest(
-          h3Indices: h3Indices,
-          resolution: 5,
-        ),
-      ),
-    );
+    _lastEmptyChampionsFetchAt = DateTime.now();
+    _mapBloc.add(const MapEvent.getRegionalChampions());
   }
 
   String _regionKey(MapRegionAssignmentEntity region) {

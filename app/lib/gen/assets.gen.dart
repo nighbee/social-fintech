@@ -242,6 +242,10 @@ class $AssetsImagesGen {
   AssetGenImage get lapislazuli =>
       const AssetGenImage('assets/images/lapislazuli.png');
 
+  /// File path: assets/images/map_triangle_marker.png
+  AssetGenImage get mapTriangleMarker =>
+      const AssetGenImage('assets/images/map_triangle_marker.png');
+
   /// File path: assets/images/moonstone.png
   AssetGenImage get moonstone =>
       const AssetGenImage('assets/images/moonstone.png');
@@ -263,10 +267,11 @@ class $AssetsImagesGen {
         image,
         jade,
         lapislazuli,
+        mapTriangleMarker,
         moonstone,
         onyx,
         pearl,
-        supernova,
+        supernova
       ];
 }
 

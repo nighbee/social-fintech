@@ -17,7 +17,7 @@ class TokenInterceptor extends Interceptor {
   TokenInterceptor({required this.dio}) : storage = SecureStorageServiceImpl();
 
   bool _isRefreshing = false;
-  final Queue<Future Function()> _refreshQueue = Queue();
+  final Queue<_QueuedRequest> _refreshQueue = Queue<_QueuedRequest>();
 
   @override
   Future<void> onRequest(
@@ -84,18 +84,18 @@ class TokenInterceptor extends Interceptor {
           return handler.resolve(response);
         } catch (e) {
           _isRefreshing = false;
+          _failRefreshQueue(e);
           await _handleRefreshError(e, err.requestOptions, handler);
+          return;
         }
       } else {
-        final responseCompleter = Completer<Response>();
-        _refreshQueue.add(() async {
-          try {
-            final response = await _retry(err.requestOptions);
-            responseCompleter.complete(response);
-          } catch (e) {
-            responseCompleter.completeError(e);
-          }
-        });
+        final responseCompleter = Completer<Response<dynamic>>();
+        _refreshQueue.add(
+          _QueuedRequest(
+            requestOptions: err.requestOptions,
+            completer: responseCompleter,
+          ),
+        );
         return handler.resolve(await responseCompleter.future);
       }
     }
@@ -145,9 +145,14 @@ class TokenInterceptor extends Interceptor {
   }
 
   Future<Response> _retry(RequestOptions requestOptions) async {
+    final latestAccessToken = await storage.getAccessToken();
+    final headers = Map<String, dynamic>.from(requestOptions.headers);
+    if (latestAccessToken != null && latestAccessToken.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $latestAccessToken';
+    }
     final options = Options(
       method: requestOptions.method,
-      headers: requestOptions.headers,
+      headers: headers,
     );
     return dio.request<dynamic>(
       requestOptions.path,
@@ -159,7 +164,26 @@ class TokenInterceptor extends Interceptor {
 
   Future<void> _processRefreshQueue() async {
     while (_refreshQueue.isNotEmpty) {
-      await _refreshQueue.removeFirst()();
+      final queued = _refreshQueue.removeFirst();
+      try {
+        final response = await _retry(queued.requestOptions);
+        if (!queued.completer.isCompleted) {
+          queued.completer.complete(response);
+        }
+      } catch (e) {
+        if (!queued.completer.isCompleted) {
+          queued.completer.completeError(e);
+        }
+      }
+    }
+  }
+
+  void _failRefreshQueue(dynamic error) {
+    while (_refreshQueue.isNotEmpty) {
+      final queued = _refreshQueue.removeFirst();
+      if (!queued.completer.isCompleted) {
+        queued.completer.completeError(error);
+      }
     }
   }
 
@@ -170,12 +194,12 @@ class TokenInterceptor extends Interceptor {
   ) async {
     Log.debug('TokenInterceptor', 'Handling refresh error: $error');
     await _clearTokens();
-    _refreshQueue.clear();
+    _failRefreshQueue(error);
 
     // Navigate to auth screen
     final context = rootNavigatorKey.currentContext;
     if (context != null && context.mounted) {
-      context.go(RoutePaths.auth);
+      context.go(RoutePaths.loginWithEmail);
     }
 
     handler.next(
@@ -195,4 +219,14 @@ class TokenInterceptor extends Interceptor {
   void onResponse(Response response, ResponseInterceptorHandler handler) {
     handler.next(response);
   }
+}
+
+class _QueuedRequest {
+  _QueuedRequest({
+    required this.requestOptions,
+    required this.completer,
+  });
+
+  final RequestOptions requestOptions;
+  final Completer<Response<dynamic>> completer;
 }

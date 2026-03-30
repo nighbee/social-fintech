@@ -7,6 +7,8 @@ class MapEvent with _$MapEvent {
       _AssignRegion;
   const factory MapEvent.getChampions(MapChampionsRequest request) =
       _GetChampions;
+  /// Чемпионы district + city + country (разные resolution в БД).
+  const factory MapEvent.getRegionalChampions() = _GetRegionalChampions;
   const factory MapEvent.createTask(MapCreateTaskRequest request) = _CreateTask;
   const factory MapEvent.cancelTask(MapTaskIdRequest request) = _CancelTask;
   const factory MapEvent.applyToTask(MapTaskIdRequest request) = _ApplyToTask;

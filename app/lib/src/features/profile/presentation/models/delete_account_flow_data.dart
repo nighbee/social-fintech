@@ -6,6 +6,7 @@ class DeleteAccountFlowData {
     required this.email,
     required this.phoneNumber,
     this.selectedReason = '',
+    this.verificationToken = '',
   });
 
   static const String emailMethod = 'email';
@@ -18,6 +19,7 @@ class DeleteAccountFlowData {
   final String email;
   final String phoneNumber;
   final String selectedReason;
+  final String verificationToken;
 
   bool get usesPhoneVerification => verificationMethod == phoneMethod;
 
@@ -54,6 +56,7 @@ class DeleteAccountFlowData {
       email: (map?['email'] as String?)?.trim() ?? '',
       phoneNumber: (map?['phoneNumber'] as String?)?.trim() ?? '',
       selectedReason: (map?['selectedReason'] as String?)?.trim() ?? '',
+      verificationToken: (map?['verificationToken'] as String?)?.trim() ?? '',
     );
   }
 
@@ -65,6 +68,7 @@ class DeleteAccountFlowData {
       'email': email,
       'phoneNumber': resolvedPhoneNumber,
       'selectedReason': selectedReason,
+      'verificationToken': verificationToken,
     };
   }
 
@@ -75,6 +79,7 @@ class DeleteAccountFlowData {
     String? email,
     String? phoneNumber,
     String? selectedReason,
+    String? verificationToken,
   }) {
     return DeleteAccountFlowData(
       verificationMethod:
@@ -84,6 +89,7 @@ class DeleteAccountFlowData {
       email: email ?? this.email,
       phoneNumber: phoneNumber ?? resolvedPhoneNumber,
       selectedReason: selectedReason ?? this.selectedReason,
+      verificationToken: verificationToken ?? this.verificationToken,
     );
   }
 }

@@ -61,6 +61,7 @@ class _MapContent extends StatelessWidget {
     final safeTop = mediaQuery.padding.top;
     final safeBottom = mediaQuery.padding.bottom;
     final horizontalInset = screenHeight < 720 ? 12.0 : 14.0;
+    const requestPanelHorizontalInset = 15.0;
     final topBannerInset = 15.0;
     final topBannerTop = safeTop + 12;
     final overlayTop = topBannerTop + 104;
@@ -69,6 +70,12 @@ class _MapContent extends StatelessWidget {
     final floatingActionBottom = safeBottom + 18;
     final floatingPanelBottom = floatingActionBottom + 74;
     final myRequest = MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks);
+
+    final lockedMessage = MapFlowEvaluator.buildCreateTaskLockMessage(
+      viewModel.myTasks,
+      nearbyTasks: viewModel.nearbyTasks,
+      nowUtc: DateTime.now().toUtc(),
+    );
 
     final nearbyTasks = viewModel.nearbyTasks.toList(growable: false);
     final selectedNearbyTask = selectedNearbyTaskId == null
@@ -152,20 +159,6 @@ class _MapContent extends StatelessWidget {
     final hasExecutorFlowActive =
         isAwaitingCodeEntry || isWaitingCreatorConfirm;
     final shouldShowExecutorTopStrip = hasExecutorFlowActive;
-
-    // Debug logging
-    debugPrint('[MapContent] Executor Status Check:');
-    debugPrint(
-        '  - executorTaskStatus: "$executorTaskStatus" (normalized: "$normalizedExecutorStatus")');
-    debugPrint(
-        '  - applyResult.status: "${applyResult.status}" (normalized: "$normalizedApplyStatus")');
-    debugPrint(
-        '  - appliedTask?.status: "${appliedTask?.status ?? ''}" (normalized: "$normalizedAppliedTaskStatus")');
-    debugPrint('  - hasAppliedTask: $hasAppliedTask');
-    debugPrint('  - canEnterCodeByStatus: $canEnterCodeByStatus');
-    debugPrint('  - isCodeVerified: $isCodeVerified');
-    debugPrint('  - isAwaitingCodeEntry: $isAwaitingCodeEntry');
-    debugPrint('  - hasExecutorFlowActive: $hasExecutorFlowActive');
 
     const mapboxAccessToken = String.fromEnvironment(
       'MAPBOX_ACCESS_TOKEN',
@@ -275,8 +268,8 @@ class _MapContent extends StatelessWidget {
         if (myRequest != null ||
             (!hasExecutorFlowActive && selectedNearbyTask != null))
           Positioned(
-            left: horizontalInset,
-            right: horizontalInset,
+            left: requestPanelHorizontalInset,
+            right: requestPanelHorizontalInset,
             bottom: floatingPanelBottom,
             child: myRequest != null
                 ? (() {
@@ -459,28 +452,90 @@ class _MapContent extends StatelessWidget {
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     )
-                  : SizedBox(
-                      height: 50,
-                      child: CustomButton(
-                        text: 'Create a request for help',
-                        onTap: onOpenCreateRequest,
-                        borderRadius: 6,
-                        backgroundColor:
-                            viewModel.isBusy || viewModel.isCreatingTask
-                                ? MapUiPalette.ctaDisabledBackground
-                                : MapUiPalette.ctaBackground,
-                        border: Border.all(color: MapUiPalette.ctaBorder),
-                        textStyle: TextStyles.bodyLarge.copyWith(
-                          color: viewModel.isBusy || viewModel.isCreatingTask
-                              ? Colors.white54
-                              : Colors.white,
-                        ),
-                        prefixIcon:
-                            const Icon(Icons.add, color: Colors.white, size: 18),
-                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                      ),
+                  : _CreateRequestCta(
+                      myRequest: myRequest,
+                      hasMyTasksLoaded: viewModel.hasMyTasksLoaded,
+                      isBusy: viewModel.isBusy,
+                      isCreatingTask: viewModel.isCreatingTask,
+                      lockedMessage: lockedMessage,
+                      onOpenCreateRequest: onOpenCreateRequest,
                     ),
         ),
+      ],
+    );
+  }
+}
+
+/// Кнопка создания запроса: неактивна при активной своей задаче (макет Figma).
+class _CreateRequestCta extends StatelessWidget {
+  const _CreateRequestCta({
+    required this.myRequest,
+    required this.hasMyTasksLoaded,
+    required this.isBusy,
+    required this.isCreatingTask,
+    required this.lockedMessage,
+    required this.onOpenCreateRequest,
+  });
+
+  final MapTaskEntity? myRequest;
+  final bool hasMyTasksLoaded;
+  final bool isBusy;
+  final bool isCreatingTask;
+  final String? lockedMessage;
+  final VoidCallback onOpenCreateRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    final locked = !hasMyTasksLoaded || lockedMessage != null;
+    final disabled = isBusy || isCreatingTask || locked;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 50,
+          child: CustomButton(
+            text: 'Create a request for help',
+            onTap: disabled ? () {} : onOpenCreateRequest,
+            isDisabled: disabled,
+            borderRadius: 6,
+            backgroundColor: disabled
+                ? MapUiPalette.ctaDisabledBackground
+                : MapUiPalette.ctaBackground,
+            border: Border.all(color: MapUiPalette.ctaBorder),
+            textStyle: TextStyles.bodyLarge.copyWith(
+              color: disabled ? Colors.white54 : Colors.white,
+            ),
+            prefixIcon: Icon(
+              Icons.add,
+              color: disabled ? Colors.white54 : Colors.white,
+              size: 18,
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          ),
+        ),
+        if (!hasMyTasksLoaded) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Checking request availability...',
+            textAlign: TextAlign.center,
+            style: TextStyles.bodyMain.copyWith(
+              color: MapUiPalette.mutedText,
+              fontSize: 12,
+            ),
+          ),
+        ] else if (lockedMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            lockedMessage!,
+            textAlign: TextAlign.center,
+            style: TextStyles.bodyMain.copyWith(
+              color: MapUiPalette.mutedText,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ],
     );
   }

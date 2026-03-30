@@ -8,8 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
-class MapRequestCanceledPage extends StatelessWidget {
-  const MapRequestCanceledPage({super.key});
+class MapRequestClosedPage extends StatelessWidget {
+  const MapRequestClosedPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +45,7 @@ class MapRequestCanceledPage extends StatelessWidget {
                   ),
                   const Gap(16),
                   Text(
-                    'Request canceled',
+                    'Your request has been closed!',
                     style: TextStyles.titleTag.copyWith(
                       color: Colors.white,
                       fontSize: 22,
@@ -54,7 +54,7 @@ class MapRequestCanceledPage extends StatelessWidget {
                   ),
                   const Gap(8),
                   Text(
-                    'Your request has been successfully canceled.',
+                    'The request period has expired.',
                     textAlign: TextAlign.center,
                     style: TextStyles.bodyMain.copyWith(color: Colors.white70),
                   ),

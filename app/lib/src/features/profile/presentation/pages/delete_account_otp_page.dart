@@ -1,7 +1,9 @@
 import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/code_input_field.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
+import 'package:app/src/features/profile/data/sources/remote/i_interaction_settings_remote.dart';
 import 'package:app/src/features/profile/presentation/models/delete_account_flow_data.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -20,6 +22,8 @@ class DeleteAccountOtpPage extends StatefulWidget {
 }
 
 class _DeleteAccountOtpPageState extends State<DeleteAccountOtpPage> {
+  final IInteractionSettingsRemote _remote =
+      getIt<IInteractionSettingsRemote>();
   String _code = '';
   bool _isNavigating = false;
   int _codeFieldVersion = 0;
@@ -49,9 +53,32 @@ class _DeleteAccountOtpPageState extends State<DeleteAccountOtpPage> {
     }
 
     _isNavigating = true;
+    final verifyResult = await _remote.deleteAccountVerify(otp: _code.trim());
+    if (!mounted) {
+      return;
+    }
+    String? verificationToken;
+    verifyResult.fold(
+      (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      },
+      (v) => verificationToken = v.verificationToken,
+    );
+    if (verificationToken == null || verificationToken!.isEmpty) {
+      _isNavigating = false;
+      setState(() {
+        _code = '';
+        _codeFieldVersion++;
+      });
+      return;
+    }
     final result = await context.pushNamed(
       RouteNames.profileSecurityDeleteAccountConfirm,
-      extra: widget.flowData.toExtra(),
+      extra: widget.flowData
+          .copyWith(verificationToken: verificationToken)
+          .toExtra(),
     );
     _isNavigating = false;
 

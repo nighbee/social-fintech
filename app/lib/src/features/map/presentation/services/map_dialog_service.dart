@@ -15,6 +15,86 @@ class MapDialogService {
     _lastHandledRejectedApplicationId = null;
   }
 
+  Future<void> showCreatorNoResponsesDialog(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 26),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF656565)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, -3),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      blurRadius: 25,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.person_off_outlined,
+                      size: 38,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No one responded to your request',
+                      textAlign: TextAlign.center,
+                      style: TextStyles.bodyMain.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Unfortunately, there have been no responses to\nthe request in the last 24 hours.',
+                      textAlign: TextAlign.center,
+                      style: TextStyles.bodyMain.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    CustomButton(
+                      text: 'Ok',
+                      onTap: () => Navigator.of(dialogContext).pop(),
+                      borderRadius: 6,
+                      backgroundColor: Colors.transparent,
+                      border: Border.all(color: Colors.white54),
+                      textStyle: TextStyles.bodyMain.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> showExecutorCancelConfirmDialog({
     required BuildContext context,
     required VoidCallback onConfirm,

@@ -32,6 +32,7 @@ class RouteNames {
   static const String mapCreateRequest = 'mapCreateRequest';
   static const String mapCreateRequestPublished = 'mapCreateRequestPublished';
   static const String mapRequestCanceled = 'mapRequestCanceled';
+  static const String mapRequestClosed = 'mapRequestClosed';
   static const String mapRequestCompleted = 'mapRequestCompleted';
 
   // Rating routes

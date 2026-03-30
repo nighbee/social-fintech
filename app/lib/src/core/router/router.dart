@@ -51,6 +51,7 @@ import 'package:app/src/features/home/presentation/pages/notifications_page.dart
 import 'package:app/src/features/map/presentation/pages/create_request_page.dart';
 import 'package:app/src/features/map/presentation/pages/create_request_published_page.dart';
 import 'package:app/src/features/map/presentation/pages/map_request_canceled_page.dart';
+import 'package:app/src/features/map/presentation/pages/map_request_closed_page.dart';
 import 'package:app/src/features/map/presentation/pages/map_request_completed_page.dart';
 import 'package:app/src/features/map/presentation/pages/map_page.dart';
 import 'package:app/src/features/rating/presentation/pages/rating_page.dart';

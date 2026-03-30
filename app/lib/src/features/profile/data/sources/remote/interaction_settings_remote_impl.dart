@@ -73,6 +73,69 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   }
 
   @override
+  Future<Either<DomainException, DeleteAccountReasonResponseDto>>
+      deleteAccountReason({
+    required String reason,
+  }) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.settingsSecurityDeleteAccountReason,
+        data: {'reason': reason},
+      );
+      return response.fold((e) => Left(e), (result) {
+        final data = result.data as Map<String, dynamic>;
+        return Right(DeleteAccountReasonResponseDto.fromJson(data));
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, DeleteAccountVerifyResponseDto>>
+      deleteAccountVerify({
+    String? password,
+    String? otp,
+  }) async {
+    try {
+      final body = <String, dynamic>{};
+      final p = password?.trim() ?? '';
+      final code = otp?.trim() ?? '';
+      if (p.isNotEmpty) {
+        body['password'] = p;
+      }
+      if (code.isNotEmpty) {
+        body['otp'] = code;
+      }
+      final response = await _restClient.post(
+        EndPoints.settingsSecurityDeleteAccountVerify,
+        data: body,
+      );
+      return response.fold((e) => Left(e), (result) {
+        final data = result.data as Map<String, dynamic>;
+        return Right(DeleteAccountVerifyResponseDto.fromJson(data));
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> deleteAccountFinalize({
+    required String verificationToken,
+  }) async {
+    try {
+      final response = await _restClient.delete(
+        EndPoints.settingsSecurityDeleteAccount,
+        data: {'verification_token': verificationToken},
+      );
+      return response.fold((e) => Left(e), (_) => const Right(null));
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<DomainException, FeedSettingsDto>> getFeedSettings() async {
     try {
       final response = await _restClient.get(EndPoints.settingsFeed);

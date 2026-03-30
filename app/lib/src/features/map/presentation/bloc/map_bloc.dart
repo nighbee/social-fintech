@@ -1,6 +1,7 @@
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
+import 'package:app/src/features/map/data/demo/map_demo_config.dart';
 import 'package:app/src/features/map/data/repositories/map_repository_impl.dart';
 import 'package:app/src/features/map/domain/entities/map_apply_to_task_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
@@ -39,6 +40,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       loadMap: () => _loadMap(emit),
       assignRegion: (_) => _assignRegion(event as _AssignRegion, emit),
       getChampions: (_) => _getChampions(event as _GetChampions, emit),
+      getRegionalChampions: () =>
+          _getRegionalChampions(emit),
       createTask: (_) => _createTask(event as _CreateTask, emit),
       cancelTask: (_) => _cancelTask(event as _CancelTask, emit),
       applyToTask: (_) => _applyToTask(event as _ApplyToTask, emit),
@@ -69,8 +72,10 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
 
   Future<void> _loadMap(Emitter emit) async {
     _viewModel = _viewModel.copyWith(
-      centerLatitude: 50.4501,
-      centerLongitude: 30.5234,
+      centerLatitude:
+          mapDemoMocksEnabled ? mapDemoAlmatyLatitude : 50.4501,
+      centerLongitude:
+          mapDemoMocksEnabled ? mapDemoAlmatyLongitude : 30.5234,
       zoom: 11.8,
       cancelTaskResult: '',
       applyToTaskResult: const MapApplyToTaskEntity.empty(),
@@ -78,8 +83,14 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       verifyCodeResult: const MapVerifyCodeEntity.empty(),
       taskApplicationActionResult: '',
       hasAppliedTasksLoaded: false,
+      hasMyTasksLoaded: false,
+      assignedRegion: const MapRegionAssignmentEntity.empty(),
+      champions: const <MapChampionEntity>[],
     );
     emit(MapState.loaded(viewModel: _viewModel));
+    if (mapDemoMocksEnabled) {
+      add(const MapEvent.getRegionalChampions());
+    }
   }
 
   Future<void> _assignRegion(_AssignRegion event, Emitter emit) async {
@@ -96,6 +107,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
           assignedRegion: entity,
         );
         emit(MapState.loaded(viewModel: _viewModel));
+        add(const MapEvent.getRegionalChampions());
       },
     );
   }
@@ -103,6 +115,52 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
   Future<void> _getChampions(_GetChampions event, Emitter emit) async {
     _setBusy(emit);
     final result = await _repository.getChampions(event.request);
+    result.fold(
+      (error) {
+        _viewModel = _viewModel.copyWith(isBusy: false);
+        emit(MapState.loadingError(error.message));
+      },
+      (items) {
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          champions: items,
+        );
+        emit(MapState.loaded(viewModel: _viewModel));
+      },
+    );
+  }
+
+  Future<void> _getRegionalChampions(Emitter emit) async {
+    final region = _viewModel.assignedRegion;
+    final hasAny = region.h3Res5.isNotEmpty ||
+        region.h3Res4.isNotEmpty ||
+        region.h3Res2.isNotEmpty;
+    if (!hasAny) {
+      // Без региона API не вызывается — в debug подмешиваем демо-чемпиона из репозитория.
+      if (!mapDemoMocksEnabled) {
+        return;
+      }
+      _setBusy(emit);
+      final demoResult = await _repository.getChampionsMergedForRegion(
+        const MapRegionAssignmentEntity.empty(),
+      );
+      demoResult.fold(
+        (error) {
+          _viewModel = _viewModel.copyWith(isBusy: false);
+          emit(MapState.loadingError(error.message));
+        },
+        (items) {
+          _viewModel = _viewModel.copyWith(
+            isBusy: false,
+            champions: items,
+          );
+          emit(MapState.loaded(viewModel: _viewModel));
+        },
+      );
+      return;
+    }
+    _setBusy(emit);
+    final result = await _repository.getChampionsMergedForRegion(region);
     result.fold(
       (error) {
         _viewModel = _viewModel.copyWith(isBusy: false);
@@ -288,13 +346,30 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
     final result = await _repository.getMyTasks();
     result.fold(
       (error) {
-        _viewModel = _viewModel.copyWith(isBusy: false);
+        _viewModel = _viewModel.copyWith(
+          isBusy: false,
+          hasMyTasksLoaded: false,
+        );
         emit(MapState.loadingError(error.message));
       },
       (items) {
+        // Backend can lag for a short time and miss freshly created local mine| task.
+        // Keep local active mine tasks until backend catches up.
+        final mergedById = <String, MapTaskEntity>{
+          for (final t in items) t.id: t,
+        };
+        for (final local in _viewModel.myTasks) {
+          final status = local.status.trim().toLowerCase();
+          final isLocalMine = status.startsWith('mine|');
+          final isClosed = status == 'completed' || status == 'cancelled';
+          if (isLocalMine && !isClosed && !mergedById.containsKey(local.id)) {
+            mergedById[local.id] = local;
+          }
+        }
         _viewModel = _viewModel.copyWith(
           isBusy: false,
-          myTasks: items,
+          myTasks: mergedById.values.toList(growable: false),
+          hasMyTasksLoaded: true,
         );
         emit(MapState.loaded(viewModel: _viewModel));
       },

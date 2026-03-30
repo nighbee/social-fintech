@@ -1,17 +1,25 @@
 import 'dart:ui';
 
 import 'package:app/src/features/auth/domain/entities/user_entity.dart';
+import 'package:app/src/features/map/data/demo/map_demo_config.dart';
+import 'package:app/src/features/map/data/demo/map_demo_data.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:h3_dart/h3_dart.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 /// Service for managing champion markers on the map
 class MapChampionService {
   MapChampionService();
   static const int _managerInitAttempts = 3;
+  static const double _markerIconScale = 1.14;
 
+  double _markerSizeMultiplier = 1.0;
+
+  final H3 _h3 = const H3Factory().process();
   PointAnnotationManager? _annotationManager;
   final Map<String, PointAnnotation> _annotations = {};
   final Map<String, String> _annotationIdsToH3Index = {};
@@ -65,6 +73,27 @@ class MapChampionService {
     }
   }
 
+  Future<void> applyMarkerSizeMultiplier(double multiplier) async {
+    if ((multiplier - _markerSizeMultiplier).abs() < 0.008) {
+      return;
+    }
+    _markerSizeMultiplier = multiplier;
+    final manager = _annotationManager;
+    if (manager == null) {
+      return;
+    }
+    for (final ann in _annotations.values) {
+      ann.iconSize = _markerIconScale * _markerSizeMultiplier;
+      try {
+        await manager.update(ann);
+      } on PlatformException catch (error) {
+        if (error.code != 'channel-error') {
+          rethrow;
+        }
+      }
+    }
+  }
+
   /// Update champions on the map
   Future<void> updateChampions(
     List<MapChampionEntity> champions,
@@ -98,25 +127,62 @@ class MapChampionService {
       _championsByIndex.remove(h3Index);
     }
 
-    // Add or update champions with mock coordinates for testing
-    // TODO: Replace with actual coordinates from backend or user profiles
     for (final champion in champions) {
-      if (!_annotations.containsKey(champion.h3Index)) {
-        // Create mock coordinates based on H3 index hash
-        final mockCoords = _getMockCoordinates(champion.h3Index);
-        await _addChampionWithCoords(manager, champion, mockCoords);
+      final coords = _coordsForChampion(champion);
+      if (coords == null) {
+        debugPrint('[MapChampionService] invalid h3: ${champion.h3Index}');
+        continue;
+      }
+      final existing = _annotations[champion.h3Index];
+      if (existing != null) {
+        existing
+          ..geometry = Point(coordinates: Position(coords.lng, coords.lat))
+          ..iconAnchor = IconAnchor.BOTTOM
+          ..symbolSortKey = 8000
+          ..iconSize = _markerIconScale * _markerSizeMultiplier;
+        await manager.update(existing);
+        _championsByIndex[champion.h3Index] = champion;
+      } else {
+        await _addChampionWithCoords(manager, champion, coords);
       }
     }
   }
 
-  /// Get mock coordinates for testing (based on H3 index hash)
-  ({double lat, double lng}) _getMockCoordinates(String h3Index) {
-    // Create deterministic mock coordinates based on H3 index
-    // Taraz, Kazakhstan coordinates: 45.1704, 69.5165
-    final hash = h3Index.hashCode;
-    final lat = 45.1704 + (hash % 1000) / 10000; // Taraz area
-    final lng = 69.5165 + (hash % 1000) / 10000;
-    return (lat: lat, lng: lng);
+  /// Центр H3-ячейки (как на бэкенде в `centerOfH3`): координаты пина чемпиона региона.
+  ({double lat, double lng})? _cellCenter(String h3Hex) {
+    final normalized = h3Hex.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    try {
+      final index = BigInt.parse(normalized, radix: 16);
+      if (_h3.h3IsValid(index)) {
+        final geo = _h3.h3ToGeo(index);
+        return (lat: geo.lat, lng: geo.lon);
+      }
+      // Индекс с другой версии h3-js / другого bindings — иногда h3IsValid ложный, geo всё ещё ок.
+      try {
+        final geo = _h3.h3ToGeo(index);
+        return (lat: geo.lat, lng: geo.lon);
+      } catch (_) {
+        return null;
+      }
+    } catch (_) {
+      return null;
+    }
+  }
+
+  ({double lat, double lng})? _coordsForChampion(MapChampionEntity champion) {
+    final fromH3 = _cellCenter(champion.h3Index);
+    if (fromH3 != null) {
+      return fromH3;
+    }
+    // Демо: `8520e60bfffffff` с h3-js не проходит h3IsValid в нативном FFI — фиксируем центр Алматы.
+    if (champion.userId == mapDemoChampionUserId ||
+        champion.h3Index.trim().toLowerCase() == mapDemoChampionH3Res5) {
+      return (lat: mapDemoAlmatyLatitude, lng: mapDemoAlmatyLongitude);
+    }
+    return null;
   }
 
   /// Add champion with specific coordinates
@@ -129,6 +195,8 @@ class MapChampionService {
       geometry: Point(coordinates: Position(coords.lng, coords.lat)),
       image: await _createChampionMarkerImage(),
       iconAnchor: IconAnchor.BOTTOM,
+      symbolSortKey: 8000,
+      iconSize: _markerIconScale * _markerSizeMultiplier,
     );
 
     final pointAnnotation = await manager.create(pointAnnotationOptions);
@@ -168,6 +236,7 @@ class MapChampionService {
     _onChampionTap = null;
     await clear();
     _annotationManager = null;
+    _markerSizeMultiplier = 1.0;
   }
 
   bool _isTokenActive(int token) => token == _lifecycleToken;
@@ -212,14 +281,14 @@ class MapChampionService {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
     const gold = Color(0xFFCEA548);
-    const circleSize = 86.0;
+    const circleSize = 86.0 * 1.08;
     const strokeW = 2.0;
     const shadowBlur = 4.0;
     const pad = shadowBlur + 2.0;
     const width = circleSize + pad * 2;
     const circleCx = width / 2;
     const circleCy = pad + circleSize / 2;
-    const fillRadius = 41.0;
+    final fillRadius = 41.0 * 1.08;
 
     final circleRect = Rect.fromCircle(
       center: Offset(circleCx, circleCy),
@@ -247,7 +316,7 @@ class MapChampionService {
       ..style = PaintingStyle.fill;
     canvas.drawCircle(
       Offset(circleCx, circleCy - 10),
-      9.0,
+      9.0 * 1.08,
       personPaint,
     );
     final bodyPath = Path()

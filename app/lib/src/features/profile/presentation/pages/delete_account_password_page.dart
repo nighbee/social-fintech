@@ -1,11 +1,13 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/styled_message_dialog.dart';
+import 'package:app/src/features/profile/data/sources/remote/i_interaction_settings_remote.dart';
 import 'package:app/src/features/profile/presentation/models/delete_account_flow_data.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -26,8 +28,11 @@ class DeleteAccountPasswordPage extends StatefulWidget {
 
 class _DeleteAccountPasswordPageState
     extends State<DeleteAccountPasswordPage> {
+  final IInteractionSettingsRemote _remote =
+      getIt<IInteractionSettingsRemote>();
   final TextEditingController _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isSubmitting = false;
 
   bool get _canContinue => _passwordController.text.trim().isNotEmpty;
 
@@ -49,13 +54,35 @@ class _DeleteAccountPasswordPageState
   }
 
   Future<void> _handleContinue() async {
-    if (!_canContinue) {
+    if (!_canContinue || _isSubmitting) {
+      return;
+    }
+    final password = _passwordController.text.trim();
+    setState(() => _isSubmitting = true);
+    final verifyResult = await _remote.deleteAccountVerify(password: password);
+    if (!mounted) {
+      return;
+    }
+    setState(() => _isSubmitting = false);
+
+    String? verificationToken;
+    verifyResult.fold(
+      (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      },
+      (v) => verificationToken = v.verificationToken,
+    );
+    if (verificationToken == null || verificationToken!.isEmpty) {
       return;
     }
 
     final result = await context.pushNamed(
       RouteNames.profileSecurityDeleteAccountConfirm,
-      extra: widget.flowData.toExtra(),
+      extra: widget.flowData
+          .copyWith(verificationToken: verificationToken)
+          .toExtra(),
     );
     if (!mounted || result != true) {
       return;
@@ -148,7 +175,7 @@ class _DeleteAccountPasswordPageState
               CustomButton(
                 text: 'Continue',
                 onTap: _handleContinue,
-                isDisabled: !_canContinue,
+                isDisabled: !_canContinue || _isSubmitting,
                 borderRadius: 6,
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 textStyle: TextStyles.titleMain.copyWith(

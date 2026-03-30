@@ -27,13 +27,6 @@ class MapFlowEvaluator {
         continue;
       }
 
-      final hasRemainingSlots = task.workersFilled < task.workersNeeded;
-      final isActiveStatus =
-          status == 'open' || status == 'in_progress' || status.startsWith('mine');
-      if (!isActiveStatus || !hasRemainingSlots) {
-        continue;
-      }
-
       if (latestClosedAt != null) {
         final createdAt = DateTime.tryParse(task.createdAt)?.toUtc();
         if (createdAt == null || !createdAt.isAfter(latestClosedAt)) {
@@ -57,5 +50,46 @@ class MapFlowEvaluator {
               !locallyRejectedApplicationIds.contains(app.id),
         )
         .toList(growable: false);
+  }
+
+  static String? buildCreateTaskLockMessage(
+    List<MapTaskEntity> myTasks, {
+    List<MapTaskEntity> nearbyTasks = const <MapTaskEntity>[],
+    required DateTime nowUtc,
+  }) {
+    final active = findCreatorActiveTask(myTasks);
+    if (active != null) {
+      return 'You will be able to create a new request in 7 days.';
+    }
+
+    // Fallback: иногда myTasks приходит позже/неполно, но в nearby уже есть локальный mine|...
+    final hasMineNearby = nearbyTasks.any(
+      (task) => task.status.trim().toLowerCase().startsWith('mine|'),
+    );
+    if (hasMineNearby) {
+      return 'You will be able to create a new request in 7 days.';
+    }
+
+    DateTime? latestClosedAt;
+    for (final task in myTasks) {
+      final status = task.status.trim().toLowerCase();
+      if (status != 'completed' && status != 'cancelled') {
+        continue;
+      }
+      final createdAt = DateTime.tryParse(task.createdAt)?.toUtc();
+      if (createdAt == null) {
+        continue;
+      }
+      if (latestClosedAt == null || createdAt.isAfter(latestClosedAt)) {
+        latestClosedAt = createdAt;
+      }
+    }
+
+    final unlockAt = latestClosedAt?.add(const Duration(days: 7));
+    final isCooldownLocked = unlockAt != null && nowUtc.isBefore(unlockAt);
+    if (isCooldownLocked) {
+      return 'You must wait 7 days between creating tasks';
+    }
+    return null;
   }
 }
