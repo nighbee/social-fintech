@@ -1,28 +1,42 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/router/router.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/action_bottom_sheet.dart';
 import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
+import 'package:app/src/features/home/domain/requests/post_id_request.dart';
+import 'package:app/src/features/home/domain/requests/report_post_request.dart';
+import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
+import 'package:app/src/features/profile/domain/repositories/i_profile_repository.dart';
+import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 enum PostReportReason {
-  spamOrScam('Spam or scam'),
-  hateHarassment('Hate, harassment'),
-  nuditySexualContent('Nudity or sexual content'),
-  violence('Violence'),
-  illegalContent('Illegal content'),
-  gamblingPromotion('Gambling promotion'),
-  copyrightViolation('Copyright violation'),
-  fakeAccount('Fake account'),
-  manipulationOfHonor('Manipulation of Honor');
+  spamOrScam(label: 'Spam or scam', apiReason: 'spam'),
+  hateHarassment(label: 'Hate, harassment', apiReason: 'hate'),
+  nuditySexualContent(label: 'Nudity or sexual content', apiReason: 'nudity'),
+  violence(label: 'Violence', apiReason: 'violence'),
+  illegalContent(label: 'Illegal content', apiReason: 'illegal'),
+  gamblingPromotion(label: 'Gambling promotion', apiReason: 'gambling'),
+  copyrightViolation(label: 'Copyright violation', apiReason: 'copyright'),
+  fakeAccount(label: 'Fake account', apiReason: 'fake_account'),
+  manipulationOfHonor(
+      label: 'Manipulation of Honor', apiReason: 'manipulation');
 
-  const PostReportReason(this.label);
+  const PostReportReason({required this.label, required this.apiReason});
   final String label;
+  final String apiReason;
 }
 
 mixin ShowPostReportBottomSheet {
   void showPostReportBottomSheet(
     BuildContext context, {
+    required HomeBloc bloc,
+    required String postId,
+    required String authorId,
     required String username,
+    VoidCallback? onReported,
   }) {
     context.showRoundedModalBottomSheet(
       backgroundColor: Colors.transparent,
@@ -33,45 +47,181 @@ mixin ShowPostReportBottomSheet {
         enableGlassEffect: true,
         enableDropShadow: false,
         showDivider: false,
-        child: _PostReportFlowSheet(username: username),
+        child: _PostReportFlowSheet(
+          bloc: bloc,
+          postId: postId,
+          authorId: authorId,
+          username: username,
+          onReported: onReported,
+        ),
       ),
     );
   }
 }
 
 class _PostReportFlowSheet extends StatefulWidget {
-  const _PostReportFlowSheet({required this.username});
+  const _PostReportFlowSheet({
+    required this.bloc,
+    required this.postId,
+    required this.authorId,
+    required this.username,
+    this.onReported,
+  });
 
+  final HomeBloc bloc;
+  final String postId;
+  final String authorId;
   final String username;
+  final VoidCallback? onReported;
 
   @override
   State<_PostReportFlowSheet> createState() => _PostReportFlowSheetState();
 }
 
 class _PostReportFlowSheetState extends State<_PostReportFlowSheet> {
+  final IProfileRepository _profileRepository = getIt<IProfileRepository>(
+    instanceName: 'ProfileRepositoryImpl',
+  );
   PostReportReason? _selectedReason;
+  bool _isSubmitting = false;
+  String? _errorText;
+
+  bool _isDuplicateReportError(String message) {
+    final normalized = message.trim().toLowerCase();
+    return normalized == 'duplicate_report' ||
+        normalized.contains('duplicate report') ||
+        normalized.contains('already reported');
+  }
+
+  Future<void> _submitReport(PostReportReason reason) async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _errorText = null;
+    });
+
+    final result = await widget.bloc.reportPostDirect(
+      PostIdRequest(postId: widget.postId),
+      ReportPostRequest(reason: reason.apiReason),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (error) {
+        if (_isDuplicateReportError(error.message)) {
+          setState(() {
+            _selectedReason = reason;
+            _isSubmitting = false;
+            _errorText = null;
+          });
+          return;
+        }
+
+        setState(() {
+          _isSubmitting = false;
+          _errorText = error.message;
+        });
+      },
+      (_) {
+        setState(() {
+          _selectedReason = reason;
+          _isSubmitting = false;
+          _errorText = null;
+        });
+        widget.onReported?.call();
+      },
+    );
+  }
+
+  Future<void> _blockAuthor() async {
+    await _runProfileAction(
+      action: _profileRepository.blockUser,
+    );
+  }
+
+  Future<void> _restrictAuthor() async {
+    await _runProfileAction(
+      action: _profileRepository.restrictUser,
+    );
+  }
+
+  Future<void> _runProfileAction({
+    required Future<dynamic> Function(UserIdRequest request) action,
+  }) async {
+    if (_isSubmitting) {
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+      _errorText = null;
+    });
+
+    final result = await action(UserIdRequest(userId: widget.authorId));
+
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (error) {
+        setState(() {
+          _isSubmitting = false;
+          _errorText = error.message;
+        });
+      },
+      (_) {
+        widget.bloc.add(const HomeEvent.loadPosts());
+        if (!mounted) {
+          return;
+        }
+        Navigator.of(context).pop();
+      },
+    );
+  }
+
+  void _openCommunityStandards() {
+    context.pushNamed(RouteNames.profileTermsConditions);
+  }
 
   @override
   Widget build(BuildContext context) {
     if (_selectedReason == null) {
       return _PostReportReasonSheet(
-        onReasonTap: (reason) {
-          setState(() => _selectedReason = reason);
-        },
+        isSubmitting: _isSubmitting,
+        errorText: _errorText,
+        onReasonTap: _submitReport,
       );
     }
 
     return _PostReportResultSheet(
       username: widget.username,
+      errorText: _errorText,
+      isSubmitting: _isSubmitting,
+      onBlockTap: _blockAuthor,
+      onRestrictTap: _restrictAuthor,
+      onLearnTap: _openCommunityStandards,
       onDoneTap: () => Navigator.of(context).pop(),
     );
   }
 }
 
 class _PostReportReasonSheet extends StatelessWidget {
-  const _PostReportReasonSheet({required this.onReasonTap});
+  const _PostReportReasonSheet({
+    required this.onReasonTap,
+    required this.isSubmitting,
+    this.errorText,
+  });
 
-  final ValueChanged<PostReportReason> onReasonTap;
+  final Future<void> Function(PostReportReason reason) onReasonTap;
+  final bool isSubmitting;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -114,12 +264,38 @@ class _PostReportReasonSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          if (errorText != null && errorText!.trim().isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5F1D1D),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF9A4747), width: 1),
+              ),
+              child: Text(
+                errorText!,
+                style: TextStyles.bodyMain.copyWith(
+                  color: const Color(0xFFFFE0E0),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           ...PostReportReason.values.map(
             (reason) => _ReportReasonRow(
               label: reason.label,
-              onTap: () => onReasonTap(reason),
+              onTap: isSubmitting ? null : () => onReasonTap(reason),
             ),
           ),
+          if (isSubmitting) ...[
+            const SizedBox(height: 10),
+            const Center(
+                child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2))),
+          ],
         ],
       ),
     );
@@ -133,7 +309,7 @@ class _ReportReasonRow extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -172,10 +348,20 @@ class _ReportReasonRow extends StatelessWidget {
 class _PostReportResultSheet extends StatelessWidget {
   const _PostReportResultSheet({
     required this.username,
+    required this.errorText,
+    required this.isSubmitting,
+    required this.onBlockTap,
+    required this.onRestrictTap,
+    required this.onLearnTap,
     required this.onDoneTap,
   });
 
   final String username;
+  final String? errorText;
+  final bool isSubmitting;
+  final Future<void> Function() onBlockTap;
+  final Future<void> Function() onRestrictTap;
+  final VoidCallback onLearnTap;
   final VoidCallback onDoneTap;
 
   @override
@@ -239,7 +425,7 @@ class _PostReportResultSheet extends StatelessWidget {
             ),
             title: 'Block $displayName',
             titleColor: const Color(0xFFCB5B5B),
-            onTap: () {},
+            onTap: isSubmitting ? null : onBlockTap,
           ),
           _ReportActionRow(
             icon: Assets.icons.eyeClosed.svg(
@@ -251,7 +437,7 @@ class _PostReportResultSheet extends StatelessWidget {
               ),
             ),
             title: 'Restrict $displayName',
-            onTap: () {},
+            onTap: isSubmitting ? null : onRestrictTap,
           ),
           _ReportActionRow(
             icon: Assets.icons.noPeople.svg(
@@ -263,13 +449,41 @@ class _PostReportResultSheet extends StatelessWidget {
               ),
             ),
             title: 'Learn about our Community Standards',
-            onTap: () {},
+            onTap: isSubmitting ? null : () async => onLearnTap(),
           ),
+          if (errorText != null && errorText!.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5F1D1D),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF9A4747), width: 1),
+              ),
+              child: Text(
+                errorText!,
+                style: TextStyles.bodyMain.copyWith(
+                  color: const Color(0xFFFFE0E0),
+                ),
+              ),
+            ),
+          ],
+          if (isSubmitting) ...[
+            const SizedBox(height: 10),
+            const Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: onDoneTap,
+              onPressed: isSubmitting ? null : onDoneTap,
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(46),
                 side: BorderSide(
@@ -305,14 +519,14 @@ class _ReportActionRow extends StatelessWidget {
 
   final Widget icon;
   final String title;
-  final VoidCallback onTap;
+  final Future<void> Function()? onTap;
   final Color titleColor;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
+      onTap: onTap == null ? null : () => onTap!.call(),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(

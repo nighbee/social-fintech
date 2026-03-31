@@ -6,13 +6,13 @@ import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
-import 'package:app/src/core/widgets/glass_container.dart';
 import 'package:app/src/core/widgets/silver_balance_chip.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/domain/entities/seal_response_entity.dart';
 import 'package:app/src/features/home/domain/requests/get_post_seals_request.dart';
 import 'package:app/src/features/home/domain/requests/send_post_seal_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
+import 'package:app/src/features/home/presentation/widgets/honor_compose_surface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
@@ -28,10 +28,13 @@ mixin ShowPostSilverHonorBottomSheet {
       maxHeightFactor: 0.86,
       child: ActionBottomSheet(
         enableGlassEffect: false,
+        enableDropShadow: false,
+        backgroundOpacity: 1,
         backgroundColor: const Color(0xFF161616),
         child: PostSilverHonorBottomSheet(
           bloc: bloc,
           post: post,
+          hostContext: context,
         ),
       ),
     );
@@ -42,11 +45,13 @@ class PostSilverHonorBottomSheet extends StatefulWidget {
   const PostSilverHonorBottomSheet({
     required this.bloc,
     required this.post,
+    required this.hostContext,
     super.key,
   });
 
   final HomeBloc bloc;
   final PostResponseEntity post;
+  final BuildContext hostContext;
 
   @override
   State<PostSilverHonorBottomSheet> createState() =>
@@ -58,6 +63,10 @@ class _PostSilverHonorBottomSheetState
   bool _isLoading = true;
   String? _loadError;
   List<SealResponseEntity> _seals = const [];
+
+  bool _hasAvailableSilver(HomeViewModel viewModel) {
+    return viewModel.storeSummary.silverHonorsCount > 0;
+  }
 
   @override
   void initState() {
@@ -98,9 +107,14 @@ class _PostSilverHonorBottomSheetState
   Future<void> _showSilverHonorComposerDialog(
     BuildContext context,
     PostResponseEntity currentPost,
-  ) {
-    return showDialog<void>(
-      context: context,
+  ) async {
+    Navigator.of(context).pop();
+    await Future<void>.delayed(const Duration(milliseconds: 120));
+    if (!widget.hostContext.mounted) return;
+
+    final sent = await showDialog<bool>(
+      context: widget.hostContext,
+      useRootNavigator: true,
       barrierDismissible: true,
       barrierColor: Colors.black.withValues(alpha: 0.40),
       builder: (_) {
@@ -108,10 +122,15 @@ class _PostSilverHonorBottomSheetState
           bloc: widget.bloc,
           postId: currentPost.postId,
           currentSealCount: currentPost.metrics.silvers,
-          sheetContext: context,
         );
       },
     );
+
+    if (sent == true) {
+      // The list sheet is intentionally closed before showing composer.
+      // Keep flow focused on composing/sending as in the design.
+      return;
+    }
   }
 
   Widget _buildListContent() {
@@ -186,6 +205,7 @@ class _PostSilverHonorBottomSheetState
           (item) => item.postId == widget.post.postId,
           orElse: () => widget.post,
         );
+        final hasAvailableSilver = _hasAvailableSilver(viewModel);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -206,15 +226,17 @@ class _PostSilverHonorBottomSheetState
             ),
             const Gap(14),
             Container(
-              color: AppColors.colorff202020op80,
+              color: const Color(0xFF161616),
               padding: const EdgeInsets.symmetric(
                 vertical: 16,
                 horizontal: 20,
               ),
               child: CustomButton(
                 text: 'Send a silver honor',
-                onTap: () =>
-                    _showSilverHonorComposerDialog(context, currentPost),
+                onTap: hasAvailableSilver
+                    ? () => _showSilverHonorComposerDialog(context, currentPost)
+                    : () {},
+                isDisabled: !hasAvailableSilver,
                 backgroundColor: AppColors.colorff6D6D6Dop35,
                 borderRadius: 8,
                 border: Border.all(
@@ -228,6 +250,19 @@ class _PostSilverHonorBottomSheetState
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
+            if (!hasAvailableSilver)
+              Padding(
+                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'You have 0 silver honors. Refill in Store to send one.',
+                    style: TextStyles.bodyMain.copyWith(
+                      color: AppColors.colorffE5E5E5.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -235,13 +270,26 @@ class _PostSilverHonorBottomSheetState
   }
 }
 
-class _SilverHonorListItem extends StatelessWidget {
+class _SilverHonorListItem extends StatefulWidget {
   const _SilverHonorListItem({required this.item});
 
   final SealResponseEntity item;
 
   @override
+  State<_SilverHonorListItem> createState() => _SilverHonorListItemState();
+}
+
+class _SilverHonorListItemState extends State<_SilverHonorListItem> {
+  bool _expanded = false;
+
+  static const int _toggleThreshold = 80;
+
+  bool _shouldToggle(String message) => message.length > _toggleThreshold;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
+
     final displayName = item.user.fullName.trim().isNotEmpty
         ? item.user.fullName
         : item.user.username;
@@ -311,33 +359,6 @@ class _SilverHonorListItem extends StatelessWidget {
                         ),
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.colorff2A2A2B,
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: AppColors.colorff3F3F40,
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Assets.icons.silverCoin.svg(width: 12, height: 12),
-                          const Gap(4),
-                          Text(
-                            item.amount.toString(),
-                            style: TextStyles.titleTag.copyWith(
-                              color: AppColors.colorffE5E5E5,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
                 const Gap(4),
@@ -353,9 +374,22 @@ class _SilverHonorListItem extends StatelessWidget {
                   style: TextStyles.bodyLarge.copyWith(
                     color: AppColors.colorffE5E5E5,
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: _expanded ? null : 2,
+                  overflow:
+                      _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
                 ),
+                if (_shouldToggle(message)) ...[
+                  const Gap(4),
+                  GestureDetector(
+                    onTap: () => setState(() => _expanded = !_expanded),
+                    child: Text(
+                      _expanded ? 'hide' : 'see more',
+                      style: TextStyles.bodyMain.copyWith(
+                        color: AppColors.colorffE5E5E5.withValues(alpha: 0.72),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -370,13 +404,11 @@ class _SilverHonorComposerDialog extends StatefulWidget {
     required this.bloc,
     required this.postId,
     required this.currentSealCount,
-    required this.sheetContext,
   });
 
   final HomeBloc bloc;
   final String postId;
   final int currentSealCount;
-  final BuildContext sheetContext;
 
   @override
   State<_SilverHonorComposerDialog> createState() =>
@@ -389,12 +421,16 @@ class _SilverHonorComposerDialogState
 
   late final TextEditingController _messageController;
   bool _isSending = false;
+  bool _isBalanceLoading = true;
+  int _availableSilverCount = 0;
   String? _submitError;
 
   @override
   void initState() {
     super.initState();
     _messageController = TextEditingController()..addListener(_handleChanged);
+    _syncBalanceFromState();
+    _refreshBalanceFromServer();
   }
 
   @override
@@ -416,27 +452,54 @@ class _SilverHonorComposerDialogState
     });
   }
 
-  void _showSuccessDialog() {
-    Navigator.of(context).pop();
+  void _syncBalanceFromState() {
+    final viewModel = widget.bloc.state.maybeWhen(
+      loading: (viewModel) => viewModel,
+      loaded: (viewModel) => viewModel,
+      orElse: HomeViewModel.new,
+    );
+    _availableSilverCount = viewModel.storeSummary.silverHonorsCount;
+    _isBalanceLoading = false;
+  }
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!widget.sheetContext.mounted) return;
-
-      showDialog<void>(
-        context: widget.sheetContext,
-        useSafeArea: false,
-        barrierDismissible: false,
-        barrierColor: Colors.black.withValues(alpha: 0.50),
-        builder: (_) => _SilverHonorSuccessDialog(
-          sheetContext: widget.sheetContext,
-        ),
-      );
+  Future<void> _refreshBalanceFromServer() async {
+    setState(() {
+      _isBalanceLoading = true;
     });
+
+    final result = await widget.bloc.getStoreSummaryDirect();
+    if (!mounted) return;
+
+    result.fold(
+      (_) {
+        setState(() {
+          _isBalanceLoading = false;
+        });
+      },
+      (storeSummary) {
+        setState(() {
+          _availableSilverCount = storeSummary.silverHonorsCount;
+          _isBalanceLoading = false;
+        });
+      },
+    );
   }
 
   Future<void> _handleSend() async {
     final trimmedMessage = _messageController.text.trim();
     if (trimmedMessage.isEmpty || _isSending) return;
+    if (_isBalanceLoading) {
+      setState(() {
+        _submitError = 'Checking silver balance. Please wait...';
+      });
+      return;
+    }
+    if (_availableSilverCount <= 0) {
+      setState(() {
+        _submitError = 'You have no silver honors left to send.';
+      });
+      return;
+    }
 
     setState(() {
       _isSending = true;
@@ -461,7 +524,7 @@ class _SilverHonorComposerDialogState
         setState(() {
           _isSending = false;
         });
-        _showSuccessDialog();
+        Navigator.of(context).pop(true);
       },
     );
   }
@@ -469,7 +532,10 @@ class _SilverHonorComposerDialogState
   @override
   Widget build(BuildContext context) {
     final message = _messageController.text;
-    final canSend = message.trim().isNotEmpty && !_isSending;
+    final canSend = message.trim().isNotEmpty &&
+        !_isSending &&
+        !_isBalanceLoading &&
+        _availableSilverCount > 0;
     final currentLength = message.length;
 
     return Dialog(
@@ -483,18 +549,7 @@ class _SilverHonorComposerDialogState
 
           return ConstrainedBox(
             constraints: BoxConstraints(maxHeight: maxHeight),
-            child: GlassContainer(
-              borderRadius: 18,
-              blurSigma: 10,
-              backgroundColor: AppColors.colorff202020.withValues(alpha: 0.20),
-              borderColor: Colors.white.withValues(alpha: 0.12),
-              borderWidth: 1,
-              whiteGlowColor: Colors.white.withValues(alpha: 0.10),
-              whiteGlowBlurRadius: 12,
-              whiteGlowOffset: const Offset(0, -3),
-              dropShadowColor: Colors.black.withValues(alpha: 0.45),
-              dropShadowBlurRadius: 28,
-              dropShadowOffset: const Offset(0, 10),
+            child: HonorComposeSurface(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 keyboardDismissBehavior:
@@ -506,6 +561,18 @@ class _SilverHonorComposerDialogState
                       alignment: Alignment.centerLeft,
                       child: const SilverBalanceChip.live(),
                     ),
+                    if (!_isBalanceLoading && _availableSilverCount <= 0) ...[
+                      const Gap(10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'You have 0 silver honors. Refill in Store to continue.',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFFE5B86B),
+                          ),
+                        ),
+                      ),
+                    ],
                     const Gap(16),
                     Text(
                       'What would you like to convey along with the honor?',
@@ -515,20 +582,6 @@ class _SilverHonorComposerDialogState
                         fontWeight: FontWeight.w600,
                         height: 1.3,
                       ),
-                    ),
-                    const Gap(16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Assets.icons.silverCoin.svg(width: 22, height: 22),
-                        const Gap(8),
-                        Text(
-                          '1',
-                          style: TextStyles.titleTag.copyWith(
-                            color: AppColors.colorffffffff,
-                          ),
-                        ),
-                      ],
                     ),
                     const Gap(18),
                     if (_submitError != null && _submitError!.isNotEmpty) ...[
@@ -591,7 +644,8 @@ class _SilverHonorComposerDialogState
                         color: AppColors.textNeutral,
                         fontWeight: FontWeight.w600,
                       ),
-                      disabledBackgroundColor: AppColors.backgroundDisabledDefault,
+                      disabledBackgroundColor:
+                          AppColors.backgroundDisabledDefault,
                       disabledTextStyle: TextStyles.bodyMain.copyWith(
                         color: AppColors.textDisabledDefault,
                         fontWeight: FontWeight.w600,
@@ -629,85 +683,6 @@ class _SilverHonorComposerDialogState
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-class _SilverHonorSuccessDialog extends StatelessWidget {
-  const _SilverHonorSuccessDialog({
-    required this.sheetContext,
-  });
-
-  final BuildContext sheetContext;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: GlassContainer(
-        borderRadius: 0,
-        blurSigma: 18,
-        backgroundColor: AppColors.colorff202020.withValues(alpha: 0.20),
-        borderWidth: 0,
-        enableWhiteGlow: false,
-        enableDropShadow: false,
-        child: SizedBox.expand(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 32, 20, 18),
-            child: Column(
-              children: [
-                const Spacer(),
-                Assets.icons.checkedCircle.svg(width: 110, height: 110),
-                const Gap(30),
-                Text(
-                  'Thank you!',
-                  style: TextStyles.titleMain.copyWith(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w500,
-                    height: 1.1,
-                    color: AppColors.textBrand,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const Gap(8),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 240),
-                  child: Text(
-                    'Your silver honor has been sent successfully.',
-                    style: TextStyles.bodyMain.copyWith(
-                      color: const Color(0xFFBABABA),
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const Spacer(),
-                CustomButton(
-                  text: 'Great !',
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    if (sheetContext.mounted) {
-                      Navigator.of(sheetContext).pop();
-                    }
-                  },
-                  borderRadius: 12,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  backgroundColor: Colors.transparent,
-                  border: Border.all(
-                    color: AppColors.whiteBackground.withValues(alpha: 0.88),
-                    width: 0.8,
-                  ),
-                  textStyle: TextStyles.titleHeadline.copyWith(
-                    color: AppColors.whiteBackground,
-                    fontWeight: FontWeight.w600,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

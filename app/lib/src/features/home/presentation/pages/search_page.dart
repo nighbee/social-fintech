@@ -528,15 +528,28 @@ class _SearchAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = profile.avatarUrl.isNotEmpty
-        ? profile.avatarUrl
-        : 'https://i.pravatar.cc/100?u=${profile.userId}';
+    final imageUrl = profile.avatarUrl.trim();
+    if (imageUrl.isNotEmpty) {
+      return CustomNetworkImage(
+        imageUrl: imageUrl,
+        width: 40,
+        height: 40,
+        borderRadius: BorderRadius.circular(4),
+      );
+    }
 
-    return CustomNetworkImage(
-      imageUrl: imageUrl,
+    return Container(
       width: 40,
       height: 40,
-      borderRadius: BorderRadius.circular(4),
+      decoration: BoxDecoration(
+        color: AppColors.colorff2A2A2B,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: const Icon(
+        Icons.person_outline,
+        size: 20,
+        color: AppColors.colorff9CA3AF,
+      ),
     );
   }
 }

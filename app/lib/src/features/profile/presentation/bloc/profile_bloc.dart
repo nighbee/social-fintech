@@ -4,6 +4,7 @@ import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
@@ -22,7 +23,7 @@ part 'profile_state.dart';
 
 class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
   ProfileBloc(@Named.from(ProfileRepositoryImpl) this._repository)
-    : super(_Initial());
+      : super(_Initial());
 
   final IProfileRepository _repository;
   ProfileViewModel _viewModel = ProfileViewModel();
@@ -72,12 +73,30 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
 
       result.fold((error) => emit(ProfileState.loadingError(error.message)), (
         profile,
-      ) {
+      ) async {
+        final previousAvatarUrl = _viewModel.profile.avatarUrl;
         _viewModel = _viewModel.copyWith(profile: profile);
+
+        await _evictAvatarCache(previousAvatarUrl);
+        await _evictAvatarCache(profile.avatarUrl);
+
         emit(ProfileState.loaded(viewModel: _viewModel));
       });
     } catch (e) {
       emit(ProfileState.loadingError(e.toString()));
+    }
+  }
+
+  Future<void> _evictAvatarCache(String url) async {
+    final normalizedUrl = url.trim();
+    if (normalizedUrl.isEmpty) return;
+
+    await NetworkImage(normalizedUrl).evict();
+
+    if (normalizedUrl.contains('localhost')) {
+      await NetworkImage(
+        normalizedUrl.replaceAll('localhost', '10.0.2.2'),
+      ).evict();
     }
   }
 
@@ -87,8 +106,8 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
     try {
       emit(ProfileState.loading(viewModel: _viewModel));
       final result = await _repository.getCurrentUser().timeout(
-        const Duration(seconds: 15),
-      );
+            const Duration(seconds: 15),
+          );
 
       result.fold((error) => emit(ProfileState.loadingError(error.message)), (
         profile,

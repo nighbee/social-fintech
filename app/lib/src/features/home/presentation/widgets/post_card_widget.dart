@@ -11,24 +11,25 @@ import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_silver_honor_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
-import 'package:app/src/features/home/presentation/mixins/show_silver_honor_flow_bottom_sheet.dart';
 
 class PostCardWidget extends StatelessWidget
     with
         ShowPostCommentsBottomSheet,
         ShowPostReportBottomSheet,
-        ShowSilverHonorBottomSheet {
+        ShowPostSilverHonorBottomSheet {
   final PostResponseEntity post;
+  final VoidCallback? onReported;
 
-  const PostCardWidget({super.key, required this.post});
+  const PostCardWidget({super.key, required this.post, this.onReported});
 
   @override
   Widget build(BuildContext context) {
+    final homeBloc = getIt<HomeBloc>();
     final imageUrls = post.mediaAttachments.map((item) => item.url).toList();
     final hasImages = imageUrls.isNotEmpty;
-    final avatarUrl =
-        post.author.profilePicUrl.trim().isNotEmpty
+    final avatarUrl = post.author.profilePicUrl.trim().isNotEmpty
         ? post.author.profilePicUrl
         : (hasImages ? imageUrls.first : '');
     final legacyPost = _toLegacyPost(post, imageUrls);
@@ -89,7 +90,11 @@ class PostCardWidget extends StatelessWidget
               GestureDetector(
                 onTap: () => showPostReportBottomSheet(
                   context,
+                  bloc: homeBloc,
+                  postId: post.postId,
+                  authorId: post.author.id,
                   username: post.author.username,
+                  onReported: onReported,
                 ),
                 child: Assets.icons.more.svg(width: 16, height: 16),
               ),
@@ -143,11 +148,15 @@ class PostCardWidget extends StatelessWidget
                 onTap: () {},
               ),
               const Spacer(),
-              PostActionButton(
-                icon: Assets.icons.silverCoin.svg(width: 24, height: 24),
-                count: 45,
-                onTap: () =>
-                    showSilverHonorBottomSheet(context, post: legacyPost),
+              PostSilverButton(
+                bloc: homeBloc,
+                postId: post.postId,
+                initialCount: post.metrics.silvers,
+                onTap: () => showPostSilverHonorBottomSheet(
+                  context,
+                  bloc: homeBloc,
+                  post: post,
+                ),
               ),
             ],
           ),
@@ -301,6 +310,62 @@ class PostLikeButton extends StatelessWidget {
   <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
 </svg>
 ''';
+}
+
+class PostSilverButton extends StatelessWidget {
+  const PostSilverButton({
+    super.key,
+    required this.bloc,
+    required this.postId,
+    required this.initialCount,
+    required this.onTap,
+  });
+
+  final HomeBloc bloc;
+  final String postId;
+  final int initialCount;
+  final VoidCallback onTap;
+
+  int _resolveCurrentSilverCount(HomeViewModel viewModel) {
+    for (final item in viewModel.feed.items.reversed) {
+      if (item.postId == postId) {
+        return item.metrics.silvers;
+      }
+    }
+    return initialCount;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<HomeBloc, HomeState>(
+      bloc: bloc,
+      builder: (context, state) {
+        return state.maybeWhen(
+          loading: (viewModel) {
+            final currentCount = _resolveCurrentSilverCount(viewModel);
+            return PostActionButton(
+              icon: Assets.icons.silverCoin.svg(width: 24, height: 24),
+              count: currentCount,
+              onTap: onTap,
+            );
+          },
+          loaded: (viewModel) {
+            final currentCount = _resolveCurrentSilverCount(viewModel);
+            return PostActionButton(
+              icon: Assets.icons.silverCoin.svg(width: 24, height: 24),
+              count: currentCount,
+              onTap: onTap,
+            );
+          },
+          orElse: () => PostActionButton(
+            icon: Assets.icons.silverCoin.svg(width: 24, height: 24),
+            count: initialCount,
+            onTap: onTap,
+          ),
+        );
+      },
+    );
+  }
 }
 
 PostEntity _toLegacyPost(PostResponseEntity post, List<String> imageUrls) {

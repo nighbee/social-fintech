@@ -188,9 +188,7 @@ class _EditProfileBody extends StatelessWidget {
       children: [
         Center(
           child: _EditProfilePhotoButton(
-            avatarUrl: profile.avatarUrl.isNotEmpty
-                ? profile.avatarUrl
-                : 'https://i.pravatar.cc/150',
+            avatarUrl: profile.avatarUrl,
             onTap: onChangePhotoTap,
           ),
         ),
@@ -227,6 +225,8 @@ class _EditProfilePhotoButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedAvatarUrl = avatarUrl.trim();
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -236,12 +236,26 @@ class _EditProfilePhotoButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Column(
             children: [
-              CustomNetworkImage(
-                imageUrl: avatarUrl,
-                width: 146,
-                height: 146,
-                borderRadius: BorderRadius.circular(8),
-              ),
+              normalizedAvatarUrl.isNotEmpty
+                  ? CustomNetworkImage(
+                      imageUrl: normalizedAvatarUrl,
+                      width: 146,
+                      height: 146,
+                      borderRadius: BorderRadius.circular(8),
+                    )
+                  : Container(
+                      width: 146,
+                      height: 146,
+                      decoration: BoxDecoration(
+                        color: AppColors.colorff2A2A2B,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.person_outline,
+                        size: 36,
+                        color: AppColors.colorff9CA3AF,
+                      ),
+                    ),
               const Gap(12),
               Text(
                 'Change photo',

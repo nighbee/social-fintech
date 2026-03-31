@@ -2,9 +2,11 @@ import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
+import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/gap_extension.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_visibility_bottom_sheet.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
@@ -18,8 +20,6 @@ class CreatePostPage extends StatefulWidget {
 
 class _CreatePostPageState extends State<CreatePostPage>
     with ShowPostVisibilityBottomSheet {
-  static const String _composerAvatarUrl = 'https://i.pravatar.cc/120?img=1';
-
   late final HomeBloc _bloc;
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
@@ -34,6 +34,16 @@ class _CreatePostPageState extends State<CreatePostPage>
     _controller = TextEditingController();
     _focusNode = FocusNode();
     _bloc.add(const HomeEvent.clearPostPhotos());
+
+    final profileBloc = getIt<ProfileBloc>();
+    final shouldLoadProfile = profileBloc.state.maybeWhen(
+      initial: () => true,
+      loadingError: (_) => true,
+      orElse: () => false,
+    );
+    if (shouldLoadProfile) {
+      profileBloc.add(const ProfileEvent.loadProfile());
+    }
   }
 
   @override
@@ -111,6 +121,16 @@ class _CreatePostPageState extends State<CreatePostPage>
         );
         final canSubmit = _controller.text.trim().isNotEmpty ||
             viewModel.postComposerPhotos.isNotEmpty;
+        final profile = getIt<ProfileBloc>().state.maybeWhen(
+              loading: (viewModel) => viewModel.profile,
+              loaded: (viewModel) => viewModel.profile,
+              orElse: () => ProfileViewModel().profile,
+            );
+        final composerAvatarUrl = profile.avatarUrl.trim();
+        final displayName = profile.displayName.trim();
+        final fallbackInitial = profile.displayName.trim().isNotEmpty
+            ? displayName[0].toUpperCase()
+            : 'A';
 
         return Scaffold(
           backgroundColor: AppColors.mainBackground,
@@ -127,25 +147,25 @@ class _CreatePostPageState extends State<CreatePostPage>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    _composerAvatarUrl,
-                    width: 30,
-                    height: 30,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 30,
-                      height: 30,
-                      color: AppColors.surface,
-                      alignment: Alignment.center,
-                      child: Text(
-                        'A',
-                        style: TextStyles.bodyMain.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                  child: composerAvatarUrl.isNotEmpty
+                      ? CustomNetworkImage(
+                          imageUrl: composerAvatarUrl,
+                          width: 30,
+                          height: 30,
+                        )
+                      : Container(
+                          width: 30,
+                          height: 30,
+                          color: AppColors.surface,
+                          alignment: Alignment.center,
+                          child: Text(
+                            fallbackInitial,
+                            style: TextStyles.bodyMain.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                 ),
                 const Gap(10),
                 InkWell(

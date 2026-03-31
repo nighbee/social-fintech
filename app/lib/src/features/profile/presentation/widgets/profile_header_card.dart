@@ -88,14 +88,26 @@ class ProfileHeaderCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CustomNetworkImage(
-                imageUrl: avatarUrl.isNotEmpty
-                    ? avatarUrl
-                    : 'https://i.pravatar.cc/150',
-                width: 126,
-                height: 126,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              avatarUrl.trim().isNotEmpty
+                  ? CustomNetworkImage(
+                      imageUrl: avatarUrl,
+                      width: 126,
+                      height: 126,
+                      borderRadius: BorderRadius.circular(12),
+                    )
+                  : Container(
+                      width: 126,
+                      height: 126,
+                      decoration: BoxDecoration(
+                        color: AppColors.colorff2A2A2B,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.person_outline,
+                        size: 36,
+                        color: AppColors.colorff9CA3AF,
+                      ),
+                    ),
               const Gap(16),
               Expanded(
                 child: Column(

@@ -57,8 +57,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   HomeBloc(
     @Named.from(HomeRepositoryImpl) this._repository,
     @Named.from(ProfileRepositoryImpl) this._profileRepository,
-  )
-      : super(const _Initial());
+  ) : super(const _Initial());
 
   final IHomeRepository _repository;
   final IProfileRepository _profileRepository;
@@ -91,11 +90,10 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
           _createFeedPost(event as _CreateFeedPost, emit),
       createPost: (_) => _createPostCompat(event as _CreatePost, emit),
       loadComments: (_) => _loadCommentsCompat(event as _LoadComments, emit),
-      getPostComments: (_) =>
-          _getPostComments(event as _GetPostComments, emit),
-      addComment: (_, __, ___) =>
-          _addCommentCompat(event as _AddComment, emit),
-      setReplyTarget: (_) => _setReplyTargetCompat(event as _SetReplyTarget, emit),
+      getPostComments: (_) => _getPostComments(event as _GetPostComments, emit),
+      addComment: (_, __, ___) => _addCommentCompat(event as _AddComment, emit),
+      setReplyTarget: (_) =>
+          _setReplyTargetCompat(event as _SetReplyTarget, emit),
       addCommentPhoto: (_, __) =>
           _addCommentPhotoCompat(event as _AddCommentPhoto, emit),
       removeCommentPhoto: (_) =>
@@ -109,8 +107,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       createPostComment: (_, __) =>
           _createPostComment(event as _CreatePostComment, emit),
       getPostLikes: (_) => _getPostLikes(event as _GetPostLikes, emit),
-      togglePostLike: (_) =>
-          _togglePostLike(event as _TogglePostLike, emit),
+      togglePostLike: (_) => _togglePostLike(event as _TogglePostLike, emit),
       applyPostSealResult: (_, __) =>
           _applyPostSealResult(event as _ApplyPostSealResult, emit),
       loadStoreSummary: () =>
@@ -121,8 +118,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       ),
       applyStoreSummary: (_) =>
           _applyStoreSummary(event as _ApplyStoreSummary, emit),
-      searchProfiles: (_) =>
-          _searchProfiles(event as _SearchProfiles, emit),
+      searchProfiles: (_) => _searchProfiles(event as _SearchProfiles, emit),
       clearProfileSearch: () => _clearProfileSearch(emit),
       addProfileSearchRecent: (_) =>
           _addProfileSearchRecent(event as _AddProfileSearchRecent, emit),
@@ -220,7 +216,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     emit(HomeState.loaded(viewModel: _viewModel));
   }
 
-  Future<void> _setReplyTargetCompat(_SetReplyTarget event, Emitter emit) async {
+  Future<void> _setReplyTargetCompat(
+      _SetReplyTarget event, Emitter emit) async {
     _viewModel = _viewModel.copyWith(replyingToCommentId: event.commentId);
     emit(HomeState.loaded(viewModel: _viewModel));
   }
@@ -375,10 +372,9 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     result.fold(
       (_) {},
       (feed) {
-        final currentFeed =
-            _profilePostsGridUserId == request.userId
-                ? _profilePostsGridCache
-                : const FeedEntity.empty();
+        final currentFeed = _profilePostsGridUserId == request.userId
+            ? _profilePostsGridCache
+            : const FeedEntity.empty();
         _profilePostsGridCache = _mergeFeedForCursor(
           current: currentFeed,
           incoming: feed,
@@ -397,10 +393,9 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     result.fold(
       (_) {},
       (feed) {
-        final currentFeed =
-            _profilePostsListUserId == request.userId
-                ? _profilePostsListCache
-                : const FeedEntity.empty();
+        final currentFeed = _profilePostsListUserId == request.userId
+            ? _profilePostsListCache
+            : const FeedEntity.empty();
         _profilePostsListCache = _mergeFeedForCursor(
           current: currentFeed,
           incoming: feed,
@@ -435,8 +430,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     return _repository.getFeed(FeedRequest(limit: limit));
   }
 
-  Future<Either<DomainException, StoreSummaryEntity>> getStoreSummaryDirect()
-      async {
+  Future<Either<DomainException, StoreSummaryEntity>>
+      getStoreSummaryDirect() async {
     final result = await _repository.getStoreSummary();
     result.fold(
       (_) {},
@@ -502,6 +497,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
             result: sendResult,
           ),
         );
+        // Re-sync feed from backend to avoid stale or double-counted local values.
+        add(const HomeEvent.loadFeed(request: FeedRequest()));
       },
     );
     return result;
@@ -558,21 +555,11 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     _ApplyPostSealResult event,
     Emitter emit,
   ) async {
-    _profilePostsListCache = _applySealResultToFeed(
-      _profilePostsListCache,
-      event.postId,
-    );
-    _myProfilePostsListCache = _applySealResultToFeed(
-      _myProfilePostsListCache,
-      event.postId,
-    );
-
     _viewModel = _viewModel.copyWith(
       lastAction: StatusResponseEntity(
         status: event.result.status,
         message: event.result.ledgerEntryId,
       ),
-      feed: _applySealResultToFeed(_viewModel.feed, event.postId),
     );
     emit(HomeState.loaded(viewModel: _viewModel));
   }
@@ -767,7 +754,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     return _repository.uploadFeedMedia(request);
   }
 
-  Future<Either<DomainException, CommentResponseEntity>> createPostCommentDirect(
+  Future<Either<DomainException, CommentResponseEntity>>
+      createPostCommentDirect(
     String postId,
     CreateCommentRequest request,
   ) async {
@@ -795,9 +783,9 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   Future<void> _createFeedPost(_CreateFeedPost event, Emitter emit) async {
     final Either<DomainException, PostResponseEntity> result =
         await _repository.createFeedPost(
-          event.request,
-          event.localMediaPayloads,
-        );
+      event.request,
+      event.localMediaPayloads,
+    );
     if (result.isLeft()) {
       result.fold(
         (error) => emit(HomeState.loadingError(error.message)),
@@ -866,9 +854,9 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
 
     final Either<DomainException, CommentResponseEntity> result =
         await _repository.createPostComment(
-          PostIdRequest(postId: event.postId),
-          event.request,
-        );
+      PostIdRequest(postId: event.postId),
+      event.request,
+    );
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
       (createdComment) {
@@ -894,14 +882,12 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
         _viewModel.comments.comments,
       );
     } else {
-      final withParentReplyCount = _viewModel.comments.comments
-          .map((comment) {
-            if (comment.commentId != parentId) {
-              return comment;
-            }
-            return comment.copyWith(replyCount: comment.replyCount + 1);
-          })
-          .toList();
+      final withParentReplyCount = _viewModel.comments.comments.map((comment) {
+        if (comment.commentId != parentId) {
+          return comment;
+        }
+        return comment.copyWith(replyCount: comment.replyCount + 1);
+      }).toList();
       updatedComments = _prependUniqueComment(
         createdComment,
         withParentReplyCount,
@@ -991,8 +977,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
 
     final Either<DomainException, PostResponseEntity> result =
         await _repository.togglePostLike(
-          PostIdRequest(postId: event.postId),
-        );
+      PostIdRequest(postId: event.postId),
+    );
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
       (updatedPost) {
@@ -1071,8 +1057,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     required String postId,
     required UpdatePostRequest request,
   }) {
-    final hasChanges =
-        request.hideLikesCount != null ||
+    final hasChanges = request.hideLikesCount != null ||
         (request.commentPermission?.trim().isNotEmpty ?? false);
     if (!hasChanges) {
       return feed;
@@ -1113,25 +1098,15 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   }
 
   void _applyDeletedPostToViewModel(String postId) {
-    _profilePostsGridCache = _removePostFromFeed(_profilePostsGridCache, postId);
-    _profilePostsListCache = _removePostFromFeed(_profilePostsListCache, postId);
-    _myProfilePostsListCache = _removePostFromFeed(_myProfilePostsListCache, postId);
+    _profilePostsGridCache =
+        _removePostFromFeed(_profilePostsGridCache, postId);
+    _profilePostsListCache =
+        _removePostFromFeed(_profilePostsListCache, postId);
+    _myProfilePostsListCache =
+        _removePostFromFeed(_myProfilePostsListCache, postId);
     _viewModel = _viewModel.copyWith(
       lastAction: const StatusResponseEntity(status: 'success'),
       feed: _removePostFromFeed(_viewModel.feed, postId),
-    );
-  }
-
-  FeedEntity _applySealResultToFeed(FeedEntity feed, String postId) {
-    return feed.copyWith(
-      items: feed.items.map((item) {
-        if (item.postId != postId) return item;
-        return item.copyWith(
-          metrics: item.metrics.copyWith(
-            silvers: item.metrics.silvers + 1,
-          ),
-        );
-      }).toList(),
     );
   }
 
@@ -1148,7 +1123,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     );
   }
 
-  FeedEntity _replacePostInFeed(FeedEntity feed, PostResponseEntity updatedPost) {
+  FeedEntity _replacePostInFeed(
+      FeedEntity feed, PostResponseEntity updatedPost) {
     return feed.copyWith(
       items: feed.items.map((item) {
         if (item.postId != updatedPost.postId) return item;

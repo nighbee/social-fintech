@@ -207,7 +207,7 @@ class _SilverHonorListSheet extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context, rootNavigator: true).pop();
+                  Navigator.of(context).pop();
                   Future<void>.delayed(
                       const Duration(milliseconds: 120), onSendTap);
                 },
@@ -559,7 +559,8 @@ class _SilverHonorSuccessSheet extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: Colors.transparent,
                       border: Border.all(
-                        color: AppColors.whiteBackground.withValues(alpha: 0.88),
+                        color:
+                            AppColors.whiteBackground.withValues(alpha: 0.88),
                         width: 0.8,
                       ),
                       textStyle: TextStyles.titleHeadline.copyWith(

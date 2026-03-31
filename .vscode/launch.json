@@ -6,7 +6,7 @@
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main_dev.dart",
-      "args": [
+      "toolArgs": [
         "--flavor",
         "dev",
         "--dart-define-from-file=${workspaceFolder}/app/.env",
@@ -19,7 +19,7 @@
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main_dev.dart",
-      "args": [
+      "toolArgs": [
         "--dart-define-from-file=${workspaceFolder}/app/.env",
         "--dart-define",
         "DEV_BASE_URL=http://127.0.0.1:8081/api/v1",
@@ -32,7 +32,7 @@
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main_dev.dart",
-      "args": [
+      "toolArgs": [
         "--flavor",
         "dev",
         "--dart-define-from-file=${workspaceFolder}/app/.env",
@@ -45,7 +45,7 @@
       "request": "launch",
       "type": "dart",
       "program": "app/lib/main_dev.dart",
-      "args": [
+      "toolArgs": [
         "--dart-define-from-file=${workspaceFolder}/app/.env",
         "--dart-define",
         "DEV_BASE_URL=http://${input:devHostIp}:8081/api/v1",
@@ -59,7 +59,7 @@
       "type": "dart",
       "program": "app/lib/main_dev.dart",
       "flutterMode": "release",
-      "args": [
+      "toolArgs": [
         "--flavor",
         "prod",
         "--dart-define-from-file=${workspaceFolder}/app/.env"
@@ -71,7 +71,7 @@
       "type": "dart",
       "program": "app/lib/main_prod.dart",
       "flutterMode": "release",
-      "args": [
+      "toolArgs": [
         "--flavor",
         "prod",
         "--dart-define-from-file=${workspaceFolder}/app/.env"
