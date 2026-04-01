@@ -29,9 +29,10 @@ class PostCardWidget extends StatelessWidget
     final homeBloc = getIt<HomeBloc>();
     final imageUrls = post.mediaAttachments.map((item) => item.url).toList();
     final hasImages = imageUrls.isNotEmpty;
+    final rankMeta = _resolveRankMeta(post.author.rank, post.author.rankSubLevel);
     final avatarUrl = post.author.profilePicUrl.trim().isNotEmpty
         ? post.author.profilePicUrl
-        : (hasImages ? imageUrls.first : '');
+        : '';
     final legacyPost = _toLegacyPost(post, imageUrls);
 
     return Container(
@@ -61,7 +62,6 @@ class PostCardWidget extends StatelessWidget
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header: User info and menu
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -71,18 +71,41 @@ class PostCardWidget extends StatelessWidget
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      post.author.username,
-                      style: TextStyles.titleHeadline.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            post.author.username,
+                            style: TextStyles.titleHeadline.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Gap(8),
+                        Text(
+                          post.timeAgo,
+                          style: TextStyles.bodyMain.copyWith(
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      post.timeAgo,
-                      style: TextStyles.bodySecondary.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
+                    const Gap(2),
+                    Row(
+                      children: [
+                        Text(
+                          rankMeta.label,
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFF4E92CE),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Gap(4),
+                        rankMeta.badge.image(width: 16, height: 16),
+                      ],
                     ),
                   ],
                 ),
@@ -101,7 +124,6 @@ class PostCardWidget extends StatelessWidget
             ],
           ),
           const Gap(12),
-          // Content
           Text(
             post.contentText,
             style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
@@ -111,7 +133,6 @@ class PostCardWidget extends StatelessWidget
             PostImageGrid(imageUrls: imageUrls),
           ],
           const Gap(12),
-          // Actions: Like, Comment, Share
           Row(
             children: [
               PostLikeButton(
@@ -164,6 +185,50 @@ class PostCardWidget extends StatelessWidget
       ),
     );
   }
+}
+
+class _RankMeta {
+  const _RankMeta({required this.label, required this.badge});
+
+  final String label;
+  final AssetGenImage badge;
+}
+
+_RankMeta _resolveRankMeta(String rank, String rankSubLevel) {
+  final normalizedRank = rank.trim();
+  final normalizedSubLevel = rankSubLevel.trim();
+
+  if (normalizedRank.isEmpty) {
+    return _RankMeta(
+      label: 'Moonstone • Intention • A',
+      badge: Assets.images.moonstone,
+    );
+  }
+
+  final rankKey = normalizedRank.toLowerCase();
+  final badge = switch (rankKey) {
+    'moonstone' => Assets.images.moonstone,
+    'onyx' => Assets.images.onyx,
+    'pearl' => Assets.images.pearl,
+    'jade' => Assets.images.jade,
+    'lapislazuli' => Assets.images.lapislazuli,
+    'ammolite' => Assets.images.ammolite,
+    'supernova' => Assets.images.supernova,
+    _ => Assets.images.moonstone,
+  };
+
+  final labelParts = <String>[
+    normalizedRank,
+    if (normalizedSubLevel.isNotEmpty) normalizedSubLevel,
+  ];
+  if (labelParts.length == 1) {
+    labelParts.add('A');
+  }
+
+  return _RankMeta(
+    label: labelParts.join(' • '),
+    badge: badge,
+  );
 }
 
 class PostActionButton extends StatelessWidget {

@@ -71,18 +71,24 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
 
       final result = await _repository.uploadAvatar(formData);
 
-      result.fold((error) => emit(ProfileState.loadingError(error.message)), (
-        profile,
-      ) async {
-        final previousAvatarUrl = _viewModel.profile.avatarUrl;
-        _viewModel = _viewModel.copyWith(profile: profile);
+      await result.fold(
+        (error) async {
+          if (emit.isDone) return;
+          emit(ProfileState.loadingError(error.message));
+        },
+        (profile) async {
+          final previousAvatarUrl = _viewModel.profile.avatarUrl;
+          _viewModel = _viewModel.copyWith(profile: profile);
 
-        await _evictAvatarCache(previousAvatarUrl);
-        await _evictAvatarCache(profile.avatarUrl);
+          await _evictAvatarCache(previousAvatarUrl);
+          await _evictAvatarCache(profile.avatarUrl);
 
-        emit(ProfileState.loaded(viewModel: _viewModel));
-      });
+          if (emit.isDone) return;
+          emit(ProfileState.loaded(viewModel: _viewModel));
+        },
+      );
     } catch (e) {
+      if (emit.isDone) return;
       emit(ProfileState.loadingError(e.toString()));
     }
   }

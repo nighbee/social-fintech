@@ -94,6 +94,32 @@ class HomeViewModel with _$HomeViewModel {
     CommentResponseEntity comment, {
     required String postId,
   }) {
+    String? resolveCommentAvatar() {
+      final commentAvatar = comment.author.profilePicUrl.trim();
+      if (commentAvatar.isNotEmpty) {
+        return commentAvatar;
+      }
+
+      if (postId.isEmpty) {
+        return null;
+      }
+
+      for (final post in feed.items.reversed) {
+        if (post.postId != postId) {
+          continue;
+        }
+        if (post.author.id != comment.author.id) {
+          continue;
+        }
+        final authorAvatar = post.author.profilePicUrl.trim();
+        if (authorAvatar.isNotEmpty) {
+          return authorAvatar;
+        }
+      }
+
+      return null;
+    }
+
     return CommentEntity(
       id: comment.commentId,
       postId: postId,
@@ -105,9 +131,7 @@ class HomeViewModel with _$HomeViewModel {
           : comment.rootCommentId,
       userId: comment.author.id,
       username: comment.author.username,
-      userAvatar: comment.author.profilePicUrl.trim().isEmpty
-          ? null
-          : comment.author.profilePicUrl,
+        userAvatar: resolveCommentAvatar(),
       content: comment.contentText,
       imageUrls: comment.mediaAttachments.map((item) => item.url).toList(),
       likesCount: comment.likesCount,

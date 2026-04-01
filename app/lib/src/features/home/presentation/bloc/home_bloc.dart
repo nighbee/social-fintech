@@ -497,6 +497,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
             result: sendResult,
           ),
         );
+        add(const HomeEvent.loadStoreSummary());
         // Re-sync feed from backend to avoid stale or double-counted local values.
         add(const HomeEvent.loadFeed(request: FeedRequest()));
       },

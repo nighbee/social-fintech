@@ -200,15 +200,27 @@ class MapSelfMarkerService {
       if (manager == null) {
         return;
       }
-      final created = await manager.create(
-        PointAnnotationOptions(
-          geometry: point,
-          image: image,
-          iconAnchor: IconAnchor.BOTTOM,
-          symbolSortKey: _sortKey,
-          iconSize: _pinMapIconSize * _markerSizeMultiplier,
-        ),
-      );
+      PointAnnotation created;
+      try {
+        created = await manager.create(
+          PointAnnotationOptions(
+            geometry: point,
+            image: image,
+            iconAnchor: IconAnchor.BOTTOM,
+            symbolSortKey: _sortKey,
+            iconSize: _pinMapIconSize * _markerSizeMultiplier,
+          ),
+        );
+      } on MissingPluginException {
+        await _disposeAnnotationLayer(invalidateToken: false);
+        return;
+      } on PlatformException catch (error) {
+        if (error.code == 'channel-error') {
+          await _disposeAnnotationLayer(invalidateToken: false);
+          return;
+        }
+        rethrow;
+      }
       if (!_isTokenActive(token)) {
         try {
           await manager.delete(created);

@@ -7,8 +7,10 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/device_id.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_app_bar.dart';
+import 'package:app/src/features/home/presentation/widgets/feed_soft_limit_scroll_physics.dart';
 import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
 import 'package:app/src/features/home/presentation/widgets/reported_post_card_widget.dart';
 import 'package:flutter/material.dart';
@@ -33,11 +35,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   Timer? _reportSuccessTimer;
   String? _cachedDeviceId;
   bool _showReportSuccessBanner = false;
+  bool _isAppForeground = true;
+  bool _forceSyncAfterResume = false;
+  DateTime? _cooldownFreezeStartedAt;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _homeBloc.add(const HomeEvent.loadStoreSummary());
     unawaited(_startFeedStateSync());
   }
 
@@ -83,7 +89,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      unawaited(_syncFeedStateOnce(deltaSeconds: 1));
+      _isAppForeground = true;
+      unawaited(_syncFeedStateOnce(deltaSeconds: 1, force: true));
       _feedStateSyncTimer ??=
           Timer.periodic(_feedStateSyncInterval, (_) => _onSyncTick());
       return;
@@ -91,13 +98,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
+      _isAppForeground = false;
+      _forceSyncAfterResume = true;
       _feedStateSyncTimer?.cancel();
       _feedStateSyncTimer = null;
     }
   }
 
   Future<void> _startFeedStateSync() async {
-    await _syncFeedStateOnce(deltaSeconds: 1);
+    await _syncFeedStateOnce(deltaSeconds: 1, force: true);
     if (!mounted) {
       return;
     }
@@ -110,7 +119,63 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     unawaited(_syncFeedStateOnce(deltaSeconds: _syncDeltaSeconds));
   }
 
-  Future<void> _syncFeedStateOnce({required int deltaSeconds}) async {
+  FeedStateEntity _feedStateFromState(HomeState state) {
+    return state.maybeWhen(
+      loading: (viewModel) => viewModel.feedState,
+      loaded: (viewModel) => viewModel.feedState,
+      orElse: FeedStateEntity.empty,
+    );
+  }
+
+  bool _isFeedRouteActive() {
+    if (!mounted) {
+      return false;
+    }
+    try {
+      final currentPath =
+          GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
+      return currentPath == RoutePaths.home ||
+          currentPath.startsWith('${RoutePaths.home}/');
+    } catch (_) {
+      // Fail-open to avoid accidentally over-syncing cooldown when route info
+      // is temporarily unavailable.
+      return true;
+    }
+  }
+
+  bool _shouldFreezeCooldownFromState(HomeState state) {
+    if (!_isAppForeground || !_isFeedRouteActive()) {
+      return false;
+    }
+    final feedState = _feedStateFromState(state);
+    return feedState.shouldEnforceCooldown;
+  }
+
+  void _updateCooldownFreezeState(HomeState state) {
+    final shouldFreeze = _shouldFreezeCooldownFromState(state);
+    if (shouldFreeze) {
+      _cooldownFreezeStartedAt ??= DateTime.now();
+      return;
+    }
+    _cooldownFreezeStartedAt = null;
+  }
+
+  Future<void> _syncFeedStateOnce({
+    required int deltaSeconds,
+    bool force = false,
+  }) async {
+    final shouldFreeze = _shouldFreezeCooldownFromState(_homeBloc.state);
+    final mustForceSync = force || _forceSyncAfterResume;
+    if (shouldFreeze && !mustForceSync) {
+      if (_cooldownFreezeStartedAt == null && mounted) {
+        setState(() {
+          _cooldownFreezeStartedAt = DateTime.now();
+        });
+      }
+      return;
+    }
+
+    _forceSyncAfterResume = false;
     final deviceId = _cachedDeviceId ?? await _deviceId.getDeviceId();
     _cachedDeviceId = deviceId;
     if (!mounted) {
@@ -130,10 +195,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return '20 min';
     }
 
-    if (feedState.shouldEnforceCooldown &&
-        feedState.safeBreakSecondsRemaining > 0) {
+    if (feedState.shouldEnforceCooldown) {
+      if (_shouldFreezeCooldownFromState(_homeBloc.state)) {
+        return '5 min break';
+      }
       final breakMinutes = (feedState.safeBreakSecondsRemaining / 60).ceil();
-      return '$breakMinutes min';
+      return '$breakMinutes min break';
     }
 
     final maxAllowedSeconds = feedState.maxAllowedSeconds;
@@ -154,8 +221,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return FeedTimerTone.normal;
     }
 
-    if (feedState.shouldEnforceCooldown &&
-        feedState.safeBreakSecondsRemaining > 0) {
+    if (feedState.shouldEnforceCooldown) {
       return FeedTimerTone.breakTime;
     }
 
@@ -192,6 +258,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
+  int _silverCountFromState(HomeState state) {
+    return state.maybeWhen(
+      loading: (viewModel) => viewModel.storeSummary.silverHonorsCount,
+      loaded: (viewModel) => viewModel.storeSummary.silverHonorsCount,
+      orElse: () => 0,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -221,6 +295,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   onCreatePostTap: () => context.push(RoutePaths.createPost),
                   onNotificationsTap: () =>
                       context.push(RoutePaths.notifications),
+                  silverCount: _silverCountFromState(state),
                   timerLabel: _timerLabelFromState(state),
                   timerTone: _timerToneFromState(state),
                 );
@@ -239,6 +314,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   loading: (_) =>
                       const Center(child: CircularProgressIndicator()),
                   loaded: (viewModel) {
+                    _updateCooldownFreezeState(HomeState.loaded(
+                      viewModel: viewModel,
+                    ));
+
                     if (viewModel.posts.isEmpty) {
                       return Center(
                         child: Column(
@@ -264,6 +343,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                     return Stack(
                       children: [
                         ListView.separated(
+                          physics: FeedSoftLimitScrollPhysics(
+                            accumulatedActiveSeconds:
+                                viewModel.feedState.accumulatedActiveSeconds,
+                            maxAllowedSeconds:
+                                viewModel.feedState.maxAllowedSeconds,
+                            isInCooldown:
+                                viewModel.feedState.shouldEnforceCooldown,
+                            breakSecondsRemaining:
+                                viewModel.feedState.safeBreakSecondsRemaining,
+                            freezeBreakCountdown:
+                                _shouldFreezeCooldownFromState(
+                              HomeState.loaded(viewModel: viewModel),
+                            ),
+                            cooldownFreezeStartedAt: _cooldownFreezeStartedAt,
+                          ),
                           separatorBuilder: (context, index) => Gap(18),
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
                           itemCount: viewModel.posts.length,

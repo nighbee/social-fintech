@@ -63,15 +63,52 @@ class _PostSilverHonorBottomSheetState
   bool _isLoading = true;
   String? _loadError;
   List<SealResponseEntity> _seals = const [];
+  bool _isBalanceRefreshing = false;
+  int? _availableSilverCountOverride;
+
+  int _resolveAvailableSilverCount(HomeViewModel viewModel) {
+    return _availableSilverCountOverride ?? viewModel.storeSummary.silverHonorsCount;
+  }
 
   bool _hasAvailableSilver(HomeViewModel viewModel) {
-    return viewModel.storeSummary.silverHonorsCount > 0;
+    return _resolveAvailableSilverCount(viewModel) > 0;
   }
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSeals());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadSeals();
+      _refreshAvailableSilver();
+    });
+  }
+
+  Future<void> _refreshAvailableSilver() async {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isBalanceRefreshing = true;
+    });
+
+    final result = await widget.bloc.getStoreSummaryDirect();
+    if (!mounted) {
+      return;
+    }
+
+    result.fold(
+      (_) {
+        setState(() {
+          _isBalanceRefreshing = false;
+        });
+      },
+      (storeSummary) {
+        setState(() {
+          _availableSilverCountOverride = storeSummary.silverHonorsCount;
+          _isBalanceRefreshing = false;
+        });
+      },
+    );
   }
 
   Future<void> _loadSeals() async {
@@ -233,10 +270,10 @@ class _PostSilverHonorBottomSheetState
               ),
               child: CustomButton(
                 text: 'Send a silver honor',
-                onTap: hasAvailableSilver
+                onTap: !_isBalanceRefreshing && hasAvailableSilver
                     ? () => _showSilverHonorComposerDialog(context, currentPost)
                     : () {},
-                isDisabled: !hasAvailableSilver,
+                isDisabled: _isBalanceRefreshing || !hasAvailableSilver,
                 backgroundColor: AppColors.colorff6D6D6Dop35,
                 borderRadius: 8,
                 border: Border.all(
@@ -250,7 +287,20 @@ class _PostSilverHonorBottomSheetState
                 padding: const EdgeInsets.symmetric(vertical: 14),
               ),
             ),
-            if (!hasAvailableSilver)
+            if (_isBalanceRefreshing)
+              Padding(
+                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Checking silver balance...',
+                    style: TextStyles.bodyMain.copyWith(
+                      color: AppColors.colorffE5E5E5.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ),
+              )
+            else if (!hasAvailableSilver)
               Padding(
                 padding: const EdgeInsets.only(left: 20, right: 20, bottom: 12),
                 child: Align(
@@ -559,7 +609,7 @@ class _SilverHonorComposerDialogState
                   children: [
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: const SilverBalanceChip.live(),
+                      child: SilverBalanceChip(count: _availableSilverCount),
                     ),
                     if (!_isBalanceLoading && _availableSilverCount <= 0) ...[
                       const Gap(10),

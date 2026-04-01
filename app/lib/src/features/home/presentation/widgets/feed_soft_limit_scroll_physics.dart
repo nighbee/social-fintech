@@ -6,6 +6,8 @@ class FeedSoftLimitScrollPhysics extends ClampingScrollPhysics {
     required this.maxAllowedSeconds,
     required this.isInCooldown,
     required this.breakSecondsRemaining,
+    required this.freezeBreakCountdown,
+    this.cooldownFreezeStartedAt,
     super.parent,
   });
 
@@ -13,11 +15,13 @@ class FeedSoftLimitScrollPhysics extends ClampingScrollPhysics {
   final int maxAllowedSeconds;
   final bool isInCooldown;
   final int breakSecondsRemaining;
+  final bool freezeBreakCountdown;
+  final DateTime? cooldownFreezeStartedAt;
 
   static const double _perMinuteDrop = 0.15;
-  static const double _minResponse = 0.40;
+  static const double _minResponse = 0.30;
   static const int _breakDurationSeconds = 5 * 60;
-  static const double _cooldownMinResponse = 0.10;
+  static const double _cooldownMinResponse = 0.30;
   static const double _cooldownPerMinuteDrop = 0.18;
 
   @override
@@ -27,6 +31,8 @@ class FeedSoftLimitScrollPhysics extends ClampingScrollPhysics {
       maxAllowedSeconds: maxAllowedSeconds,
       isInCooldown: isInCooldown,
       breakSecondsRemaining: breakSecondsRemaining,
+      freezeBreakCountdown: freezeBreakCountdown,
+      cooldownFreezeStartedAt: cooldownFreezeStartedAt,
       parent: buildParent(ancestor),
     );
   }
@@ -36,11 +42,16 @@ class FeedSoftLimitScrollPhysics extends ClampingScrollPhysics {
     final base = super.applyPhysicsToUserOffset(position, offset);
 
     if (isInCooldown) {
-      final servedSeconds =
-          (_breakDurationSeconds - breakSecondsRemaining).clamp(
-        0,
-        _breakDurationSeconds,
-      );
+      final int servedSeconds;
+      if (freezeBreakCountdown && cooldownFreezeStartedAt != null) {
+        final elapsed = DateTime.now().difference(cooldownFreezeStartedAt!);
+        servedSeconds = elapsed.inSeconds.clamp(0, _breakDurationSeconds);
+      } else {
+        servedSeconds = (_breakDurationSeconds - breakSecondsRemaining).clamp(
+          0,
+          _breakDurationSeconds,
+        );
+      }
       final servedMinutes = (servedSeconds / 60.0).floor();
       final cooldownResponse = (1.0 - (servedMinutes * _cooldownPerMinuteDrop))
           .clamp(_cooldownMinResponse, 1.0);
