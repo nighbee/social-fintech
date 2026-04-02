@@ -230,6 +230,12 @@ func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, r
 
 	resp := NearbyTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
 	for _, t := range tasks {
+		status := t.Status
+		if t.CreatorID == userID && t.VerificationCode != "" && (t.Status == "open" || t.Status == "in_progress") {
+			// Backward-compatible creator marker used by current Flutter UI.
+			status = fmt.Sprintf("mine|%s", t.VerificationCode)
+		}
+
 		resp.Tasks = append(resp.Tasks, TaskResponse{
 			ID:             t.ID,
 			Title:          t.Title,
@@ -237,7 +243,7 @@ func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, r
 			Reward:         economy.CentinelsToSeals(t.Reward),
 			WorkersNeeded:  t.WorkersNeeded,
 			WorkersFilled:  t.WorkersFilled,
-			Status:         t.Status,
+			Status:         status,
 			AutoShutdownAt: t.AutoShutdownAt,
 			Latitude:       t.Latitude,
 			Longitude:      t.Longitude,
@@ -246,6 +252,7 @@ func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, r
 	}
 	return &resp, nil
 }
+
 
 func (s *Service) GetAppliedTasks(ctx context.Context, userID string) (*AppliedTasksResponse, error) {
 	tasks, err := s.repo.GetAppliedTasks(ctx, userID)

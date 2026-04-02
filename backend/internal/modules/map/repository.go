@@ -183,12 +183,11 @@ func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon
 		SELECT id, title, description, reward, creator_id,
 		       ST_Y(location) AS latitude,
 		       ST_X(location) AS longitude,
-		       workers_needed, workers_filled, status, auto_shutdown_at,
+		       workers_needed, workers_filled, verification_code, status, auto_shutdown_at,
 		       h3_res5, h3_res4, h3_res2, created_at, updated_at
 		FROM tasks
 		WHERE status = 'open'
 		  AND (auto_shutdown_at IS NULL OR auto_shutdown_at > NOW())
-		  AND creator_id != $1
 		  AND id NOT IN (
 			  SELECT task_id FROM task_applications WHERE applicant_id = $1 AND status != 'rejected'
 		  )
@@ -206,6 +205,7 @@ func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon
 	}
 	return tasks, nil
 }
+
 
 func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([]Task, error) {
 	query := `
