@@ -447,6 +447,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             final post = viewModel.posts[index];
                             return PostCardWidget(
                               post: post,
+                              bloc: _homeBloc,
                               onReported: _onPostReported,
                             );
                           },

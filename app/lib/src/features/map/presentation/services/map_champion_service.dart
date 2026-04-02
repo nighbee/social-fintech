@@ -15,9 +15,15 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 class MapChampionService {
   MapChampionService();
   static const int _managerInitAttempts = 3;
-  static const double _markerIconScale = 1.14;
+  static const double _markerIconScale = 1.34;
+  static const double _minChampionSizeMultiplier = 0.9;
 
   double _markerSizeMultiplier = 1.0;
+
+  double get _effectiveSizeMultiplier =>
+      _markerSizeMultiplier < _minChampionSizeMultiplier
+          ? _minChampionSizeMultiplier
+          : _markerSizeMultiplier;
 
   final H3 _h3 = const H3Factory().process();
   PointAnnotationManager? _annotationManager;
@@ -83,7 +89,7 @@ class MapChampionService {
       return;
     }
     for (final ann in _annotations.values) {
-      ann.iconSize = _markerIconScale * _markerSizeMultiplier;
+      ann.iconSize = _markerIconScale * _effectiveSizeMultiplier;
       try {
         await manager.update(ann);
       } on PlatformException catch (error) {
@@ -139,7 +145,7 @@ class MapChampionService {
           ..geometry = Point(coordinates: Position(coords.lng, coords.lat))
           ..iconAnchor = IconAnchor.BOTTOM
           ..symbolSortKey = 8000
-          ..iconSize = _markerIconScale * _markerSizeMultiplier;
+          ..iconSize = _markerIconScale * _effectiveSizeMultiplier;
         await manager.update(existing);
         _championsByIndex[champion.h3Index] = champion;
       } else {
@@ -196,7 +202,7 @@ class MapChampionService {
       image: await _createChampionMarkerImage(),
       iconAnchor: IconAnchor.BOTTOM,
       symbolSortKey: 8000,
-      iconSize: _markerIconScale * _markerSizeMultiplier,
+      iconSize: _markerIconScale * _effectiveSizeMultiplier,
     );
 
     final pointAnnotation = await manager.create(pointAnnotationOptions);
@@ -281,14 +287,14 @@ class MapChampionService {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
     const gold = Color(0xFFCEA548);
-    const circleSize = 86.0 * 1.08;
+    const circleSize = 86.0 * 1.18;
     const strokeW = 2.0;
     const shadowBlur = 4.0;
     const pad = shadowBlur + 2.0;
     const width = circleSize + pad * 2;
     const circleCx = width / 2;
     const circleCy = pad + circleSize / 2;
-    final fillRadius = 41.0 * 1.08;
+    final fillRadius = 41.0 * 1.18;
 
     final circleRect = Rect.fromCircle(
       center: Offset(circleCx, circleCy),
@@ -347,7 +353,7 @@ class MapChampionService {
         text: 'Champion',
         style: TextStyle(
           color: gold,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.15,
         ),

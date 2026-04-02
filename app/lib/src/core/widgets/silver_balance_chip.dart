@@ -47,6 +47,23 @@ class _SilverBalanceChipState extends State<SilverBalanceChip> {
     }
   }
 
+  @override
+  void didUpdateWidget(covariant SilverBalanceChip oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Keep non-live chip in sync with parent updates (e.g. HomeBloc state).
+    if (!widget.useLiveBalance && widget.count != null && widget.count != _count) {
+      _count = widget.count!;
+    }
+
+    // If mode changed from live to static, reflect incoming value immediately.
+    if (oldWidget.useLiveBalance && !widget.useLiveBalance && widget.count != null) {
+      _count = widget.count!;
+      _livePending = false;
+      _liveFailed = false;
+    }
+  }
+
   String get _displayText {
     if (widget.useLiveBalance) {
       if (_livePending || _liveFailed) {

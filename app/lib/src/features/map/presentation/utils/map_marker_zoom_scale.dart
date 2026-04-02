@@ -3,8 +3,8 @@ double mapMarkerSizeMultiplier(double zoom) {
   const minZ = 9.0;
   const refZ = 14.5;
   const maxZ = 20.5;
-  const minM = 0.55;
-  const maxM = 2.25;
+  const minM = 0.72;
+  const maxM = 1.62;
   final z = zoom.clamp(minZ, maxZ);
   if (z <= refZ) {
     final t = (z - minZ) / (refZ - minZ);

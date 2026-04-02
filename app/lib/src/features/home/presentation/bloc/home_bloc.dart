@@ -67,6 +67,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   FeedEntity _myProfilePostsListCache = const FeedEntity.empty();
   String _profilePostsGridUserId = '';
   String _profilePostsListUserId = '';
+  final Set<String> _sendingSealPostIds = <String>{};
 
   FeedEntity get profilePostsGridCache => _profilePostsGridCache;
   FeedEntity get profilePostsListCache => _profilePostsListCache;
@@ -484,25 +485,39 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       return const Right(SendPostSealResultEntity.empty());
     }
 
-    final result = await _repository.sendPostSeal(
-      PostIdRequest(postId: postId),
-      request,
-    );
-    result.fold(
-      (_) {},
-      (sendResult) {
-        add(
-          HomeEvent.applyPostSealResult(
-            postId: postId,
-            result: sendResult,
-          ),
-        );
-        add(const HomeEvent.loadStoreSummary());
-        // Re-sync feed from backend to avoid stale or double-counted local values.
-        add(const HomeEvent.loadFeed(request: FeedRequest()));
-      },
-    );
-    return result;
+    if (_sendingSealPostIds.contains(postId)) {
+      return Left(
+        UnknownException(
+          message: 'Silver honor is already being sent. Please wait.',
+        ),
+      );
+    }
+
+    _sendingSealPostIds.add(postId);
+
+    try {
+      final result = await _repository.sendPostSeal(
+        PostIdRequest(postId: postId),
+        request,
+      );
+      result.fold(
+        (_) {},
+        (sendResult) {
+          add(
+            HomeEvent.applyPostSealResult(
+              postId: postId,
+              result: sendResult,
+            ),
+          );
+          add(const HomeEvent.loadStoreSummary());
+          // Re-sync feed from backend to avoid stale or double-counted local values.
+          add(const HomeEvent.loadFeed(request: FeedRequest()));
+        },
+      );
+      return result;
+    } finally {
+      _sendingSealPostIds.remove(postId);
+    }
   }
 
   Future<Either<DomainException, ReportPostResultEntity>> reportPostDirect(
