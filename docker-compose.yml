@@ -45,6 +45,7 @@ services:
     volumes:
       - ./backend/config.yaml:/root/config.yaml
       - ./backend/migrations:/root/migrations
+      - ./google:/root/google
     environment:
       - CONFIG_PATH=/root/config.yaml
       - DB_HOST=db
@@ -87,6 +88,7 @@ services:
     command: ["./worker"]
     volumes:
       - ./backend/config.yaml:/root/config.yaml
+      - ./google:/root/google
     environment:
       - CONFIG_PATH=/root/config.yaml
       - DB_HOST=db

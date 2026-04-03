@@ -86,7 +86,7 @@ oauth:
 
 firebase:
   enabled: true  # Set to true to enable Firebase SMS
-  credentials_path: ./firebase-service-account.json  # Path to Firebase service account JSON
+  credentials_path: /root/google/smsbb-6e583-firebase-adminsdk-fbsvc-a728ee686e.json  # Path to Firebase service account JSON
   project_id: smsbb-6e583
 
 storage:
