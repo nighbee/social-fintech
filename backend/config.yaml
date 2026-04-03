@@ -95,7 +95,7 @@ storage:
   secret_key: minioadmin
   bucket: brightbund
   use_ssl: false
-  public_url: http://68.183.186.224/minio
+  public_url: http://35.206.91.13/minio
 
 moderation:
   enabled: true
