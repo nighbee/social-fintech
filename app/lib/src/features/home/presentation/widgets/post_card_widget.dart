@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
 
 import 'package:app/gen/assets.gen.dart';
-import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
@@ -20,13 +19,19 @@ class PostCardWidget extends StatelessWidget
         ShowPostReportBottomSheet,
         ShowPostSilverHonorBottomSheet {
   final PostResponseEntity post;
+  final HomeBloc bloc;
   final VoidCallback? onReported;
 
-  const PostCardWidget({super.key, required this.post, this.onReported});
+  const PostCardWidget({
+    super.key,
+    required this.post,
+    required this.bloc,
+    this.onReported,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final homeBloc = getIt<HomeBloc>();
+    final homeBloc = bloc;
     final imageUrls = post.mediaAttachments.map((item) => item.url).toList();
     final hasImages = imageUrls.isNotEmpty;
     final rankMeta = _resolveRankMeta(post.author.rank, post.author.rankSubLevel);
@@ -136,6 +141,7 @@ class PostCardWidget extends StatelessWidget
           Row(
             children: [
               PostLikeButton(
+                bloc: homeBloc,
                 postId: post.postId,
                 isLiked: post.viewerHasLiked,
                 count: post.metrics.likes,
@@ -270,19 +276,19 @@ class PostActionButton extends StatelessWidget {
 class PostLikeButton extends StatelessWidget {
   const PostLikeButton({
     super.key,
+    required this.bloc,
     required this.postId,
     required this.isLiked,
     required this.count,
   });
 
+  final HomeBloc bloc;
   final String postId;
   final bool isLiked;
   final int count;
 
   @override
   Widget build(BuildContext context) {
-    final bloc = getIt<HomeBloc>();
-
     return BlocBuilder<HomeBloc, HomeState>(
       bloc: bloc,
       builder: (context, state) {

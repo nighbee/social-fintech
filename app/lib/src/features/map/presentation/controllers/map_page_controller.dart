@@ -92,6 +92,14 @@ class MapPageController {
   DateTime? _lastMarkerSelectionAt;
   Future<void>? _teardownFuture;
   int? _lastMarkerZoomStep;
+  double _lastCameraZoom = 14.5;
+  Timer? _cameraGeoRefreshDebounce;
+  double? _lastRegionAssignLat;
+  double? _lastRegionAssignLon;
+
+  static const double _regionReassignDistanceMeters = 450;
+  static const Duration _cameraGeoRefreshDebounceDuration =
+      Duration(milliseconds: 650);
 
   void onInit() {
     _lastChampionsRegionKey = null;
@@ -112,6 +120,8 @@ class MapPageController {
   }
 
   Future<void> _teardownMapResourcesOnce() async {
+    _cameraGeoRefreshDebounce?.cancel();
+    _cameraGeoRefreshDebounce = null;
     _polling.dispose();
     _lastMarkerZoomStep = null;
     await _championService.dispose();
@@ -235,9 +245,10 @@ class MapPageController {
     }
 
     // Чемпионы: пустой список тоже синхронизировать (убрать старые пины после loadMap).
+    final championsForViewport = _championsForCurrentZoom(viewModel.champions);
     unawaited(
       _championService.updateChampions(
-        viewModel.champions,
+        championsForViewport,
         viewModel.assignedRegion,
       ),
     );
@@ -426,23 +437,20 @@ class MapPageController {
     _refreshNearbyTasks();
     if (!_didAssignRegionWithDeviceLocation) {
       _didAssignRegionWithDeviceLocation = true;
-      _mapBloc.add(
-        MapEvent.assignRegion(
-          MapRegionAssignmentRequest(latitude: lat, longitude: lon),
-        ),
-      );
+      _maybeAssignRegionForCurrentGeoContext(force: true);
     }
   }
 
-  double get _latitudeForGeoContext =>
-      _deviceLatitude ?? currentLatitude;
-  double get _longitudeForGeoContext =>
-      _deviceLongitude ?? currentLongitude;
+    // Geo-context should follow visible map area (camera center), not only
+    // device GPS, otherwise nearby/champions can look "stuck" in another zone.
+    double get _latitudeForGeoContext => currentLatitude;
+    double get _longitudeForGeoContext => currentLongitude;
 
   void onCameraChanged(CameraChangedEventData eventData) {
     currentLatitude = eventData.cameraState.center.coordinates.lat.toDouble();
     currentLongitude = eventData.cameraState.center.coordinates.lng.toDouble();
     final zoom = eventData.cameraState.zoom;
+    _lastCameraZoom = zoom;
     final step = (zoom * 40).round();
     if (_lastMarkerZoomStep == step) {
       return;
@@ -450,6 +458,75 @@ class MapPageController {
     _lastMarkerZoomStep = step;
     final m = mapMarkerSizeMultiplier(zoom);
     unawaited(_applyMarkerSizeMultiplier(m));
+    _scheduleCameraGeoRefresh();
+  }
+
+  List<MapChampionEntity> _championsForCurrentZoom(
+    List<MapChampionEntity> champions,
+  ) {
+    if (champions.length <= 1) {
+      return champions;
+    }
+
+    int targetResolution;
+    if (_lastCameraZoom >= 14.0) {
+      targetResolution = 5; // district details on close zoom
+    } else if (_lastCameraZoom >= 11.0) {
+      targetResolution = 4; // city level on medium zoom
+    } else {
+      targetResolution = 2; // country level on far zoom
+    }
+
+    final preferredOrder = switch (targetResolution) {
+      5 => const [5, 4, 2],
+      4 => const [4, 5, 2],
+      _ => const [2, 4, 5],
+    };
+
+    for (final resolution in preferredOrder) {
+      final tier = champions
+          .where((champion) => champion.resolution == resolution)
+          .toList(growable: false);
+      if (tier.isNotEmpty) {
+        return tier;
+      }
+    }
+
+    return champions;
+  }
+
+  void _scheduleCameraGeoRefresh() {
+    _cameraGeoRefreshDebounce?.cancel();
+    _cameraGeoRefreshDebounce =
+        Timer(_cameraGeoRefreshDebounceDuration, () {
+      _refreshNearbyTasks();
+      _maybeAssignRegionForCurrentGeoContext();
+    });
+  }
+
+  void _maybeAssignRegionForCurrentGeoContext({bool force = false}) {
+    final lat = _latitudeForGeoContext;
+    final lon = _longitudeForGeoContext;
+
+    if (!force && _lastRegionAssignLat != null && _lastRegionAssignLon != null) {
+      final distanceMeters = geo.Geolocator.distanceBetween(
+        _lastRegionAssignLat!,
+        _lastRegionAssignLon!,
+        lat,
+        lon,
+      );
+      if (distanceMeters < _regionReassignDistanceMeters) {
+        return;
+      }
+    }
+
+    _lastRegionAssignLat = lat;
+    _lastRegionAssignLon = lon;
+    _mapBloc.add(
+      MapEvent.assignRegion(
+        MapRegionAssignmentRequest(latitude: lat, longitude: lon),
+      ),
+    );
   }
 
   void openCreateRequest(BuildContext context) {
@@ -565,11 +642,7 @@ class MapPageController {
 
       if (!_didAssignRegionWithDeviceLocation) {
         _didAssignRegionWithDeviceLocation = true;
-        _mapBloc.add(
-          MapEvent.assignRegion(
-            MapRegionAssignmentRequest(latitude: lat, longitude: lon),
-          ),
-        );
+        _maybeAssignRegionForCurrentGeoContext(force: true);
       }
 
       await map.easeTo(
@@ -937,14 +1010,7 @@ class MapPageController {
         assignedRegion.h3Res4.isNotEmpty ||
         assignedRegion.h3Res2.isNotEmpty;
     if (!hasAnyRegionIndex) {
-      _mapBloc.add(
-        MapEvent.assignRegion(
-          MapRegionAssignmentRequest(
-            latitude: _latitudeForGeoContext,
-            longitude: _longitudeForGeoContext,
-          ),
-        ),
-      );
+      _maybeAssignRegionForCurrentGeoContext(force: true);
       return;
     }
 

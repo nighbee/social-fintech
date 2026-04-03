@@ -28,6 +28,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   static const Duration _feedStateSyncInterval = Duration(seconds: 15);
   static const int _syncDeltaSeconds = 15;
+  static const int _defaultCooldownSeconds = 5 * 60;
 
   final HomeBloc _homeBloc = getIt<HomeBloc>();
   final DeviceId _deviceId = DeviceId();
@@ -36,15 +37,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   String? _cachedDeviceId;
   bool _showReportSuccessBanner = false;
   bool _isAppForeground = true;
+  bool _isFeedTabVisible = true;
   bool _forceSyncAfterResume = false;
   DateTime? _cooldownFreezeStartedAt;
+  int? _localCooldownRemainingSeconds;
+  DateTime? _appBackgroundedAt;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _homeBloc.add(const HomeEvent.loadStoreSummary());
-    unawaited(_startFeedStateSync());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(_startFeedStateSync());
+    });
   }
 
   @override
@@ -89,6 +98,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      if (_appBackgroundedAt != null) {
+        final elapsed = DateTime.now().difference(_appBackgroundedAt!);
+        _advanceLocalCooldown(elapsed.inSeconds);
+      }
+      _appBackgroundedAt = null;
       _isAppForeground = true;
       unawaited(_syncFeedStateOnce(deltaSeconds: 1, force: true));
       _feedStateSyncTimer ??=
@@ -99,6 +113,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.detached) {
       _isAppForeground = false;
+      _appBackgroundedAt ??= DateTime.now();
       _forceSyncAfterResume = true;
       _feedStateSyncTimer?.cancel();
       _feedStateSyncTimer = null;
@@ -116,6 +131,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _onSyncTick() {
+    _advanceLocalCooldown(_syncDeltaSeconds);
     unawaited(_syncFeedStateOnce(deltaSeconds: _syncDeltaSeconds));
   }
 
@@ -127,37 +143,96 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  bool _isFeedRouteActive() {
-    if (!mounted) {
-      return false;
-    }
-    try {
-      final currentPath =
-          GoRouter.of(context).routerDelegate.currentConfiguration.uri.path;
-      return currentPath == RoutePaths.home ||
-          currentPath.startsWith('${RoutePaths.home}/');
-    } catch (_) {
-      // Fail-open to avoid accidentally over-syncing cooldown when route info
-      // is temporarily unavailable.
-      return true;
-    }
+  bool _hasLocalCooldown() {
+    final local = _localCooldownRemainingSeconds;
+    return local != null && local > 0;
   }
 
-  bool _shouldFreezeCooldownFromState(HomeState state) {
-    if (!_isAppForeground || !_isFeedRouteActive()) {
-      return false;
+  bool _isCooldownActiveFromState(HomeState state) {
+    if (_hasLocalCooldown()) {
+      return true;
     }
     final feedState = _feedStateFromState(state);
     return feedState.shouldEnforceCooldown;
   }
 
+  int _effectiveBreakSecondsFromState(HomeState state) {
+    final local = _localCooldownRemainingSeconds;
+    if (local != null && local > 0) {
+      return local;
+    }
+    final feedState = _feedStateFromState(state);
+    final serverBreak = feedState.safeBreakSecondsRemaining;
+    if (feedState.shouldEnforceCooldown && serverBreak <= 0) {
+      return _defaultCooldownSeconds;
+    }
+    return serverBreak;
+  }
+
+  bool _shouldFreezeCooldownFromState(HomeState state) {
+    if (!_isAppForeground || !_isFeedTabVisible) {
+      return false;
+    }
+    return _isCooldownActiveFromState(state);
+  }
+
   void _updateCooldownFreezeState(HomeState state) {
+    _ingestServerCooldownState(state);
+
     final shouldFreeze = _shouldFreezeCooldownFromState(state);
     if (shouldFreeze) {
       _cooldownFreezeStartedAt ??= DateTime.now();
       return;
     }
     _cooldownFreezeStartedAt = null;
+  }
+
+  void _ingestServerCooldownState(HomeState state) {
+    final feedState = _feedStateFromState(state);
+    if (feedState.shouldEnforceCooldown) {
+      final serverBreak = feedState.safeBreakSecondsRemaining;
+      final seeded = serverBreak > 0 ? serverBreak : _defaultCooldownSeconds;
+      final local = _localCooldownRemainingSeconds;
+      if (local == null || local <= 0) {
+        _localCooldownRemainingSeconds = seeded;
+      } else if (!_shouldFreezeCooldownFromState(state)) {
+        _localCooldownRemainingSeconds = seeded;
+      } else if (seeded > local) {
+        _localCooldownRemainingSeconds = seeded;
+      }
+      return;
+    }
+
+    if (!_isAppForeground || !_isFeedTabVisible) {
+      _localCooldownRemainingSeconds = 0;
+    }
+  }
+
+  void _advanceLocalCooldown(int deltaSeconds) {
+    if (deltaSeconds <= 0 || !_hasLocalCooldown()) {
+      return;
+    }
+    if (_isAppForeground && _isFeedTabVisible) {
+      return;
+    }
+
+    final next = (_localCooldownRemainingSeconds! - deltaSeconds)
+        .clamp(0, _defaultCooldownSeconds);
+    if (next == _localCooldownRemainingSeconds) {
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _localCooldownRemainingSeconds = next;
+      });
+    } else {
+      _localCooldownRemainingSeconds = next;
+    }
+
+    if (next == 0) {
+      _forceSyncAfterResume = true;
+    }
   }
 
   Future<void> _syncFeedStateOnce({
@@ -195,11 +270,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return '20 min';
     }
 
-    if (feedState.shouldEnforceCooldown) {
+    if (_isCooldownActiveFromState(HomeState.loaded(viewModel: viewModel))) {
       if (_shouldFreezeCooldownFromState(_homeBloc.state)) {
         return '5 min break';
       }
-      final breakMinutes = (feedState.safeBreakSecondsRemaining / 60).ceil();
+      final breakMinutes =
+          (_effectiveBreakSecondsFromState(HomeState.loaded(viewModel: viewModel)) /
+                  60)
+              .ceil();
       return '$breakMinutes min break';
     }
 
@@ -221,7 +299,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       return FeedTimerTone.normal;
     }
 
-    if (feedState.shouldEnforceCooldown) {
+    if (_isCooldownActiveFromState(HomeState.loaded(viewModel: viewModel))) {
       return FeedTimerTone.breakTime;
     }
 
@@ -268,6 +346,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    _isFeedTabVisible = TickerMode.of(context);
+
     return Stack(
       children: [
         Positioned.fill(
@@ -348,10 +428,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                                 viewModel.feedState.accumulatedActiveSeconds,
                             maxAllowedSeconds:
                                 viewModel.feedState.maxAllowedSeconds,
-                            isInCooldown:
-                                viewModel.feedState.shouldEnforceCooldown,
-                            breakSecondsRemaining:
-                                viewModel.feedState.safeBreakSecondsRemaining,
+                            isInCooldown: _isCooldownActiveFromState(
+                              HomeState.loaded(viewModel: viewModel),
+                            ),
+                            breakSecondsRemaining: _effectiveBreakSecondsFromState(
+                              HomeState.loaded(viewModel: viewModel),
+                            ),
                             freezeBreakCountdown:
                                 _shouldFreezeCooldownFromState(
                               HomeState.loaded(viewModel: viewModel),
@@ -365,6 +447,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             final post = viewModel.posts[index];
                             return PostCardWidget(
                               post: post,
+                              bloc: _homeBloc,
                               onReported: _onPostReported,
                             );
                           },

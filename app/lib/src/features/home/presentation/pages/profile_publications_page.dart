@@ -298,7 +298,10 @@ class _ProfilePublicationsBody extends StatelessWidget {
         }
 
         final post = feed.items[index];
-        return PostCardWidget(post: post);
+        return PostCardWidget(
+          post: post,
+          bloc: getIt<HomeBloc>(),
+        );
       },
     );
   }
