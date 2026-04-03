@@ -449,8 +449,10 @@ class HomeRemoteImpl implements IHomeRemote {
   ) async {
     try {
       final payload = request.toJson();
-      // Feed sync is dispatched from HomePage, so this context is explicit.
+      // Feed sync is dispatched from HomePage, so send explicit context for
+      // both new and backward-compatible backend handlers.
       payload['app_section'] = 'feed';
+      payload['is_feed_active'] = true;
       final response = await _restClient.post(
         EndPoints.feedStateSync,
         data: payload,

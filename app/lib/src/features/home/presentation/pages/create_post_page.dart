@@ -56,6 +56,9 @@ class _CreatePostPageState extends State<CreatePostPage>
   Future<void> _pickPhoto() async {
     await ImagePickerHelper.showImagePicker(
       context: context,
+      imageQuality: 60,
+      maxWidth: 1280,
+      maxHeight: 1280,
       onImageSelected: (bytes, fileName) {
         _bloc.add(HomeEvent.addPostPhoto(bytes, fileName));
       },
