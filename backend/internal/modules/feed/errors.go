@@ -8,6 +8,10 @@ var (
 	ErrInvalidDelta = errors.New("delta_seconds must be greater than 0")
 	// ErrInvalidDeviceID is returned when the client does not provide device_id.
 	ErrInvalidDeviceID = errors.New("device_id is required")
+	// ErrInvalidFeedContext is returned when sync payload does not include feed context.
+	ErrInvalidFeedContext = errors.New("feed context is required: is_feed_active or app_section")
+	// ErrInvalidAppSection is returned when app_section is not supported.
+	ErrInvalidAppSection = errors.New("invalid app_section")
 
 	// ErrDeltaTooLarge is returned when the reported delta exceeds the server-side
 	// anti-cheat ceiling (real elapsed + NetworkBufferSeconds).

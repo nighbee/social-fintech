@@ -137,12 +137,16 @@ type ReviewReportsRequest struct {
 type SyncFeedStateRequest struct {
 	DeltaSeconds int    `json:"delta_seconds"`
 	DeviceID     string `json:"device_id"`
+	// Context: either is_feed_active or app_section must be provided.
+	IsFeedActive *bool  `json:"is_feed_active,omitempty"`
+	AppSection   string `json:"app_section,omitempty"`
 }
 
 type FeedStateResponse struct {
 	AccumulatedActiveSeconds int  `json:"accumulated_active_seconds"`
 	IsInCooldown             bool `json:"is_in_cooldown"`
 	BreakSecondsRemaining    int  `json:"break_seconds_remaining"` // 0-300; 0 = not in break
+	BreakMode                string `json:"break_mode"`            // "paused" | "counting"
 	// AccumulatedBreakSeconds exposes how many off-feed seconds have been served so far.
 	// Client can use this to animate the break countdown even between sync calls.
 	AccumulatedBreakSeconds int       `json:"accumulated_break_seconds"`
@@ -150,6 +154,14 @@ type FeedStateResponse struct {
 	ServerTimestamp         time.Time `json:"server_timestamp"`
 	ActionRequired          string    `json:"action_required,omitempty"` // "trigger_friction", "enforce_cooldown", or omitted
 }
+
+const (
+	AppSectionFeed       = "feed"
+	AppSectionMap        = "map"
+	AppSectionProfile    = "profile"
+	AppSectionChats      = "chats"
+	AppSectionBackground = "background"
+)
 
 type AuthorInfo struct {
 	ID            uuid.UUID `json:"id"`
