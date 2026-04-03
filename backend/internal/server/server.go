@@ -52,6 +52,10 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	app.Get("/swagger/*", swagger.FiberWrapHandler())
 
 	api := app.Group("/api/v1")
+	api.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok", "version": "v1"})
+	})
+
 	app.Static("/uploads", "./uploads")
 	authGroup := api.Group("/auth")
 
