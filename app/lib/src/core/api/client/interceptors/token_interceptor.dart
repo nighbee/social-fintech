@@ -96,7 +96,22 @@ class TokenInterceptor extends Interceptor {
             completer: responseCompleter,
           ),
         );
-        return handler.resolve(await responseCompleter.future);
+        try {
+          final queuedResponse = await responseCompleter.future;
+          return handler.resolve(queuedResponse);
+        } catch (queuedError) {
+          if (queuedError is DioException) {
+            return handler.next(queuedError);
+          }
+
+          return handler.next(
+            DioException(
+              requestOptions: err.requestOptions,
+              error: queuedError,
+              type: DioExceptionType.unknown,
+            ),
+          );
+        }
       }
     }
     handler.next(err);

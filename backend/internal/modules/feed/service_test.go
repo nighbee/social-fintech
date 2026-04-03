@@ -315,7 +315,7 @@ func TestApplyStateTransitions_ActivePhase_ResetAfterLongAway(t *testing.T) {
 		IsInCooldown:             false,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, false)
+	result := svc.applyStateTransitions(context.Background(), state, now, false, true)
 
 	if result.AccumulatedActiveSeconds != 0 {
 		t.Errorf("expected full reset to 0, got %d", result.AccumulatedActiveSeconds)
@@ -338,7 +338,7 @@ func TestApplyStateTransitions_BreakPhase_SyncFreezesAndRefreshesLastSync(t *tes
 		IsInCooldown:             true,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, true)
+	result := svc.applyStateTransitions(context.Background(), state, now, true, false)
 
 	if result.AccumulatedBreakSeconds != 120 {
 		t.Errorf("expected break seconds to stay frozen, got %d", result.AccumulatedBreakSeconds)
@@ -362,7 +362,7 @@ func TestApplyStateTransitions_BreakPhase_TracksElapsedFromBreakStartAt(t *testi
 		BreakStartedAt:           &breakStart,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, false)
+	result := svc.applyStateTransitions(context.Background(), state, now, false, true)
 
 	if result.AccumulatedBreakSeconds != 150 {
 		t.Errorf("expected break seconds to reflect wall-clock elapsed (150), got %d", result.AccumulatedBreakSeconds)
@@ -372,7 +372,7 @@ func TestApplyStateTransitions_BreakPhase_TracksElapsedFromBreakStartAt(t *testi
 	}
 }
 
-func TestApplyStateTransitions_BreakPhase_SyncAlsoUsesBreakStartAt(t *testing.T) {
+func TestApplyStateTransitions_BreakPhase_SyncPausesBreakWhenOnFeed(t *testing.T) {
 	svc := newTestService(true)
 	now := time.Now()
 	breakStart := now.Add(-140 * time.Second)
@@ -386,10 +386,10 @@ func TestApplyStateTransitions_BreakPhase_SyncAlsoUsesBreakStartAt(t *testing.T)
 		BreakStartedAt:           &breakStart,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, true)
+	result := svc.applyStateTransitions(context.Background(), state, now, true, false)
 
-	if result.AccumulatedBreakSeconds != 140 {
-		t.Errorf("expected break seconds to follow break_start_at during sync, got %d", result.AccumulatedBreakSeconds)
+	if result.AccumulatedBreakSeconds != 100 {
+		t.Errorf("expected break seconds to stay frozen during on-feed sync, got %d", result.AccumulatedBreakSeconds)
 	}
 	if !result.LastSyncTimestamp.Equal(now) {
 		t.Error("expected LastSyncTimestamp to move to now during sync")
@@ -410,7 +410,7 @@ func TestApplyStateTransitions_BreakPhase_ResolvesAfterEnoughOffFeed(t *testing.
 		BreakStartedAt:           &breakStart,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, false)
+	result := svc.applyStateTransitions(context.Background(), state, now, false, true)
 
 	if result.IsInCooldown {
 		t.Error("expected cooldown resolved")
@@ -431,7 +431,7 @@ func TestCalcBreakSecondsRemaining_MidBreak(t *testing.T) {
 	state := &FeedFatigueState{IsInCooldown: true, AccumulatedBreakSeconds: 120}
 	now := time.Now()
 
-	rem := svc.calcBreakSecondsRemaining(state, now)
+	rem := svc.calcBreakSecondsRemaining(state, now, false)
 	if rem != 180 {
 		t.Errorf("expected 180, got %d", rem)
 	}
@@ -443,7 +443,7 @@ func TestCalcBreakSecondsRemaining_UsesBreakStartedAt(t *testing.T) {
 	breakStart := now.Add(-200 * time.Second)
 	state := &FeedFatigueState{IsInCooldown: true, BreakStartedAt: &breakStart, AccumulatedBreakSeconds: 5}
 
-	rem := svc.calcBreakSecondsRemaining(state, now)
+	rem := svc.calcBreakSecondsRemaining(state, now, true)
 	if rem != 100 {
 		t.Errorf("expected 100 seconds remaining from break_start_at, got %d", rem)
 	}
@@ -498,7 +498,7 @@ func TestSyncFeedState_ThresholdCrossingTriggersFriction(t *testing.T) {
 	resp, err := svc.SyncFeedState(context.Background(), userID, &SyncFeedStateRequest{
 		DeltaSeconds: 5,
 		DeviceID:     "device-a",
-	})
+	}, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -536,7 +536,7 @@ func TestSyncFeedState_DuringCooldownEnforcesCooldownAction(t *testing.T) {
 	resp, err := svc.SyncFeedState(context.Background(), userID, &SyncFeedStateRequest{
 		DeltaSeconds: 5,
 		DeviceID:     "device-b",
-	})
+	}, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

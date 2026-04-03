@@ -10,8 +10,8 @@ class ImagePickerHelper {
     required BuildContext context,
     required Function(Uint8List bytes, String fileName) onImageSelected,
     int imageQuality = 80,
-    double? maxWidth,
-    double? maxHeight,
+    double? maxWidth = 1280,
+    double? maxHeight = 1280,
   }) async {
     final ImagePicker picker = ImagePicker();
 
@@ -69,8 +69,8 @@ class ImagePickerHelper {
     required BuildContext context,
     required Function(Uint8List bytes, String fileName) onImageSelected,
     int imageQuality = 80,
-    double? maxWidth,
-    double? maxHeight,
+    double? maxWidth = 1280,
+    double? maxHeight = 1280,
   }) async {
     final ImagePicker picker = ImagePicker();
 
@@ -114,8 +114,8 @@ class ImagePickerHelper {
     required BuildContext context,
     required Function(Uint8List bytes, String fileName) onMediaSelected,
     int imageQuality = 80,
-    double? maxWidth,
-    double? maxHeight,
+    double? maxWidth = 1280,
+    double? maxHeight = 1280,
   }) async {
     final ImagePicker picker = ImagePicker();
 
@@ -184,8 +184,8 @@ class ImagePickerHelper {
     required BuildContext context,
     required Function(XFile file) onImageSelected,
     int imageQuality = 80,
-    double? maxWidth,
-    double? maxHeight,
+    double? maxWidth = 1280,
+    double? maxHeight = 1280,
   }) async {
     final ImagePicker picker = ImagePicker();
 

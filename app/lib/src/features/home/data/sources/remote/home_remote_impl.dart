@@ -448,13 +448,18 @@ class HomeRemoteImpl implements IHomeRemote {
     FeedStateSyncRequest request,
   ) async {
     try {
+      final payload = request.toJson();
+      // Feed sync is dispatched from HomePage, so send explicit context for
+      // both new and backward-compatible backend handlers.
+      payload['app_section'] = 'feed';
+      payload['is_feed_active'] = true;
       final response = await _restClient.post(
         EndPoints.feedStateSync,
-        data: request.toJson(),
+        data: payload,
       );
       return response.fold((error) => Left(error), (result) {
-        final payload = _extractMapPayload(result.data);
-        return Right(FeedStateDto.fromJson(payload));
+        final responsePayload = _extractMapPayload(result.data);
+        return Right(FeedStateDto.fromJson(responsePayload));
       });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));

@@ -323,9 +323,14 @@ func (h *Handler) SyncFeedState(c *fiber.Ctx) error {
 		return validationErr(c, ErrInvalidDeviceID.Error())
 	}
 
-	state, err := h.service.SyncFeedState(c.Context(), userID, &req)
+	isInFeed, err := resolveFeedContext(&req)
 	if err != nil {
-		if err == ErrInvalidDelta || err == ErrInvalidDeviceID {
+		return validationErr(c, err.Error())
+	}
+
+	state, err := h.service.SyncFeedState(c.Context(), userID, &req, isInFeed)
+	if err != nil {
+		if err == ErrInvalidDelta || err == ErrInvalidDeviceID || err == ErrInvalidFeedContext || err == ErrInvalidAppSection {
 			return validationErr(c, err.Error())
 		}
 		logger.Error("failed to sync feed state",
@@ -336,6 +341,24 @@ func (h *Handler) SyncFeedState(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(state)
+}
+
+func resolveFeedContext(req *SyncFeedStateRequest) (bool, error) {
+	if req.IsFeedActive != nil {
+		return *req.IsFeedActive, nil
+	}
+	section := strings.TrimSpace(strings.ToLower(req.AppSection))
+	if section == "" {
+		return false, ErrInvalidFeedContext
+	}
+	switch section {
+	case AppSectionFeed:
+		return true, nil
+	case AppSectionMap, AppSectionProfile, AppSectionChats, AppSectionBackground:
+		return false, nil
+	default:
+		return false, ErrInvalidAppSection
+	}
 }
 
 // CreatePost godoc
