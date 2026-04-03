@@ -40,6 +40,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: brightbund-api
+    command: ["./api"]
     restart: unless-stopped
     volumes:
       - ./backend/config.yaml:/root/config.yaml
@@ -78,7 +79,7 @@ services:
       dockerfile: Dockerfile
     container_name: brightbund-worker
     restart: unless-stopped
-    command: ["./main"]
+    command: ["./worker"]
     volumes:
       - ./backend/config.yaml:/root/config.yaml
     environment:
