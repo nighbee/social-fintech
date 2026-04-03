@@ -63,7 +63,7 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=brightbund-media
-      - MINIO_PUBLIC_URL=http://35.206.91.13/minio
+      - MINIO_PUBLIC_URL=http://68.183.186.224/minio
     depends_on:
       db:
         condition: service_healthy
@@ -106,7 +106,7 @@ services:
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_USE_SSL=false
       - MINIO_BUCKET=brightbund-media
-      - MINIO_PUBLIC_URL=http://35.206.91.13/minio
+      - MINIO_PUBLIC_URL=http://68.183.186.224/minio
     depends_on:
       db:
         condition: service_healthy
