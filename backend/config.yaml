@@ -71,7 +71,7 @@ cors:
     - Idempotency-Key
   expose_headers:
     - Content-Length
-  allow_credentials: true
+  allow_credentials: false
   max_age: 12h
 
 oauth:
