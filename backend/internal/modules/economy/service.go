@@ -549,6 +549,10 @@ func (s *service) GetTransactionHistory(ctx context.Context, userID string, req 
 	var categoryPtr *TransactionCategory
 	if req.Category != "" {
 		cat := TransactionCategory(req.Category)
+		// Normalize "transfer" to P2P_TRANSFER
+		if strings.ToLower(string(cat)) == "transfer" {
+			cat = CategoryP2PTransfer
+		}
 		if cat.IsValid() {
 			categoryPtr = &cat
 		}
