@@ -6,12 +6,14 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 type TwoFAMethod struct {
@@ -222,7 +224,13 @@ func (r *PostgresRepository) ListMessageKeywords(ctx context.Context, userID str
 		WHERE user_id = $1
 		ORDER BY created_at DESC
 	`, userID)
-	return items, err
+	if err != nil {
+		if isUndefinedTable(err) {
+			return items, nil
+		}
+		return nil, err
+	}
+	return items, nil
 }
 
 func (r *PostgresRepository) AddMessageKeyword(ctx context.Context, userID, keyword string) (string, error) {
@@ -527,6 +535,14 @@ func (r *PostgresRepository) CreateBugReport(ctx context.Context, userID string,
 func hashDeleteOTP(code string) string {
 	sum := sha256.Sum256([]byte(code))
 	return hex.EncodeToString(sum[:])
+}
+
+func isUndefinedTable(err error) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return string(pqErr.Code) == "42P01"
+	}
+	return false
 }
 
 func (r *PostgresRepository) ListBlockedUsers(ctx context.Context, userID string, cursor *time.Time, limit int) ([]BlockedUserItem, error) {
