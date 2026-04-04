@@ -5,9 +5,14 @@ import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 
 class CustomNavBar extends StatelessWidget {
-  const CustomNavBar({required this.currentTab, super.key});
+  const CustomNavBar({
+    required this.currentTab,
+    this.onBeforeNavigate,
+    super.key,
+  });
 
   final String currentTab;
+  final ValueChanged<String>? onBeforeNavigate;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +56,13 @@ class CustomNavBar extends StatelessWidget {
                 title: titles[index],
                 isSelected: isSelected,
                 icon: _buildIcon(index, isSelected),
-                onTap: () => context.go(paths[index]),
+                onTap: () {
+                  final targetPath = paths[index];
+                  if (targetPath != currentTab) {
+                    onBeforeNavigate?.call(targetPath);
+                  }
+                  context.go(targetPath);
+                },
               ),
             );
           }),

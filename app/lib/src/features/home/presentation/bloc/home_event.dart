@@ -17,6 +17,8 @@ class HomeEvent with _$HomeEvent {
   const factory HomeEvent.syncFeedState({
     required int deltaSeconds,
     required String deviceId,
+    required bool isFeedActive,
+    required String appSection,
   }) = _SyncFeedState;
   const factory HomeEvent.createFeedPost({
     required CreatePostRequest request,

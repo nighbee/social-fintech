@@ -122,7 +122,8 @@ class MapRequestMarkerService {
     _markerSizeMultiplier = multiplier;
     final manager = _annotationManager;
     if (manager != null) {
-      for (final entry in _annotationsByTaskId.entries) {
+      final entriesSnapshot = _annotationsByTaskId.entries.toList(growable: false);
+      for (final entry in entriesSnapshot) {
         final ann = entry.value;
         final sel = _selectedByTaskId[entry.key] ?? false;
         ann.iconSize = _taskIconSize(sel);

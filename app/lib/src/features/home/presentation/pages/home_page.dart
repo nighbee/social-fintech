@@ -115,6 +115,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       _isAppForeground = false;
       _appBackgroundedAt ??= DateTime.now();
       _forceSyncAfterResume = true;
+      unawaited(_dispatchFeedStateSync(
+        deltaSeconds: 1,
+        isFeedActive: false,
+        appSection: 'background',
+      ));
       _feedStateSyncTimer?.cancel();
       _feedStateSyncTimer = null;
     }
@@ -251,17 +256,69 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     _forceSyncAfterResume = false;
-    final deviceId = _cachedDeviceId ?? await _deviceId.getDeviceId();
-    _cachedDeviceId = deviceId;
-    if (!mounted) {
+    final isFeedActive = _isAppForeground && _isFeedTabVisible;
+    final appSection = isFeedActive ? 'feed' : 'background';
+
+    await _dispatchFeedStateSync(
+      deltaSeconds: deltaSeconds,
+      isFeedActive: isFeedActive,
+      appSection: appSection,
+    );
+  }
+
+  Future<void> _dispatchFeedStateSync({
+    required int deltaSeconds,
+    required bool isFeedActive,
+    required String appSection,
+  }) async {
+    if (_homeBloc.isClosed) {
       return;
     }
-    _homeBloc.add(
-      HomeEvent.syncFeedState(
-        deltaSeconds: deltaSeconds,
-        deviceId: deviceId,
-      ),
-    );
+
+    final deviceId = _cachedDeviceId ?? await _deviceId.getDeviceId();
+    _cachedDeviceId = deviceId;
+
+    if (_homeBloc.isClosed) {
+      return;
+    }
+
+    try {
+      _homeBloc.add(
+        HomeEvent.syncFeedState(
+          deltaSeconds: deltaSeconds,
+          deviceId: deviceId,
+          isFeedActive: isFeedActive,
+          appSection: appSection,
+        ),
+      );
+    } on StateError {
+      // Ignore race: widget is navigating away and bloc was closed mid-dispatch.
+    }
+  }
+
+  String _appSectionForRoute(String routePath) {
+    if (routePath == RoutePaths.map) {
+      return 'map';
+    }
+    if (routePath == RoutePaths.profile) {
+      return 'profile';
+    }
+    if (routePath == RoutePaths.chats) {
+      return 'chats';
+    }
+    return 'background';
+  }
+
+  void _onBeforeBottomNavNavigate(String targetPath) {
+    if (targetPath == RoutePaths.home) {
+      return;
+    }
+    final appSection = _appSectionForRoute(targetPath);
+    unawaited(_dispatchFeedStateSync(
+      deltaSeconds: 1,
+      isFeedActive: false,
+      appSection: appSection,
+    ));
   }
 
   String _timerLabelFromViewModel(HomeViewModel viewModel) {
@@ -382,7 +439,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               },
             ),
           ),
-          bottomNavigationBar: const CustomNavBar(currentTab: RoutePaths.home),
+          bottomNavigationBar: CustomNavBar(
+            currentTab: RoutePaths.home,
+            onBeforeNavigate: _onBeforeBottomNavNavigate,
+          ),
           body: SafeArea(
             child: BaseBlocWidget<HomeBloc, HomeEvent, HomeState>(
               bloc: _homeBloc,

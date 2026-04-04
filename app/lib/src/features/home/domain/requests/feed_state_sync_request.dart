@@ -9,6 +9,8 @@ class FeedStateSyncRequest extends BaseRequest with _$FeedStateSyncRequest {
   const factory FeedStateSyncRequest({
     @JsonKey(name: 'delta_seconds') required int deltaSeconds,
     @JsonKey(name: 'device_id') required String deviceId,
+    @JsonKey(name: 'is_feed_active') required bool isFeedActive,
+    @JsonKey(name: 'app_section') required String appSection,
   }) = _FeedStateSyncRequest;
 
   factory FeedStateSyncRequest.fromJson(Map<String, dynamic> json) =>

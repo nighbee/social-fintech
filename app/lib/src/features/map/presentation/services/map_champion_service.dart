@@ -88,7 +88,8 @@ class MapChampionService {
     if (manager == null) {
       return;
     }
-    for (final ann in _annotations.values) {
+    final annotationsSnapshot = _annotations.values.toList(growable: false);
+    for (final ann in annotationsSnapshot) {
       ann.iconSize = _markerIconScale * _effectiveSizeMultiplier;
       try {
         await manager.update(ann);

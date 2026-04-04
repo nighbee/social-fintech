@@ -359,11 +359,24 @@ class MapPageController {
   }
 
   Future<void> _applyMarkerSizeMultiplier(double multiplier) async {
-    await Future.wait<void>([
-      _championService.applyMarkerSizeMultiplier(multiplier),
-      _selfMarkerService.applyMarkerSizeMultiplier(multiplier),
-      _requestMarkerService.applyMarkerSizeMultiplier(multiplier),
-    ]);
+    try {
+      await Future.wait<void>([
+        _championService.applyMarkerSizeMultiplier(multiplier),
+        _selfMarkerService.applyMarkerSizeMultiplier(multiplier),
+        _requestMarkerService.applyMarkerSizeMultiplier(multiplier),
+      ]);
+    } catch (error) {
+      if (_isIgnorableMarkerScaleError(error)) {
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  bool _isIgnorableMarkerScaleError(Object error) {
+    final message = error.toString().toLowerCase();
+    return message.contains('no manager or annotation found') ||
+        message.contains('channel-error');
   }
 
   Future<void> _initChampionLayer(MapboxMap map) async {
