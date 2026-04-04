@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -281,21 +282,19 @@ func runStartupMigrations(db *sqlx.DB) error {
 		filepath.Join("..", "migrations"),
 	}
 
-	var lastErr error
+	var errors []string
 	for _, path := range paths {
+		abs, _ := filepath.Abs(path)
 		if _, err := os.Stat(path); err != nil {
-			lastErr = err
+			errors = append(errors, fmt.Sprintf("path %s (abs: %s): %v", path, abs, err))
 			continue
 		}
 		if err := migrate.Run(db, path); err != nil {
-			lastErr = err
+			errors = append(errors, fmt.Sprintf("path %s: migration error: %v", path, err))
 			continue
 		}
 		return nil
 	}
 
-	if lastErr != nil {
-		return fmt.Errorf("failed to run migrations from known paths: %w", lastErr)
-	}
-	return fmt.Errorf("migrations directory not found in known paths")
+	return fmt.Errorf("failed to run migrations from known paths: \n- %s", strings.Join(errors, "\n- "))
 }
