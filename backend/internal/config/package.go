@@ -249,6 +249,26 @@ func overrideFromEnv(cfg *Config) {
 		cfg.JWT.Secret = v
 	}
 
+	// Storage
+	if v := os.Getenv("MINIO_ENDPOINT"); v != "" {
+		cfg.Storage.Endpoint = v
+	}
+	if v := os.Getenv("MINIO_ACCESS_KEY"); v != "" {
+		cfg.Storage.AccessKey = v
+	}
+	if v := os.Getenv("MINIO_SECRET_KEY"); v != "" {
+		cfg.Storage.SecretKey = v
+	}
+	if v := os.Getenv("MINIO_BUCKET"); v != "" {
+		cfg.Storage.Bucket = v
+	}
+	if v := os.Getenv("MINIO_USE_SSL"); v != "" {
+		cfg.Storage.UseSSL = strings.EqualFold(v, "true") || v == "1"
+	}
+	if v := os.Getenv("MINIO_PUBLIC_URL"); v != "" {
+		cfg.Storage.PublicURL = v
+	}
+
 	// oauth
 	if v := os.Getenv("OAUTH_APPLE_CLIENT_ID"); v != "" {
 		cfg.OAuth.Apple.ClientID = v

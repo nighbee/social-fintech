@@ -216,6 +216,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	settingsGroup.Get("/interactions", settingsHandler.GetInteractions)
 	settingsGroup.Get("/interactions/messages", settingsHandler.GetMessagesSettings)
 	settingsGroup.Patch("/interactions/messages", settingsHandler.PatchMessagesSettings)
+	settingsGroup.Post("/interactions/messages", settingsHandler.PatchMessagesSettings)
 	settingsGroup.Post("/interactions/messages/keywords", settingsHandler.AddMessageKeyword)
 	settingsGroup.Delete("/interactions/messages/keywords/:id", settingsHandler.DeleteMessageKeyword)
 	settingsGroup.Get("/interactions/comments", settingsHandler.GetCommentsSettings)
