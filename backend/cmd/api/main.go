@@ -40,7 +40,6 @@ import (
 // @license.name Proprietary
 // @license.url https://brightbund.com/license
 
-// @host localhost:8081
 // @BasePath /api/v1
 
 // @securityDefinitions.apikey Bearer

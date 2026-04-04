@@ -56,9 +56,8 @@ jwt:
 
 cors:
   allowed_origins:
+    - "*"
     - http://localhost:3000
-    - http://localhost:8081
-    - http://localhost:8082
   allowed_methods:
     - GET
     - POST

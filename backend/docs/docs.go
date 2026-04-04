@@ -20,7 +20,7 @@ const docTemplate = `{
         },
         "version": "{{.Version}}"
     },
-    "host": "{{.Host}}",
+    "host": "",
     "basePath": "{{.BasePath}}",
     "paths": {
         "/admin/reports": {
