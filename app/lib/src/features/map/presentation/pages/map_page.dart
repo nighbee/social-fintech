@@ -183,7 +183,9 @@ class _MapPageState extends State<MapPage>
                     _controller.locallyCanceledExecutorApplicationIds,
                 selectedNearbyTaskId: _controller.selectedNearbyTaskId,
                 onSelectNearbyTask: (taskId) =>
-                    setState(() => _controller.selectNearbyTask(taskId)),
+                  setState(() => _controller.selectNearbyTask(taskId)),
+                lastCreatorTaskCreatedAtUtc:
+                  _controller.lastCreatorTaskCreatedAtUtc,
               ),
               loadingError: (_) =>
                   const SizedBox.shrink(), // Handled by listener
@@ -233,7 +235,9 @@ class _MapPageState extends State<MapPage>
                     _controller.locallyCanceledExecutorApplicationIds,
                 selectedNearbyTaskId: _controller.selectedNearbyTaskId,
                 onSelectNearbyTask: (taskId) =>
-                    setState(() => _controller.selectNearbyTask(taskId)),
+                  setState(() => _controller.selectNearbyTask(taskId)),
+                lastCreatorTaskCreatedAtUtc:
+                  _controller.lastCreatorTaskCreatedAtUtc,
               ),
             );
           },

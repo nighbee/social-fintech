@@ -5,6 +5,7 @@ import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/styled_message_dialog.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -22,17 +23,37 @@ class InviteGoldenHonorPage extends StatelessWidget {
   /// Оставлено для совместимости с `extra` в роутере; код берётся из [AuthBloc].
   final String? currentUserId;
 
-  String _displayCode(AuthState auth) {
-    return auth.maybeWhen(
-      authenticated: (login) {
-        final code = login.user.referralCode.trim();
-        if (code.isNotEmpty) return code;
-        final u = login.user.username.trim();
-        if (u.isNotEmpty) return u;
-        return '—';
-      },
-      orElse: () => '—',
+  String _normalizeCode(String raw) {
+    return raw.trim().replaceFirst(RegExp(r'^@+'), '');
+  }
+
+  String _displayCode(AuthState auth, ProfileState profileState) {
+    final fromAuthReferral = auth.maybeWhen(
+      authenticated: (login) => _normalizeCode(login.user.referralCode),
+      orElse: () => '',
     );
+    if (fromAuthReferral.isNotEmpty) {
+      return fromAuthReferral;
+    }
+
+    final fromAuthUsername = auth.maybeWhen(
+      authenticated: (login) => _normalizeCode(login.user.username),
+      orElse: () => '',
+    );
+    if (fromAuthUsername.isNotEmpty) {
+      return fromAuthUsername;
+    }
+
+    final fromProfileDisplayName = profileState.maybeWhen(
+      loading: (viewModel) => _normalizeCode(viewModel.profile.displayName),
+      loaded: (viewModel) => _normalizeCode(viewModel.profile.displayName),
+      orElse: () => '',
+    );
+    if (fromProfileDisplayName.isNotEmpty) {
+      return fromProfileDisplayName;
+    }
+
+    return '—';
   }
 
   Future<void> _copyCode(BuildContext context, String code) async {
@@ -100,104 +121,109 @@ class InviteGoldenHonorPage extends StatelessWidget {
       context: context,
       title: 'Change code',
       message:
-          'Custom referral codes are not editable yet. This option will be available in a future update.',
+          'Your referral code is linked to your username. If you want to change your referral code, please change your username.',
       barrierColor: Colors.black.withValues(alpha: 0.72),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      bloc: getIt<AuthBloc>(),
-      builder: (context, auth) {
-        final code = _displayCode(auth);
+    return BlocBuilder<ProfileBloc, ProfileState>(
+      bloc: getIt<ProfileBloc>(),
+      builder: (context, profileState) {
+        return BlocBuilder<AuthBloc, AuthState>(
+          bloc: getIt<AuthBloc>(),
+          builder: (context, auth) {
+            final code = _displayCode(auth, profileState);
 
-        return Scaffold(
-          backgroundColor: AppColors.colorff19191A,
-          appBar: const CustomAppBar(
-            backgroundColor: AppColors.colorff19191A,
-            centerTitle: false,
-          ),
-          body: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            return Scaffold(
+              backgroundColor: AppColors.colorff19191A,
+              appBar: const CustomAppBar(
+                backgroundColor: AppColors.colorff19191A,
+                centerTitle: false,
+              ),
+              body: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 400),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Expanded(
-                            child: Text(
-                              'Earn a Golden Honor when your invite joins.',
-                              style: TextStyles.titleHeadline.copyWith(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w500,
-                                height: 1.25,
-                                color: AppColors.textBrand,
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Earn a Golden Honor when your invite joins.',
+                                  style: TextStyles.titleHeadline.copyWith(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w500,
+                                    height: 1.25,
+                                    color: AppColors.textBrand,
+                                  ),
+                                ),
                               ),
+                              const Gap(8),
+                              Assets.images.goldenHonor.image(
+                                width: 22,
+                                height: 22,
+                                fit: BoxFit.contain,
+                              ),
+                            ],
+                          ),
+                          const Gap(12),
+                          Text(
+                            "Share your code. You'll earn 1 Golden Honor as soon as your friend redeems it.",
+                            style: TextStyles.bodyMain.copyWith(
+                              fontSize: 13,
+                              height: 1.4,
+                              color: const Color(0xFFA3A3A3),
                             ),
                           ),
+                          const Gap(22),
+                          _ReferralCodeCard(
+                            code: code,
+                            onCopy: () => _copyCode(context, code),
+                          ),
+                          const Gap(22),
+                          CustomButton(
+                            text: 'Share your code',
+                            onTap: () => _shareCode(context, code),
+                            borderRadius: 8,
+                            backgroundColor: AppColors.backgroundBrandLight,
+                            textStyle: TextStyles.bodyLarge.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 1.2,
+                              color: AppColors.textNeutral,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
                           const Gap(8),
-                          Assets.images.goldenHonor.image(
-                            width: 22,
-                            height: 22,
-                            fit: BoxFit.contain,
+                          CustomButton(
+                            text: 'Change code',
+                            onTap: () => _onChangeCode(context),
+                            borderRadius: 8,
+                            backgroundColor: const Color(0xFF2C2C2E),
+                            textStyle: TextStyles.bodyLarge.copyWith(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              height: 1.2,
+                              color: AppColors.textBrand,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
                         ],
                       ),
-                      const Gap(12),
-                      Text(
-                        "Share your code. You'll earn 1 Golden Honor as soon as your friend redeems it.",
-                        style: TextStyles.bodyMain.copyWith(
-                          fontSize: 13,
-                          height: 1.4,
-                          color: const Color(0xFFA3A3A3),
-                        ),
-                      ),
-                      const Gap(22),
-                      _ReferralCodeCard(
-                        code: code,
-                        onCopy: () => _copyCode(context, code),
-                      ),
-                      const Gap(22),
-                      CustomButton(
-                        text: 'Share your code',
-                        onTap: () => _shareCode(context, code),
-                        borderRadius: 8,
-                        backgroundColor: AppColors.backgroundBrandLight,
-                        textStyle: TextStyles.bodyLarge.copyWith(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          height: 1.2,
-                          color: AppColors.textNeutral,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                      const Gap(8),
-                      CustomButton(
-                        text: 'Change code',
-                        onTap: () => _onChangeCode(context),
-                        borderRadius: 8,
-                        backgroundColor: const Color(0xFF2C2C2E),
-                        textStyle: TextStyles.bodyLarge.copyWith(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          height: 1.2,
-                          color: AppColors.textBrand,
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );

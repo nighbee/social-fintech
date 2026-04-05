@@ -55,6 +55,7 @@ class MapFlowEvaluator {
   static String? buildCreateTaskLockMessage(
     List<MapTaskEntity> myTasks, {
     List<MapTaskEntity> nearbyTasks = const <MapTaskEntity>[],
+    DateTime? creatorLastTaskCreatedAtUtc,
     required DateTime nowUtc,
   }) {
     final active = findCreatorActiveTask(myTasks);
@@ -70,22 +71,19 @@ class MapFlowEvaluator {
       return 'You will be able to create a new request in 7 days.';
     }
 
-    DateTime? latestClosedAt;
+    DateTime? latestCreatedAt = creatorLastTaskCreatedAtUtc;
+
     for (final task in myTasks) {
-      final status = task.status.trim().toLowerCase();
-      if (status != 'completed' && status != 'cancelled') {
-        continue;
-      }
       final createdAt = DateTime.tryParse(task.createdAt)?.toUtc();
       if (createdAt == null) {
         continue;
       }
-      if (latestClosedAt == null || createdAt.isAfter(latestClosedAt)) {
-        latestClosedAt = createdAt;
+      if (latestCreatedAt == null || createdAt.isAfter(latestCreatedAt)) {
+        latestCreatedAt = createdAt;
       }
     }
 
-    final unlockAt = latestClosedAt?.add(const Duration(days: 7));
+    final unlockAt = latestCreatedAt?.add(const Duration(days: 7));
     final isCooldownLocked = unlockAt != null && nowUtc.isBefore(unlockAt);
     if (isCooldownLocked) {
       return 'You must wait 7 days between creating tasks';

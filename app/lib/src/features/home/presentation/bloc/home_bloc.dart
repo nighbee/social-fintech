@@ -450,8 +450,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       searchProfilesDirect(
     SearchProfilesRequest request,
   ) async {
-    final trimmedQuery = request.query.trim();
-    if (trimmedQuery.isEmpty) {
+    final normalizedQuery = request.normalizedQuery;
+    if (normalizedQuery.isEmpty) {
       const emptyResults = <ProfileSearchResultEntity>[];
       add(
         const HomeEvent.applyProfileSearchResults(
@@ -461,7 +461,9 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       return const Right(emptyResults);
     }
 
-    final result = await _profileRepository.searchProfiles(request);
+    final result = await _profileRepository.searchProfiles(
+      request.copyWith(query: normalizedQuery),
+    );
     result.fold(
       (_) {},
       (results) {
@@ -641,8 +643,8 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     _SearchProfiles event,
     Emitter emit,
   ) async {
-    final trimmedQuery = event.request.query.trim();
-    if (trimmedQuery.isEmpty) {
+    final normalizedQuery = event.request.normalizedQuery;
+    if (normalizedQuery.isEmpty) {
       _viewModel = _viewModel.copyWith(
         isProfileSearchLoading: false,
         profileSearchQuery: '',
@@ -655,15 +657,17 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
 
     _viewModel = _viewModel.copyWith(
       isProfileSearchLoading: true,
-      profileSearchQuery: trimmedQuery,
+      profileSearchQuery: normalizedQuery,
       profileSearchError: '',
     );
     emit(HomeState.loaded(viewModel: _viewModel));
 
-    final result = await _profileRepository.searchProfiles(event.request);
+    final result = await _profileRepository.searchProfiles(
+      event.request.copyWith(query: normalizedQuery),
+    );
     result.fold(
       (error) {
-        if (_viewModel.profileSearchQuery != trimmedQuery) return;
+        if (_viewModel.profileSearchQuery != normalizedQuery) return;
         _viewModel = _viewModel.copyWith(
           isProfileSearchLoading: false,
           profileSearchError: error.message,
@@ -672,7 +676,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
         emit(HomeState.loaded(viewModel: _viewModel));
       },
       (results) {
-        if (_viewModel.profileSearchQuery != trimmedQuery) return;
+        if (_viewModel.profileSearchQuery != normalizedQuery) return;
         _viewModel = _viewModel.copyWith(
           isProfileSearchLoading: false,
           profileSearchError: '',

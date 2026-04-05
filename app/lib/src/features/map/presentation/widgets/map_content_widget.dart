@@ -26,6 +26,7 @@ class _MapContent extends StatelessWidget {
     required this.locallyCanceledExecutorApplicationIds,
     required this.selectedNearbyTaskId,
     required this.onSelectNearbyTask,
+    required this.lastCreatorTaskCreatedAtUtc,
   });
 
   final MapViewModel viewModel;
@@ -52,6 +53,7 @@ class _MapContent extends StatelessWidget {
   final Set<String> locallyCanceledExecutorApplicationIds;
   final String? selectedNearbyTaskId;
   final ValueChanged<String> onSelectNearbyTask;
+  final DateTime? lastCreatorTaskCreatedAtUtc;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +76,7 @@ class _MapContent extends StatelessWidget {
     final lockedMessage = MapFlowEvaluator.buildCreateTaskLockMessage(
       viewModel.myTasks,
       nearbyTasks: viewModel.nearbyTasks,
+      creatorLastTaskCreatedAtUtc: lastCreatorTaskCreatedAtUtc,
       nowUtc: DateTime.now().toUtc(),
     );
 
@@ -455,7 +458,6 @@ class _MapContent extends StatelessWidget {
                   : _CreateRequestCta(
                       myRequest: myRequest,
                       hasMyTasksLoaded: viewModel.hasMyTasksLoaded,
-                      isBusy: viewModel.isBusy,
                       isCreatingTask: viewModel.isCreatingTask,
                       lockedMessage: lockedMessage,
                       onOpenCreateRequest: onOpenCreateRequest,
@@ -471,7 +473,6 @@ class _CreateRequestCta extends StatelessWidget {
   const _CreateRequestCta({
     required this.myRequest,
     required this.hasMyTasksLoaded,
-    required this.isBusy,
     required this.isCreatingTask,
     required this.lockedMessage,
     required this.onOpenCreateRequest,
@@ -479,15 +480,41 @@ class _CreateRequestCta extends StatelessWidget {
 
   final MapTaskEntity? myRequest;
   final bool hasMyTasksLoaded;
-  final bool isBusy;
   final bool isCreatingTask;
   final String? lockedMessage;
   final VoidCallback onOpenCreateRequest;
 
   @override
   Widget build(BuildContext context) {
-    final locked = !hasMyTasksLoaded || lockedMessage != null;
-    final disabled = isBusy || isCreatingTask || locked;
+    final disabled = isCreatingTask;
+
+    void handleTap() {
+      if (disabled) {
+        return;
+      }
+
+      if (!hasMyTasksLoaded) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Checking request availability...'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      if (lockedMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(lockedMessage!),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      onOpenCreateRequest();
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -497,7 +524,7 @@ class _CreateRequestCta extends StatelessWidget {
           height: 50,
           child: CustomButton(
             text: 'Create a request for help',
-            onTap: disabled ? () {} : onOpenCreateRequest,
+            onTap: handleTap,
             isDisabled: disabled,
             borderRadius: 6,
             backgroundColor: disabled

@@ -88,6 +88,7 @@ class MapPageController {
   DateTime? _lastEmptyChampionsFetchAt;
   String? _lastHandledAutoClosedTaskId;
   String? _lastSelfPinAvatarUrl;
+  DateTime? _lastCreatorTaskCreatedAtUtc;
   String? selectedNearbyTaskId;
   DateTime? _lastMarkerSelectionAt;
   Future<void>? _teardownFuture;
@@ -101,11 +102,14 @@ class MapPageController {
   static const Duration _cameraGeoRefreshDebounceDuration =
       Duration(milliseconds: 650);
 
+  DateTime? get lastCreatorTaskCreatedAtUtc => _lastCreatorTaskCreatedAtUtc;
+
   void onInit() {
     _lastChampionsRegionKey = null;
     _lastEmptyChampionsFetchAt = null;
     _mapBloc.add(const MapEvent.loadMap());
     unawaited(_restoreSavedMapCenter());
+    unawaited(_restoreLastCreatorTaskCreatedAt());
     unawaited(_restoreActiveExecutorApplication());
     _mapBloc.add(const MapEvent.getMyTasks());
     _mapBloc.add(const MapEvent.getAppliedTasks());
@@ -167,6 +171,8 @@ class MapPageController {
     required bool mounted,
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
+    _rememberLatestCreatorTaskCreatedAt(viewModel);
+
     final nearbyForMarkers = _nearbyTasksWithMyStatuses(viewModel);
     _reconcileSelectedNearbyTask(nearbyForMarkers);
     await _requestMarkerService.syncTasks(nearbyForMarkers);
@@ -258,6 +264,55 @@ class MapPageController {
       _lastSelfPinAvatarUrl = avatar;
       unawaited(_selfMarkerService.reloadAppearance(avatarUrl: avatar));
     }
+  }
+
+  Future<void> _restoreLastCreatorTaskCreatedAt() async {
+    final restored = await _persistence.readLastCreatorTaskCreatedAt();
+    if (restored == null) {
+      return;
+    }
+    _lastCreatorTaskCreatedAtUtc = restored;
+  }
+
+  void _rememberLatestCreatorTaskCreatedAt(MapViewModel viewModel) {
+    DateTime? latest;
+
+    for (final task in viewModel.myTasks) {
+      final parsed = DateTime.tryParse(task.createdAt)?.toUtc();
+      if (parsed == null) {
+        continue;
+      }
+      if (latest == null || parsed.isAfter(latest)) {
+        latest = parsed;
+      }
+    }
+
+    for (final task in viewModel.nearbyTasks) {
+      final status = task.status.trim().toLowerCase();
+      if (!status.startsWith('mine|')) {
+        continue;
+      }
+      final parsed = DateTime.tryParse(task.createdAt)?.toUtc();
+      if (parsed == null) {
+        continue;
+      }
+      if (latest == null || parsed.isAfter(latest)) {
+        latest = parsed;
+      }
+    }
+
+    if (latest == null) {
+      return;
+    }
+
+    final known = _lastCreatorTaskCreatedAtUtc;
+    if (known != null &&
+        (latest.isBefore(known) || latest.isAtSameMomentAs(known))) {
+      return;
+    }
+
+    _lastCreatorTaskCreatedAtUtc = latest;
+    unawaited(_persistence.writeLastCreatorTaskCreatedAt(latest));
   }
 
   /// В nearby с бэка часто `open`, а в myTasks — `mine|…`; иначе маркер моргает «чужой → свой».

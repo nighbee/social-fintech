@@ -582,8 +582,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       return 'Please check your task data.';
     }
     if (message.contains('task_create_failed')) {
-      return 'Could not create the task (server error). Check backend logs; '
-          'common causes: DB error, wallet/ledger failure, or invalid user state.';
+      return 'Could not create the task right now. Please try again in a minute.';
     }
     if (message.contains('invalid_body')) {
       return 'Invalid request. Please try again.';

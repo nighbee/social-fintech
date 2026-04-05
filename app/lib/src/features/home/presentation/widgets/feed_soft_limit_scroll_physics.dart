@@ -20,9 +20,7 @@ class FeedSoftLimitScrollPhysics extends ClampingScrollPhysics {
 
   static const double _perMinuteDrop = 0.15;
   static const double _minResponse = 0.30;
-  static const int _breakDurationSeconds = 5 * 60;
-  static const double _cooldownMinResponse = 0.30;
-  static const double _cooldownPerMinuteDrop = 0.18;
+  static const double _cooldownResponse = 0.30;
 
   @override
   FeedSoftLimitScrollPhysics applyTo(ScrollPhysics? ancestor) {
@@ -42,20 +40,7 @@ class FeedSoftLimitScrollPhysics extends ClampingScrollPhysics {
     final base = super.applyPhysicsToUserOffset(position, offset);
 
     if (isInCooldown) {
-      final int servedSeconds;
-      if (freezeBreakCountdown && cooldownFreezeStartedAt != null) {
-        final elapsed = DateTime.now().difference(cooldownFreezeStartedAt!);
-        servedSeconds = elapsed.inSeconds.clamp(0, _breakDurationSeconds);
-      } else {
-        servedSeconds = (_breakDurationSeconds - breakSecondsRemaining).clamp(
-          0,
-          _breakDurationSeconds,
-        );
-      }
-      final servedMinutes = (servedSeconds / 60.0).floor();
-      final cooldownResponse = (1.0 - (servedMinutes * _cooldownPerMinuteDrop))
-          .clamp(_cooldownMinResponse, 1.0);
-      return base * cooldownResponse;
+      return base * _cooldownResponse;
     }
 
     int minutesOver = 0;

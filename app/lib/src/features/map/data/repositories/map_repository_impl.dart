@@ -177,26 +177,6 @@ class MapRepositoryImpl implements IMapRepository {
   Future<Either<DomainException, List<MapTaskEntity>>> getNearbyTasks(
     MapNearbyTasksRequest request,
   ) async {
-    final demo = mapDemoMocksEnabled
-        ? buildDemoNearbyTasks(
-            centerLat: request.lat,
-            centerLon: request.lon,
-          )
-        : const <MapTaskEntity>[];
-
-    if (mapDemoMocksEnabled) {
-      final result = await _remote.getNearbyTasks(request);
-      return result.fold(
-        (_) => Right(demo),
-        (dtos) => Right(
-          mergeWithDemoNearbyTasks(
-            dtos.map((dto) => dto.toEntity()).toList(),
-            demo,
-          ),
-        ),
-      );
-    }
-
     final result = await _remote.getNearbyTasks(request);
     return result.fold(
       (error) => Left(error),

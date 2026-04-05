@@ -60,8 +60,8 @@ class _SearchPageState extends State<SearchPage> {
 
   void _onQueryChanged(String value) {
     _debounceTimer?.cancel();
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) {
+    final normalized = value.trim().replaceFirst(RegExp(r'^@+'), '');
+    if (normalized.isEmpty) {
       _bloc.add(const HomeEvent.clearProfileSearch());
       setState(() {});
       return;
@@ -70,7 +70,7 @@ class _SearchPageState extends State<SearchPage> {
     _debounceTimer = Timer(_searchDebounce, () {
       _bloc.add(
         HomeEvent.searchProfiles(
-          request: SearchProfilesRequest(query: trimmed),
+          request: SearchProfilesRequest(query: normalized),
         ),
       );
     });

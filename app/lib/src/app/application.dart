@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:app/src/core/service/feed/feed_state_sync_service.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
@@ -23,11 +24,20 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   late final GoRouter router;
+  late final FeedStateSyncService _feedStateSyncService;
 
   @override
   void initState() {
     super.initState();
     router = routerProvider(widget.flavor);
+    _feedStateSyncService = getIt<FeedStateSyncService>();
+    _feedStateSyncService.start(router);
+  }
+
+  @override
+  void dispose() {
+    _feedStateSyncService.stop();
+    super.dispose();
   }
 
   @override

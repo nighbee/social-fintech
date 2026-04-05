@@ -5,6 +5,23 @@ import 'package:app/src/features/map/presentation/models/active_executor_applica
 class MapPersistenceService {
   const MapPersistenceService();
 
+  Future<DateTime?> readLastCreatorTaskCreatedAt() async {
+    await prefsInstance.initialize();
+    final raw = prefsInstance.get<String>(KeyStore.mapLastCreatorTaskCreatedAt);
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    return DateTime.tryParse(raw)?.toUtc();
+  }
+
+  Future<void> writeLastCreatorTaskCreatedAt(DateTime createdAtUtc) async {
+    await prefsInstance.initialize();
+    await prefsInstance.set<String>(
+      KeyStore.mapLastCreatorTaskCreatedAt,
+      createdAtUtc.toUtc().toIso8601String(),
+    );
+  }
+
   Future<({double lat, double lon})?> readSavedCenter() async {
     await prefsInstance.initialize();
     final savedLat = prefsInstance.get<double>(KeyStore.mapLastCenterLat);

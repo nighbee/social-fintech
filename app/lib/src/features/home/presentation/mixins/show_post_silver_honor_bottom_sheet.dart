@@ -567,7 +567,7 @@ class _SilverHonorComposerDialogState
       (error) {
         setState(() {
           _isSending = false;
-          _submitError = error.message;
+          _submitError = _mapSendSealError(error.message);
         });
       },
       (_) {
@@ -577,6 +577,29 @@ class _SilverHonorComposerDialogState
         Navigator.of(context).pop(true);
       },
     );
+  }
+
+  String _mapSendSealError(String rawMessage) {
+    final message = rawMessage.trim().toLowerCase();
+
+    if (message.contains('insufficient_balance') ||
+        message.contains('insufficient funds')) {
+      return 'You do not have enough silver honors.';
+    }
+    if (message.contains('cooldown_active')) {
+      return 'You recently sent an honor to this user. Please try again later.';
+    }
+    if (message.contains('transaction_conflict')) {
+      return 'The transfer is in progress. Please retry in a moment.';
+    }
+    if (message.contains('seal_failed')) {
+      return 'Could not send the honor right now. Please try again.';
+    }
+    if (message.contains('network error') || message.contains('timeout')) {
+      return 'Network issue. Check your internet and try again.';
+    }
+
+    return 'Could not send the honor. Please try again.';
   }
 
   @override

@@ -4,9 +4,9 @@ import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/core/utils/device_id.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_app_bar.dart';
@@ -26,19 +26,13 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
-  static const Duration _feedStateSyncInterval = Duration(seconds: 15);
-  static const int _syncDeltaSeconds = 15;
   static const int _defaultCooldownSeconds = 5 * 60;
 
   final HomeBloc _homeBloc = getIt<HomeBloc>();
-  final DeviceId _deviceId = DeviceId();
-  Timer? _feedStateSyncTimer;
   Timer? _reportSuccessTimer;
-  String? _cachedDeviceId;
   bool _showReportSuccessBanner = false;
   bool _isAppForeground = true;
   bool _isFeedTabVisible = true;
-  bool _forceSyncAfterResume = false;
   DateTime? _cooldownFreezeStartedAt;
   int? _localCooldownRemainingSeconds;
   DateTime? _appBackgroundedAt;
@@ -48,20 +42,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _homeBloc.add(const HomeEvent.loadStoreSummary());
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) {
-        return;
-      }
-      unawaited(_startFeedStateSync());
-    });
+    _homeBloc.add(const HomeEvent.loadFeedState());
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _feedStateSyncTimer?.cancel();
     _reportSuccessTimer?.cancel();
-    _feedStateSyncTimer = null;
     _reportSuccessTimer = null;
     super.dispose();
   }
@@ -104,9 +91,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       }
       _appBackgroundedAt = null;
       _isAppForeground = true;
-      unawaited(_syncFeedStateOnce(deltaSeconds: 1, force: true));
-      _feedStateSyncTimer ??=
-          Timer.periodic(_feedStateSyncInterval, (_) => _onSyncTick());
       return;
     }
     if (state == AppLifecycleState.paused ||
@@ -114,30 +98,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         state == AppLifecycleState.detached) {
       _isAppForeground = false;
       _appBackgroundedAt ??= DateTime.now();
-      _forceSyncAfterResume = true;
-      unawaited(_dispatchFeedStateSync(
-        deltaSeconds: 1,
-        isFeedActive: false,
-        appSection: 'background',
-      ));
-      _feedStateSyncTimer?.cancel();
-      _feedStateSyncTimer = null;
     }
-  }
-
-  Future<void> _startFeedStateSync() async {
-    await _syncFeedStateOnce(deltaSeconds: 1, force: true);
-    if (!mounted) {
-      return;
-    }
-    _feedStateSyncTimer?.cancel();
-    _feedStateSyncTimer =
-        Timer.periodic(_feedStateSyncInterval, (_) => _onSyncTick());
-  }
-
-  void _onSyncTick() {
-    _advanceLocalCooldown(_syncDeltaSeconds);
-    unawaited(_syncFeedStateOnce(deltaSeconds: _syncDeltaSeconds));
   }
 
   FeedStateEntity _feedStateFromState(HomeState state) {
@@ -197,20 +158,15 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     if (feedState.shouldEnforceCooldown) {
       final serverBreak = feedState.safeBreakSecondsRemaining;
       final seeded = serverBreak > 0 ? serverBreak : _defaultCooldownSeconds;
-      final local = _localCooldownRemainingSeconds;
-      if (local == null || local <= 0) {
-        _localCooldownRemainingSeconds = seeded;
-      } else if (!_shouldFreezeCooldownFromState(state)) {
-        _localCooldownRemainingSeconds = seeded;
-      } else if (seeded > local) {
-        _localCooldownRemainingSeconds = seeded;
-      }
+      // Keep local fallback aligned with backend on every sync so
+      // header timer reflects real break progress without visual freezing.
+      _localCooldownRemainingSeconds = seeded;
       return;
     }
 
-    if (!_isAppForeground || !_isFeedTabVisible) {
-      _localCooldownRemainingSeconds = 0;
-    }
+    // Server is authoritative: clear any local fallback cooldown as soon as
+    // backend no longer enforces it.
+    _localCooldownRemainingSeconds = 0;
   }
 
   void _advanceLocalCooldown(int deltaSeconds) {
@@ -236,89 +192,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     if (next == 0) {
-      _forceSyncAfterResume = true;
+      _cooldownFreezeStartedAt = null;
     }
   }
 
-  Future<void> _syncFeedStateOnce({
-    required int deltaSeconds,
-    bool force = false,
-  }) async {
-    final shouldFreeze = _shouldFreezeCooldownFromState(_homeBloc.state);
-    final mustForceSync = force || _forceSyncAfterResume;
-    if (shouldFreeze && !mustForceSync) {
-      if (_cooldownFreezeStartedAt == null && mounted) {
-        setState(() {
-          _cooldownFreezeStartedAt = DateTime.now();
-        });
-      }
+  void _syncFeedVisibilityFromContext(BuildContext context) {
+    final isFeedTabVisibleNow = TickerMode.of(context);
+    if (_isFeedTabVisible == isFeedTabVisibleNow) {
       return;
     }
 
-    _forceSyncAfterResume = false;
-    final isFeedActive = _isAppForeground && _isFeedTabVisible;
-    final appSection = isFeedActive ? 'feed' : 'background';
-
-    await _dispatchFeedStateSync(
-      deltaSeconds: deltaSeconds,
-      isFeedActive: isFeedActive,
-      appSection: appSection,
-    );
-  }
-
-  Future<void> _dispatchFeedStateSync({
-    required int deltaSeconds,
-    required bool isFeedActive,
-    required String appSection,
-  }) async {
-    if (_homeBloc.isClosed) {
-      return;
-    }
-
-    final deviceId = _cachedDeviceId ?? await _deviceId.getDeviceId();
-    _cachedDeviceId = deviceId;
-
-    if (_homeBloc.isClosed) {
-      return;
-    }
-
-    try {
-      _homeBloc.add(
-        HomeEvent.syncFeedState(
-          deltaSeconds: deltaSeconds,
-          deviceId: deviceId,
-          isFeedActive: isFeedActive,
-          appSection: appSection,
-        ),
-      );
-    } on StateError {
-      // Ignore race: widget is navigating away and bloc was closed mid-dispatch.
-    }
-  }
-
-  String _appSectionForRoute(String routePath) {
-    if (routePath == RoutePaths.map) {
-      return 'map';
-    }
-    if (routePath == RoutePaths.profile) {
-      return 'profile';
-    }
-    if (routePath == RoutePaths.chats) {
-      return 'chats';
-    }
-    return 'background';
-  }
-
-  void _onBeforeBottomNavNavigate(String targetPath) {
-    if (targetPath == RoutePaths.home) {
-      return;
-    }
-    final appSection = _appSectionForRoute(targetPath);
-    unawaited(_dispatchFeedStateSync(
-      deltaSeconds: 1,
-      isFeedActive: false,
-      appSection: appSection,
-    ));
+    _isFeedTabVisible = isFeedTabVisibleNow;
   }
 
   String _timerLabelFromViewModel(HomeViewModel viewModel) {
@@ -328,9 +212,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     if (_isCooldownActiveFromState(HomeState.loaded(viewModel: viewModel))) {
-      if (_shouldFreezeCooldownFromState(_homeBloc.state)) {
-        return '5 min break';
-      }
       final breakMinutes =
           (_effectiveBreakSecondsFromState(HomeState.loaded(viewModel: viewModel)) /
                   60)
@@ -401,9 +282,46 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
+  FeedEntity? _feedForBodyFromState(HomeState state) {
+    return state.maybeWhen(
+      loading: (viewModel) => viewModel.feed,
+      loaded: (viewModel) => viewModel.feed,
+      orElse: () => null,
+    );
+  }
+
+  String? _errorFromState(HomeState state) {
+    return state.maybeWhen(
+      loadingError: (message) => message,
+      orElse: () => null,
+    );
+  }
+
+  bool _shouldRebuildBody(HomeState previous, HomeState current) {
+    final previousFeed = _feedForBodyFromState(previous);
+    final currentFeed = _feedForBodyFromState(current);
+    if (previousFeed != null && currentFeed != null) {
+      return previousFeed != currentFeed;
+    }
+
+    final previousError = _errorFromState(previous);
+    final currentError = _errorFromState(current);
+    if (previousError != null && currentError != null) {
+      return previousError != currentError;
+    }
+
+    return previous.runtimeType != current.runtimeType;
+  }
+
+  bool _shouldRebuildTimer(HomeState previous, HomeState current) {
+    return _timerLabelFromState(previous) != _timerLabelFromState(current) ||
+        _timerToneFromState(previous) != _timerToneFromState(current) ||
+        _silverCountFromState(previous) != _silverCountFromState(current);
+  }
+
   @override
   Widget build(BuildContext context) {
-    _isFeedTabVisible = TickerMode.of(context);
+    _syncFeedVisibilityFromContext(context);
 
     return Stack(
       children: [
@@ -427,6 +345,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             preferredSize: const Size.fromHeight(kToolbarHeight),
             child: BlocBuilder<HomeBloc, HomeState>(
               bloc: _homeBloc,
+              buildWhen: _shouldRebuildTimer,
               builder: (context, state) {
                 return FeedAppBar(
                   onCreatePostTap: () => context.push(RoutePaths.createPost),
@@ -441,12 +360,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ),
           bottomNavigationBar: CustomNavBar(
             currentTab: RoutePaths.home,
-            onBeforeNavigate: _onBeforeBottomNavNavigate,
           ),
           body: SafeArea(
             child: BaseBlocWidget<HomeBloc, HomeEvent, HomeState>(
               bloc: _homeBloc,
               starterEvent: const HomeEvent.loadPosts(),
+              buildWhen: _shouldRebuildBody,
               builder: (context, state, bloc) {
                 return state.when(
                   initial: () =>

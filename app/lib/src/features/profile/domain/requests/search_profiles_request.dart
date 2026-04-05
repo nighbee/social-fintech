@@ -17,10 +17,15 @@ class SearchProfilesRequest extends BaseRequest with _$SearchProfilesRequest {
   factory SearchProfilesRequest.fromJson(Map<String, dynamic> json) =>
       _$SearchProfilesRequestFromJson(json);
 
-  Map<String, dynamic> toQuery() {
+  String get normalizedQuery {
     final trimmedQuery = query.trim();
+    return trimmedQuery.replaceFirst(RegExp(r'^@+'), '');
+  }
+
+  Map<String, dynamic> toQuery() {
+    final sanitizedQuery = normalizedQuery;
     return <String, dynamic>{
-      'query': trimmedQuery,
+      'query': sanitizedQuery,
       'limit': limit,
       'offset': offset,
     };

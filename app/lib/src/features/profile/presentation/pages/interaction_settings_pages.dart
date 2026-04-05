@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
@@ -90,6 +92,7 @@ class MessagesInteractionPage extends StatefulWidget {
 class _MessagesInteractionPageState extends State<MessagesInteractionPage> {
   final IInteractionSettingsRemote _remote =
       getIt<IInteractionSettingsRemote>();
+  static const Duration _patchDebounce = Duration(milliseconds: 500);
 
   bool _loading = true;
   _InteractionAudienceOption _selectedAudience =
@@ -97,6 +100,11 @@ class _MessagesInteractionPageState extends State<MessagesInteractionPage> {
   bool _isReadStatusEnabled = true;
   /// Пока нет ответа сервера — off.
   bool _isSafeModeEnabled = false;
+  _InteractionAudienceOption _confirmedAudience =
+      _InteractionAudienceOption.everyone;
+  bool _confirmedReadStatusEnabled = true;
+  bool _confirmedSafeModeEnabled = false;
+  Timer? _patchTimer;
 
   @override
   void initState() {
@@ -120,51 +128,63 @@ class _MessagesInteractionPageState extends State<MessagesInteractionPage> {
               _InteractionAudienceOption.fromApi(dto.whoCanMessage);
           _isReadStatusEnabled = dto.readStatus;
           _isSafeModeEnabled = dto.safeMode;
+          _confirmedAudience = _selectedAudience;
+          _confirmedReadStatusEnabled = _isReadStatusEnabled;
+          _confirmedSafeModeEnabled = _isSafeModeEnabled;
         });
       },
     );
   }
 
+  @override
+  void dispose() {
+    _patchTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleMessagesPatch() {
+    _patchTimer?.cancel();
+    _patchTimer = Timer(_patchDebounce, () async {
+      final result = await _remote.patchMessagesSettings(
+        whoCanMessage: _selectedAudience.apiValue,
+        readStatus: _isReadStatusEnabled,
+        safeMode: _isSafeModeEnabled,
+      );
+      if (!mounted) return;
+      result.fold((e) {
+        setState(() {
+          _selectedAudience = _confirmedAudience;
+          _isReadStatusEnabled = _confirmedReadStatusEnabled;
+          _isSafeModeEnabled = _confirmedSafeModeEnabled;
+        });
+        _showInteractionError(context, e);
+      }, (_) {
+        _confirmedAudience = _selectedAudience;
+        _confirmedReadStatusEnabled = _isReadStatusEnabled;
+        _confirmedSafeModeEnabled = _isSafeModeEnabled;
+      });
+    });
+  }
+
   Future<void> _patchAudience(_InteractionAudienceOption value) async {
-    final previous = _selectedAudience;
     setState(() => _selectedAudience = value);
-    final result = await _remote.patchMessagesSettings(
-      whoCanMessage: value.apiValue,
-    );
-    if (!mounted) return;
-    result.fold((e) {
-      setState(() => _selectedAudience = previous);
-      _showInteractionError(context, e);
-    }, (_) {});
+    _scheduleMessagesPatch();
   }
 
   Future<void> _patchReadStatus(bool value) async {
-    final previous = _isReadStatusEnabled;
     setState(() => _isReadStatusEnabled = value);
-    final result = await _remote.patchMessagesSettings(readStatus: value);
-    if (!mounted) return;
-    result.fold((e) {
-      setState(() => _isReadStatusEnabled = previous);
-      _showInteractionError(context, e);
-    }, (_) {});
+    _scheduleMessagesPatch();
   }
 
   Future<void> _patchSafeMode(bool value) async {
-    final previous = _isSafeModeEnabled;
     setState(() => _isSafeModeEnabled = value);
-    final result = await _remote.patchMessagesSettings(safeMode: value);
-    if (!mounted) return;
-    result.fold((e) {
-      setState(() => _isSafeModeEnabled = previous);
-      _showInteractionError(context, e);
-    }, (_) {
-      if (value) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!context.mounted) return;
-          context.pushNamed(RouteNames.profileMessageFilteredKeywords);
-        });
-      }
-    });
+    _scheduleMessagesPatch();
+    if (value) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
+        context.pushNamed(RouteNames.profileMessageFilteredKeywords);
+      });
+    }
   }
 
   void _openFilteredKeywords() {
@@ -267,11 +287,16 @@ class CommentsInteractionPage extends StatefulWidget {
 class _CommentsInteractionPageState extends State<CommentsInteractionPage> {
   final IInteractionSettingsRemote _remote =
       getIt<IInteractionSettingsRemote>();
+  static const Duration _patchDebounce = Duration(milliseconds: 500);
 
   bool _loading = true;
   _InteractionAudienceOption _selectedAudience =
       _InteractionAudienceOption.everyone;
   bool _isFilterEnabled = false;
+  _InteractionAudienceOption _confirmedAudience =
+      _InteractionAudienceOption.everyone;
+  bool _confirmedFilterEnabled = false;
+  Timer? _patchTimer;
 
   @override
   void initState() {
@@ -294,33 +319,48 @@ class _CommentsInteractionPageState extends State<CommentsInteractionPage> {
           _selectedAudience =
               _InteractionAudienceOption.fromApi(dto.whoCanComment);
           _isFilterEnabled = dto.filterUnwanted;
+          _confirmedAudience = _selectedAudience;
+          _confirmedFilterEnabled = _isFilterEnabled;
         });
       },
     );
   }
 
+  @override
+  void dispose() {
+    _patchTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleCommentsPatch() {
+    _patchTimer?.cancel();
+    _patchTimer = Timer(_patchDebounce, () async {
+      final result = await _remote.patchCommentsSettings(
+        whoCanComment: _selectedAudience.apiValue,
+        filterUnwanted: _isFilterEnabled,
+      );
+      if (!mounted) return;
+      result.fold((e) {
+        setState(() {
+          _selectedAudience = _confirmedAudience;
+          _isFilterEnabled = _confirmedFilterEnabled;
+        });
+        _showInteractionError(context, e);
+      }, (_) {
+        _confirmedAudience = _selectedAudience;
+        _confirmedFilterEnabled = _isFilterEnabled;
+      });
+    });
+  }
+
   Future<void> _patchAudience(_InteractionAudienceOption value) async {
-    final previous = _selectedAudience;
     setState(() => _selectedAudience = value);
-    final result = await _remote.patchCommentsSettings(
-      whoCanComment: value.apiValue,
-    );
-    if (!mounted) return;
-    result.fold((e) {
-      setState(() => _selectedAudience = previous);
-      _showInteractionError(context, e);
-    }, (_) {});
+    _scheduleCommentsPatch();
   }
 
   Future<void> _patchFilter(bool value) async {
-    final previous = _isFilterEnabled;
     setState(() => _isFilterEnabled = value);
-    final result = await _remote.patchCommentsSettings(filterUnwanted: value);
-    if (!mounted) return;
-    result.fold((e) {
-      setState(() => _isFilterEnabled = previous);
-      _showInteractionError(context, e);
-    }, (_) {});
+    _scheduleCommentsPatch();
   }
 
   @override
@@ -377,10 +417,14 @@ class MentionsInteractionPage extends StatefulWidget {
 class _MentionsInteractionPageState extends State<MentionsInteractionPage> {
   final IInteractionSettingsRemote _remote =
       getIt<IInteractionSettingsRemote>();
+  static const Duration _patchDebounce = Duration(milliseconds: 500);
 
   bool _loading = true;
   _InteractionAudienceOption _selectedAudience =
       _InteractionAudienceOption.everyone;
+  _InteractionAudienceOption _confirmedAudience =
+      _InteractionAudienceOption.everyone;
+  Timer? _patchTimer;
 
   @override
   void initState() {
@@ -402,22 +446,39 @@ class _MentionsInteractionPageState extends State<MentionsInteractionPage> {
           _loading = false;
           _selectedAudience =
               _InteractionAudienceOption.fromApi(dto.whoCanMention);
+          _confirmedAudience = _selectedAudience;
         });
       },
     );
   }
 
+  @override
+  void dispose() {
+    _patchTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleMentionsPatch() {
+    _patchTimer?.cancel();
+    _patchTimer = Timer(_patchDebounce, () async {
+      final result = await _remote.patchMentionsSettings(
+        whoCanMention: _selectedAudience.apiValue,
+      );
+      if (!mounted) return;
+      result.fold((e) {
+        setState(() {
+          _selectedAudience = _confirmedAudience;
+        });
+        _showInteractionError(context, e);
+      }, (_) {
+        _confirmedAudience = _selectedAudience;
+      });
+    });
+  }
+
   Future<void> _patchAudience(_InteractionAudienceOption value) async {
-    final previous = _selectedAudience;
     setState(() => _selectedAudience = value);
-    final result = await _remote.patchMentionsSettings(
-      whoCanMention: value.apiValue,
-    );
-    if (!mounted) return;
-    result.fold((e) {
-      setState(() => _selectedAudience = previous);
-      _showInteractionError(context, e);
-    }, (_) {});
+    _scheduleMentionsPatch();
   }
 
   @override

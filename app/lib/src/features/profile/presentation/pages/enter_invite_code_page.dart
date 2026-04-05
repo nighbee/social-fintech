@@ -3,7 +3,6 @@ import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/router/router.dart';
-import 'package:app/src/features/profile/presentation/widgets/referral_invite_success_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -47,24 +46,12 @@ class _EnterInviteCodePageState extends State<EnterInviteCodePage> {
       setState(() => _errorMessage = 'Invalid code');
       return;
     }
-    // Демо-состояние «уже использован» — убрать после API
-    if (raw.toUpperCase() == 'USED') {
-      setState(() => _errorMessage = 'Code already used');
-      return;
-    }
 
+    // Referral redeem is currently handled during signup flow only.
     setState(() {
-      _submitting = true;
-      _errorMessage = null;
+      _errorMessage =
+          'Invite code can only be applied during signup right now.';
     });
-
-    // TODO: POST /economy/referral/redeem { code } — по успеху вызывать showReferralInviteActivatedDialog
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-
-    if (!mounted) return;
-    setState(() => _submitting = false);
-
-    await showReferralInviteActivatedDialog(context);
   }
 
   void _goToMyCode() {

@@ -51,7 +51,7 @@ class _ReferralAutocompleteFieldState extends State<ReferralAutocompleteField> {
   void _triggerSearch(String value) {
     _searchTimer?.cancel();
 
-    final query = value.trim();
+    final query = value.trim().replaceFirst(RegExp(r'^@+'), '');
     if (query.isEmpty) {
       _lastQuery = '';
       return;

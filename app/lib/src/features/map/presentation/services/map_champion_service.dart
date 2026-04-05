@@ -128,7 +128,14 @@ class MapChampionService {
     for (final h3Index in toRemove) {
       final annotation = _annotations.remove(h3Index);
       if (annotation != null) {
-        await manager.delete(annotation);
+        try {
+          await manager.delete(annotation);
+        } on PlatformException catch (error) {
+          if (error.code == 'channel-error') {
+            return;
+          }
+          rethrow;
+        }
         _annotationIdsToH3Index.remove(annotation.id);
       }
       _championsByIndex.remove(h3Index);
@@ -147,10 +154,24 @@ class MapChampionService {
           ..iconAnchor = IconAnchor.BOTTOM
           ..symbolSortKey = 8000
           ..iconSize = _markerIconScale * _effectiveSizeMultiplier;
-        await manager.update(existing);
+        try {
+          await manager.update(existing);
+        } on PlatformException catch (error) {
+          if (error.code == 'channel-error') {
+            return;
+          }
+          rethrow;
+        }
         _championsByIndex[champion.h3Index] = champion;
       } else {
-        await _addChampionWithCoords(manager, champion, coords);
+        try {
+          await _addChampionWithCoords(manager, champion, coords);
+        } on PlatformException catch (error) {
+          if (error.code == 'channel-error') {
+            return;
+          }
+          rethrow;
+        }
       }
     }
   }

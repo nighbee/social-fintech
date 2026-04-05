@@ -13,6 +13,16 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
 
   final RestClient _restClient;
 
+  Map<String, dynamic> _asMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      return raw;
+    }
+    if (raw is Map) {
+      return Map<String, dynamic>.from(raw);
+    }
+    return <String, dynamic>{};
+  }
+
   @override
   Future<Either<DomainException, void>> changePassword({
     required String currentPassword,
@@ -197,11 +207,11 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   @override
   Future<Either<DomainException, MessagesSettingsDto>> getMessagesSettings() async {
     try {
-      final response =
-          await _restClient.get(EndPoints.settingsInteractionsMessages);
+      final response = await _restClient.get(EndPoints.settingsInteractions);
       return response.fold((e) => Left(e), (result) {
-        final data = result.data as Map<String, dynamic>;
-        return Right(MessagesSettingsDto.fromJson(data));
+        final data = _asMap(result.data);
+        final messages = _asMap(data['messages']);
+        return Right(MessagesSettingsDto.fromJson(messages));
       });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));

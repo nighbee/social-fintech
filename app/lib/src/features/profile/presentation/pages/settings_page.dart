@@ -245,13 +245,6 @@ class _SettingsPageState extends State<SettingsPage> {
                             extra: {'userId': _resolveCurrentUserId()},
                           ),
                         ),
-                        _SettingsRow(
-                          title: 'Have you been invited?',
-                          compact: true,
-                          onTap: () => context.pushNamed(
-                            RouteNames.profileEnterInviteCode,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -423,12 +416,11 @@ class _SettingsRow extends StatelessWidget {
     required this.title,
     this.onTap,
     this.trailingValue,
-    this.showChevron = true,
-    this.destructive = false,
-    this.switchValue,
-    this.onSwitchChanged,
-    this.compact = false,
-  });
+  })  : showChevron = true,
+        destructive = false,
+        switchValue = null,
+        onSwitchChanged = null,
+        compact = false;
 
   const _SettingsRow.switchTile({
     required this.title,

@@ -1,5 +1,6 @@
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
+import 'package:app/src/core/service/feed/feed_state_sync_service.dart';
 import 'package:app/src/core/service/location/i_location_service.dart';
 import 'package:app/src/core/service/location/location_service_impl.dart';
 import 'package:app/src/features/auth/domain/repositories/i_auth_repository.dart';
@@ -50,5 +51,12 @@ Future<void> manualRegisterServices() async {
   getIt.registerLazySingleton<ILocationService>(
     () => LocationServiceImpl(),
     instanceName: 'LocationServiceImpl',
+  );
+
+  if (getIt.isRegistered<FeedStateSyncService>()) {
+    getIt.unregister<FeedStateSyncService>();
+  }
+  getIt.registerLazySingleton<FeedStateSyncService>(
+    FeedStateSyncService.new,
   );
 }
