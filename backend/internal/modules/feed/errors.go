@@ -93,8 +93,8 @@ var (
 	ErrLikeQueueFull = errors.New("like_queue_full: try again shortly")
 
 	// ── Seals ─────────────────────────────────────────────────────────────
-	// ErrInvalidSealAmount is returned when the seal amount is ≤ 0.
-	ErrInvalidSealAmount = errors.New("seal_amount must be greater than 0")
+	// ErrInvalidSealAmount is returned when the seal amount is not exactly 1.
+	ErrInvalidSealAmount = errors.New("seal_amount must be exactly 1")
 
 	// ErrInsufficientBalance is returned when the sender does not have enough
 	// Silver to cover the requested seal amount.

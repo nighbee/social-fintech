@@ -92,6 +92,7 @@ func (w *Worker) Stop() {
 func (w *Worker) snapshotChampions(ctx context.Context) {
 	w.snapshotByPattern(ctx, "leaderboard:arena:*:week:*:*", 5)
 	w.snapshotByPattern(ctx, "leaderboard:city:*:week:*:*", 4)
+	w.snapshotByPattern(ctx, "leaderboard:country:*:week:*:*", 2)
 	w.snapshotGlobalGoldChampion(ctx)
 }
 

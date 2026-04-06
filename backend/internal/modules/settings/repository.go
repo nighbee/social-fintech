@@ -110,9 +110,31 @@ func (r *PostgresRepository) GetUserSettings(ctx context.Context, userID string)
 		WHERE user_id = $1
 	`
 	if err := r.db.GetContext(ctx, &s, query, userID); err != nil {
+		if isUndefinedTable(err) {
+			defaults := defaultUserSettings(userID)
+			return &defaults, nil
+		}
+		if isUndefinedColumn(err, "participate_district_ranking") {
+			legacy, legacyErr := r.getUserSettingsLegacy(ctx, userID)
+			if legacyErr != nil {
+				return nil, legacyErr
+			}
+			return legacy, nil
+		}
 		if err == sql.ErrNoRows {
 			_, _ = r.db.ExecContext(ctx, `INSERT INTO user_settings(user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, userID)
 			if retryErr := r.db.GetContext(ctx, &s, query, userID); retryErr != nil {
+				if isUndefinedColumn(retryErr, "participate_district_ranking") {
+					legacy, legacyErr := r.getUserSettingsLegacy(ctx, userID)
+					if legacyErr != nil {
+						return nil, legacyErr
+					}
+					return legacy, nil
+				}
+				if isUndefinedTable(retryErr) {
+					defaults := defaultUserSettings(userID)
+					return &defaults, nil
+				}
 				return nil, retryErr
 			}
 			return &s, nil
@@ -120,6 +142,53 @@ func (r *PostgresRepository) GetUserSettings(ctx context.Context, userID string)
 		return nil, err
 	}
 	return &s, nil
+}
+
+func (r *PostgresRepository) getUserSettingsLegacy(ctx context.Context, userID string) (*UserSettings, error) {
+	var s UserSettings
+	legacyQuery := `
+		SELECT
+			user_id,
+			feed_time_limit_current_mins,
+			feed_time_limit_pending_mins,
+			feed_time_limit_pending_apply_at,
+			messages_who_can_message,
+			messages_read_status_enabled,
+			messages_safe_mode_enabled,
+			comments_who_can_comment,
+			comments_filter_unwanted_enabled,
+			mentions_who_can_mention
+		FROM user_settings
+		WHERE user_id = $1
+	`
+	if err := r.db.GetContext(ctx, &s, legacyQuery, userID); err != nil {
+		if err == sql.ErrNoRows {
+			defaults := defaultUserSettings(userID)
+			return &defaults, nil
+		}
+		if isUndefinedTable(err) {
+			defaults := defaultUserSettings(userID)
+			return &defaults, nil
+		}
+		return nil, err
+	}
+	// This column was introduced later; default to true for backward compatibility.
+	s.ParticipateDistrictRanking = true
+	return &s, nil
+}
+
+func defaultUserSettings(userID string) UserSettings {
+	return UserSettings{
+		UserID:                     userID,
+		FeedTimeLimitCurrentMins:   FeedLimit20,
+		MessagesWhoCanMessage:      MessagePrivacyEveryone,
+		MessagesReadStatusEnabled:  true,
+		MessagesSafeModeEnabled:    false,
+		CommentsWhoCanComment:      MessagePrivacyEveryone,
+		CommentsFilterUnwanted:     false,
+		MentionsWhoCanMention:      MessagePrivacyEveryone,
+		ParticipateDistrictRanking: true,
+	}
 }
 
 func (r *PostgresRepository) UpdateFeedLimitPending(ctx context.Context, userID string, pending int, applyAt time.Time) error {
@@ -541,6 +610,14 @@ func isUndefinedTable(err error) bool {
 	var pqErr *pq.Error
 	if errors.As(err, &pqErr) {
 		return string(pqErr.Code) == "42P01"
+	}
+	return false
+}
+
+func isUndefinedColumn(err error, column string) bool {
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return string(pqErr.Code) == "42703" && strings.Contains(strings.ToLower(pqErr.Message), strings.ToLower(column))
 	}
 	return false
 }

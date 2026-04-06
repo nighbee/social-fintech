@@ -227,6 +227,13 @@ func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, r
 	if err != nil {
 		return nil, err
 	}
+	// If strict radius yields no data, retry once with a wider discovery radius.
+	if len(tasks) == 0 && radiusMeters < 10000 {
+		tasks, err = s.repo.GetTasksNearby(ctx, userID, lat, lon, 10000, limit)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	resp := NearbyTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
 	for _, t := range tasks {
@@ -252,7 +259,6 @@ func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, r
 	}
 	return &resp, nil
 }
-
 
 func (s *Service) GetAppliedTasks(ctx context.Context, userID string) (*AppliedTasksResponse, error) {
 	tasks, err := s.repo.GetAppliedTasks(ctx, userID)
@@ -786,6 +792,10 @@ func (s *Service) updateLeaderboards(userID string, task *Task) {
 		key := fmt.Sprintf("leaderboard:city:%s:week:%d:%d", *task.H3Res4, year, week)
 		s.recordLeaderboardScore(key, userID, score, now)
 	}
+	if task.H3Res2 != nil && *task.H3Res2 != "" {
+		key := fmt.Sprintf("leaderboard:country:%s:week:%d:%d", *task.H3Res2, year, week)
+		s.recordLeaderboardScore(key, userID, score, now)
+	}
 
 	globalKey := fmt.Sprintf("leaderboard:global:week:%d:%d", year, week)
 	s.recordLeaderboardScore(globalKey, userID, score, now)
@@ -834,6 +844,12 @@ func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, re
 	if err != nil {
 		return nil, err
 	}
+	if len(champs) == 0 {
+		// Operational fallback: if worker snapshots are lagging, read current leaders from Redis.
+		if pins := s.getLiveRegionChampionsFromCache(ctx, h3Indexes, resolution, year, week); len(pins) > 0 {
+			return pins, nil
+		}
+	}
 
 	pins := make([]ChampionPin, 0, len(champs))
 	for _, c := range champs {
@@ -845,6 +861,51 @@ func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, re
 		})
 	}
 	return pins, nil
+}
+
+func (s *Service) getLiveRegionChampionsFromCache(ctx context.Context, h3Indexes []string, resolution, year, week int) []ChampionPin {
+	if s.cache == nil || len(h3Indexes) == 0 {
+		return nil
+	}
+
+	leaderboard := ""
+	switch resolution {
+	case h3ResDistrict:
+		leaderboard = "arena"
+	case h3ResCity:
+		leaderboard = "city"
+	case h3ResCountry:
+		leaderboard = "country"
+	default:
+		return nil
+	}
+
+	pins := make([]ChampionPin, 0, len(h3Indexes))
+	for _, h3Index := range h3Indexes {
+		if h3Index == "" {
+			continue
+		}
+
+		key := fmt.Sprintf("leaderboard:%s:%s:week:%d:%d", leaderboard, h3Index, year, week)
+		members, err := s.cache.ZRevRange(ctx, key, 0, 0)
+		if err != nil || len(members) == 0 {
+			continue
+		}
+
+		score, err := s.cache.ZScore(ctx, key, members[0])
+		if err != nil {
+			continue
+		}
+
+		pins = append(pins, ChampionPin{
+			H3Index:    h3Index,
+			Resolution: resolution,
+			UserID:     members[0],
+			Score:      int64(score),
+		})
+	}
+
+	return pins
 }
 
 func (s *Service) ResolveH3ToLocation(ctx context.Context, h3Index string) (*H3GeoMetadata, error) {

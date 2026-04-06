@@ -949,7 +949,7 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_request_body"})
 	}
 
-	if req.Amount <= 0 {
+	if req.Amount != 1 {
 		return c.Status(400).JSON(fiber.Map{"error": ErrInvalidSealAmount.Error()})
 	}
 	req.Comment = strings.TrimSpace(req.Comment)
@@ -993,12 +993,16 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 
 		// Map economy errors to HTTP status codes.
 		switch {
+		case economy.IsValidationError(err):
+			return c.Status(400).JSON(fiber.Map{"error": "invalid_seal_amount", "detail": err.Error()})
 		case economy.IsInsufficientFunds(err):
 			return c.Status(402).JSON(fiber.Map{"error": ErrInsufficientBalance.Error()})
 		case economy.IsCooldownActive(err):
 			return c.Status(429).JSON(fiber.Map{"error": "cooldown_active", "detail": err.Error()})
 		case economy.IsMonthlyLimitExceeded(err):
 			return c.Status(429).JSON(fiber.Map{"error": "monthly_limit_exceeded"})
+		case economy.IsDuplicateError(err) || errors.Is(err, economy.ErrIdempotencyConflict):
+			return c.Status(409).JSON(fiber.Map{"error": "idempotency_conflict", "detail": err.Error()})
 		case errors.Is(err, economy.ErrOptimisticLockFailure):
 			return c.Status(409).JSON(fiber.Map{"error": "transaction_conflict", "detail": "please retry"})
 		default:
