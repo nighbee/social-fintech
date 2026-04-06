@@ -121,6 +121,19 @@ func appliedMigrations(db *sqlx.DB) (map[string]bool, error) {
 }
 
 func applyMigration(db *sqlx.DB, filename, sqlText string) error {
+	// Some historical migration files contain explicit BEGIN/COMMIT blocks.
+	// Running those inside an outer Go tx causes nested transaction issues
+	// (e.g. "unexpected transaction status idle").
+	if hasExplicitTransactionControl(sqlText) {
+		if _, err := db.Exec(sqlText); err != nil {
+			return fmt.Errorf("apply %s: %w", filename, err)
+		}
+		if _, err := db.Exec(`INSERT INTO schema_migrations (filename) VALUES ($1)`, filename); err != nil {
+			return fmt.Errorf("record %s: %w", filename, err)
+		}
+		return nil
+	}
+
 	tx, err := db.Beginx()
 	if err != nil {
 		return err
@@ -136,4 +149,11 @@ func applyMigration(db *sqlx.DB, filename, sqlText string) error {
 	}
 
 	return tx.Commit()
+}
+
+func hasExplicitTransactionControl(sqlText string) bool {
+	upper := strings.ToUpper(sqlText)
+	return strings.Contains(upper, "\nBEGIN;") ||
+		strings.Contains(upper, "\nCOMMIT;") ||
+		strings.Contains(upper, "\nROLLBACK;")
 }
