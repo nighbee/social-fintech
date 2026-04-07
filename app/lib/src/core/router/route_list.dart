@@ -190,7 +190,19 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 name: RouteNames.home,
                 redirect: AuthGuard,
                 pageBuilder: (context, state) {
-                  return const NoTransitionPage(child: HomePage());
+                  final extra = state.extra;
+                  final map = extra is Map<String, dynamic>
+                      ? extra
+                      : <String, dynamic>{};
+                  final showReferralInviteActivated =
+                      map['showReferralInviteActivated'] as bool? ?? false;
+
+                  return NoTransitionPage(
+                    child: HomePage(
+                      showReferralInviteActivatedOnOpen:
+                          showReferralInviteActivated,
+                    ),
+                  );
                 },
               ),
               GoRoute(

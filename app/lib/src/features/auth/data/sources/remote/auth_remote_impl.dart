@@ -198,7 +198,8 @@ class AuthRemoteImpl implements IAuthRemote {
       'app_version': appVersion,
       'user_agent': userAgent,
       'date_of_birth': dateOfBirth,
-      if ((referral ?? '').trim().isNotEmpty) 'referral': referral!.trim(),
+      if ((referral ?? '').trim().isNotEmpty)
+        'referrer_user_id': referral!.trim(),
     };
 
     Log.debug('AuthRemote', 'Register Email Request:');
@@ -298,7 +299,8 @@ class AuthRemoteImpl implements IAuthRemote {
         'last_name': lastName,
         'device_id': deviceId,
         'date_of_birth': dateOfBirth,
-        if ((referral ?? '').trim().isNotEmpty) 'referral': referral!.trim(),
+        if ((referral ?? '').trim().isNotEmpty)
+          'referrer_user_id': referral!.trim(),
       },
     );
 
@@ -367,7 +369,8 @@ class AuthRemoteImpl implements IAuthRemote {
       'app_version': appVersion,
       'user_agent': userAgent,
       'date_of_birth': dateOfBirth,
-      if ((referral ?? '').trim().isNotEmpty) 'referral': referral!.trim(),
+      if ((referral ?? '').trim().isNotEmpty)
+        'referrer_user_id': referral!.trim(),
     };
 
     final result = await _client.post(

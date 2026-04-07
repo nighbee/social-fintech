@@ -56,20 +56,29 @@ class _RequestsOverlay extends StatelessWidget {
           child: Column(
             children: visibleApps
                 .map(
-                  (application) => Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.06),
+                  (application) {
+                    final normalizedStatus =
+                        application.status.trim().toLowerCase();
+                    final isAcceptedLike =
+                        selectedApplicationId == application.id ||
+                        normalizedStatus == 'accepted' ||
+                        normalizedStatus == 'code_verified' ||
+                        normalizedStatus == 'confirmed';
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.06),
+                          ),
                         ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
+                      child: Row(
+                        children: [
                         const CircleAvatar(
                           radius: 11,
                           backgroundColor: Color(0xFF2A3341),
@@ -82,7 +91,7 @@ class _RequestsOverlay extends StatelessWidget {
                         const Gap(8),
                         Expanded(
                           child: Text(
-                            selectedApplicationId == application.id
+                            isAcceptedLike
                                 ? '${_compactApplicant(application.applicantId)} has arrived'
                                 : '${_compactApplicant(application.applicantId)} wants to help you',
                             style: TextStyles.bodyMain.copyWith(
@@ -93,7 +102,7 @@ class _RequestsOverlay extends StatelessWidget {
                           ),
                         ),
                         const Gap(8),
-                        if (selectedApplicationId == application.id) ...[
+                        if (isAcceptedLike) ...[
                           const Icon(
                             Icons.chat_bubble_outline,
                             color: Colors.white70,
@@ -139,9 +148,10 @@ class _RequestsOverlay extends StatelessWidget {
                             ),
                           ),
                         ],
-                      ],
-                    ),
-                  ),
+                        ],
+                      ),
+                    );
+                  },
                 )
                 .toList(),
           ),

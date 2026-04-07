@@ -5,19 +5,34 @@ import 'package:app/src/features/map/presentation/models/active_executor_applica
 class MapPersistenceService {
   const MapPersistenceService();
 
-  Future<DateTime?> readLastCreatorTaskCreatedAt() async {
+  String _scopedKey(String baseKey, String userId) {
+    return '${baseKey}_${userId.trim()}';
+  }
+
+  Future<DateTime?> readLastCreatorTaskCreatedAt({required String userId}) async {
+    if (userId.trim().isEmpty) {
+      return null;
+    }
     await prefsInstance.initialize();
-    final raw = prefsInstance.get<String>(KeyStore.mapLastCreatorTaskCreatedAt);
+    final raw = prefsInstance.get<String>(
+      _scopedKey(KeyStore.mapLastCreatorTaskCreatedAt, userId),
+    );
     if (raw == null || raw.isEmpty) {
       return null;
     }
     return DateTime.tryParse(raw)?.toUtc();
   }
 
-  Future<void> writeLastCreatorTaskCreatedAt(DateTime createdAtUtc) async {
+  Future<void> writeLastCreatorTaskCreatedAt(
+    DateTime createdAtUtc, {
+    required String userId,
+  }) async {
+    if (userId.trim().isEmpty) {
+      return;
+    }
     await prefsInstance.initialize();
     await prefsInstance.set<String>(
-      KeyStore.mapLastCreatorTaskCreatedAt,
+      _scopedKey(KeyStore.mapLastCreatorTaskCreatedAt, userId),
       createdAtUtc.toUtc().toIso8601String(),
     );
   }
@@ -38,11 +53,19 @@ class MapPersistenceService {
     await prefsInstance.set<double>(KeyStore.mapLastCenterLon, lon);
   }
 
-  Future<ActiveExecutorApplication?> readActiveExecutorApplication() async {
+  Future<ActiveExecutorApplication?> readActiveExecutorApplication({
+    required String userId,
+  }) async {
+    if (userId.trim().isEmpty) {
+      return null;
+    }
     await prefsInstance.initialize();
-    final taskId = prefsInstance.get<String>(KeyStore.mapActiveExecutorTaskId);
-    final applicationId =
-        prefsInstance.get<String>(KeyStore.mapActiveExecutorApplicationId);
+    final taskId = prefsInstance.get<String>(
+      _scopedKey(KeyStore.mapActiveExecutorTaskId, userId),
+    );
+    final applicationId = prefsInstance.get<String>(
+      _scopedKey(KeyStore.mapActiveExecutorApplicationId, userId),
+    );
     if (taskId == null ||
         taskId.isEmpty ||
         applicationId == null ||
@@ -58,16 +81,38 @@ class MapPersistenceService {
 
   Future<void> writeActiveExecutorApplication(
     ActiveExecutorApplication target,
+    {
+    required String userId,
+  }
   ) async {
+    if (userId.trim().isEmpty) {
+      return;
+    }
     await prefsInstance.initialize();
-    await prefsInstance.set<String>(KeyStore.mapActiveExecutorTaskId, target.taskId);
     await prefsInstance.set<String>(
-      KeyStore.mapActiveExecutorApplicationId,
+      _scopedKey(KeyStore.mapActiveExecutorTaskId, userId),
+      target.taskId,
+    );
+    await prefsInstance.set<String>(
+      _scopedKey(KeyStore.mapActiveExecutorApplicationId, userId),
       target.applicationId,
     );
   }
 
-  Future<void> clearActiveExecutorApplication() async {
+  Future<void> clearActiveExecutorApplication({required String userId}) async {
+    if (userId.trim().isEmpty) {
+      return;
+    }
+    await prefsInstance.initialize();
+    await prefsInstance.remove(
+      _scopedKey(KeyStore.mapActiveExecutorTaskId, userId),
+    );
+    await prefsInstance.remove(
+      _scopedKey(KeyStore.mapActiveExecutorApplicationId, userId),
+    );
+  }
+
+  Future<void> clearLegacyGlobalExecutorApplication() async {
     await prefsInstance.initialize();
     await prefsInstance.remove(KeyStore.mapActiveExecutorTaskId);
     await prefsInstance.remove(KeyStore.mapActiveExecutorApplicationId);

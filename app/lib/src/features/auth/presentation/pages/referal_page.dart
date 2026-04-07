@@ -45,6 +45,8 @@ class _ReferalPageState extends State<ReferalPage> {
 
   bool _validateNickname = false;
   UserSearchEntity? _selectedReferralUser;
+  bool _showReferralSuccessAfterRegister = false;
+  bool _isHandlingAuthSuccess = false;
 
   @override
   void dispose() {
@@ -76,6 +78,8 @@ class _ReferalPageState extends State<ReferalPage> {
       final isValid = _formKey.currentState?.validate() ?? false;
       if (!isValid) return;
     }
+
+    _showReferralSuccessAfterRegister = withReferral;
 
     final referralUserId = _selectedReferralUser?.userId;
     final request = widget.firebaseIdToken != null
@@ -113,8 +117,32 @@ class _ReferalPageState extends State<ReferalPage> {
           },
           goRegister: () {},
           loaded: (_) {},
-          authenticated: (_) {
-            context.go(RoutePaths.home);
+          authenticated: (_) async {
+            if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+              return;
+            }
+
+            if (_isHandlingAuthSuccess) {
+              return;
+            }
+
+            _isHandlingAuthSuccess = true;
+            try {
+              if (_showReferralSuccessAfterRegister &&
+                  _selectedReferralUser != null &&
+                  context.mounted) {
+                context.go(
+                  RoutePaths.home,
+                  extra: const {'showReferralInviteActivated': true},
+                );
+                return;
+              }
+              if (context.mounted) {
+                context.go(RoutePaths.home);
+              }
+            } finally {
+              _isHandlingAuthSuccess = false;
+            }
           },
           phoneVerificationStarted: (_, __) {},
           emailChecked: (_, __) {},

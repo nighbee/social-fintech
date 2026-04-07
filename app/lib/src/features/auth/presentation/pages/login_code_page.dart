@@ -80,6 +80,9 @@ class _LoginCodePageState extends State<LoginCodePage> {
                   },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
                     getIt<ProfileBloc>().add(const ProfileEvent.loadProfile());
                     context.go(RoutePaths.home);
                   },

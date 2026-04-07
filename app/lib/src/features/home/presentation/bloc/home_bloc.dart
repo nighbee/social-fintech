@@ -576,11 +576,36 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     _ApplyPostSealResult event,
     Emitter emit,
   ) async {
+    FeedEntity incrementSealCount(FeedEntity feed) {
+      return feed.copyWith(
+        items: feed.items.map((item) {
+          if (item.postId != event.postId) {
+            return item;
+          }
+          return item.copyWith(
+            metrics: item.metrics.copyWith(
+              silvers: item.metrics.silvers + 1,
+            ),
+          );
+        }).toList(),
+      );
+    }
+
+    final currentSummary = _viewModel.storeSummary;
+    final nextBalance = currentSummary.balance.copyWith(
+      silverBalance: event.result.newBalance,
+    );
+
+    _profilePostsListCache = incrementSealCount(_profilePostsListCache);
+    _myProfilePostsListCache = incrementSealCount(_myProfilePostsListCache);
+
     _viewModel = _viewModel.copyWith(
       lastAction: StatusResponseEntity(
         status: event.result.status,
         message: event.result.ledgerEntryId,
       ),
+      storeSummary: currentSummary.copyWith(balance: nextBalance),
+      feed: incrementSealCount(_viewModel.feed),
     );
     emit(HomeState.loaded(viewModel: _viewModel));
   }
@@ -1151,8 +1176,54 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     return feed.copyWith(
       items: feed.items.map((item) {
         if (item.postId != updatedPost.postId) return item;
-        return updatedPost;
+        return _mergePostForLikeUpdate(
+          current: item,
+          incoming: updatedPost,
+        );
       }).toList(),
+    );
+  }
+
+  PostResponseEntity _mergePostForLikeUpdate({
+    required PostResponseEntity current,
+    required PostResponseEntity incoming,
+  }) {
+    final incomingAvatar = incoming.author.profilePicUrl.trim();
+
+    final mergedAuthor = incoming.author.copyWith(
+      id: incoming.author.id.trim().isEmpty ? current.author.id : incoming.author.id,
+      username: incoming.author.username.trim().isEmpty
+          ? current.author.username
+          : incoming.author.username,
+      fullName: incoming.author.fullName.trim().isEmpty
+          ? current.author.fullName
+          : incoming.author.fullName,
+      profilePicUrl: incomingAvatar.isEmpty ? current.author.profilePicUrl : incoming.author.profilePicUrl,
+      rank: incoming.author.rank.trim().isEmpty ? current.author.rank : incoming.author.rank,
+      rankSubLevel: incoming.author.rankSubLevel.trim().isEmpty
+          ? current.author.rankSubLevel
+          : incoming.author.rankSubLevel,
+    );
+
+    final incomingTimeAgo = incoming.timeAgo.trim().toLowerCase();
+    final currentTimeAgo = current.timeAgo.trim().toLowerCase();
+    final shouldKeepCurrentTimeAgo = incomingTimeAgo.isEmpty ||
+        (incomingTimeAgo == 'just now' &&
+            currentTimeAgo.isNotEmpty &&
+            currentTimeAgo != 'just now');
+
+    return incoming.copyWith(
+      author: mergedAuthor,
+      timeAgo: shouldKeepCurrentTimeAgo ? current.timeAgo : incoming.timeAgo,
+      contentText: incoming.contentText.trim().isEmpty
+          ? current.contentText
+          : incoming.contentText,
+      mediaAttachments: incoming.mediaAttachments.isEmpty
+          ? current.mediaAttachments
+          : incoming.mediaAttachments,
+      visibility: incoming.visibility.trim().isEmpty
+          ? current.visibility
+          : incoming.visibility,
     );
   }
 

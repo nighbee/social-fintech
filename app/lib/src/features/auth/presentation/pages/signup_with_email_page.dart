@@ -77,6 +77,9 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                   goRegister: () {},
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
                     context.go(RoutePaths.home);
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {},

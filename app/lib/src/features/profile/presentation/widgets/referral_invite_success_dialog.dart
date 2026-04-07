@@ -1,4 +1,3 @@
-import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/glass_container.dart';
@@ -9,49 +8,26 @@ Future<void> showReferralInviteActivatedDialog(BuildContext context) {
   return showDialog<void>(
     context: context,
     barrierDismissible: true,
-    barrierColor: Colors.black.withValues(alpha: 0.65),
+    barrierColor: Colors.black.withValues(alpha: 0.46),
     builder: (dialogContext) {
       return Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.symmetric(horizontal: 28),
         child: GlassContainer(
           borderRadius: 14,
-          blurSigma: 28,
+          blurSigma: 20,
           padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
-          backgroundColor: AppColors.colorff202020.withValues(alpha: 0.92),
-          borderColor: Colors.white.withValues(alpha: 0.06),
+          backgroundColor: AppColors.colorff202020.withValues(alpha: 0.76),
+          borderColor: Colors.white.withValues(alpha: 0.14),
           borderWidth: 1,
           enableWhiteGlow: false,
-          dropShadowColor: Colors.black.withValues(alpha: 0.5),
-          dropShadowBlurRadius: 40,
-          dropShadowOffset: const Offset(0, 8),
+          dropShadowColor: Colors.black.withValues(alpha: 0.34),
+          dropShadowBlurRadius: 22,
+          dropShadowOffset: const Offset(0, 6),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD700).withValues(alpha: 0.35),
-                          blurRadius: 28,
-                          spreadRadius: 2,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Assets.images.goldenHonor.image(
-                    width: 64,
-                    height: 64,
-                    fit: BoxFit.contain,
-                  ),
-                ],
-              ),
+              const _ReferralCoinBadge(),
               const Gap(20),
               Text(
                 'Invite activated',
@@ -95,4 +71,42 @@ Future<void> showReferralInviteActivatedDialog(BuildContext context) {
       );
     },
   );
+}
+
+class _ReferralCoinBadge extends StatelessWidget {
+  const _ReferralCoinBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 92,
+      height: 92,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 92,
+            height: 92,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFFD34D).withValues(alpha: 0.42),
+                  blurRadius: 34,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+          Image.asset(
+            'assets/images/Big_golden_coin.png',
+            width: 64,
+            height: 64,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          ),
+        ],
+      ),
+    );
+  }
 }

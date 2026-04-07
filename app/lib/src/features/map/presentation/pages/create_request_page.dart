@@ -253,7 +253,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                               label: 'Title',
                               hint: 'Enter a short request title',
                               controller: _titleController,
-                              maxLength: 80,
+                              maxLength: 50,
                             ),
                             const SizedBox(height: 12),
                             _RequestField(
@@ -399,6 +399,18 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                             const SnackBar(
                               content: Text(
                                 'Number of heroes must be between 1 and 20.',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (title.length > 50) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Title must be between 1 and 50 characters.',
                               ),
                               backgroundColor: Colors.red,
                             ),

@@ -44,6 +44,16 @@ class MapRequestMarkerService {
   int _lifecycleToken = 0;
   static const int _managerInitAttempts = 3;
 
+  bool _isRecoverableAnnotationError(PlatformException error) {
+    final code = error.code.toLowerCase();
+    final message = (error.message ?? '').toLowerCase();
+    return code == 'channel-error' ||
+        message.contains('unable to establish connection on channel') ||
+        message.contains('no manager or annotation found') ||
+        message.contains('annotation id') ||
+        message.contains('dev.flutter.pigeon.mapbox_maps_flutter');
+  }
+
   Future<void> initialize(
     MapboxMap map, {
     required void Function(String? selectedTaskId) onSelectionChanged,
@@ -164,7 +174,13 @@ class MapRequestMarkerService {
     for (final taskId in toRemove) {
       final annotation = _annotationsByTaskId.remove(taskId);
       if (annotation != null) {
-        await manager.delete(annotation);
+        try {
+          await manager.delete(annotation);
+        } on PlatformException catch (error) {
+          if (!_isRecoverableAnnotationError(error)) {
+            rethrow;
+          }
+        }
         _taskIdByAnnotationId.remove(annotation.id);
       }
       _selectedByTaskId.remove(taskId);
@@ -309,7 +325,13 @@ class MapRequestMarkerService {
     if (selectedTaskId == null) {
       final existing = _selectionIndicator;
       if (existing != null) {
-        await manager.delete(existing);
+        try {
+          await manager.delete(existing);
+        } on PlatformException catch (error) {
+          if (!_isRecoverableAnnotationError(error)) {
+            rethrow;
+          }
+        }
         _selectionIndicator = null;
         _selectionIndicatorShowsGlow = null;
       }
@@ -323,7 +345,13 @@ class MapRequestMarkerService {
     if (!_taskIsCreator(task)) {
       final existing = _selectionIndicator;
       if (existing != null) {
-        await manager.delete(existing);
+        try {
+          await manager.delete(existing);
+        } on PlatformException catch (error) {
+          if (!_isRecoverableAnnotationError(error)) {
+            rethrow;
+          }
+        }
         _selectionIndicator = null;
         _selectionIndicatorShowsGlow = null;
       }
@@ -345,18 +373,7 @@ class MapRequestMarkerService {
 
     final existing = _selectionIndicator;
     if (existing == null) {
-      _selectionIndicator = await manager.create(
-        PointAnnotationOptions(
-          geometry: geometry,
-          iconAnchor: IconAnchor.BOTTOM,
-          image: indicatorImage,
-          iconSize: _selectionIndicatorBaseIconSize * _markerSizeMultiplier,
-        ),
-      );
-      _selectionIndicatorShowsGlow = _showSelectionGlow;
-    } else {
-      if (_selectionIndicatorShowsGlow != _showSelectionGlow) {
-        await manager.delete(existing);
+      try {
         _selectionIndicator = await manager.create(
           PointAnnotationOptions(
             geometry: geometry,
@@ -365,11 +382,49 @@ class MapRequestMarkerService {
             iconSize: _selectionIndicatorBaseIconSize * _markerSizeMultiplier,
           ),
         );
+      } on PlatformException catch (error) {
+        if (_isRecoverableAnnotationError(error)) {
+          _selectionIndicator = null;
+          _selectionIndicatorShowsGlow = null;
+          return;
+        }
+        rethrow;
+      }
+      _selectionIndicatorShowsGlow = _showSelectionGlow;
+    } else {
+      if (_selectionIndicatorShowsGlow != _showSelectionGlow) {
+        try {
+          await manager.delete(existing);
+          _selectionIndicator = await manager.create(
+            PointAnnotationOptions(
+              geometry: geometry,
+              iconAnchor: IconAnchor.BOTTOM,
+              image: indicatorImage,
+              iconSize: _selectionIndicatorBaseIconSize * _markerSizeMultiplier,
+            ),
+          );
+        } on PlatformException catch (error) {
+          if (_isRecoverableAnnotationError(error)) {
+            _selectionIndicator = null;
+            _selectionIndicatorShowsGlow = null;
+            return;
+          }
+          rethrow;
+        }
       } else {
         existing
           ..geometry = geometry
           ..iconSize = _selectionIndicatorBaseIconSize * _markerSizeMultiplier;
-        await manager.update(existing);
+        try {
+          await manager.update(existing);
+        } on PlatformException catch (error) {
+          if (_isRecoverableAnnotationError(error)) {
+            _selectionIndicator = null;
+            _selectionIndicatorShowsGlow = null;
+            return;
+          }
+          rethrow;
+        }
       }
       _selectionIndicatorShowsGlow = _showSelectionGlow;
     }
@@ -464,14 +519,22 @@ class MapRequestMarkerService {
       final existing = _annotationsByTaskId[task.id];
 
       if (existing == null) {
-        final created = await manager.create(
-          PointAnnotationOptions(
-            geometry: geometry,
-            iconAnchor: IconAnchor.BOTTOM,
-            image: markerImage,
-            iconSize: _taskIconSize(isSelected),
-          ),
-        );
+        late final PointAnnotation created;
+        try {
+          created = await manager.create(
+            PointAnnotationOptions(
+              geometry: geometry,
+              iconAnchor: IconAnchor.BOTTOM,
+              image: markerImage,
+              iconSize: _taskIconSize(isSelected),
+            ),
+          );
+        } on PlatformException catch (error) {
+          if (_isRecoverableAnnotationError(error)) {
+            continue;
+          }
+          rethrow;
+        }
         _annotationsByTaskId[task.id] = created;
         _taskIdByAnnotationId[created.id] = task.id;
         _selectedByTaskId[task.id] = isSelected;
@@ -481,16 +544,33 @@ class MapRequestMarkerService {
 
       final variantChanged = _variantByTaskId[task.id] != variant;
       if (variantChanged || _selectedByTaskId[task.id] != isSelected) {
-        await manager.delete(existing);
+        try {
+          await manager.delete(existing);
+        } on PlatformException catch (error) {
+          if (!_isRecoverableAnnotationError(error)) {
+            rethrow;
+          }
+        }
         _taskIdByAnnotationId.remove(existing.id);
-        final recreated = await manager.create(
-          PointAnnotationOptions(
-            geometry: geometry,
-            iconAnchor: IconAnchor.BOTTOM,
-            image: markerImage,
-            iconSize: _taskIconSize(isSelected),
-          ),
-        );
+        late final PointAnnotation recreated;
+        try {
+          recreated = await manager.create(
+            PointAnnotationOptions(
+              geometry: geometry,
+              iconAnchor: IconAnchor.BOTTOM,
+              image: markerImage,
+              iconSize: _taskIconSize(isSelected),
+            ),
+          );
+        } on PlatformException catch (error) {
+          if (_isRecoverableAnnotationError(error)) {
+            _annotationsByTaskId.remove(task.id);
+            _selectedByTaskId.remove(task.id);
+            _variantByTaskId.remove(task.id);
+            continue;
+          }
+          rethrow;
+        }
         _annotationsByTaskId[task.id] = recreated;
         _taskIdByAnnotationId[recreated.id] = task.id;
         _selectedByTaskId[task.id] = isSelected;
@@ -510,7 +590,18 @@ class MapRequestMarkerService {
         needsUpdate = true;
       }
       if (needsUpdate) {
-        await manager.update(existing);
+        try {
+          await manager.update(existing);
+        } on PlatformException catch (error) {
+          if (_isRecoverableAnnotationError(error)) {
+            _annotationsByTaskId.remove(task.id);
+            _taskIdByAnnotationId.remove(existing.id);
+            _selectedByTaskId.remove(task.id);
+            _variantByTaskId.remove(task.id);
+            continue;
+          }
+          rethrow;
+        }
       }
     }
   }

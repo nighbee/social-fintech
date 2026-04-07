@@ -77,7 +77,14 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       centerLongitude:
           mapDemoMocksEnabled ? mapDemoAlmatyLongitude : 30.5234,
       zoom: 11.8,
+      isBusy: false,
+      isCreatingTask: false,
+      nearbyTasks: const <MapTaskEntity>[],
+      appliedTasks: const <MapTaskEntity>[],
       cancelTaskResult: '',
+      myTasks: const <MapTaskEntity>[],
+      selectedTask: const MapTaskEntity.empty(),
+      taskApplications: const <MapTaskApplicationEntity>[],
       applyToTaskResult: const MapApplyToTaskEntity.empty(),
       confirmCompletionResult: const MapConfirmCompletionEntity.empty(),
       verifyCodeResult: const MapVerifyCodeEntity.empty(),
@@ -179,6 +186,10 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
   Future<void> _createTask(_CreateTask event, Emitter emit) async {
     if (event.request.title.trim().isEmpty) {
       emit(const MapState.loadingError('Please enter a title'));
+      return;
+    }
+    if (event.request.title.trim().length > 50) {
+      emit(const MapState.loadingError('Title must be between 1 and 50 characters.'));
       return;
     }
     if (event.request.description.trim().isEmpty) {
@@ -326,6 +337,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       (error) {
         _viewModel = _viewModel.copyWith(
           isBusy: false,
+          appliedTasks: const <MapTaskEntity>[],
           hasAppliedTasksLoaded: false,
         );
         emit(MapState.loadingError(error.message));
@@ -348,6 +360,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       (error) {
         _viewModel = _viewModel.copyWith(
           isBusy: false,
+          myTasks: const <MapTaskEntity>[],
+          taskApplications: const <MapTaskApplicationEntity>[],
           hasMyTasksLoaded: false,
         );
         emit(MapState.loadingError(error.message));
@@ -402,6 +416,14 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
     final result = await _repository.getTaskApplications(event.request);
     result.fold(
       (error) {
+        final message = error.message.toLowerCase();
+        if (message.contains('forbidden')) {
+          _viewModel = _viewModel.copyWith(
+            isBusy: false,
+          );
+          emit(MapState.loaded(viewModel: _viewModel));
+          return;
+        }
         _viewModel = _viewModel.copyWith(isBusy: false);
         emit(MapState.loadingError(error.message));
       },
@@ -567,7 +589,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       return 'Task creation cooldown is active. Please try again later.';
     }
     if (message.contains('invalid_title')) {
-      return 'Title is invalid.';
+      return 'Title is invalid. Use 1-50 characters.';
     }
     if (message.contains('invalid_reward')) {
       return 'Reward must be 1, 2 or 3.';

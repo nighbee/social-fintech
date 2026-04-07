@@ -84,6 +84,9 @@ class _CodePageState extends State<CodePage> {
                   },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
                     context.go(RoutePaths.home);
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {},

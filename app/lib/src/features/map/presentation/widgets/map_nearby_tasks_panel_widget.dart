@@ -4,18 +4,22 @@ class _MyRequestPanel extends StatelessWidget {
   const _MyRequestPanel({
     required this.task,
     required this.isExpanded,
+    required this.avatarUrl,
     required this.onToggleExpanded,
     required this.onCancel,
   });
 
   final MapTaskEntity task;
   final bool isExpanded;
+  final String? avatarUrl;
   final VoidCallback onToggleExpanded;
   final VoidCallback onCancel;
 
   @override
   Widget build(BuildContext context) {
     final code = _extractVerificationCode(task.status);
+    final title = _truncateTitleForHeader(task.title);
+    final avatar = avatarUrl?.trim() ?? '';
     final requiredText =
         'Required: ${task.workersNeeded} heroes  |  Reward: ${task.reward.toStringAsFixed(0)}';
 
@@ -52,11 +56,33 @@ class _MyRequestPanel extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   child: Row(
                     children: [
-                      const CircleAvatar(
-                        radius: 15,
-                        backgroundColor: Color(0xFF2A3341),
-                        child:
-                            Icon(Icons.person, color: Colors.white70, size: 16),
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2A3341),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: avatar.isNotEmpty
+                              ? Image.network(
+                                  avatar,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.person,
+                                    color: Colors.white70,
+                                    size: 16,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.person,
+                                  color: Colors.white70,
+                                  size: 16,
+                                ),
+                        ),
                       ),
                       const Gap(10),
                       Expanded(
@@ -64,7 +90,7 @@ class _MyRequestPanel extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              task.title,
+                              title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyles.bodyLarge.copyWith(
@@ -81,10 +107,12 @@ class _MyRequestPanel extends StatelessWidget {
                           ],
                         ),
                       ),
-                      Text(
-                        isExpanded ? 'hide' : 'view my request',
-                        style:
-                            TextStyles.bodyMain.copyWith(color: Colors.white70),
+                      Icon(
+                        isExpanded
+                            ? Icons.keyboard_arrow_up_rounded
+                            : Icons.keyboard_arrow_down_rounded,
+                        color: Colors.white70,
+                        size: 22,
                       ),
                     ],
                   ),
@@ -96,16 +124,10 @@ class _MyRequestPanel extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        task.description.isEmpty
+                      _ExpandablePanelDescription(
+                        text: task.description.isEmpty
                             ? 'No description provided.'
                             : task.description,
-                        maxLines: 4,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyles.bodyMain.copyWith(
-                          color: Colors.white70,
-                          height: 1.35,
-                        ),
                       ),
                       const SizedBox(height: 10),
                       Text(
@@ -164,6 +186,17 @@ class _MyRequestPanel extends StatelessWidget {
     }
     return '----';
   }
+
+  String _truncateTitleForHeader(String rawTitle) {
+    final normalized = rawTitle.trim();
+    if (normalized.isEmpty) {
+      return 'Help request';
+    }
+    if (normalized.length <= 34) {
+      return normalized;
+    }
+    return '${normalized.substring(0, 34)}...more';
+  }
 }
 
 class _NearbyTasksPanel extends StatelessWidget {
@@ -182,6 +215,9 @@ class _NearbyTasksPanel extends StatelessWidget {
     }
 
     final task = tasks.first;
+    final normalizedTitle = task.title.trim().isEmpty
+        ? 'Help request'
+        : task.title.trim();
     final hasDescription = task.description.trim().isNotEmpty;
     final description = hasDescription
         ? task.description
@@ -221,19 +257,17 @@ class _NearbyTasksPanel extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: const Color(0xFF2A3341),
-                      backgroundImage: Assets.images.image.provider(),
-                    ),
+                    _TaskAvatar(seedText: normalizedTitle),
                     const Gap(10),
                     Expanded(
                       child: Text(
-                        task.title,
-                        maxLines: 1,
+                        normalizedTitle,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyles.bodyLarge.copyWith(
-                          color: Colors.white,
+                        style: TextStyles.titleMain.copyWith(
+                          color: const Color(0xFFF2F2F2),
+                          fontSize: 18,
+                          height: 1.05,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -241,12 +275,9 @@ class _NearbyTasksPanel extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: TextStyles.bodyMain.copyWith(
-                    color: Colors.white70,
-                    height: 1.35,
-                  ),
+                _ExpandablePanelDescription(
+                  text: description,
+                  collapsedMaxLines: 6,
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -300,6 +331,118 @@ class _NearbyTasksPanel extends StatelessWidget {
         ),
       ),
         ),
+      ),
+    );
+  }
+}
+
+class _ExpandablePanelDescription extends StatefulWidget {
+  const _ExpandablePanelDescription({
+    required this.text,
+    this.collapsedMaxLines = 4,
+  });
+
+  final String text;
+  final int collapsedMaxLines;
+
+  @override
+  State<_ExpandablePanelDescription> createState() =>
+      _ExpandablePanelDescriptionState();
+}
+
+class _ExpandablePanelDescriptionState extends State<_ExpandablePanelDescription> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = TextStyles.bodyMain.copyWith(
+      color: Colors.white70,
+      height: 1.35,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final span = TextSpan(text: widget.text, style: style);
+        final painter = TextPainter(
+          text: span,
+          textDirection: Directionality.of(context),
+          maxLines: widget.collapsedMaxLines,
+        )..layout(maxWidth: constraints.maxWidth);
+        final isOverflowing = painter.didExceedMaxLines;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.text,
+              maxLines: _expanded ? null : widget.collapsedMaxLines,
+              overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: style,
+            ),
+            if (isOverflowing)
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () => setState(() => _expanded = !_expanded),
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _expanded ? 'Hide' : 'More',
+                      style: TextStyles.bodyMain.copyWith(
+                        color: const Color(0xFFC9D7F2),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TaskAvatar extends StatelessWidget {
+  const _TaskAvatar({required this.seedText});
+
+  final String seedText;
+
+  @override
+  Widget build(BuildContext context) {
+    final trimmed = seedText.trim();
+    final first = trimmed.isEmpty ? '' : trimmed.substring(0, 1).toUpperCase();
+    final hasLetter = RegExp(r'[A-ZА-Я0-9]').hasMatch(first);
+
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF5E7698), Color(0xFF2E3C52)],
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Center(
+        child: hasLetter
+            ? Text(
+                first,
+                style: TextStyles.bodyLarge.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            : const Icon(
+                Icons.person,
+                color: Colors.white,
+                size: 20,
+              ),
       ),
     );
   }

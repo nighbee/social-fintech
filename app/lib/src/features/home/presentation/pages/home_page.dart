@@ -13,13 +13,19 @@ import 'package:app/src/features/home/presentation/widgets/feed_app_bar.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_soft_limit_scroll_physics.dart';
 import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
 import 'package:app/src/features/home/presentation/widgets/reported_post_card_widget.dart';
+import 'package:app/src/features/profile/presentation/widgets/referral_invite_success_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({
+    this.showReferralInviteActivatedOnOpen = false,
+    super.key,
+  });
+
+  final bool showReferralInviteActivatedOnOpen;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -36,6 +42,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   DateTime? _cooldownFreezeStartedAt;
   int? _localCooldownRemainingSeconds;
   DateTime? _appBackgroundedAt;
+  bool _referralSuccessShown = false;
 
   @override
   void initState() {
@@ -43,6 +50,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _homeBloc.add(const HomeEvent.loadStoreSummary());
     _homeBloc.add(const HomeEvent.loadFeedState());
+    _showReferralSuccessIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.showReferralInviteActivatedOnOpen &&
+        widget.showReferralInviteActivatedOnOpen) {
+      _showReferralSuccessIfNeeded();
+    }
   }
 
   @override
@@ -68,6 +85,20 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       setState(() {
         _showReportSuccessBanner = false;
       });
+    });
+  }
+
+  void _showReferralSuccessIfNeeded() {
+    if (!widget.showReferralInviteActivatedOnOpen || _referralSuccessShown) {
+      return;
+    }
+    _referralSuccessShown = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      unawaited(showReferralInviteActivatedDialog(context));
     });
   }
 

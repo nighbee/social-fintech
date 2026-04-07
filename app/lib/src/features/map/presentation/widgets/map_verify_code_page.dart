@@ -21,12 +21,13 @@ class _VerifyCodePageState extends State<_VerifyCodePage> {
   bool _hasInvalidCodeError = false;
 
   bool get _isCodeComplete =>
-      _code.length == 4 && !_code.contains(RegExp(r'[^A-Za-z0-9]'));
+      _code.length == 4 && !_code.contains(RegExp(r'[^0-9]'));
 
   void _submit() {
     if (!_isCodeComplete || _isSubmitting) {
       return;
     }
+
     setState(() {
       _isSubmitting = true;
       _hasInvalidCodeError = false;
@@ -86,7 +87,7 @@ class _VerifyCodePageState extends State<_VerifyCodePage> {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 26, 20, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -96,34 +97,44 @@ class _VerifyCodePageState extends State<_VerifyCodePage> {
               ),
               const SizedBox(height: 10),
               Text(
-                'Enter the 4-character verification code you got from the creator.',
+                'Enter the 4-digit verification code you got from the creator.',
                 style: TextStyles.bodyMain.copyWith(color: Colors.white38),
               ),
-              const SizedBox(height: 30),
-              Center(
-                child: CodeInputField(
-                  length: 4,
-                  allowAlphanumeric: true,
-                  isInvalid: _hasInvalidCodeError,
-                  onChanged: (code) {
-                    setState(() {
-                      _code = code;
-                      _hasInvalidCodeError = false;
-                    });
-                  },
-                ),
-              ),
-              if (_hasInvalidCodeError) ...[
-                const SizedBox(height: 8),
-                Text(
-                  'You entered the wrong verification code.',
-                  style: TextStyles.bodyMain.copyWith(
-                    color: const Color(0xFFEF4444),
-                    fontSize: 12,
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CodeInputField(
+                        length: 4,
+                        allowAlphanumeric: false,
+                        isInvalid: _hasInvalidCodeError,
+                        onChanged: (code) {
+                          setState(() {
+                            _code = code;
+                            _hasInvalidCodeError = false;
+                          });
+                        },
+                      ),
+                      if (_hasInvalidCodeError) ...[
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: 300,
+                          child: Text(
+                            'You entered the wrong verification code.',
+                            textAlign: TextAlign.center,
+                            style: TextStyles.bodyMain.copyWith(
+                              color: const Color(0xFFEF4444),
+                              fontSize: 16,
+                              height: 1.15,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-              ],
-              const Spacer(),
+              ),
               CustomButton(
                 text: _isSubmitting ? 'Verifying...' : 'Continue',
                 onTap: _submit,

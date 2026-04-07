@@ -71,6 +71,7 @@ class MapPageController {
   String? handledConfirmResultTaskId;
   DateTime? lastExecutorCompletionCheckAt;
   bool executorCompletionShown = false;
+  bool executorFlowDismissed = false;
   String executorTaskStatus = '';
   String executorCreatorName = '';
   String? handledTaskApplicationActionResult;
@@ -83,6 +84,7 @@ class MapPageController {
   var _didAssignRegionWithDeviceLocation = false;
   var _didCameraFollowFirstDeviceFix = false;
   bool isRequestExpanded = false;
+  Offset myRequestPanelOffset = Offset.zero;
   bool hasSavedCenter = false;
   String? _lastChampionsRegionKey;
   DateTime? _lastEmptyChampionsFetchAt;
@@ -103,11 +105,35 @@ class MapPageController {
       Duration(milliseconds: 650);
 
   DateTime? get lastCreatorTaskCreatedAtUtc => _lastCreatorTaskCreatedAtUtc;
+  String? get currentUserAvatarUrl => _resolveProfileAvatarUrl();
+
+  String? _resolveCurrentUserId() {
+    final fromProfile = getIt<ProfileBloc>().state.maybeWhen(
+          loaded: (vm) => vm.profile.userId,
+          loading: (vm) => vm.profile.userId,
+          orElse: () => null,
+        );
+    final profileId = fromProfile?.trim();
+    if (profileId != null && profileId.isNotEmpty) {
+      return profileId;
+    }
+
+    final fromAuth = getIt<AuthBloc>().state.maybeWhen(
+          authenticated: (login) => login.user.id,
+          orElse: () => null,
+        );
+    final authId = fromAuth?.trim();
+    if (authId != null && authId.isNotEmpty) {
+      return authId;
+    }
+    return null;
+  }
 
   void onInit() {
     _lastChampionsRegionKey = null;
     _lastEmptyChampionsFetchAt = null;
     _mapBloc.add(const MapEvent.loadMap());
+    unawaited(_persistence.clearLegacyGlobalExecutorApplication());
     unawaited(_restoreSavedMapCenter());
     unawaited(_restoreLastCreatorTaskCreatedAt());
     unawaited(_restoreActiveExecutorApplication());
@@ -136,6 +162,18 @@ class MapPageController {
 
   void toggleRequestExpanded() {
     isRequestExpanded = !isRequestExpanded;
+  }
+
+  void updateMyRequestPanelOffset(DragUpdateDetails details) {
+    final next = myRequestPanelOffset + details.delta;
+    myRequestPanelOffset = Offset(
+      next.dx.clamp(-48.0, 48.0),
+      next.dy.clamp(-140.0, 36.0),
+    );
+  }
+
+  void resetMyRequestPanelOffset() {
+    myRequestPanelOffset = Offset.zero;
   }
 
   void selectNearbyTask(String taskId) {
@@ -172,6 +210,12 @@ class MapPageController {
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
     _rememberLatestCreatorTaskCreatedAt(viewModel);
+
+    if (MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks) == null &&
+        myRequestPanelOffset != Offset.zero) {
+      myRequestPanelOffset = Offset.zero;
+      _requestSetState(() {});
+    }
 
     final nearbyForMarkers = _nearbyTasksWithMyStatuses(viewModel);
     _reconcileSelectedNearbyTask(nearbyForMarkers);
@@ -219,6 +263,7 @@ class MapPageController {
             handledApplyApplicationId) {
       handledApplyApplicationId = viewModel.applyToTaskResult.applicationId;
       executorTaskStatus = viewModel.applyToTaskResult.status;
+      executorFlowDismissed = false;
       executorCreatorName = '';
       consecutiveMissingAppliedTaskChecks = 0;
       _dialogs.resetRejectedHandledId();
@@ -226,13 +271,6 @@ class MapPageController {
         _persistActiveExecutorApplication(
           viewModel.applyToTaskResult.taskId,
           viewModel.applyToTaskResult.applicationId,
-        ),
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content:
-              Text('Applied! Status: ${viewModel.applyToTaskResult.status}'),
-          backgroundColor: Colors.green,
         ),
       );
     }
@@ -267,7 +305,13 @@ class MapPageController {
   }
 
   Future<void> _restoreLastCreatorTaskCreatedAt() async {
-    final restored = await _persistence.readLastCreatorTaskCreatedAt();
+    final userId = _resolveCurrentUserId();
+    if (userId == null) {
+      return;
+    }
+    final restored = await _persistence.readLastCreatorTaskCreatedAt(
+      userId: userId,
+    );
     if (restored == null) {
       return;
     }
@@ -312,7 +356,16 @@ class MapPageController {
     }
 
     _lastCreatorTaskCreatedAtUtc = latest;
-    unawaited(_persistence.writeLastCreatorTaskCreatedAt(latest));
+    final userId = _resolveCurrentUserId();
+    if (userId == null) {
+      return;
+    }
+    unawaited(
+      _persistence.writeLastCreatorTaskCreatedAt(
+        latest,
+        userId: userId,
+      ),
+    );
   }
 
   /// В nearby с бэка часто `open`, а в myTasks — `mine|…`; иначе маркер моргает «чужой → свой».
@@ -743,6 +796,14 @@ class MapPageController {
     MapTaskApplicationEntity application, {
     required void Function(VoidCallback fn) runSetState,
   }) {
+    final status = application.status.trim().toLowerCase();
+    if (status != 'pending') {
+      runSetState(() {
+        selectedApplicationId = application.id;
+      });
+      return;
+    }
+
     runSetState(() {
       selectedApplicationId = application.id;
       locallyRejectedApplicationIds.remove(application.id);
@@ -762,6 +823,14 @@ class MapPageController {
     MapTaskApplicationEntity application, {
     required void Function(VoidCallback fn) runSetState,
   }) {
+    final status = application.status.trim().toLowerCase();
+    if (status != 'pending') {
+      runSetState(() {
+        selectedApplicationId = application.id;
+      });
+      return;
+    }
+
     runSetState(() {
       locallyRejectedApplicationIds.add(application.id);
       if (selectedApplicationId == application.id) {
@@ -779,10 +848,35 @@ class MapPageController {
     );
   }
 
-  void handleExecutorCancel(BuildContext context) {
-    final taskId = _mapBloc.viewModel.applyToTaskResult.taskId;
-    final applicationId = _mapBloc.viewModel.applyToTaskResult.applicationId;
+  void handleExecutorCancel(
+    BuildContext context,
+    MapViewModel viewModel, {
+    required void Function(VoidCallback fn) runSetState,
+  }) {
+    final taskId = viewModel.applyToTaskResult.taskId;
+    final applicationId = viewModel.applyToTaskResult.applicationId;
     if (taskId.isEmpty || applicationId.isEmpty) {
+      return;
+    }
+
+    final appliedStatus = viewModel.applyToTaskResult.status.trim().toLowerCase();
+    final verifyStatus = viewModel.verifyCodeResult.status.trim().toLowerCase();
+    final isCodeVerified = (viewModel.verifyCodeResult.applicationId == applicationId &&
+            verifyStatus == 'code_verified') ||
+        appliedStatus == 'code_verified' ||
+        executorTaskStatus.trim().toLowerCase() == 'code_verified';
+
+    // Backend blocks withdraw after code verification; do not hide UI silently.
+    if (isCodeVerified) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'You cannot withdraw after code verification. Waiting for creator confirmation.',
+            ),
+          ),
+        );
+      }
       return;
     }
 
@@ -801,6 +895,17 @@ class MapPageController {
         },
       ),
     );
+  }
+
+  void dismissExecutorFlowUi({
+    required void Function(VoidCallback fn) runSetState,
+  }) {
+    if (executorFlowDismissed) {
+      return;
+    }
+    runSetState(() {
+      executorFlowDismissed = true;
+    });
   }
 
   Future<void> _restoreSavedMapCenter() async {
@@ -828,7 +933,13 @@ class MapPageController {
   }
 
   Future<void> _restoreActiveExecutorApplication() async {
-    final target = await _persistence.readActiveExecutorApplication();
+    final userId = _resolveCurrentUserId();
+    if (userId == null) {
+      return;
+    }
+    final target = await _persistence.readActiveExecutorApplication(
+      userId: userId,
+    );
     if (target == null) {
       return;
     }
@@ -840,6 +951,7 @@ class MapPageController {
         ),
       ),
     );
+    executorFlowDismissed = false;
     executorTaskStatus = 'pending';
   }
 
@@ -847,13 +959,22 @@ class MapPageController {
     String taskId,
     String applicationId,
   ) async {
+    final userId = _resolveCurrentUserId();
+    if (userId == null) {
+      return;
+    }
     await _persistence.writeActiveExecutorApplication(
       ActiveExecutorApplication(taskId: taskId, applicationId: applicationId),
+      userId: userId,
     );
   }
 
   Future<void> _clearActiveExecutorApplication() async {
-    await _persistence.clearActiveExecutorApplication();
+    final userId = _resolveCurrentUserId();
+    if (userId == null) {
+      return;
+    }
+    await _persistence.clearActiveExecutorApplication(userId: userId);
   }
 
   void _refreshNearbyTasks() {
@@ -991,10 +1112,12 @@ class MapPageController {
       consecutiveMissingAppliedTaskChecks = 0;
       if (executorTaskStatus.isNotEmpty && mounted) {
         runSetState(() {
+          executorFlowDismissed = false;
           executorTaskStatus = '';
           executorCreatorName = '';
         });
       } else if (executorTaskStatus.isNotEmpty) {
+        executorFlowDismissed = false;
         executorTaskStatus = '';
         executorCreatorName = '';
       }
@@ -1033,11 +1156,13 @@ class MapPageController {
       if (mounted) {
         runSetState(() {
           executorCompletionShown = true;
+          executorFlowDismissed = false;
           executorTaskStatus = matchedTaskStatus!;
           executorCreatorName = '';
         });
       } else {
         executorCompletionShown = true;
+        executorFlowDismissed = false;
         executorTaskStatus = matchedTaskStatus!;
         executorCreatorName = '';
       }
@@ -1144,6 +1269,7 @@ class MapPageController {
       final applicationId = viewModel.applyToTaskResult.applicationId;
       unawaited(_clearActiveExecutorApplication());
       runSetState(() {
+        executorFlowDismissed = false;
         executorTaskStatus = 'rejected';
         executorCreatorName = '';
         if (applicationId.isNotEmpty) {
@@ -1156,24 +1282,24 @@ class MapPageController {
 
     if (action == 'accepted' || action == 'rejected') {
       runSetState(() {
+        if (action == 'rejected') {
+          executorFlowDismissed = false;
+        }
         executorTaskStatus = action;
         debugPrint(
             '[MapController] Task application $action - executorTaskStatus updated to: $action');
       });
       final taskId = _polling.lastApplicationsTaskId;
-      if (taskId != null && taskId.isNotEmpty) {
+      final canRefreshApplications = taskId != null &&
+          taskId.isNotEmpty &&
+          viewModel.myTasks.any((task) => task.id == taskId);
+      if (canRefreshApplications) {
         _mapBloc.add(
           MapEvent.getTaskApplications(MapTaskIdRequest(taskId: taskId)),
         );
       }
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Application $action'),
-            backgroundColor:
-                action == 'accepted' ? Colors.green : Colors.orange,
-          ),
-        );
+        _showApplicationActionToast(context, action: action);
       }
 
       // Refresh applied tasks to get the latest status and trigger UI update
@@ -1185,5 +1311,54 @@ class MapPageController {
         debugPrint('[MapController] Forced setState for UI update');
       });
     }
+  }
+
+  void _showApplicationActionToast(
+    BuildContext context, {
+    required String action,
+  }) {
+    final isAccepted = action == 'accepted';
+    final accent = isAccepted
+        ? const Color(0xFF34D399)
+        : const Color(0xFFF59E0B);
+    final icon = isAccepted ? Icons.check_circle_outline : Icons.info_outline;
+    final message = isAccepted
+        ? 'Application accepted'
+        : 'Application rejected';
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 94),
+        content: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1F232B),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: accent.withValues(alpha: 0.62)),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: accent, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

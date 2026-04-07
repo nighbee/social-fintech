@@ -3,75 +3,71 @@ part of 'package:app/src/features/map/presentation/pages/map_page.dart';
 class _ExecutorRequestStrip extends StatelessWidget {
   const _ExecutorRequestStrip({
     required this.message,
-    required this.onClose,
+    required this.onCloseTap,
   });
 
   final String message;
-  final VoidCallback onClose;
+  final VoidCallback onCloseTap;
 
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(6),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
           decoration: BoxDecoration(
-            color: MapUiPalette.panelBackground,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: MapUiPalette.panelBorder),
+            color: const Color(0xFF202020).withValues(alpha: 0.20),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.24),
+            ),
             boxShadow: [
               BoxShadow(
-                color: MapUiPalette.panelTopGlow,
-                blurRadius: 12,
-                offset: const Offset(0, -3),
-              ),
-              BoxShadow(
-                color: MapUiPalette.panelDropShadow,
-                blurRadius: 25,
-                offset: const Offset(0, 8),
+                color: Colors.black.withValues(alpha: 0.22),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
           child: Row(
             children: [
-              const CircleAvatar(
-                radius: 11,
-                backgroundColor: Color(0xFF2A3341),
-                child: Icon(
-                  Icons.person,
-                  color: Colors.white70,
-                  size: 14,
-                ),
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: const Color(0xFF2A3341),
+                backgroundImage: Assets.images.image.provider(),
               ),
-              const Gap(8),
+              const Gap(14),
               Expanded(
                 child: Text(
                   message,
-                  style: TextStyles.bodyMain.copyWith(
-                    color: Colors.white70,
+                  style: TextStyles.titleMain.copyWith(
+                    color: const Color(0xFFCECECE),
+                    fontSize: 16,
+                    height: 1.1,
+                    fontWeight: FontWeight.w500,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Gap(8),
+              const Gap(10),
               const Icon(
                 Icons.chat_bubble_outline,
-                color: Colors.white70,
-                size: 16,
+                color: Color(0xFFD4D4D4),
+                size: 19,
               ),
-              const Gap(10),
-              InkWell(
-                onTap: onClose,
-                borderRadius: BorderRadius.circular(6),
+              const Gap(14),
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onCloseTap,
                 child: const Padding(
                   padding: EdgeInsets.all(2),
                   child: Icon(
                     Icons.close,
                     color: Color(0xFFEF4444),
-                    size: 18,
+                    size: 21,
                   ),
                 ),
               ),

@@ -35,6 +35,16 @@ class MapChampionService {
   void Function(MapChampionEntity champion)? _onChampionTap;
   int _lifecycleToken = 0;
 
+  bool _isRecoverableAnnotationError(PlatformException error) {
+    final code = error.code.toLowerCase();
+    final message = (error.message ?? '').toLowerCase();
+    return code == 'channel-error' ||
+      message.contains('unable to establish connection on channel') ||
+        message.contains('no manager or annotation found') ||
+      message.contains('annotation id') ||
+      message.contains('dev.flutter.pigeon.mapbox_maps_flutter');
+  }
+
   /// Initialize the annotation manager
   Future<void> initialize(
     MapboxMap mapboxMap, {
@@ -131,8 +141,10 @@ class MapChampionService {
         try {
           await manager.delete(annotation);
         } on PlatformException catch (error) {
-          if (error.code == 'channel-error') {
-            return;
+          if (_isRecoverableAnnotationError(error)) {
+            _annotationIdsToH3Index.remove(annotation.id);
+            _championsByIndex.remove(h3Index);
+            continue;
           }
           rethrow;
         }
@@ -157,8 +169,11 @@ class MapChampionService {
         try {
           await manager.update(existing);
         } on PlatformException catch (error) {
-          if (error.code == 'channel-error') {
-            return;
+          if (_isRecoverableAnnotationError(error)) {
+            _annotations.remove(champion.h3Index);
+            _annotationIdsToH3Index.remove(existing.id);
+            await _addChampionWithCoords(manager, champion, coords);
+            continue;
           }
           rethrow;
         }
@@ -167,8 +182,8 @@ class MapChampionService {
         try {
           await _addChampionWithCoords(manager, champion, coords);
         } on PlatformException catch (error) {
-          if (error.code == 'channel-error') {
-            return;
+          if (_isRecoverableAnnotationError(error)) {
+            continue;
           }
           rethrow;
         }
@@ -227,10 +242,17 @@ class MapChampionService {
       iconSize: _markerIconScale * _effectiveSizeMultiplier,
     );
 
-    final pointAnnotation = await manager.create(pointAnnotationOptions);
-    _annotations[champion.h3Index] = pointAnnotation;
-    _annotationIdsToH3Index[pointAnnotation.id] = champion.h3Index;
-    _championsByIndex[champion.h3Index] = champion;
+    try {
+      final pointAnnotation = await manager.create(pointAnnotationOptions);
+      _annotations[champion.h3Index] = pointAnnotation;
+      _annotationIdsToH3Index[pointAnnotation.id] = champion.h3Index;
+      _championsByIndex[champion.h3Index] = champion;
+    } on PlatformException catch (error) {
+      if (_isRecoverableAnnotationError(error)) {
+        return;
+      }
+      rethrow;
+    }
   }
 
   /// Update user profiles for champions (reserved for future use)

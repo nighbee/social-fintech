@@ -139,6 +139,9 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                   goRegister: () {},
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
                     getIt<ProfileBloc>().add(const ProfileEvent.loadProfile());
                     context.go(RoutePaths.home);
                   },
