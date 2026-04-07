@@ -30,6 +30,7 @@ type Service interface {
 	ProcessReferralBonus(ctx context.Context, referrerUserID, refereeUserID string) error
 	RegisterPendingReferral(ctx context.Context, referrerUserID, refereeUserID string) error
 	ActivateDeferredReferral(ctx context.Context, refereeUserID string) error
+	GrantSignupBonus(ctx context.Context, userID string) error
 
 	GetLimits(ctx context.Context, userID string) (*LimitsResponse, error)
 	GetReferralStats(ctx context.Context, userID string) (*ReferralStatsResponse, error)
@@ -900,6 +901,62 @@ func (s *service) ActivateDeferredReferral(ctx context.Context, refereeUserID st
 		}
 
 		_ = s.cacheInvalidator.InvalidateStats(ctx, referral.ReferrerUserID)
+		return nil
+	})
+}
+
+func (s *service) GrantSignupBonus(ctx context.Context, userID string) error {
+	amount := CentinelsPerSeal
+	referenceID := fmt.Sprintf("signup_bonus_%s", userID)
+
+	return s.executeWithRetry(ctx, func() error {
+		tx, err := s.repo.BeginTx(ctx)
+		if err != nil {
+			return WrapErrorf(err, "failed to begin transaction")
+		}
+		defer tx.Rollback()
+
+		txRepo := s.repo.WithTx(tx)
+
+		wallet, err := txRepo.GetOrCreateWallet(ctx, userID, CurrencySilverSeal)
+		if err != nil {
+			return WrapErrorf(err, "failed to get wallet")
+		}
+
+		if existing, err := txRepo.GetLedgerEntryByReferenceID(ctx, referenceID); err == nil && existing != nil {
+			return nil
+		}
+
+		wallet.Balance += amount
+		if wallet.FreeBalance < s.cfg.MaxFreeSilverBalance {
+			addFree := min(amount, s.cfg.MaxFreeSilverBalance-wallet.FreeBalance)
+			wallet.FreeBalance += addFree
+		}
+
+		if err := txRepo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
+			return err
+		}
+
+		entry := &LedgerEntry{
+			ID:               uuid.New().String(),
+			Amount:           amount,
+			Currency:         CurrencySilverSeal,
+			ReceiverWalletID: &wallet.ID,
+			Category:         CategorySignupBonus,
+			ReferenceID:      referenceID,
+			Metadata:         mustMarshalJSON(map[string]interface{}{"user_id": userID}),
+			CreatedAt:        time.Now(),
+		}
+
+		if err := txRepo.CreateLedgerEntry(ctx, entry); err != nil {
+			return WrapErrorf(err, "failed to create ledger entry")
+		}
+
+		if err := tx.Commit(); err != nil {
+			return WrapErrorf(err, "failed to commit transaction")
+		}
+
+		_ = s.cacheInvalidator.InvalidateStats(ctx, userID)
 		return nil
 	})
 }

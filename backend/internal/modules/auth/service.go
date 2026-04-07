@@ -18,6 +18,7 @@ type EconomyService interface {
 	ProcessReferralBonus(ctx context.Context, referrerUserID, refereeUserID string) error
 	RegisterPendingReferral(ctx context.Context, referrerUserID, refereeUserID string) error
 	ActivateDeferredReferral(ctx context.Context, refereeUserID string) error
+	GrantSignupBonus(ctx context.Context, userID string) error
 }
 
 const (
@@ -159,6 +160,12 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 			if err := s.repo.CreateUser(ctx, user); err != nil {
 				s.logger.Error("failed_to_create_user", zap.Error(err))
 				return nil, err
+			}
+
+			if s.economyService != nil {
+				if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+					s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+				}
 			}
 
 			s.logger.Info("new_user_created",
@@ -394,6 +401,12 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		s.logger.Error("failed_to_create_user_in_registration", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
+	}
+
+	if s.economyService != nil {
+		if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+			s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+		}
 	}
 
 	if req.ReferrerUserID != "" && s.economyService != nil {
@@ -752,6 +765,12 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		return nil, err
 	}
 
+	if s.economyService != nil {
+		if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+			s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+		}
+	}
+
 	if req.ReferrerUserID != "" && s.economyService != nil {
 		referralFn := s.economyService.RegisterPendingReferral
 		if activationStatus == "active" {
@@ -1054,6 +1073,12 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		return nil, err
+	}
+
+	if s.economyService != nil {
+		if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+			s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+		}
 	}
 
 	if req.ReferrerUserID != "" {

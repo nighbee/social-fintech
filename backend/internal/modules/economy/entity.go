@@ -40,6 +40,7 @@ type TransactionCategory string
 const (
 	CategoryDailyAccrual     TransactionCategory = "DAILY_ACCRUAL"
 	CategoryReferralBonus    TransactionCategory = "REFERRAL_BONUS"
+	CategorySignupBonus      TransactionCategory = "SIGNUP_BONUS"
 	CategoryP2PTransfer      TransactionCategory = "P2P_TRANSFER"
 	CategoryTaskCreation     TransactionCategory = "TASK_CREATION"
 	CategoryIAPDeposit       TransactionCategory = "IAP_DEPOSIT"
@@ -52,7 +53,7 @@ const (
 
 func (t TransactionCategory) IsValid() bool {
 	switch t {
-	case CategoryDailyAccrual, CategoryReferralBonus, CategoryP2PTransfer,
+	case CategoryDailyAccrual, CategoryReferralBonus, CategorySignupBonus, CategoryP2PTransfer,
 		CategoryTaskCreation, CategoryTaskRefund, CategoryIAPDeposit,
 		CategorySystemCorrection, CategoryTaskReward, CategoryPostSeal,
 		CategoryTransfer:
