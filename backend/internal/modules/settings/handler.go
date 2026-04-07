@@ -7,8 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type Handler struct {
@@ -392,7 +394,14 @@ func (h *Handler) GetBlockedUsers(c *fiber.Ctx) error {
 	limit := c.QueryInt("limit", 20)
 	resp, err := h.service.ListBlockedUsers(c.Context(), userID, cursor, limit)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "blocked_fetch_failed"})
+		logger.Error("failed to get blocked users",
+			zap.String("user_id", userID),
+			zap.Error(err),
+		)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error":   "blocked_fetch_failed",
+			"details": err.Error(),
+		})
 	}
 	return c.JSON(resp)
 }

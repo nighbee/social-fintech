@@ -405,8 +405,7 @@ func (r *repository) MarkApplicationCodeVerified(ctx context.Context, applicatio
 	query := `
 		UPDATE task_applications
 		SET status = 'code_verified',
-		    code_submitted_at = NOW(),
-		    updated_at = NOW()
+		    code_submitted_at = NOW()
 		WHERE id = $1 AND status = 'accepted'
 	`
 	res, err := r.executor().ExecContext(ctx, query, applicationID)
@@ -426,8 +425,7 @@ func (r *repository) MarkApplicationConfirmed(ctx context.Context, applicationID
 	query := `
 		UPDATE task_applications
 		SET status = 'confirmed',
-		    confirmed_at = NOW(),
-		    updated_at = NOW()
+		    confirmed_at = NOW()
 		WHERE id = $1 AND status = 'code_verified'
 	`
 	res, err := r.executor().ExecContext(ctx, query, applicationID)

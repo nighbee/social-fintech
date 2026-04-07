@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -109,16 +110,17 @@ func (r *repository) GetOrCreateWallet(ctx context.Context, userID string, curre
 		return nil, err
 	}
 
+	newID := uuid.New().String()
 	query := `
-		INSERT INTO wallets (user_id, currency, balance, free_balance, version, total_sent_amount, total_received_amount)
-		VALUES ($1, $2, 0, 0, 1, 0, 0)
+		INSERT INTO wallets (id, user_id, currency, balance, free_balance, version, total_sent_amount, total_received_amount)
+		VALUES ($3, $1, $2, 0, 0, 1, 0, 0)
 		RETURNING id, user_id, currency, balance, free_balance, 
 		          total_sent_amount, total_received_amount,
 		          last_daily_accrual_at, last_transfer_at, version, created_at, updated_at
 	`
 
 	var newWallet Wallet
-	err = sqlx.GetContext(ctx, r.getExecutor(), &newWallet, query, userID, currency)
+	err = sqlx.GetContext(ctx, r.getExecutor(), &newWallet, query, userID, currency, newID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet: %w", err)
 	}

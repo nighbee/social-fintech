@@ -72,7 +72,10 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 			zap.String("request_id", c.Get("X-Request-Id")),
 			zap.Error(err),
 		)
-		return c.Status(500).JSON(fiber.Map{"error": "task_create_failed"})
+		return c.Status(500).JSON(fiber.Map{
+			"error":   "task_create_failed",
+			"details": err.Error(),
+		})
 	}
 
 	return c.Status(201).JSON(task)
@@ -390,6 +393,9 @@ func (h *Handler) SubmitVerificationCode(c *fiber.Ctx) error {
 		case ErrTaskNotFound:
 			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
 		default:
+			if err.Error() == "application must be accepted by the creator first" {
+				return c.Status(400).JSON(fiber.Map{"error": "application_not_accepted"})
+			}
 			logger.Error("failed to verify code",
 				zap.String("task_id", taskID),
 				zap.String("application_id", applicationID),
@@ -397,7 +403,10 @@ func (h *Handler) SubmitVerificationCode(c *fiber.Ctx) error {
 				zap.String("request_id", c.Get("X-Request-Id")),
 				zap.Error(err),
 			)
-			return c.Status(500).JSON(fiber.Map{"error": "verify_code_failed"})
+			return c.Status(500).JSON(fiber.Map{
+				"error":   "verify_code_failed",
+				"details": err.Error(),
+			})
 		}
 	}
 

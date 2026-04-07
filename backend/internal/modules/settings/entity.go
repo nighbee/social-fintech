@@ -158,10 +158,10 @@ type BugReportRequest struct {
 }
 
 type BlockedUserItem struct {
-	UserID       string    `json:"user_id"`
-	Username     string    `json:"username"`
-	AvatarURL    string    `json:"avatar_url"`
-	LastActiveAt time.Time `json:"last_active_at"`
+	UserID       string    `json:"user_id" db:"user_id"`
+	Username     string    `json:"username" db:"username"`
+	AvatarURL    string    `json:"avatar_url" db:"avatar_url"`
+	LastActiveAt time.Time `json:"last_active_at" db:"last_active_at"`
 }
 
 type BlockedUsersResponse struct {
