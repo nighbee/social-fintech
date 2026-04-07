@@ -73,9 +73,9 @@ type AddKeywordRequest struct {
 }
 
 type KeywordItem struct {
-	ID      string    `json:"id"`
-	Keyword string    `json:"keyword"`
-	AddedAt time.Time `json:"added_at"`
+	ID      string    `db:"id" json:"id"`
+	Keyword string    `db:"keyword" json:"keyword"`
+	AddedAt time.Time `db:"added_at" json:"added_at"`
 }
 
 type MessagesSettingsResponse struct {
