@@ -2,8 +2,6 @@ module github.com/brightbund-backend
 
 go 1.24.0
 
-toolchain go1.24.11
-
 require (
 	firebase.google.com/go/v4 v4.15.0
 	github.com/alicebob/miniredis/v2 v2.37.0

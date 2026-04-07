@@ -906,7 +906,7 @@ func (s *service) ActivateDeferredReferral(ctx context.Context, refereeUserID st
 }
 
 func (s *service) GrantSignupBonus(ctx context.Context, userID string) error {
-	amount := CentinelsPerSeal
+	amount := int64(CentinelsPerSeal)
 	referenceID := fmt.Sprintf("signup_bonus_%s", userID)
 
 	return s.executeWithRetry(ctx, func() error {
