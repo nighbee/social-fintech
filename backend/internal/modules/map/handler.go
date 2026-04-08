@@ -520,6 +520,56 @@ func (h *Handler) GetTaskApplications(c *fiber.Ctx) error {
 	return c.JSON(apps)
 }
 
+// GetApplication godoc
+// @Summary Get a single application by ID
+// @Description Returns a single application. Accessible by the task creator or the applicant.
+// @Tags Tasks
+// @Produce json
+// @Security Bearer
+// @Param task_id path string true "Task ID"
+// @Param application_id path string true "Application ID"
+// @Success 200 {object} ApplicationResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Not found"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /tasks/{task_id}/applications/{application_id} [get]
+func (h *Handler) GetApplication(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	taskID := c.Params("task_id")
+	applicationID := c.Params("application_id")
+	if taskID == "" || applicationID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_params"})
+	}
+
+	app, err := h.service.GetApplication(c.Context(), userID, taskID, applicationID)
+	if err != nil {
+		switch err {
+		case ErrTaskNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "task_not_found"})
+		case ErrApplicationNotFound:
+			return c.Status(404).JSON(fiber.Map{"error": "application_not_found"})
+		case ErrNotTaskOwner:
+			return c.Status(403).JSON(fiber.Map{"error": "forbidden"})
+		default:
+			logger.Error("failed to get application",
+				zap.String("task_id", taskID),
+				zap.String("application_id", applicationID),
+				zap.String("user_id", userID),
+				zap.String("request_id", c.Get("X-Request-Id")),
+				zap.Error(err),
+			)
+			return c.Status(500).JSON(fiber.Map{"error": "fetch_application_failed"})
+		}
+	}
+
+	return c.JSON(app)
+}
+
 // AcceptApplication godoc
 // @Summary Accept a helper's application (creator only)
 // @Description Marks an application as accepted, allowing the helper to proceed.

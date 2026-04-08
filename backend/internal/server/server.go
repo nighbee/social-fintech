@@ -249,6 +249,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/verify-code", mapHandler.SubmitVerificationCode)
 	mapGroup.Post("/tasks/:task_id/applications/:application_id/confirm", mapHandler.ConfirmCompletion)
 	mapGroup.Get("/tasks/:task_id/applications", mapHandler.GetTaskApplications)
+	mapGroup.Get("/tasks/:task_id/applications/:application_id", mapHandler.GetApplication)
 
 	// Legacy (deprecated) endpoint removed to enforce 2-step approval flow.
 

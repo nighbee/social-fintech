@@ -18,8 +18,8 @@ type Repository interface {
 	CreateTask(ctx context.Context, task *Task) error
 	GetTaskByID(ctx context.Context, taskID string) (*Task, error)
 	GetMyTasks(ctx context.Context, userID string) ([]Task, error)
-	GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]Task, error)
-	GetAppliedTasks(ctx context.Context, applicantID string) ([]Task, error)
+	GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]nearbyTaskRow, error)
+	GetAppliedTasks(ctx context.Context, applicantID string) ([]appliedTaskRow, error)
 	GetLastTaskCreatedAt(ctx context.Context, userID string) (*time.Time, error)
 	CancelTask(ctx context.Context, taskID, creatorID string) (bool, error)
 	GetOpenTasksForShutdown(ctx context.Context) ([]Task, error)
@@ -27,7 +27,8 @@ type Repository interface {
 	// Task applications
 	CreateTaskApplication(ctx context.Context, app *TaskApplication) error
 	GetApplicationByID(ctx context.Context, applicationID string) (*TaskApplication, error)
-	GetApplicationsByTaskID(ctx context.Context, taskID string) ([]TaskApplication, error)
+	GetApplicationsByTaskID(ctx context.Context, taskID string) ([]taskApplicationRow, error)
+	GetEnrichedApplicationByID(ctx context.Context, applicationID string) (*taskApplicationRow, error)
 	DeleteApplication(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationAccepted(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationRejected(ctx context.Context, applicationID string) (bool, error)
@@ -178,28 +179,31 @@ func (r *repository) GetMyTasks(ctx context.Context, userID string) ([]Task, err
 	return tasks, nil
 }
 
-func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]Task, error) {
+func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon, radiusMeters float64, limit int) ([]nearbyTaskRow, error) {
 	query := `
-		SELECT id, title, description, reward, creator_id,
-		       ST_Y(location) AS latitude,
-		       ST_X(location) AS longitude,
-		       workers_needed, workers_filled, verification_code, status, auto_shutdown_at,
-		       h3_res5, h3_res4, h3_res2, created_at, updated_at
-		FROM tasks
-		WHERE status = 'open'
-		  AND (auto_shutdown_at IS NULL OR auto_shutdown_at > NOW())
-		  AND id NOT IN (
+		SELECT t.id, t.title, t.description, t.reward, t.creator_id,
+		       ST_Y(t.location) AS latitude,
+		       ST_X(t.location) AS longitude,
+		       t.workers_needed, t.workers_filled, t.verification_code, t.status, t.auto_shutdown_at,
+		       t.h3_res5, t.h3_res4, t.h3_res2, t.created_at, t.updated_at,
+		       u.username AS creator_username,
+		       u.avatar_url AS creator_avatar_url
+		FROM tasks t
+		JOIN users u ON u.id = t.creator_id
+		WHERE t.status = 'open'
+		  AND (t.auto_shutdown_at IS NULL OR t.auto_shutdown_at > NOW())
+		  AND t.id NOT IN (
 			  SELECT task_id FROM task_applications WHERE applicant_id = $1 AND status != 'rejected'
 		  )
 		  AND ST_DWithin(
-		      location::geography,
+		      t.location::geography,
 		      ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
 		      $4
 		  )
-		ORDER BY created_at DESC
+		ORDER BY t.created_at DESC
 		LIMIT $5
 	`
-	var tasks []Task
+	var tasks []nearbyTaskRow
 	if err := sqlx.SelectContext(ctx, r.executor(), &tasks, query, userID, lon, lat, radiusMeters, limit); err != nil {
 		return nil, fmt.Errorf("failed to fetch nearby tasks: %w", err)
 	}
@@ -207,19 +211,23 @@ func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon
 }
 
 
-func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([]Task, error) {
+func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([]appliedTaskRow, error) {
 	query := `
 		SELECT t.id, t.title, t.description, t.reward, t.creator_id,
 		       ST_Y(t.location) AS latitude,
 		       ST_X(t.location) AS longitude,
 		       t.workers_needed, t.workers_filled, t.status, t.auto_shutdown_at,
-		       t.h3_res5, t.h3_res4, t.h3_res2, t.created_at, t.updated_at
+		       t.h3_res5, t.h3_res4, t.h3_res2, t.created_at, t.updated_at,
+		       ta.status AS application_status,
+		       u.username AS creator_username,
+		       u.avatar_url AS creator_avatar_url
 		FROM tasks t
 		JOIN task_applications ta ON t.id = ta.task_id
+		JOIN users u ON u.id = t.creator_id
 		WHERE ta.applicant_id = $1 AND ta.status != 'rejected'
 		ORDER BY ta.created_at DESC
 	`
-	var tasks []Task
+	var tasks []appliedTaskRow
 	if err := sqlx.SelectContext(ctx, r.executor(), &tasks, query, applicantID); err != nil {
 		return nil, fmt.Errorf("failed to fetch applied tasks: %w", err)
 	}
@@ -329,19 +337,43 @@ func (r *repository) GetApplicationByID(ctx context.Context, applicationID strin
 	return &app, nil
 }
 
-func (r *repository) GetApplicationsByTaskID(ctx context.Context, taskID string) ([]TaskApplication, error) {
+func (r *repository) GetApplicationsByTaskID(ctx context.Context, taskID string) ([]taskApplicationRow, error) {
 	query := `
-		SELECT id, task_id, applicant_id, status,
-		       code_submitted_at, confirmed_at, created_at, updated_at
-		FROM task_applications
-		WHERE task_id = $1
-		ORDER BY created_at ASC
+		SELECT ta.id, ta.task_id, ta.applicant_id, ta.status,
+		       ta.code_submitted_at, ta.confirmed_at, ta.created_at, ta.updated_at,
+		       u.username AS applicant_username,
+		       u.avatar_url AS applicant_avatar_url
+		FROM task_applications ta
+		JOIN users u ON u.id = ta.applicant_id
+		WHERE ta.task_id = $1
+		ORDER BY ta.created_at ASC
 	`
-	var apps []TaskApplication
+	var apps []taskApplicationRow
 	if err := sqlx.SelectContext(ctx, r.executor(), &apps, query, taskID); err != nil {
 		return nil, fmt.Errorf("failed to get applications for task: %w", err)
 	}
 	return apps, nil
+}
+
+func (r *repository) GetEnrichedApplicationByID(ctx context.Context, applicationID string) (*taskApplicationRow, error) {
+	query := `
+		SELECT ta.id, ta.task_id, ta.applicant_id, ta.status,
+		       ta.code_submitted_at, ta.confirmed_at, ta.created_at, ta.updated_at,
+		       u.username AS applicant_username,
+		       u.avatar_url AS applicant_avatar_url
+		FROM task_applications ta
+		JOIN users u ON u.id = ta.applicant_id
+		WHERE ta.id = $1
+	`
+	var app taskApplicationRow
+	err := sqlx.GetContext(ctx, r.executor(), &app, query, applicationID)
+	if err == sql.ErrNoRows {
+		return nil, ErrApplicationNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get enriched application: %w", err)
+	}
+	return &app, nil
 }
 
 // DeleteApplication physically removes an application record from the database.
