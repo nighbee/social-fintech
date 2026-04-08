@@ -974,7 +974,11 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 		idempotencyKey = strings.TrimSpace(c.Get("Idempotency-Key"))
 	}
 	if idempotencyKey == "" {
-		window := time.Now().UTC().Format("200601021504")
+		// Scope to a day, not a minute — cooldowns already enforce once-per-day
+		// semantics. A minute bucket causes distinct keys across minute boundaries
+		// (e.g. 12:59:59 vs 13:00:00) which bypass the Economy idempotency gate
+		// and produce duplicate ledger entries / double seal credits on a post.
+		window := time.Now().UTC().Format("20060102")
 		autoKeyMaterial := fmt.Sprintf("post-seal|%s|%s|%s|%d|%s|%s", userID.String(), authorID.String(), postID.String(), req.Amount, req.Comment, window)
 		idempotencyKey = "auto_post_seal_" + uuid.NewSHA1(uuid.NameSpaceOID, []byte(autoKeyMaterial)).String()
 	}
@@ -1010,9 +1014,11 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 		}
 	}
 
-	// Queue denormalization only for a newly created ledger entry.
+	// Queue post seal-count update only if a new ledger entry was created.
+	// TryQueueSeal uses Redis SET NX keyed on idempotencyKey to ensure exactly-once
+	// increments even when two concurrent HTTP requests both receive CreatedNew=true.
 	if txResp.CreatedNew {
-		_ = h.worker.QueueSeal(postID, req.Amount)
+		_ = h.worker.TryQueueSeal(c.Context(), postID, idempotencyKey, req.Amount)
 	}
 
 	return c.Status(201).JSON(fiber.Map{

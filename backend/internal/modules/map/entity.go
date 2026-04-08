@@ -171,6 +171,10 @@ type RegionChampion struct {
 	CityName    string `db:"city_name"    json:"city_name,omitempty"`
 	RegionName  string `db:"region_name"  json:"region_name,omitempty"`
 	CountryName string `db:"country_name" json:"country_name,omitempty"`
+
+	// Enriched from users + profiles
+	Username  string `db:"username"   json:"username,omitempty"`
+	AvatarURL string `db:"avatar_url" json:"avatar_url,omitempty"`
 }
 
 type H3GeoMetadata struct {
@@ -183,8 +187,13 @@ type H3GeoMetadata struct {
 }
 
 type ChampionPin struct {
-	H3Index    string `json:"h3_index"`
-	Resolution int    `json:"resolution"`
-	UserID     string `json:"user_id"`
-	Score      int64  `json:"score"`
+	H3Index     string `json:"h3_index"`
+	Resolution  int    `json:"resolution"`
+	UserID      string `json:"user_id"`
+	Score       int64  `json:"score"`
+	Username    string `json:"username"`
+	AvatarURL   string `json:"avatar_url"`
+	CityName    string `json:"city_name,omitempty"`
+	CountryName string `json:"country_name,omitempty"`
 }
+

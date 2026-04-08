@@ -551,7 +551,49 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			LIMIT $3
 		`
 		args = []interface{}{postID, viewerID, limit}
+		if cursor != "" {
+			query = `
+				SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
+				       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+				       c.created_at,
+				       c.likes_count,
+				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
+				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
+				FROM post_comments c
+				JOIN users u ON c.user_id = u.id
+				LEFT JOIN LATERAL (
+					SELECT COUNT(1) AS violations_30d
+					FROM author_policy_strikes aps
+					WHERE aps.author_id = c.user_id
+					  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+					  AND aps.created_at >= NOW() - INTERVAL '30 days'
+				) aps ON true
+				WHERE c.post_id = $1
+				  AND c.parent_comment_id IS NULL
+				  AND c.is_deleted = false
+				  AND c.is_hidden_by_reports = false
+				  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
+				  AND (
+					c.user_id = $2 OR
+					random() <= (
+						CASE
+							WHEN COALESCE(aps.violations_30d, 0) >= 5 THEN 0.4
+							WHEN COALESCE(aps.violations_30d, 0) >= 3 THEN 0.7
+							ELSE 1.0
+						END
+					)
+				  )
+				  AND c.created_at < $4
+				ORDER BY c.created_at DESC, c.id DESC
+				LIMIT $3
+			`
+			args = []interface{}{postID, viewerID, limit, cursor}
+		}
 	} else {
+		// Reply fetch: direct parent lookup — NO shadow filter.
+		// The user explicitly requested replies for a known comment; random suppression
+		// breaks the UX contract (count is visible but list appears empty).
 		query = `
 			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
 			       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
@@ -562,32 +604,37 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
-			LEFT JOIN LATERAL (
-				SELECT COUNT(1) AS violations_30d
-				FROM author_policy_strikes aps
-				WHERE aps.author_id = c.user_id
-				  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-				  AND aps.created_at >= NOW() - INTERVAL '30 days'
-			) aps ON true
 			WHERE c.post_id = $1
 			  AND c.parent_comment_id = $3
 			  AND c.is_deleted = false
 			  AND c.is_hidden_by_reports = false
 			  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
-			  AND (
-				c.user_id = $2 OR
-				random() <= (
-					CASE
-						WHEN COALESCE(aps.violations_30d, 0) >= 5 THEN 0.4
-						WHEN COALESCE(aps.violations_30d, 0) >= 3 THEN 0.7
-						ELSE 1.0
-					END
-				)
-			  )
 			ORDER BY c.created_at ASC, c.id ASC
 			LIMIT $4
 		`
 		args = []interface{}{postID, viewerID, *parentID, limit}
+		if cursor != "" {
+			query = `
+				SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
+				       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+				       c.created_at,
+				       c.likes_count,
+				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
+				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
+				FROM post_comments c
+				JOIN users u ON c.user_id = u.id
+				WHERE c.post_id = $1
+				  AND c.parent_comment_id = $3
+				  AND c.is_deleted = false
+				  AND c.is_hidden_by_reports = false
+				  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
+				  AND c.created_at > $5
+				ORDER BY c.created_at ASC, c.id ASC
+				LIMIT $4
+			`
+			args = []interface{}{postID, viewerID, *parentID, limit, cursor}
+		}
 	}
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
@@ -635,7 +682,14 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		comments = append(comments, resp)
 	}
 
-	return comments, "", nil
+	// Emit nextCursor only when a full page was returned, indicating there may be more.
+	nextCursor := ""
+	if len(comments) == limit && len(comments) > 0 {
+		last := comments[len(comments)-1]
+		nextCursor = last.CreatedAt.Format(time.RFC3339Nano)
+	}
+
+	return comments, nextCursor, nil
 }
 
 func (r *repository) ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error {

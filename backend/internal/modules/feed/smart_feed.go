@@ -526,11 +526,15 @@ func (r *repository) BatchFlushSeals(ctx context.Context, postID uuid.UUID, coun
 		UPDATE posts 
 		SET seals_count = (
 				SELECT COUNT(1) FROM ledger_entries 
-				WHERE category = 'POST_SEAL' AND metadata->>'post_id' = $1
+				WHERE category = 'POST_SEAL' 
+				  AND metadata->>'post_id' = $1
+				  AND receiver_wallet_id IS NOT NULL
 			),
 		    seals_amount = (
 				SELECT COALESCE(SUM(amount), 0) FROM ledger_entries 
-				WHERE category = 'POST_SEAL' AND metadata->>'post_id' = $1
+				WHERE category = 'POST_SEAL' 
+				  AND metadata->>'post_id' = $1
+				  AND receiver_wallet_id IS NOT NULL
 			)
 		WHERE id = $2
 	`

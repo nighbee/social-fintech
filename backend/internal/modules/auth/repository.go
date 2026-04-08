@@ -62,7 +62,7 @@ func (r *PostgresRepository) GetUserByIdentity(ctx context.Context, provider, su
 	SELECT u.*
 	FROM users u
 	JOIN user_identities ui ON ui.user_id = u.id
-	WHERE ui.provider = $1 AND ui.subject = $2
+	WHERE ui.provider = $1 AND ui.subject = $2 AND u.deleted_at IS NULL
 	`
 	if err := r.db.GetContext(ctx, &user, query, provider, subject); err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (r *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 
 func (r *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	var user User
-	query := `SELECT * FROM users WHERE email = $1`
+	query := `SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL`
 	if err := r.db.GetContext(ctx, &user, query, email); err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (r *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (
 
 func (r *PostgresRepository) GetUserByPhone(ctx context.Context, countryCode, phoneNumber string) (*User, error) {
 	var user User
-	query := `SELECT * FROM users WHERE phone_country_code = $1 AND phone_number = $2`
+	query := `SELECT * FROM users WHERE phone_country_code = $1 AND phone_number = $2 AND deleted_at IS NULL`
 	if err := r.db.GetContext(ctx, &user, query, countryCode, phoneNumber); err != nil {
 		return nil, err
 	}

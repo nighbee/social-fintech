@@ -253,3 +253,30 @@ func (w *InteractionWorker) QueueSeal(postID uuid.UUID, amount int64) error {
 	_, err := pipe.Exec(ctx)
 	return err
 }
+
+// TryQueueSeal is the safe variant for use from HTTP handlers.
+// It uses a Redis SET NX (set-if-not-exists) lock keyed on idempotencyKey to guarantee
+// exactly-once writes to the seal pending counter, preventing duplicate post seals_count
+// increments when two concurrent requests both receive CreatedNew=true from the Economy
+// layer (a Read-Committed window race on the first in-flight transaction pair).
+//
+// The NX key TTL is set to 24 hours — long enough to absorb any real-world network retry
+// window, but shorter than the multi-day pair cooldown that prevents a second legitimate
+// seal from the same user to the same post author.
+func (w *InteractionWorker) TryQueueSeal(ctx context.Context, postID uuid.UUID, idempotencyKey string, amount int64) error {
+	nxKey := "seal_queue_once:" + idempotencyKey
+	const nxTTL = 24 * time.Hour
+
+	// SET NX: only the first caller for this idempotencyKey succeeds.
+	set, err := w.redisCli.Client.SetNX(ctx, nxKey, "1", nxTTL).Result()
+	if err != nil {
+		// Redis error: fall back to unconditional queue to avoid silently dropping the update.
+		// BatchFlushSeals recomputes from the ledger (idempotent), so this is safe.
+		return w.QueueSeal(postID, amount)
+	}
+	if !set {
+		// Another request already queued this seal — deduplicated.
+		return nil
+	}
+	return w.QueueSeal(postID, amount)
+}

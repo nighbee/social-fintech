@@ -510,18 +510,23 @@ func (r *repository) UpdateUserRegion(ctx context.Context, userID string, h3Res5
 func (r *repository) UpsertRegionChampion(ctx context.Context, champion *RegionChampion) error {
 	query := `
 		INSERT INTO region_champions (
-			id, h3_index, resolution, user_id, score, week, year, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+			id, h3_index, resolution, user_id, score, week, year,
+			city_name, region_name, country_name, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
 		ON CONFLICT (h3_index, resolution, week, year)
 		DO UPDATE SET
-			user_id = EXCLUDED.user_id,
-			score = EXCLUDED.score,
-			updated_at = NOW()
+			user_id      = EXCLUDED.user_id,
+			score        = EXCLUDED.score,
+			city_name    = EXCLUDED.city_name,
+			region_name  = EXCLUDED.region_name,
+			country_name = EXCLUDED.country_name,
+			updated_at   = NOW()
 	`
 
 	_, err := r.executor().ExecContext(ctx, query,
 		champion.ID, champion.H3Index, champion.Resolution, champion.UserID,
 		champion.Score, champion.Week, champion.Year,
+		champion.CityName, champion.RegionName, champion.CountryName,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to upsert region champion: %w", err)
@@ -531,17 +536,23 @@ func (r *repository) UpsertRegionChampion(ctx context.Context, champion *RegionC
 
 func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string, resolution, year, week int) ([]RegionChampion, error) {
 	query := `
-		SELECT c.id, c.h3_index, c.resolution, c.user_id, c.score, c.week, c.year, c.updated_at,
-		       COALESCE(m.city_name, '') as city_name,
-		       COALESCE(m.region_name, '') as region_name,
-		       COALESCE(m.country_name, '') as country_name
+		SELECT
+			c.id, c.h3_index, c.resolution, c.user_id, c.score, c.week, c.year, c.updated_at,
+			COALESCE(c.city_name,    m.city_name,    '') AS city_name,
+			COALESCE(c.region_name,  m.region_name,  '') AS region_name,
+			COALESCE(c.country_name, m.country_name, '') AS country_name,
+			COALESCE(u.username, '')                     AS username,
+			COALESCE(p.avatar_url, '')                   AS avatar_url
 		FROM region_champions c
 		LEFT JOIN h3_geo_metadata m ON c.h3_index = m.h3_index
+		LEFT JOIN users    u ON u.id = c.user_id
+		LEFT JOIN profiles p ON p.user_id = c.user_id
 		WHERE c.resolution = $1
 		  AND c.year = $2
 		  AND c.week = $3
 		  AND c.h3_index = ANY($4)
 	`
+
 
 	var champs []RegionChampion
 	if err := sqlx.SelectContext(ctx, r.executor(), &champs, query, resolution, year, week, pq.Array(h3Indexes)); err != nil {
@@ -549,6 +560,7 @@ func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string,
 	}
 	return champs, nil
 }
+
 
 func (r *repository) GetUsersCreatedAt(ctx context.Context, userIDs []string) (map[string]time.Time, error) {
 	if len(userIDs) == 0 {

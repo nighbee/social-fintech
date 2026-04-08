@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -544,14 +545,41 @@ func (r *PostgresRepository) SoftDeleteUser(ctx context.Context, userID string, 
 		_ = tx.Rollback()
 	}()
 
-	if _, err = tx.ExecContext(ctx, `
+	// 1. Get current credentials to rename them
+	var user struct {
+		Email        *string `db:"email"`
+		Username     string  `db:"username"`
+		PhoneNumber  *string `db:"phone_number"`
+	}
+	if err := tx.GetContext(ctx, &user, `SELECT email, username, phone_number FROM users WHERE id = $1`, userID); err != nil {
+		return err
+	}
+
+	suffix := fmt.Sprintf("_del_%d", deletedAt.Unix())
+
+	// 2. Update users table with renamed credentials
+	query := `
 		UPDATE users
 		SET deleted_at = $2,
 			hard_delete_scheduled_at = $3,
 			is_shadow_banned = true,
-			updated_at = NOW()
+			updated_at = NOW(),
+			username = username || $4,
+			email = CASE WHEN email IS NOT NULL THEN email || $4 ELSE NULL END,
+			phone_number = CASE WHEN phone_number IS NOT NULL THEN phone_number || $4 ELSE NULL END
 		WHERE id = $1
-	`, userID, deletedAt, hardDeleteAt); err != nil {
+	`
+	if _, err = tx.ExecContext(ctx, query, userID, deletedAt, hardDeleteAt, suffix); err != nil {
+		return err
+	}
+
+	// 3. Update user_identities to free up subjects
+	if _, err = tx.ExecContext(ctx, `
+		UPDATE user_identities
+		SET subject = subject || $2,
+			email = CASE WHEN email IS NOT NULL AND email != '' THEN email || $2 ELSE email END
+		WHERE user_id = $1
+	`, userID, suffix); err != nil {
 		return err
 	}
 

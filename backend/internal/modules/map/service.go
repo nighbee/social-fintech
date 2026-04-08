@@ -854,10 +854,14 @@ func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, re
 	pins := make([]ChampionPin, 0, len(champs))
 	for _, c := range champs {
 		pins = append(pins, ChampionPin{
-			H3Index:    c.H3Index,
-			Resolution: c.Resolution,
-			UserID:     c.UserID.String(),
-			Score:      c.Score,
+			H3Index:     c.H3Index,
+			Resolution:  c.Resolution,
+			UserID:      c.UserID.String(),
+			Score:       c.Score,
+			Username:    c.Username,
+			AvatarURL:   c.AvatarURL,
+			CityName:    c.CityName,
+			CountryName: c.CountryName,
 		})
 	}
 	return pins, nil

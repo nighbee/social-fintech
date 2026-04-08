@@ -59,9 +59,13 @@ func (w *Worker) Start() {
 		defer championTicker.Stop()
 		defer sweepTicker.Stop()
 
-		// Run sweep immediately on startup to catch any tasks that expired
-		// while the service was down.
+		// Run both jobs immediately on startup so state is consistent
+		// from the first moment the service is healthy:
+		//  - sweep catches tasks that expired during a downtime window
+		//  - snapshot rebuilds champion pins so they are visible immediately
+		//    rather than blank for up to 1 hour until the first ticker tick.
 		w.sweepExpiredTasks(ctx)
+		w.snapshotChampions(ctx)
 
 		for {
 			select {

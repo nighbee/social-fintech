@@ -1441,6 +1441,14 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		return nil, NewSelfTransferError()
 	}
 
+	// Compute refID exactly once, before any retry. If left inside the closure,
+	// a future refactor could declare 'var refID' inside the loop, causing each
+	// retry iteration to generate a distinct nanosecond-stamped key — bypassing
+	// the idempotency check and allowing triple-debits.
+	if refID == "" {
+		refID = fmt.Sprintf("seal_%s_%s_%d", senderID, receiverID, time.Now().UnixNano())
+	}
+
 	var response *TransferResponse
 	err := s.executeWithRetry(ctx, func() error {
 		tx, err := s.repo.BeginTx(ctx)
@@ -1450,10 +1458,6 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 		defer tx.Rollback()
 
 		txRepo := s.repo.WithTx(tx)
-
-		if refID == "" {
-			refID = fmt.Sprintf("seal_%s_%s_%d", senderID, receiverID, time.Now().UnixNano())
-		}
 
 		debitRef := refID + ":silver_debit"
 		creditRef := refID + ":gold_credit"
