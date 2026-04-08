@@ -47,6 +47,28 @@ type TaskApplication struct {
 	UpdatedAt       time.Time  `db:"updated_at"       json:"updated_at"`
 }
 
+// taskApplicationRow is the enriched DB row returned when JOINing task_applications with users.
+type taskApplicationRow struct {
+	TaskApplication
+	ApplicantUsername  string  `db:"applicant_username"`
+	ApplicantAvatarURL *string `db:"applicant_avatar_url"`
+}
+
+// nearbyTaskRow is the enriched DB row returned when JOINing tasks with users (creator info).
+type nearbyTaskRow struct {
+	Task
+	CreatorUsername  *string `db:"creator_username"`
+	CreatorAvatarURL *string `db:"creator_avatar_url"`
+}
+
+// appliedTaskRow is the enriched DB row for tasks the caller applied to, including their application status.
+type appliedTaskRow struct {
+	Task
+	ApplicationStatus string  `db:"application_status"`
+	CreatorUsername    *string `db:"creator_username"`
+	CreatorAvatarURL  *string `db:"creator_avatar_url"`
+}
+
 type CreateTaskRequest struct {
 	Title         string  `json:"title" example:"Pick up a package"`
 	Description   string  `json:"description" example:"Please pick up the red package from the lobby"`
@@ -57,17 +79,21 @@ type CreateTaskRequest struct {
 	AutoShutdown  bool    `json:"auto_shutdown" example:"true"`
 }
 type TaskResponse struct {
-	ID             string     `json:"id"`
-	Title          string     `json:"title"`
-	Description    *string    `json:"description,omitempty"`
-	Reward         float64    `json:"reward"` // in seals
-	WorkersNeeded  int        `json:"workers_needed"`
-	WorkersFilled  int        `json:"workers_filled"`
-	Status         string     `json:"status"`
-	AutoShutdownAt *time.Time `json:"auto_shutdown_at,omitempty"`
-	Latitude       float64    `json:"latitude"`
-	Longitude      float64    `json:"longitude"`
-	CreatedAt      time.Time  `json:"created_at"`
+	ID               string     `json:"id"`
+	Title            string     `json:"title"`
+	Description      *string    `json:"description,omitempty"`
+	Reward           float64    `json:"reward"` // in seals
+	WorkersNeeded    int        `json:"workers_needed"`
+	WorkersFilled    int        `json:"workers_filled"`
+	Status           string     `json:"status"`
+	AutoShutdownAt   *time.Time `json:"auto_shutdown_at,omitempty"`
+	Latitude         float64    `json:"latitude"`
+	Longitude        float64    `json:"longitude"`
+	CreatedAt        time.Time  `json:"created_at"`
+	CreatorUsername  *string    `json:"creator_username,omitempty"`
+	CreatorAvatarURL *string    `json:"creator_avatar_url,omitempty"`
+	// ApplicationStatus is the caller's own application status for this task (applied-tasks only).
+	ApplicationStatus *string `json:"application_status,omitempty"`
 }
 
 type CreateTaskResponse struct {
@@ -121,11 +147,13 @@ type ConfirmCompletionResponse struct {
 }
 
 type ApplicationResponse struct {
-	ID          string    `json:"id"`
-	TaskID      string    `json:"task_id"`
-	ApplicantID string    `json:"applicant_id"`
-	Status      string    `json:"status"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                 string    `json:"id"`
+	TaskID             string    `json:"task_id"`
+	ApplicantID        string    `json:"applicant_id"`
+	ApplicantUsername  string    `json:"applicant_username"`
+	ApplicantAvatarURL *string   `json:"applicant_avatar_url,omitempty"`
+	Status             string    `json:"status"`
+	CreatedAt          time.Time `json:"created_at"`
 }
 
 type TaskCompletionResponse struct {

@@ -244,17 +244,19 @@ func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, r
 		}
 
 		resp.Tasks = append(resp.Tasks, TaskResponse{
-			ID:             t.ID,
-			Title:          t.Title,
-			Description:    t.Description,
-			Reward:         economy.CentinelsToSeals(t.Reward),
-			WorkersNeeded:  t.WorkersNeeded,
-			WorkersFilled:  t.WorkersFilled,
-			Status:         status,
-			AutoShutdownAt: t.AutoShutdownAt,
-			Latitude:       t.Latitude,
-			Longitude:      t.Longitude,
-			CreatedAt:      t.CreatedAt,
+			ID:               t.ID,
+			Title:            t.Title,
+			Description:      t.Description,
+			Reward:           economy.CentinelsToSeals(t.Reward),
+			WorkersNeeded:    t.WorkersNeeded,
+			WorkersFilled:    t.WorkersFilled,
+			Status:           status,
+			AutoShutdownAt:   t.AutoShutdownAt,
+			Latitude:         t.Latitude,
+			Longitude:        t.Longitude,
+			CreatedAt:        t.CreatedAt,
+			CreatorUsername:   t.CreatorUsername,
+			CreatorAvatarURL: t.CreatorAvatarURL,
 		})
 	}
 	return &resp, nil
@@ -268,18 +270,22 @@ func (s *Service) GetAppliedTasks(ctx context.Context, userID string) (*AppliedT
 
 	resp := AppliedTasksResponse{Tasks: make([]TaskResponse, 0, len(tasks))}
 	for _, t := range tasks {
+		appStatus := t.ApplicationStatus
 		resp.Tasks = append(resp.Tasks, TaskResponse{
-			ID:             t.ID,
-			Title:          t.Title,
-			Description:    t.Description,
-			Reward:         economy.CentinelsToSeals(t.Reward),
-			WorkersNeeded:  t.WorkersNeeded,
-			WorkersFilled:  t.WorkersFilled,
-			Status:         t.Status,
-			AutoShutdownAt: t.AutoShutdownAt,
-			Latitude:       t.Latitude,
-			Longitude:      t.Longitude,
-			CreatedAt:      t.CreatedAt,
+			ID:                t.ID,
+			Title:             t.Title,
+			Description:       t.Description,
+			Reward:            economy.CentinelsToSeals(t.Reward),
+			WorkersNeeded:     t.WorkersNeeded,
+			WorkersFilled:     t.WorkersFilled,
+			Status:            t.Status,
+			AutoShutdownAt:    t.AutoShutdownAt,
+			Latitude:          t.Latitude,
+			Longitude:         t.Longitude,
+			CreatedAt:         t.CreatedAt,
+			CreatorUsername:    t.CreatorUsername,
+			CreatorAvatarURL:  t.CreatorAvatarURL,
+			ApplicationStatus: &appStatus,
 		})
 	}
 	return &resp, nil
@@ -635,14 +641,52 @@ func (s *Service) GetTaskApplications(ctx context.Context, userID, taskID string
 	out := make([]ApplicationResponse, 0, len(apps))
 	for _, a := range apps {
 		out = append(out, ApplicationResponse{
-			ID:          a.ID,
-			TaskID:      a.TaskID,
-			ApplicantID: a.ApplicantID,
-			Status:      a.Status,
-			CreatedAt:   a.CreatedAt,
+			ID:                 a.ID,
+			TaskID:             a.TaskID,
+			ApplicantID:        a.ApplicantID,
+			ApplicantUsername:  a.ApplicantUsername,
+			ApplicantAvatarURL: a.ApplicantAvatarURL,
+			Status:             a.Status,
+			CreatedAt:          a.CreatedAt,
 		})
 	}
 	return out, nil
+}
+
+// GetApplication returns a single application by ID.
+// Accessible by the task creator or the applicant.
+func (s *Service) GetApplication(ctx context.Context, userID, taskID, applicationID string) (*ApplicationResponse, error) {
+	task, err := s.repo.GetTaskByID(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+
+	app, err := s.repo.GetApplicationByID(ctx, applicationID)
+	if err != nil {
+		return nil, err
+	}
+	if app.TaskID != taskID {
+		return nil, ErrApplicationNotFound
+	}
+	if task.CreatorID != userID && app.ApplicantID != userID {
+		return nil, ErrNotTaskOwner
+	}
+
+	// Fetch applicant username/avatar via a single-row query.
+	enriched, err := s.repo.GetEnrichedApplicationByID(ctx, applicationID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ApplicationResponse{
+		ID:                 enriched.ID,
+		TaskID:             enriched.TaskID,
+		ApplicantID:        enriched.ApplicantID,
+		ApplicantUsername:  enriched.ApplicantUsername,
+		ApplicantAvatarURL: enriched.ApplicantAvatarURL,
+		Status:             enriched.Status,
+		CreatedAt:          enriched.CreatedAt,
+	}, nil
 }
 
 func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionAssignmentRequest) (*RegionAssignmentResponse, error) {
@@ -872,7 +916,7 @@ func (s *Service) getLiveRegionChampionsFromCache(ctx context.Context, h3Indexes
 		return nil
 	}
 
-	leaderboard := ""
+	var leaderboard string
 	switch resolution {
 	case h3ResDistrict:
 		leaderboard = "arena"
