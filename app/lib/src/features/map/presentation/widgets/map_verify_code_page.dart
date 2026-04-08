@@ -18,18 +18,51 @@ class _VerifyCodePage extends StatefulWidget {
 class _VerifyCodePageState extends State<_VerifyCodePage> {
   String _code = '';
   bool _isSubmitting = false;
+  bool _awaitingVerifyResponse = false;
   bool _hasInvalidCodeError = false;
 
   bool get _isCodeComplete =>
       _code.length == 4 && !_code.contains(RegExp(r'[^0-9]'));
+
+  void _handleVerificationSucceeded() {
+    if (!_awaitingVerifyResponse) {
+      return;
+    }
+    setState(() {
+      _isSubmitting = false;
+      _awaitingVerifyResponse = false;
+      _hasInvalidCodeError = false;
+    });
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => const _ExecutorCompletedPage(),
+      ),
+    );
+  }
 
   void _submit() {
     if (!_isCodeComplete || _isSubmitting) {
       return;
     }
 
+    final verify = widget.mapBloc.viewModel.verifyCodeResult;
+    final isAlreadyVerifiedLocally =
+        verify.applicationId == widget.applicationId &&
+            verify.status.trim().toLowerCase() == 'code_verified';
+    if (isAlreadyVerifiedLocally) {
+      setState(() {
+        _awaitingVerifyResponse = true;
+      });
+      _handleVerificationSucceeded();
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
+      _awaitingVerifyResponse = true;
       _hasInvalidCodeError = false;
     });
 
@@ -60,27 +93,29 @@ class _VerifyCodePageState extends State<_VerifyCodePage> {
         bloc: widget.mapBloc,
         listener: (context, state) {
           state.maybeWhen(
-            loadingError: (_) {
-              if (!_isSubmitting) {
+            loadingError: (message) {
+              if (!_awaitingVerifyResponse) {
                 return;
               }
+              final lower = message.toLowerCase();
+              if (lower.contains('already_verified')) {
+                _handleVerificationSucceeded();
+                return;
+              }
+              final isCodeRelated = lower.contains('code') ||
+                  lower.contains('invalid') ||
+                  lower.contains('verification');
               setState(() {
                 _isSubmitting = false;
-                _hasInvalidCodeError = true;
+                _awaitingVerifyResponse = false;
+                _hasInvalidCodeError = isCodeRelated;
               });
             },
             loaded: (viewModel) {
               final verify = viewModel.verifyCodeResult;
               if (verify.applicationId == widget.applicationId &&
                   verify.status == 'code_verified') {
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                }
-              }
-              if (_isSubmitting) {
-                setState(() {
-                  _isSubmitting = false;
-                });
+                _handleVerificationSucceeded();
               }
             },
             orElse: () {},

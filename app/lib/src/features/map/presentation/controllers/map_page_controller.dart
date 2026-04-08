@@ -89,6 +89,7 @@ class MapPageController {
   String? _lastChampionsRegionKey;
   DateTime? _lastEmptyChampionsFetchAt;
   String? _lastHandledAutoClosedTaskId;
+  String? _lastHandledVerifiedApplicationId;
   String? _lastSelfPinAvatarUrl;
   DateTime? _lastCreatorTaskCreatedAtUtc;
   String? selectedNearbyTaskId;
@@ -245,17 +246,16 @@ class MapPageController {
         viewModel.confirmCompletionResult.taskId !=
             handledConfirmResultTaskId) {
       handledConfirmResultTaskId = viewModel.confirmCompletionResult.taskId;
-      if (viewModel.confirmCompletionResult.taskStatus == 'completed') {
-        context.push(RoutePaths.mapRequestCompleted);
-      } else if (viewModel.confirmCompletionResult.reward > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content:
-                Text('Reward: ${viewModel.confirmCompletionResult.reward}'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      context.push(RoutePaths.mapRequestCompleted);
+    }
+
+    final verifyApplicationId = viewModel.verifyCodeResult.applicationId;
+    final verifyStatus = viewModel.verifyCodeResult.status.trim().toLowerCase();
+    if (verifyApplicationId.isNotEmpty &&
+        verifyStatus == 'code_verified' &&
+        verifyApplicationId != _lastHandledVerifiedApplicationId) {
+      _lastHandledVerifiedApplicationId = verifyApplicationId;
+      unawaited(_clearActiveExecutorApplication());
     }
 
     if (viewModel.applyToTaskResult.applicationId.isNotEmpty &&
@@ -1140,9 +1140,13 @@ class MapPageController {
     _mapBloc.add(const MapEvent.getAppliedTasks());
 
     String? matchedTaskStatus;
+    String? matchedCreatorName;
     for (final task in viewModel.appliedTasks) {
       if (task.id == taskId) {
-        matchedTaskStatus = task.status;
+        matchedTaskStatus = task.applicationStatus.trim().isNotEmpty
+            ? task.applicationStatus
+            : task.status;
+        matchedCreatorName = task.creatorUsername;
         break;
       }
     }
@@ -1158,13 +1162,13 @@ class MapPageController {
           executorCompletionShown = true;
           executorFlowDismissed = false;
           executorTaskStatus = matchedTaskStatus!;
-          executorCreatorName = '';
+          executorCreatorName = (matchedCreatorName ?? '').trim();
         });
       } else {
         executorCompletionShown = true;
         executorFlowDismissed = false;
         executorTaskStatus = matchedTaskStatus!;
-        executorCreatorName = '';
+        executorCreatorName = (matchedCreatorName ?? '').trim();
       }
       unawaited(onNavigateExecutorCompleted());
       return;
@@ -1176,6 +1180,7 @@ class MapPageController {
         !executorCompletionShown) {
       runSetState(() {
         executorTaskStatus = matchedTaskStatus!;
+        executorCreatorName = (matchedCreatorName ?? '').trim();
       });
       return;
     }
@@ -1281,9 +1286,16 @@ class MapPageController {
     }
 
     if (action == 'accepted' || action == 'rejected') {
+      final applicationId = viewModel.applyToTaskResult.applicationId;
+      if (action == 'rejected') {
+        unawaited(_clearActiveExecutorApplication());
+      }
       runSetState(() {
         if (action == 'rejected') {
           executorFlowDismissed = false;
+          if (applicationId.isNotEmpty) {
+            locallyCanceledExecutorApplicationIds.add(applicationId);
+          }
         }
         executorTaskStatus = action;
         debugPrint(

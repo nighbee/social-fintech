@@ -149,21 +149,25 @@ class _MapContent extends StatelessWidget {
           normalized.contains('code_verified');
     }
 
+    final normalizedVerifyStatus = normalizeStatus(verifyResult.status);
+    final hasVerifiedCurrentApplication = hasAppliedTask &&
+        verifyResult.applicationId == applyResult.applicationId &&
+        normalizedVerifyStatus == 'code_verified';
+
     final normalizedExecutorStatus = normalizeStatus(executorTaskStatus);
     final hasActiveApplicationLifecycle = !isCreatorModeActive &&
-      hasAppliedTask &&
+        hasAppliedTask &&
+        !hasVerifiedCurrentApplication &&
         !isLocallyCanceledByExecutor &&
         normalizedExecutorStatus != 'rejected' &&
         normalizedExecutorStatus != 'completed';
     final normalizedApplyStatus = normalizeStatus(applyResult.status);
     final normalizedAppliedTaskStatus =
-        normalizeStatus(appliedTask?.status ?? '');
+      normalizeStatus(appliedTask?.applicationStatus ?? appliedTask?.status ?? '');
     final canEnterCodeByStatus = isApprovedStatus(normalizedExecutorStatus) ||
         isApprovedStatus(normalizedApplyStatus) ||
         isApprovedStatus(normalizedAppliedTaskStatus);
-    final isCodeVerified =
-        verifyResult.applicationId == applyResult.applicationId &&
-            verifyResult.status == 'code_verified';
+    final isCodeVerified = hasVerifiedCurrentApplication;
     final isAwaitingCreatorApproval = !executorCompletionShown &&
       hasActiveApplicationLifecycle &&
       !canEnterCodeByStatus &&
@@ -296,120 +300,117 @@ class _MapContent extends StatelessWidget {
             right: requestPanelHorizontalInset,
             bottom: floatingPanelBottom,
             child: Transform.translate(
-              offset: myRequest != null ? myRequestPanelOffset : Offset.zero,
+              offset: Offset.zero,
               child: myRequest != null
-                  ? GestureDetector(
-                      onPanUpdate: onMyRequestPanelDragUpdate,
-                      child: (() {
-                        final myTask = myRequest;
-                        return _MyRequestPanel(
-                          task: myTask,
-                          isExpanded: isRequestExpanded,
-                          avatarUrl: currentUserAvatarUrl,
-                          onToggleExpanded: onToggleExpanded,
-                          onCancel: () {
-                            showDialog<void>(
-                              context: context,
-                              barrierDismissible: true,
-                              builder: (dialogContext) => Dialog(
-                                backgroundColor: Colors.transparent,
-                                insetPadding:
-                                    const EdgeInsets.symmetric(horizontal: 22),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: BackdropFilter(
-                                    filter:
-                                        ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                                    child: Container(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          14, 16, 14, 12),
-                                      decoration: BoxDecoration(
-                                        color: MapUiPalette.panelBackground,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                            color: MapUiPalette.panelBorder),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: MapUiPalette.panelTopGlow,
-                                            blurRadius: 12,
-                                            offset: const Offset(0, -3),
-                                          ),
-                                          BoxShadow(
-                                            color: MapUiPalette.panelDropShadow,
-                                            blurRadius: 25,
-                                            offset: const Offset(0, 8),
-                                          ),
-                                        ],
-                                      ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'Are you sure you want to cancel your request?',
-                                            textAlign: TextAlign.center,
-                                            style: TextStyles.bodyMain
-                                                .copyWith(color: Colors.white70),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: CustomButton(
-                                                  text: 'Confirm',
-                                                  onTap: () {
+                  ? (() {
+                      final myTask = myRequest;
+                      return _MyRequestPanel(
+                        task: myTask,
+                        isExpanded: isRequestExpanded,
+                        avatarUrl: currentUserAvatarUrl,
+                        onToggleExpanded: onToggleExpanded,
+                        onCancel: () {
+                          showDialog<void>(
+                            context: context,
+                            barrierDismissible: true,
+                            builder: (dialogContext) => Dialog(
+                              backgroundColor: Colors.transparent,
+                              insetPadding:
+                                  const EdgeInsets.symmetric(horizontal: 22),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: BackdropFilter(
+                                  filter:
+                                      ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                  child: Container(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        14, 16, 14, 12),
+                                    decoration: BoxDecoration(
+                                      color: MapUiPalette.panelBackground,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: MapUiPalette.panelBorder),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: MapUiPalette.panelTopGlow,
+                                          blurRadius: 12,
+                                          offset: const Offset(0, -3),
+                                        ),
+                                        BoxShadow(
+                                          color: MapUiPalette.panelDropShadow,
+                                          blurRadius: 25,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Are you sure you want to cancel your request?',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyles.bodyMain
+                                              .copyWith(color: Colors.white70),
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: CustomButton(
+                                                text: 'Confirm',
+                                                onTap: () {
+                                                  Navigator.of(dialogContext)
+                                                      .pop();
+                                                  mapBloc.add(
+                                                    MapEvent.cancelTask(
+                                                      MapTaskIdRequest(
+                                                          taskId: myTask.id),
+                                                    ),
+                                                  );
+                                                },
+                                                borderRadius: 6,
+                                                backgroundColor:
+                                                    const Color(0xFFE5E5E5),
+                                                textStyle: TextStyles.bodyMain
+                                                    .copyWith(
+                                                  color: Colors.black87,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                padding: const EdgeInsets
+                                                    .symmetric(vertical: 8),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: CustomButton(
+                                                text: 'Cancel',
+                                                onTap: () =>
                                                     Navigator.of(dialogContext)
-                                                        .pop();
-                                                    mapBloc.add(
-                                                      MapEvent.cancelTask(
-                                                        MapTaskIdRequest(
-                                                            taskId: myTask.id),
-                                                      ),
-                                                    );
-                                                  },
-                                                  borderRadius: 6,
-                                                  backgroundColor:
-                                                      const Color(0xFFE5E5E5),
-                                                  textStyle: TextStyles.bodyMain
-                                                      .copyWith(
-                                                    color: Colors.black87,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 8),
-                                                ),
+                                                        .pop(),
+                                                borderRadius: 6,
+                                                backgroundColor:
+                                                    Colors.transparent,
+                                                border: Border.all(
+                                                    color: Colors.white38),
+                                                textStyle: TextStyles.bodyMain
+                                                    .copyWith(
+                                                        color: Colors.white70),
+                                                padding: const EdgeInsets
+                                                    .symmetric(vertical: 8),
                                               ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: CustomButton(
-                                                  text: 'Cancel',
-                                                  onTap: () =>
-                                                      Navigator.of(dialogContext)
-                                                          .pop(),
-                                                  borderRadius: 6,
-                                                  backgroundColor:
-                                                      Colors.transparent,
-                                                  border: Border.all(
-                                                      color: Colors.white38),
-                                                  textStyle: TextStyles.bodyMain
-                                                      .copyWith(
-                                                          color: Colors.white70),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(vertical: 8),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ),
                               ),
-                            );
-                          },
-                        );
-                      })(),
-                    )
+                            ),
+                          );
+                        },
+                      );
+                    })()
                   : _NearbyTasksPanel(
                       tasks: <MapTaskEntity>[selectedNearbyTask!],
                       onApply: (taskId) => mapBloc.add(
@@ -451,7 +452,9 @@ class _MapContent extends StatelessWidget {
                 child: _ExecutorRequestStrip(
                   message: isAwaitingCreatorApproval
                       ? 'You applied. Awaiting approval'
-                      : '${executorCreatorName.trim().isEmpty ? 'Creator' : executorCreatorName.trim()} confirm help received',
+                      : isAwaitingCodeEntry
+                          ? 'Approved. Enter the verification code from creator'
+                          : '${executorCreatorName.trim().isEmpty ? 'Creator' : executorCreatorName.trim()} confirming help received',
                   onCloseTap: onExecutorCancel,
                 ),
               ),

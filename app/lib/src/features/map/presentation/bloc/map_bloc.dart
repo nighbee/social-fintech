@@ -95,9 +95,6 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       champions: const <MapChampionEntity>[],
     );
     emit(MapState.loaded(viewModel: _viewModel));
-    if (mapDemoMocksEnabled) {
-      add(const MapEvent.getRegionalChampions());
-    }
   }
 
   Future<void> _assignRegion(_AssignRegion event, Emitter emit) async {
@@ -143,27 +140,6 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         region.h3Res4.isNotEmpty ||
         region.h3Res2.isNotEmpty;
     if (!hasAny) {
-      // Без региона API не вызывается — в debug подмешиваем демо-чемпиона из репозитория.
-      if (!mapDemoMocksEnabled) {
-        return;
-      }
-      _setBusy(emit);
-      final demoResult = await _repository.getChampionsMergedForRegion(
-        const MapRegionAssignmentEntity.empty(),
-      );
-      demoResult.fold(
-        (error) {
-          _viewModel = _viewModel.copyWith(isBusy: false);
-          emit(MapState.loadingError(error.message));
-        },
-        (items) {
-          _viewModel = _viewModel.copyWith(
-            isBusy: false,
-            champions: items,
-          );
-          emit(MapState.loaded(viewModel: _viewModel));
-        },
-      );
       return;
     }
     _setBusy(emit);
@@ -559,6 +535,23 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
     );
     result.fold(
       (error) {
+        final lower = error.message.toLowerCase();
+        final isAlreadyVerified = lower.contains('already_verified') ||
+            lower.contains('error 409') ||
+            lower.contains('status code: 409') ||
+            lower.contains('conflict');
+        if (isAlreadyVerified) {
+          _viewModel = _viewModel.copyWith(
+            isBusy: false,
+            verifyCodeResult: MapVerifyCodeEntity(
+              applicationId: event.target.applicationId,
+              status: 'code_verified',
+            ),
+            applyToTaskResult: const MapApplyToTaskEntity.empty(),
+          );
+          emit(MapState.loaded(viewModel: _viewModel));
+          return;
+        }
         _viewModel = _viewModel.copyWith(isBusy: false);
         emit(MapState.loadingError(error.message));
       },
@@ -566,6 +559,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         _viewModel = _viewModel.copyWith(
           isBusy: false,
           verifyCodeResult: entity,
+          applyToTaskResult: const MapApplyToTaskEntity.empty(),
         );
         emit(MapState.loaded(viewModel: _viewModel));
       },

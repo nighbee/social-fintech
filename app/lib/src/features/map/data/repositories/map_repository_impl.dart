@@ -1,6 +1,4 @@
 import 'package:app/src/core/exceptions/domain_exception.dart';
-import 'package:app/src/features/map/data/demo/map_demo_config.dart';
-import 'package:app/src/features/map/data/demo/map_demo_data.dart';
 import 'package:app/src/features/map/domain/entities/map_apply_to_task_entity.dart';
 import 'package:app/src/features/map/data/sources/remote/i_map_remote.dart';
 import 'package:app/src/features/map/data/sources/remote/map_remote_impl.dart';
@@ -82,9 +80,6 @@ class MapRepositoryImpl implements IMapRepository {
       if (region.h3Res2.isNotEmpty) fetchOne([region.h3Res2], 2),
     ];
     if (futures.isEmpty) {
-      if (mapDemoMocksEnabled) {
-        return Right([buildDemoChampion(h3Res5: region.h3Res5)]);
-      }
       return const Right(<MapChampionEntity>[]);
     }
 
@@ -109,19 +104,9 @@ class MapRepositoryImpl implements IMapRepository {
     }
 
     if (!anySuccess && firstError != null) {
-      if (mapDemoMocksEnabled) {
-        return Right([buildDemoChampion(h3Res5: region.h3Res5)]);
-      }
       return Left(firstError!);
     }
     merged.sort((a, b) => b.score.compareTo(a.score));
-    if (mapDemoMocksEnabled) {
-      final demo = buildDemoChampion(h3Res5: region.h3Res5);
-      if (!merged.any((c) => c.h3Index == demo.h3Index)) {
-        merged.add(demo);
-        merged.sort((a, b) => b.score.compareTo(a.score));
-      }
-    }
     return Right(merged);
   }
 

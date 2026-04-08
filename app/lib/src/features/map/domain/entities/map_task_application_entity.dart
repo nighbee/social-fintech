@@ -10,6 +10,8 @@ class MapTaskApplicationEntity extends BaseEntity
     required String id,
     required String taskId,
     required String applicantId,
+    @Default('') String applicantUsername,
+    @Default('') String applicantAvatarUrl,
     required String status,
     required String createdAt,
   }) = _MapTaskApplicationEntity;
@@ -18,6 +20,8 @@ class MapTaskApplicationEntity extends BaseEntity
     @Default('') String id,
     @Default('') String taskId,
     @Default('') String applicantId,
+    @Default('') String applicantUsername,
+    @Default('') String applicantAvatarUrl,
     @Default('') String status,
     @Default('') String createdAt,
   }) = _MapTaskApplicationEntityEmpty;

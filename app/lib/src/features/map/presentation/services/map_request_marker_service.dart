@@ -49,6 +49,8 @@ class MapRequestMarkerService {
     final message = (error.message ?? '').toLowerCase();
     return code == 'channel-error' ||
         message.contains('unable to establish connection on channel') ||
+      message.contains('no manager found with id') ||
+      message.contains('no manager found') ||
         message.contains('no manager or annotation found') ||
         message.contains('annotation id') ||
         message.contains('dev.flutter.pigeon.mapbox_maps_flutter');
