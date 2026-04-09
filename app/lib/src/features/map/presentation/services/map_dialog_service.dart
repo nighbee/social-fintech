@@ -258,20 +258,27 @@ class MapDialogService {
     required List<MapTaskApplicationEntity> applications,
     required void Function(MapTaskApplicationEntity selected) onConfirm,
   }) async {
-    if (_isConfirmDialogOpen || selectedApplicationId == null) {
+    if (_isConfirmDialogOpen) {
       return;
     }
 
     MapTaskApplicationEntity? selectedApplication;
-    for (final app in applications) {
-      if (app.id == selectedApplicationId) {
-        selectedApplication = app;
-        break;
+    if (selectedApplicationId != null) {
+      for (final app in applications) {
+        final normalizedStatus = app.status.trim().toLowerCase();
+        if (app.id == selectedApplicationId && normalizedStatus == 'code_verified') {
+          selectedApplication = app;
+          break;
+        }
       }
     }
 
-    if (selectedApplication == null ||
-        selectedApplication.status != 'code_verified') {
+    selectedApplication ??= applications.cast<MapTaskApplicationEntity?>().firstWhere(
+          (app) => app != null && app.status.trim().toLowerCase() == 'code_verified',
+          orElse: () => null,
+        );
+
+    if (selectedApplication == null) {
       return;
     }
     if (_lastConfirmPromptApplicationId == selectedApplication.id) {
@@ -285,7 +292,9 @@ class MapDialogService {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        final helperName = _compactApplicant(selectedApplication!.applicantId);
+        final helperName = selectedApplication!.applicantUsername.trim().isNotEmpty
+            ? selectedApplication.applicantUsername.trim()
+            : _compactApplicant(selectedApplication.applicantId);
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 26),

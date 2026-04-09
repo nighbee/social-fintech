@@ -546,8 +546,10 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                           ? extra
                           : <String, dynamic>{};
                       final displayName = map['displayName'] as String? ?? '';
+                      final userId = map['userId'] as String? ?? '';
                       return EditProfileNicknamePage(
                         initialDisplayName: displayName,
+                        currentUserId: userId,
                       );
                     },
                   ),

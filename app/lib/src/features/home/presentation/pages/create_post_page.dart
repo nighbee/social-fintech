@@ -23,9 +23,11 @@ class _CreatePostPageState extends State<CreatePostPage>
   late final HomeBloc _bloc;
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
+  late final PageController _photoPageController;
   PostVisibilityOption _visibility = PostVisibilityOption.everyone;
   CommentControlOption _commentControl = CommentControlOption.everyone;
   bool _isSubmitting = false;
+  int _photoPageIndex = 0;
 
   @override
   void initState() {
@@ -33,6 +35,7 @@ class _CreatePostPageState extends State<CreatePostPage>
     _bloc = getIt<HomeBloc>();
     _controller = TextEditingController();
     _focusNode = FocusNode();
+    _photoPageController = PageController();
     _bloc.add(const HomeEvent.clearPostPhotos());
 
     final profileBloc = getIt<ProfileBloc>();
@@ -50,6 +53,7 @@ class _CreatePostPageState extends State<CreatePostPage>
   void dispose() {
     _controller.dispose();
     _focusNode.dispose();
+    _photoPageController.dispose();
     super.dispose();
   }
 
@@ -69,6 +73,29 @@ class _CreatePostPageState extends State<CreatePostPage>
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
     _bloc.add(HomeEvent.createPost(content: _controller.text.trim()));
+  }
+
+  void _syncPhotoPageIndex(int totalPhotos) {
+    if (totalPhotos <= 0) {
+      if (_photoPageIndex != 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _photoPageIndex == 0) return;
+          setState(() => _photoPageIndex = 0);
+        });
+      }
+      return;
+    }
+
+    if (_photoPageIndex >= totalPhotos) {
+      final targetIndex = totalPhotos - 1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        setState(() => _photoPageIndex = targetIndex);
+        if (_photoPageController.hasClients) {
+          _photoPageController.jumpToPage(targetIndex);
+        }
+      });
+    }
   }
 
   void _openVisibilitySheet() {
@@ -122,6 +149,7 @@ class _CreatePostPageState extends State<CreatePostPage>
           loaded: (viewModel) => viewModel,
           orElse: HomeViewModel.new,
         );
+        _syncPhotoPageIndex(viewModel.postComposerPhotos.length);
         final canSubmit = _controller.text.trim().isNotEmpty ||
             viewModel.postComposerPhotos.isNotEmpty;
         final profile = getIt<ProfileBloc>().state.maybeWhen(
@@ -266,84 +294,93 @@ class _CreatePostPageState extends State<CreatePostPage>
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.memory(
-                                  viewModel.postComposerPhotos.first.bytes,
-                                  width: double.infinity,
-                                  height: 460,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: GestureDetector(
-                                  onTap: () => _bloc.add(
-                                    HomeEvent.removePostPhoto(
-                                      viewModel
-                                          .postComposerPhotos.first.fileName,
-                                    ),
-                                  ),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.45),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    padding: const EdgeInsets.all(6),
-                                    child: const Icon(
-                                      Icons.close,
-                                      color: Colors.white,
-                                      size: 16,
+                          Builder(builder: (context) {
+                            final totalPhotos =
+                                viewModel.postComposerPhotos.length;
+                            final currentIndex =
+                                _photoPageIndex.clamp(0, totalPhotos - 1);
+
+                            return Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    height: 460,
+                                    child: PageView.builder(
+                                      controller: _photoPageController,
+                                      itemCount: totalPhotos,
+                                      onPageChanged: (index) {
+                                        if (_photoPageIndex != index) {
+                                          setState(() => _photoPageIndex = index);
+                                        }
+                                      },
+                                      itemBuilder: (context, index) {
+                                        return Image.memory(
+                                          viewModel
+                                              .postComposerPhotos[index].bytes,
+                                          fit: BoxFit.cover,
+                                        );
+                                      },
                                     ),
                                   ),
                                 ),
-                              ),
-                              Positioned(
-                                right: 10,
-                                bottom: 10,
-                                child: Row(
-                                  children: const [
-                                    _PhotoOverlayChip(
-                                      label: '+ALT',
-                                      horizontalPadding: 9,
-                                    ),
-                                    Gap(8),
-                                    _PhotoOverlayChip(
-                                      icon: Icons.edit_outlined,
-                                      horizontalPadding: 8,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (viewModel.postComposerPhotos.length > 1)
                                 Positioned(
-                                  left: 10,
-                                  bottom: 10,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
+                                  top: 8,
+                                  right: 8,
+                                  child: GestureDetector(
+                                    onTap: () => _bloc.add(
+                                      HomeEvent.removePostPhoto(
+                                        viewModel
+                                            .postComposerPhotos[currentIndex]
+                                            .fileName,
+                                      ),
                                     ),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          Colors.black.withValues(alpha: 0.55),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      '+${viewModel.postComposerPhotos.length - 1}',
-                                      style: TextStyles.bodyMain.copyWith(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color:
+                                            Colors.black.withValues(alpha: 0.45),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      padding: const EdgeInsets.all(6),
+                                      child: const Icon(
+                                        Icons.close,
                                         color: Colors.white,
-                                        fontWeight: FontWeight.w600,
+                                        size: 16,
                                       ),
                                     ),
                                   ),
                                 ),
-                            ],
-                          ),
+                                Positioned(
+                                  right: 10,
+                                  bottom: 10,
+                                  child: Row(
+                                    children: const [
+                                      _PhotoOverlayChip(
+                                        label: '+ALT',
+                                        horizontalPadding: 9,
+                                      ),
+                                      Gap(8),
+                                      _PhotoOverlayChip(
+                                        icon: Icons.edit_outlined,
+                                        horizontalPadding: 8,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (totalPhotos > 1)
+                                  Positioned(
+                                    left: 10,
+                                    bottom: 10,
+                                    child: _PhotoOverlayChip(
+                                      label:
+                                          '${currentIndex + 1}/$totalPhotos',
+                                      horizontalPadding: 9,
+                                    ),
+                                  ),
+                              ],
+                            );
+                          }),
                           const Gap(10),
                           _PostMetaAction(
                             icon: Assets.icons.personSearch.svg(

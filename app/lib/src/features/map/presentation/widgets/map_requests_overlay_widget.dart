@@ -79,20 +79,7 @@ class _RequestsOverlay extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                        CircleAvatar(
-                          radius: 11,
-                          backgroundColor: const Color(0xFF2A3341),
-                          backgroundImage: application.applicantAvatarUrl.trim().isNotEmpty
-                              ? NetworkImage(application.applicantAvatarUrl.trim())
-                              : null,
-                          child: application.applicantAvatarUrl.trim().isNotEmpty
-                              ? null
-                              : const Icon(
-                                  Icons.person,
-                                  color: Colors.white70,
-                                  size: 14,
-                                ),
-                        ),
+                        _ResolvedApplicantAvatar(application: application),
                         const Gap(8),
                         Expanded(
                           child: Text(
@@ -183,5 +170,37 @@ class _RequestsOverlay extends StatelessWidget {
       return username;
     }
     return _compactApplicant(application.applicantId);
+  }
+}
+
+class _ResolvedApplicantAvatar extends StatelessWidget {
+  const _ResolvedApplicantAvatar({required this.application});
+
+  final MapTaskApplicationEntity application;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: MapAvatarResolverService.instance.resolveAvatar(
+        fallbackUrl: application.applicantAvatarUrl,
+        userId: application.applicantId,
+        username: application.applicantUsername,
+      ),
+      builder: (context, snapshot) {
+        final avatarUrl = snapshot.data?.trim() ?? '';
+        return CircleAvatar(
+          radius: 11,
+          backgroundColor: const Color(0xFF2A3341),
+          backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+          child: avatarUrl.isNotEmpty
+              ? null
+              : const Icon(
+                  Icons.person,
+                  color: Colors.white70,
+                  size: 14,
+                ),
+        );
+      },
+    );
   }
 }

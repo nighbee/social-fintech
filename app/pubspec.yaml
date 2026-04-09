@@ -115,8 +115,8 @@ dependencies:
   geolocator: ^13.0.2
   mapbox_maps_flutter: ^2.12.0
   syncfusion_flutter_sliders: ^32.2.7
-  h3_dart: ^0.6.2
   syncfusion_flutter_core: ^32.2.9
+  h3_flutter: ^0.6.6
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -10,6 +10,10 @@ class MapChampionEntity extends BaseEntity with _$MapChampionEntity {
     required int resolution,
     required int score,
     required String userId,
+    required String username,
+    required String avatarUrl,
+    double? centerLat,
+    double? centerLon,
   }) = _MapChampionEntity;
 
   const factory MapChampionEntity.empty({
@@ -17,5 +21,9 @@ class MapChampionEntity extends BaseEntity with _$MapChampionEntity {
     @Default(0) int resolution,
     @Default(0) int score,
     @Default('') String userId,
+    @Default('') String username,
+    @Default('') String avatarUrl,
+    @Default(null) double? centerLat,
+    @Default(null) double? centerLon,
   }) = _MapChampionEntityEmpty;
 }

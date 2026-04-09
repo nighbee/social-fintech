@@ -9,6 +9,8 @@ class _MapContent extends StatelessWidget {
     required this.onToggleExpanded,
     required this.onMapCreated,
     required this.onCameraChanged,
+    required this.onStyleLoaded,
+    required this.onStyleImageMissing,
     required this.onOpenCreateRequest,
     required this.onOpenVerifyCode,
     required this.onZoomIn,
@@ -40,6 +42,8 @@ class _MapContent extends StatelessWidget {
   final VoidCallback onToggleExpanded;
   final void Function(MapboxMap) onMapCreated;
   final void Function(CameraChangedEventData) onCameraChanged;
+  final void Function(StyleLoadedEventData) onStyleLoaded;
+  final void Function(StyleImageMissingEventData) onStyleImageMissing;
   final VoidCallback onOpenCreateRequest;
   final void Function(String taskId, String applicationId) onOpenVerifyCode;
   final VoidCallback onZoomIn;
@@ -80,10 +84,19 @@ class _MapContent extends StatelessWidget {
     final ctaHorizontalInset = 15.0;
     final floatingActionBottom = safeBottom + 18;
     final floatingPanelBottom = floatingActionBottom + 74;
-    final myRequest = MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks);
+    final confirmStatus =
+      viewModel.confirmCompletionResult.taskStatus.trim().toLowerCase();
+    final completedTaskId =
+      confirmStatus == 'completed' ? viewModel.confirmCompletionResult.taskId : '';
+    final myTasksForUi = completedTaskId.isEmpty
+      ? viewModel.myTasks
+      : viewModel.myTasks
+        .where((task) => task.id.trim() != completedTaskId.trim())
+        .toList(growable: false);
+    final myRequest = MapFlowEvaluator.findCreatorActiveTask(myTasksForUi);
 
     final lockedMessage = MapFlowEvaluator.buildCreateTaskLockMessage(
-      viewModel.myTasks,
+      myTasksForUi,
       nearbyTasks: viewModel.nearbyTasks,
       creatorLastTaskCreatedAtUtc: lastCreatorTaskCreatedAtUtc,
       nowUtc: DateTime.now().toUtc(),
@@ -216,6 +229,8 @@ class _MapContent extends StatelessWidget {
                     zoom: viewModel.zoom,
                   ),
                   onMapCreated: onMapCreated,
+                  onStyleLoadedListener: onStyleLoaded,
+                  onStyleImageMissingListener: onStyleImageMissing,
                   onCameraChangeListener: onCameraChanged,
                   onTapListener: (_) {
                     debugPrint('[MapContent] map background tap');

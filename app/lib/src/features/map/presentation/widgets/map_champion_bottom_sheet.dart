@@ -1,5 +1,6 @@
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
+import 'package:app/src/features/map/presentation/services/map_avatar_resolver_service.dart';
 import 'package:flutter/material.dart';
 
 class MapChampionBottomSheet extends StatelessWidget {
@@ -144,9 +145,10 @@ class _LeaderCard extends StatelessWidget {
           CircleAvatar(
             radius: 36,
             backgroundColor: Colors.white.withValues(alpha: 0.15),
-            child: Text(
-              _avatarLabel(champion.userId),
-              style: TextStyles.titleMain.copyWith(
+            child: _ChampionAvatar(
+              champion: champion,
+              radius: 36,
+              labelStyle: TextStyles.titleMain.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
               ),
@@ -154,7 +156,7 @@ class _LeaderCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            _displayName(champion.userId),
+            _displayName(champion),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyles.bodyMain.copyWith(
@@ -213,9 +215,10 @@ class _RatingRow extends StatelessWidget {
             CircleAvatar(
               radius: 18,
               backgroundColor: Colors.white.withValues(alpha: 0.14),
-              child: Text(
-                _avatarLabel(champion.userId),
-                style: TextStyles.bodyMain.copyWith(
+              child: _ChampionAvatar(
+                champion: champion,
+                radius: 18,
+                labelStyle: TextStyles.bodyMain.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.w700,
                 ),
@@ -224,7 +227,7 @@ class _RatingRow extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                _displayName(champion.userId),
+                _displayName(champion),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyles.bodyMain.copyWith(
@@ -254,7 +257,47 @@ class _RatingRow extends StatelessWidget {
   }
 }
 
-String _displayName(String userId) {
+class _ChampionAvatar extends StatelessWidget {
+  const _ChampionAvatar({
+    required this.champion,
+    required this.radius,
+    required this.labelStyle,
+  });
+
+  final MapChampionEntity champion;
+  final double radius;
+  final TextStyle labelStyle;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<String>(
+      future: MapAvatarResolverService.instance.resolveAvatar(
+        fallbackUrl: champion.avatarUrl,
+        userId: champion.userId,
+        username: champion.username,
+      ),
+      builder: (context, snapshot) {
+        final resolvedUrl = snapshot.data?.trim() ?? '';
+        if (resolvedUrl.isNotEmpty) {
+          return CircleAvatar(
+            radius: radius,
+            backgroundImage: NetworkImage(resolvedUrl),
+            backgroundColor: Colors.transparent,
+          );
+        }
+        return Text(_avatarLabel(champion), style: labelStyle);
+      },
+    );
+  }
+}
+
+String _displayName(MapChampionEntity champion) {
+  final username = champion.username.trim();
+  if (username.isNotEmpty) {
+    return username;
+  }
+
+  final userId = champion.userId;
   final trimmed = userId.trim();
   if (trimmed.isEmpty) {
     return 'Unknown champion';
@@ -265,8 +308,11 @@ String _displayName(String userId) {
   return '${trimmed.substring(0, 8)}...${trimmed.substring(trimmed.length - 4)}';
 }
 
-String _avatarLabel(String userId) {
-  final trimmed = userId.trim();
+String _avatarLabel(MapChampionEntity champion) {
+  final source = champion.username.trim().isNotEmpty
+      ? champion.username
+      : champion.userId;
+  final trimmed = source.trim();
   if (trimmed.isEmpty) {
     return '?';
   }

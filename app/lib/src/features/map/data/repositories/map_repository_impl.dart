@@ -16,8 +16,14 @@ import 'package:app/src/features/map/domain/requests/map_region_assignment_reque
 import 'package:app/src/features/map/domain/requests/map_task_application_id_request.dart';
 import 'package:app/src/features/map/domain/requests/map_task_id_request.dart';
 import 'package:app/src/features/map/domain/requests/map_verify_code_request.dart';
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+
+const bool _mapChampionsTraceEnabled = bool.fromEnvironment(
+  'MAP_CHAMPIONS_TRACE',
+  defaultValue: false,
+);
 
 @named
 @LazySingleton(as: IMapRepository)
@@ -25,6 +31,13 @@ class MapRepositoryImpl implements IMapRepository {
   MapRepositoryImpl(@Named.from(MapRemoteImpl) this._remote);
 
   final IMapRemote _remote;
+
+  void _traceChampions(String message) {
+    if (!_mapChampionsTraceEnabled) {
+      return;
+    }
+    debugPrint('[MapChampionsTrace] $message');
+  }
 
   @override
   Future<Either<DomainException, MapRegionAssignmentEntity>> assignRegion(
@@ -63,14 +76,33 @@ class MapRepositoryImpl implements IMapRepository {
       if (indices.isEmpty) {
         return const Right(<MapChampionEntity>[]);
       }
+      _traceChampions(
+        'request resolution=$resolution h3=${indices.join(',')}',
+      );
       final req = MapChampionsRequest(
         h3Indices: indices,
         resolution: resolution,
       );
       final result = await _remote.getChampions(req);
       return result.fold(
-        Left.new,
-        (dtos) => Right(dtos.map((dto) => dto.toEntity()).toList()),
+        (error) {
+          _traceChampions(
+            'response resolution=$resolution error=${error.message}',
+          );
+          return Left(error);
+        },
+        (dtos) {
+          final summary = dtos
+              .map(
+                (dto) =>
+                    '${dto.username.isEmpty ? dto.userId : dto.username}@${dto.h3Index}',
+              )
+              .join(' | ');
+          _traceChampions(
+            'response resolution=$resolution count=${dtos.length} data=$summary',
+          );
+          return Right(dtos.map((dto) => dto.toEntity()).toList());
+        },
       );
     }
 
@@ -86,8 +118,7 @@ class MapRepositoryImpl implements IMapRepository {
     final outcomes = await Future.wait(futures);
     DomainException? firstError;
     var anySuccess = false;
-    final merged = <MapChampionEntity>[];
-    final seenH3 = <String>{};
+    final mergedByKey = <String, MapChampionEntity>{};
 
     for (final o in outcomes) {
       o.fold(
@@ -95,9 +126,8 @@ class MapRepositoryImpl implements IMapRepository {
         (list) {
           anySuccess = true;
           for (final c in list) {
-            if (seenH3.add(c.h3Index)) {
-              merged.add(c);
-            }
+            final key = '${c.resolution}|${c.h3Index}|${c.userId.trim()}';
+            mergedByKey[key] = c;
           }
         },
       );
@@ -106,7 +136,12 @@ class MapRepositoryImpl implements IMapRepository {
     if (!anySuccess && firstError != null) {
       return Left(firstError!);
     }
+
+    final merged = mergedByKey.values.toList(growable: false);
     merged.sort((a, b) => b.score.compareTo(a.score));
+    _traceChampions(
+      'merged count=${merged.length} data=${merged.map((c) => '${c.resolution}:${c.username.isEmpty ? c.userId : c.username}').join(' | ')}',
+    );
     return Right(merged);
   }
 

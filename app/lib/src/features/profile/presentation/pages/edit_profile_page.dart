@@ -80,6 +80,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       RouteNames.editProfileNickname,
       extra: <String, dynamic>{
         'displayName': profile.displayName,
+        'userId': profile.userId,
       },
     );
   }

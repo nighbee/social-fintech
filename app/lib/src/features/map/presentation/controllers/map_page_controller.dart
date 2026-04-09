@@ -77,8 +77,8 @@ class MapPageController {
   String? handledTaskApplicationActionResult;
   final Set<String> locallyCanceledExecutorApplicationIds = <String>{};
   int consecutiveMissingAppliedTaskChecks = 0;
-  double currentLatitude = 50.4501;
-  double currentLongitude = 30.5234;
+  double currentLatitude = 43.2567;
+  double currentLongitude = 76.9286;
   double? _deviceLatitude;
   double? _deviceLongitude;
   var _didAssignRegionWithDeviceLocation = false;
@@ -98,12 +98,18 @@ class MapPageController {
   int? _lastMarkerZoomStep;
   double _lastCameraZoom = 14.5;
   Timer? _cameraGeoRefreshDebounce;
+  Timer? _styleRepairDebounce;
   double? _lastRegionAssignLat;
   double? _lastRegionAssignLon;
+  bool _styleRepairInProgress = false;
+  DateTime? _lastStyleRepairAt;
+  int? _stickyChampionResolution;
+  int? _fallbackChampionResolution;
 
   static const double _regionReassignDistanceMeters = 450;
   static const Duration _cameraGeoRefreshDebounceDuration =
       Duration(milliseconds: 650);
+  static const Duration _styleRepairCooldown = Duration(seconds: 8);
 
   DateTime? get lastCreatorTaskCreatedAtUtc => _lastCreatorTaskCreatedAtUtc;
   String? get currentUserAvatarUrl => _resolveProfileAvatarUrl();
@@ -153,8 +159,12 @@ class MapPageController {
   Future<void> _teardownMapResourcesOnce() async {
     _cameraGeoRefreshDebounce?.cancel();
     _cameraGeoRefreshDebounce = null;
+    _styleRepairDebounce?.cancel();
+    _styleRepairDebounce = null;
     _polling.dispose();
     _lastMarkerZoomStep = null;
+    _stickyChampionResolution = null;
+    _fallbackChampionResolution = null;
     await _championService.dispose();
     await _requestMarkerService.dispose();
     await _selfMarkerService.dispose();
@@ -246,6 +256,10 @@ class MapPageController {
         viewModel.confirmCompletionResult.taskId !=
             handledConfirmResultTaskId) {
       handledConfirmResultTaskId = viewModel.confirmCompletionResult.taskId;
+      selectedApplicationId = null;
+      _mapBloc.add(const MapEvent.getMyTasks());
+      _mapBloc.add(const MapEvent.getAppliedTasks());
+      _refreshNearbyTasks();
       context.push(RoutePaths.mapRequestCompleted);
     }
 
@@ -294,6 +308,8 @@ class MapPageController {
       _championService.updateChampions(
         championsForViewport,
         viewModel.assignedRegion,
+        fallbackLatitude: currentLatitude,
+        fallbackLongitude: currentLongitude,
       ),
     );
 
@@ -457,6 +473,67 @@ class MapPageController {
     unawaited(_syncMarkerScaleToCamera(map));
   }
 
+  void onStyleLoaded(StyleLoadedEventData _) {
+    _queueStyleRepair('style_loaded');
+  }
+
+  void onStyleImageMissing(StyleImageMissingEventData event) {
+    debugPrint('[MapController] style image missing: ${event.id}');
+    final lastRepairAt = _lastStyleRepairAt;
+    if (lastRepairAt != null &&
+        DateTime.now().difference(lastRepairAt) < _styleRepairCooldown) {
+      return;
+    }
+    _queueStyleRepair('style_image_missing:${event.id}');
+  }
+
+  void _queueStyleRepair(String reason) {
+    _styleRepairDebounce?.cancel();
+    _styleRepairDebounce = Timer(const Duration(milliseconds: 120), () {
+      unawaited(_repairStyleImages(reason));
+    });
+  }
+
+  Future<void> _repairStyleImages(String reason) async {
+    if (_styleRepairInProgress) {
+      return;
+    }
+    final map = mapboxMap;
+    if (map == null) {
+      return;
+    }
+    _styleRepairInProgress = true;
+    _lastStyleRepairAt = DateTime.now();
+    try {
+      debugPrint('[MapController] repairing style images due to: $reason');
+
+      await _initChampionLayer(map);
+
+      await _requestMarkerService.initialize(
+        map,
+        onSelectionChanged: _onRequestMarkerSelectionChanged,
+      );
+      final vm = _mapBloc.viewModel;
+      await _requestMarkerService.syncTasks(_nearbyTasksWithMyStatuses(vm));
+      await _requestMarkerService.setSelectedTask(selectedNearbyTaskId);
+
+      await _selfMarkerService.initialize(map);
+      final lat = _deviceLatitude;
+      final lon = _deviceLongitude;
+      if (lat != null && lon != null) {
+        await _selfMarkerService.updatePosition(
+          lat,
+          lon,
+          avatarUrl: _resolveProfileAvatarUrl(),
+        );
+      }
+    } catch (error) {
+      debugPrint('[MapController] style repair failed: $error');
+    } finally {
+      _styleRepairInProgress = false;
+    }
+  }
+
   Future<void> _syncMarkerScaleToCamera(MapboxMap map) async {
     try {
       final cam = await map.getCameraState();
@@ -493,9 +570,12 @@ class MapPageController {
       onChampionTap: _onChampionTap,
     );
     final vm = _mapBloc.viewModel;
+    final championsForViewport = _championsForCurrentZoom(vm.champions);
     await _championService.updateChampions(
-      vm.champions,
+      championsForViewport,
       vm.assignedRegion,
+      fallbackLatitude: currentLatitude,
+      fallbackLongitude: currentLongitude,
     );
   }
 
@@ -589,14 +669,55 @@ class MapPageController {
       return champions;
     }
 
-    int targetResolution;
-    if (_lastCameraZoom >= 14.0) {
-      targetResolution = 5; // district details on close zoom
-    } else if (_lastCameraZoom >= 11.0) {
-      targetResolution = 4; // city level on medium zoom
-    } else {
-      targetResolution = 2; // country level on far zoom
+    final hasApiCoordinates = champions.any(
+      (champion) => champion.centerLat != null && champion.centerLon != null,
+    );
+    if (hasApiCoordinates) {
+      return _stableApiChampions(champions);
     }
+
+    if (_championService.isH3RuntimeUnavailable) {
+      final stableResolution = _resolveFallbackChampionResolution(champions);
+      final tier = champions
+          .where((champion) => champion.resolution == stableResolution)
+          .toList(growable: false);
+      if (tier.isNotEmpty) {
+        return tier;
+      }
+    }
+
+    const upTo5 = 14.4;
+    const downTo4 = 13.6;
+    const upTo4 = 11.4;
+    const downTo2 = 10.6;
+
+    var targetResolution = _stickyChampionResolution;
+    final zoom = _lastCameraZoom;
+
+    if (targetResolution == null) {
+      if (zoom >= 14.0) {
+        targetResolution = 5;
+      } else if (zoom >= 11.0) {
+        targetResolution = 4;
+      } else {
+        targetResolution = 2;
+      }
+    } else if (targetResolution == 5) {
+      if (zoom < downTo4) {
+        targetResolution = 4;
+      }
+    } else if (targetResolution == 4) {
+      if (zoom >= upTo5) {
+        targetResolution = 5;
+      } else if (zoom < downTo2) {
+        targetResolution = 2;
+      }
+    } else {
+      if (zoom >= upTo4) {
+        targetResolution = 4;
+      }
+    }
+    _stickyChampionResolution = targetResolution;
 
     final preferredOrder = switch (targetResolution) {
       5 => const [5, 4, 2],
@@ -614,6 +735,40 @@ class MapPageController {
     }
 
     return champions;
+  }
+
+  List<MapChampionEntity> _stableApiChampions(
+    List<MapChampionEntity> champions,
+  ) {
+    final stable = champions.toList(growable: false)
+      ..sort((a, b) {
+        if (a.resolution != b.resolution) {
+          return b.resolution.compareTo(a.resolution);
+        }
+        if (a.score != b.score) {
+          return b.score.compareTo(a.score);
+        }
+        return a.h3Index.compareTo(b.h3Index);
+      });
+    return stable;
+  }
+
+  int _resolveFallbackChampionResolution(List<MapChampionEntity> champions) {
+    final current = _fallbackChampionResolution;
+    if (current != null &&
+        champions.any((champion) => champion.resolution == current)) {
+      return current;
+    }
+
+    for (final resolution in const [5, 4, 2]) {
+      if (champions.any((champion) => champion.resolution == resolution)) {
+        _fallbackChampionResolution = resolution;
+        return resolution;
+      }
+    }
+
+    _fallbackChampionResolution = champions.first.resolution;
+    return _fallbackChampionResolution!;
   }
 
   void _scheduleCameraGeoRefresh() {

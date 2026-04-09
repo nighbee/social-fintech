@@ -14,6 +14,7 @@ class MapRequestMarkerService {
   static const double _figmaTriH = 32.99999618530286 * 1.08;
   static const double _creatorSizeBoost = 1.18;
   static const double _selectionIndicatorBaseIconSize = 1.0;
+  static const double _coordEpsilon = 0.00001;
 
   double _markerSizeMultiplier = 1.0;
 
@@ -581,8 +582,12 @@ class MapRequestMarkerService {
       }
 
       var needsUpdate = false;
-      if (existing.geometry.coordinates.lat != pos.lat ||
-          existing.geometry.coordinates.lng != pos.lon) {
+      if (_coordsDiffer(
+        existingLat: existing.geometry.coordinates.lat.toDouble(),
+        existingLon: existing.geometry.coordinates.lng.toDouble(),
+        nextLat: pos.lat,
+        nextLon: pos.lon,
+      )) {
         existing.geometry = geometry;
         needsUpdate = true;
       }
@@ -637,6 +642,16 @@ class MapRequestMarkerService {
     const dLat = 0.00028;
     const dLon = 0.00014;
     return (lat: task.latitude + dLat, lon: task.longitude + dLon);
+  }
+
+  bool _coordsDiffer({
+    required double existingLat,
+    required double existingLon,
+    required double nextLat,
+    required double nextLon,
+  }) {
+    return (existingLat - nextLat).abs() > _coordEpsilon ||
+        (existingLon - nextLon).abs() > _coordEpsilon;
   }
 
   Uint8List _bytesForVariant(int v) {

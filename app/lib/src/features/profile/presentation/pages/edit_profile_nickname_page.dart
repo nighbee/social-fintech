@@ -1,5 +1,7 @@
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/features/profile/domain/repositories/i_profile_repository.dart';
+import 'package:app/src/features/profile/domain/requests/search_profiles_request.dart';
 import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/widgets/edit_profile/edit_profile_flow_widgets.dart';
@@ -12,9 +14,11 @@ class EditProfileNicknamePage extends StatefulWidget {
   const EditProfileNicknamePage({
     super.key,
     required this.initialDisplayName,
+    required this.currentUserId,
   });
 
   final String initialDisplayName;
+  final String currentUserId;
 
   @override
   State<EditProfileNicknamePage> createState() =>
@@ -26,12 +30,18 @@ class _EditProfileNicknamePageState extends State<EditProfileNicknamePage> {
 
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
+  IProfileRepository? _profileRepository;
   late final String _initialSanitizedDisplayName;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    try {
+      _profileRepository = getIt<IProfileRepository>();
+    } catch (_) {
+      _profileRepository = null;
+    }
     _initialSanitizedDisplayName = _sanitizeDisplayName(
       widget.initialDisplayName,
     );
@@ -59,6 +69,42 @@ class _EditProfileNicknamePageState extends State<EditProfileNicknamePage> {
     return trimmedValue;
   }
 
+  String _normalizeNickname(String value) {
+    return _sanitizeDisplayName(value).toLowerCase();
+  }
+
+  bool _isConflictError(String message) {
+    final normalized = message.toLowerCase();
+    return normalized.contains('409') ||
+        normalized.contains('conflict') ||
+        normalized.contains('already exists') ||
+        normalized.contains('duplicate') ||
+        normalized.contains('display_name_taken') ||
+        normalized.contains('username_taken');
+  }
+
+  Future<bool> _isNicknameTaken(String candidate) async {
+    final repository = _profileRepository;
+    if (repository == null) {
+      return false;
+    }
+
+    final result = await repository.searchProfiles(
+      SearchProfilesRequest(query: candidate, limit: 20, offset: 0),
+    );
+
+    return result.fold((_) => false, (items) {
+      final normalizedCandidate = _normalizeNickname(candidate);
+      return items.any((item) {
+        final isSameUser = item.userId == widget.currentUserId;
+        if (isSameUser) {
+          return false;
+        }
+        return _normalizeNickname(item.displayName) == normalizedCandidate;
+      });
+    });
+  }
+
   String get _sanitizedValue => _sanitizeDisplayName(_controller.text);
 
   bool get _canSave {
@@ -71,7 +117,7 @@ class _EditProfileNicknamePageState extends State<EditProfileNicknamePage> {
     return _sanitizedValue != _initialSanitizedDisplayName;
   }
 
-  void _saveNickname() {
+  Future<void> _saveNickname() async {
     if (!_canSave) {
       return;
     }
@@ -79,6 +125,38 @@ class _EditProfileNicknamePageState extends State<EditProfileNicknamePage> {
     setState(() {
       _isSaving = true;
     });
+
+    try {
+      final isTaken = await _isNicknameTaken(_sanitizedValue);
+      if (!mounted) {
+        return;
+      }
+
+      if (isTaken) {
+        setState(() {
+          _isSaving = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This nickname is already taken. Choose another one.'),
+          ),
+        );
+        return;
+      }
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSaving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to validate nickname right now. Try again.'),
+        ),
+      );
+      return;
+    }
 
     getIt<ProfileBloc>().add(
       ProfileEvent.updateProfile(
@@ -103,8 +181,13 @@ class _EditProfileNicknamePageState extends State<EditProfileNicknamePage> {
         setState(() {
           _isSaving = false;
         });
+
+        final resolvedMessage = _isConflictError(message)
+            ? 'This nickname is already taken. Choose another one.'
+            : message;
+
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
+          SnackBar(content: Text(resolvedMessage)),
         );
       },
     );

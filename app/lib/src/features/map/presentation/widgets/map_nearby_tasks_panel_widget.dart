@@ -261,6 +261,7 @@ class _NearbyTasksPanel extends StatelessWidget {
                       seedText: task.creatorUsername.trim().isNotEmpty
                           ? task.creatorUsername
                           : normalizedTitle,
+                      username: task.creatorUsername,
                       avatarUrl: task.creatorAvatarUrl,
                     ),
                     const Gap(10),
@@ -412,10 +413,12 @@ class _ExpandablePanelDescriptionState extends State<_ExpandablePanelDescription
 class _TaskAvatar extends StatelessWidget {
   const _TaskAvatar({
     required this.seedText,
+    this.username = '',
     this.avatarUrl = '',
   });
 
   final String seedText;
+  final String username;
   final String avatarUrl;
 
   @override
@@ -423,60 +426,68 @@ class _TaskAvatar extends StatelessWidget {
     final trimmed = seedText.trim();
     final first = trimmed.isEmpty ? '' : trimmed.substring(0, 1).toUpperCase();
     final hasLetter = RegExp(r'[A-ZА-Я0-9]').hasMatch(first);
-    final normalizedAvatarUrl = avatarUrl.trim();
-    final hasAvatar = normalizedAvatarUrl.isNotEmpty;
+    return FutureBuilder<String>(
+      future: MapAvatarResolverService.instance.resolveAvatar(
+        fallbackUrl: avatarUrl,
+        username: username,
+      ),
+      builder: (context, snapshot) {
+        final normalizedAvatarUrl = snapshot.data?.trim() ?? '';
+        final hasAvatar = normalizedAvatarUrl.isNotEmpty;
 
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF5E7698), Color(0xFF2E3C52)],
-        ),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.28),
-        ),
-      ),
-      child: ClipOval(
-        child: hasAvatar
-            ? Image.network(
-                normalizedAvatarUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Center(
-                  child: hasLetter
-                      ? Text(
-                          first,
-                          style: TextStyles.bodyLarge.copyWith(
+        return Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF5E7698), Color(0xFF2E3C52)],
+            ),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.28),
+            ),
+          ),
+          child: ClipOval(
+            child: hasAvatar
+                ? Image.network(
+                    normalizedAvatarUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Center(
+                      child: hasLetter
+                          ? Text(
+                              first,
+                              style: TextStyles.bodyLarge.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                    ),
+                  )
+                : Center(
+                    child: hasLetter
+                        ? Text(
+                            first,
+                            style: TextStyles.bodyLarge.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          )
+                        : const Icon(
+                            Icons.person,
                             color: Colors.white,
-                            fontWeight: FontWeight.w700,
+                            size: 20,
                           ),
-                        )
-                      : const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                ),
-              )
-            : Center(
-                child: hasLetter
-                    ? Text(
-                        first,
-                        style: TextStyles.bodyLarge.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      )
-                    : const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-              ),
-      ),
+                  ),
+          ),
+        );
+      },
     );
   }
 }

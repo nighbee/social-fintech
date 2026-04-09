@@ -1,7 +1,6 @@
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
-import 'package:app/src/features/map/data/demo/map_demo_config.dart';
 import 'package:app/src/features/map/data/repositories/map_repository_impl.dart';
 import 'package:app/src/features/map/domain/entities/map_apply_to_task_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
@@ -25,6 +24,9 @@ import 'package:injectable/injectable.dart';
 part 'map_bloc.freezed.dart';
 part 'map_event.dart';
 part 'map_state.dart';
+
+const double _defaultMapCenterLatitude = 43.2567;
+const double _defaultMapCenterLongitude = 76.9286;
 
 class MapBloc extends BaseBloc<MapEvent, MapState> {
   MapBloc(@Named.from(MapRepositoryImpl) this._repository)
@@ -72,10 +74,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
 
   Future<void> _loadMap(Emitter emit) async {
     _viewModel = _viewModel.copyWith(
-      centerLatitude:
-          mapDemoMocksEnabled ? mapDemoAlmatyLatitude : 50.4501,
-      centerLongitude:
-          mapDemoMocksEnabled ? mapDemoAlmatyLongitude : 30.5234,
+      centerLatitude: _defaultMapCenterLatitude,
+      centerLongitude: _defaultMapCenterLongitude,
       zoom: 11.8,
       isBusy: false,
       isCreatingTask: false,

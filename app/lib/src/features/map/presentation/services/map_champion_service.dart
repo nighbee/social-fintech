@@ -1,12 +1,16 @@
+import 'dart:async';
 import 'dart:ui';
+import 'dart:ui' as ui;
+import 'dart:math' as math;
 
 import 'package:app/src/features/auth/domain/entities/user_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
+import 'package:app/src/features/map/presentation/services/map_avatar_resolver_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:h3_dart/h3_dart.dart';
+import 'package:h3_flutter/h3_flutter.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 /// Service for managing champion markers on the map
@@ -23,15 +27,22 @@ class MapChampionService {
           ? _minChampionSizeMultiplier
           : _markerSizeMultiplier;
 
-  final H3 _h3 = const H3Factory().process();
+  final H3 _h3 = const H3Factory().load();
   PointAnnotationManager? _annotationManager;
   final Map<String, PointAnnotation> _annotations = {};
   final Map<String, String> _annotationIdsToH3Index = {};
   final Map<String, MapChampionEntity> _championsByIndex = {};
+  final Map<String, String> _markerSignatureByH3 = {};
+  final Map<String, Uint8List> _markerImageCache = {};
+  final Map<String, ({double lat, double lng})> _fallbackAnchorByH3 = {};
   final Map<String, UserEntity> _usersById = {};
+  bool _h3RuntimeUnavailable = false;
+  Future<void> _updateChain = Future<void>.value();
   Cancelable? _tapCancelable;
   void Function(MapChampionEntity champion)? _onChampionTap;
   int _lifecycleToken = 0;
+
+  bool get isH3RuntimeUnavailable => _h3RuntimeUnavailable;
 
   bool _isRecoverableAnnotationError(PlatformException error) {
     final code = error.code.toLowerCase();
@@ -115,7 +126,33 @@ class MapChampionService {
   Future<void> updateChampions(
     List<MapChampionEntity> champions,
     MapRegionAssignmentEntity assignedRegion,
+    {
+    double? fallbackLatitude,
+    double? fallbackLongitude,
+  }
   ) async {
+    final previous = _updateChain;
+    final done = Completer<void>();
+    _updateChain = done.future;
+    await previous;
+    try {
+      await _updateChampionsSerialized(
+        champions,
+        assignedRegion,
+        fallbackLatitude: fallbackLatitude,
+        fallbackLongitude: fallbackLongitude,
+      );
+    } finally {
+      done.complete();
+    }
+  }
+
+  Future<void> _updateChampionsSerialized(
+    List<MapChampionEntity> champions,
+    MapRegionAssignmentEntity assignedRegion, {
+    double? fallbackLatitude,
+    double? fallbackLongitude,
+  }) async {
     final manager = _annotationManager;
     if (manager == null) {
       return;
@@ -151,16 +188,49 @@ class MapChampionService {
         _annotationIdsToH3Index.remove(annotation.id);
       }
       _championsByIndex.remove(h3Index);
+      _markerSignatureByH3.remove(h3Index);
+      _fallbackAnchorByH3.remove(h3Index);
     }
 
     for (final champion in champions) {
-      final coords = _coordsForChampion(champion);
+      final coords = _coordsForChampion(
+        champion,
+        assignedRegion: assignedRegion,
+        fallbackLatitude: fallbackLatitude,
+        fallbackLongitude: fallbackLongitude,
+      );
       if (coords == null) {
         debugPrint('[MapChampionService] invalid h3: ${champion.h3Index}');
         continue;
       }
+      final signature = _markerSignature(champion);
       final existing = _annotations[champion.h3Index];
       if (existing != null) {
+        final knownSignature = _markerSignatureByH3[champion.h3Index];
+        if (knownSignature != signature) {
+          try {
+            await manager.delete(existing);
+          } on PlatformException catch (error) {
+            if (!_isRecoverableAnnotationError(error)) {
+              rethrow;
+            }
+          }
+          _annotations.remove(champion.h3Index);
+          _annotationIdsToH3Index.remove(existing.id);
+
+          try {
+            final markerImage = await _buildChampionMarkerImage(champion);
+            await _addChampionWithCoords(manager, champion, coords, markerImage);
+            _markerSignatureByH3[champion.h3Index] = signature;
+          } on PlatformException catch (error) {
+            if (_isRecoverableAnnotationError(error)) {
+              continue;
+            }
+            rethrow;
+          }
+          continue;
+        }
+
         existing
           ..geometry = Point(coordinates: Position(coords.lng, coords.lat))
           ..iconAnchor = IconAnchor.BOTTOM
@@ -172,15 +242,19 @@ class MapChampionService {
           if (_isRecoverableAnnotationError(error)) {
             _annotations.remove(champion.h3Index);
             _annotationIdsToH3Index.remove(existing.id);
-            await _addChampionWithCoords(manager, champion, coords);
+            final markerImage = await _buildChampionMarkerImage(champion);
+            await _addChampionWithCoords(manager, champion, coords, markerImage);
             continue;
           }
           rethrow;
         }
         _championsByIndex[champion.h3Index] = champion;
+        _markerSignatureByH3[champion.h3Index] = signature;
       } else {
         try {
-          await _addChampionWithCoords(manager, champion, coords);
+          final markerImage = await _buildChampionMarkerImage(champion);
+          await _addChampionWithCoords(manager, champion, coords, markerImage);
+          _markerSignatureByH3[champion.h3Index] = signature;
         } on PlatformException catch (error) {
           if (_isRecoverableAnnotationError(error)) {
             continue;
@@ -193,6 +267,9 @@ class MapChampionService {
 
   /// Центр H3-ячейки (как на бэкенде в `centerOfH3`): координаты пина чемпиона региона.
   ({double lat, double lng})? _cellCenter(String h3Hex) {
+    if (_h3RuntimeUnavailable) {
+      return null;
+    }
     final normalized = h3Hex.trim().toLowerCase();
     if (normalized.isEmpty) {
       return null;
@@ -207,20 +284,103 @@ class MapChampionService {
       try {
         final geo = _h3.h3ToGeo(index);
         return (lat: geo.lat, lng: geo.lon);
-      } catch (_) {
+      } catch (error) {
+        final message = error.toString();
+        if (message.contains('Failed to lookup symbol') ||
+            message.contains('symbol not found')) {
+          _h3RuntimeUnavailable = true;
+        }
+        debugPrint(
+          '[MapChampionService] h3ToGeo failed for $normalized: $error',
+        );
         return null;
       }
-    } catch (_) {
+    } catch (error) {
+      final message = error.toString();
+      if (message.contains('Failed to lookup symbol') ||
+          message.contains('symbol not found')) {
+        _h3RuntimeUnavailable = true;
+      }
+      debugPrint(
+        '[MapChampionService] h3 decode failed for $normalized: $error',
+      );
       return null;
     }
   }
 
-  ({double lat, double lng})? _coordsForChampion(MapChampionEntity champion) {
+  ({double lat, double lng})? _coordsForChampion(
+    MapChampionEntity champion, {
+    required MapRegionAssignmentEntity assignedRegion,
+    required double? fallbackLatitude,
+    required double? fallbackLongitude,
+  }) {
+    final fromApi = _coordsFromApi(champion);
+    if (fromApi != null) {
+      return fromApi;
+    }
+
     final fromH3 = _cellCenter(champion.h3Index);
     if (fromH3 != null) {
       return fromH3;
     }
-    return null;
+
+    return _fallbackCoordsForChampion(
+      champion,
+      assignedRegion: assignedRegion,
+      fallbackLatitude: fallbackLatitude,
+      fallbackLongitude: fallbackLongitude,
+    );
+  }
+
+  ({double lat, double lng})? _coordsFromApi(MapChampionEntity champion) {
+    final lat = champion.centerLat;
+    final lng = champion.centerLon;
+    if (lat == null || lng == null) {
+      return null;
+    }
+    if (lat.abs() > 90 || lng.abs() > 180) {
+      return null;
+    }
+    return (lat: lat, lng: lng);
+  }
+
+  ({double lat, double lng})? _fallbackCoordsForChampion(
+    MapChampionEntity champion, {
+    required MapRegionAssignmentEntity assignedRegion,
+    required double? fallbackLatitude,
+    required double? fallbackLongitude,
+  }) {
+    final lat = fallbackLatitude;
+    final lng = fallbackLongitude;
+    final existingAnchor = _fallbackAnchorByH3[champion.h3Index];
+    if (existingAnchor != null) {
+      return existingAnchor;
+    }
+    if (lat == null || lng == null) {
+      return null;
+    }
+
+    final isKnownRegionChampion = champion.h3Index == assignedRegion.h3Res5 ||
+        champion.h3Index == assignedRegion.h3Res4 ||
+        champion.h3Index == assignedRegion.h3Res2;
+    if (!isKnownRegionChampion) {
+      return null;
+    }
+
+    final seed = champion.h3Index.codeUnits.fold<int>(0, (a, b) => a + b);
+    final angle = (seed % 360) * (math.pi / 180.0);
+    final radiusByResolution = switch (champion.resolution) {
+      5 => 0.0012,
+      4 => 0.0022,
+      _ => 0.0032,
+    };
+
+    final anchored = (
+      lat: lat + math.cos(angle) * radiusByResolution,
+      lng: lng + math.sin(angle) * radiusByResolution,
+    );
+    _fallbackAnchorByH3[champion.h3Index] = anchored;
+    return anchored;
   }
 
   /// Add champion with specific coordinates
@@ -228,10 +388,11 @@ class MapChampionService {
     PointAnnotationManager manager,
     MapChampionEntity champion,
     ({double lat, double lng}) coords,
+    Uint8List markerImage,
   ) async {
     final pointAnnotationOptions = PointAnnotationOptions(
       geometry: Point(coordinates: Position(coords.lng, coords.lat)),
-      image: await _createChampionMarkerImage(),
+      image: markerImage,
       iconAnchor: IconAnchor.BOTTOM,
       symbolSortKey: 8000,
       iconSize: _markerIconScale * _effectiveSizeMultiplier,
@@ -242,6 +403,7 @@ class MapChampionService {
       _annotations[champion.h3Index] = pointAnnotation;
       _annotationIdsToH3Index[pointAnnotation.id] = champion.h3Index;
       _championsByIndex[champion.h3Index] = champion;
+      _markerSignatureByH3[champion.h3Index] = _markerSignature(champion);
     } on PlatformException catch (error) {
       if (_isRecoverableAnnotationError(error)) {
         return;
@@ -269,6 +431,8 @@ class MapChampionService {
     _annotations.clear();
     _annotationIdsToH3Index.clear();
     _championsByIndex.clear();
+    _markerSignatureByH3.clear();
+    _fallbackAnchorByH3.clear();
   }
 
   /// Dispose the service
@@ -281,7 +445,64 @@ class MapChampionService {
     _onChampionTap = null;
     await clear();
     _annotationManager = null;
+    _markerImageCache.clear();
+    _updateChain = Future<void>.value();
     _markerSizeMultiplier = 1.0;
+  }
+
+  String _markerSignature(MapChampionEntity champion) {
+    return '${champion.userId}|${champion.username}|${champion.avatarUrl}';
+  }
+
+  Future<Uint8List> _buildChampionMarkerImage(MapChampionEntity champion) async {
+    final resolvedAvatarUrl = await MapAvatarResolverService.instance.resolveAvatar(
+      fallbackUrl: champion.avatarUrl,
+      userId: champion.userId,
+      username: champion.username,
+    );
+    final initials = _initialsForChampion(champion);
+    final cacheKey = 'avatar:$resolvedAvatarUrl|initials:$initials';
+    final cached = _markerImageCache[cacheKey];
+    if (cached != null) {
+      return cached;
+    }
+
+    final image = await _createChampionMarkerImage(
+      avatarUrl: resolvedAvatarUrl,
+      initials: initials,
+    );
+    _markerImageCache[cacheKey] = image;
+    return image;
+  }
+
+  String _initialsForChampion(MapChampionEntity champion) {
+    final source = champion.username.trim().isNotEmpty
+        ? champion.username.trim()
+        : champion.userId.trim();
+    if (source.isEmpty) {
+      return '?';
+    }
+    return source.substring(0, 1).toUpperCase();
+  }
+
+  Future<ui.Image?> _loadAvatarImage(String avatarUrl) async {
+    final uri = Uri.tryParse(avatarUrl.trim());
+    if (uri == null) {
+      return null;
+    }
+    try {
+      final byteData = await NetworkAssetBundle(uri).load(uri.toString());
+      final bytes = byteData.buffer.asUint8List();
+      final codec = await ui.instantiateImageCodec(
+        bytes,
+        targetWidth: 220,
+        targetHeight: 220,
+      );
+      final frame = await codec.getNextFrame();
+      return frame.image;
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _isTokenActive(int token) => token == _lifecycleToken;
@@ -322,7 +543,10 @@ class MapChampionService {
   }
 
   /// Figma: 86×86 circle, 2px border rgba(206,165,72), shadow 0/0/4 gold.
-  Future<Uint8List> _createChampionMarkerImage() async {
+  Future<Uint8List> _createChampionMarkerImage({
+    required String avatarUrl,
+    required String initials,
+  }) async {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
     const gold = Color(0xFFCEA548);
@@ -356,26 +580,46 @@ class MapChampionService {
       ).createShader(circleRect);
     canvas.drawCircle(Offset(circleCx, circleCy), fillRadius, fillPaint);
 
-    final personPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.92)
-      ..style = PaintingStyle.fill;
-    canvas.drawCircle(
-      Offset(circleCx, circleCy - 10),
-      9.0 * 1.08,
-      personPaint,
-    );
-    final bodyPath = Path()
-      ..moveTo(circleCx - 17, circleCy + 14)
-      ..quadraticBezierTo(
-        circleCx,
-        circleCy - 2,
-        circleCx + 17,
-        circleCy + 14,
-      )
-      ..lineTo(circleCx + 17, circleCy + 22)
-      ..lineTo(circleCx - 17, circleCy + 22)
-      ..close();
-    canvas.drawPath(bodyPath, personPaint);
+    final avatarImage = avatarUrl.trim().isNotEmpty
+        ? await _loadAvatarImage(avatarUrl)
+        : null;
+    if (avatarImage != null) {
+      final dst = Rect.fromCircle(
+        center: Offset(circleCx, circleCy),
+        radius: fillRadius,
+      );
+      final src = Rect.fromLTWH(
+        0,
+        0,
+        avatarImage.width.toDouble(),
+        avatarImage.height.toDouble(),
+      );
+      final clipPath = Path()..addOval(dst);
+      canvas.save();
+      canvas.clipPath(clipPath);
+      canvas.drawImageRect(avatarImage, src, dst, Paint());
+      canvas.restore();
+    } else {
+      final initialText = initials.trim().isEmpty ? '?' : initials.trim();
+      final initialPainter = TextPainter(
+        text: TextSpan(
+          text: initialText,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 34,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: fillRadius * 2);
+      initialPainter.paint(
+        canvas,
+        Offset(
+          circleCx - initialPainter.width / 2,
+          circleCy - initialPainter.height / 2,
+        ),
+      );
+    }
 
     final ringPaint = Paint()
       ..style = PaintingStyle.stroke

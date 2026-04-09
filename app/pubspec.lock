@@ -712,14 +712,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.1"
-  h3_dart:
-    dependency: "direct main"
-    description:
-      name: h3_dart
-      sha256: b52997f418d9ac53a1eb2f0c8fe3926abf7fa11cdf832d33c960e440dc8244f4
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.2"
   h3_ffi:
     dependency: transitive
     description:
@@ -728,6 +720,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.2"
+  h3_flutter:
+    dependency: "direct main"
+    description:
+      name: h3_flutter
+      sha256: ccc62394641c43fccf87fec063a639a851ba0f30ec0caa0afeb455aebe581297
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.6"
   h3_web:
     dependency: transitive
     description:

@@ -20,6 +20,7 @@ import 'package:app/src/features/map/presentation/constants/map_ui_palette.dart'
 import 'package:app/src/features/map/presentation/controllers/map_page_controller.dart';
 import 'package:app/src/features/map/presentation/mixins/show_champion_leaderboard_bottom_sheet.dart';
 import 'package:app/src/features/map/presentation/services/map_dialog_service.dart';
+import 'package:app/src/features/map/presentation/services/map_avatar_resolver_service.dart';
 import 'package:app/src/features/map/presentation/services/map_persistence_service.dart';
 import 'package:app/src/features/map/presentation/services/map_polling_service.dart';
 import 'package:app/src/features/map/presentation/utils/map_flow_evaluator.dart';
@@ -146,6 +147,8 @@ class _MapPageState extends State<MapPage>
                 onToggleExpanded: () =>
                     setState(_controller.toggleRequestExpanded),
                 onMapCreated: _controller.onMapCreated,
+                onStyleLoaded: _controller.onStyleLoaded,
+                onStyleImageMissing: _controller.onStyleImageMissing,
                 onCameraChanged: (eventData) =>
                     setState(() => _controller.onCameraChanged(eventData)),
                 onOpenCreateRequest: () =>
@@ -208,6 +211,8 @@ class _MapPageState extends State<MapPage>
                 onToggleExpanded: () =>
                     setState(_controller.toggleRequestExpanded),
                 onMapCreated: _controller.onMapCreated,
+                onStyleLoaded: _controller.onStyleLoaded,
+                onStyleImageMissing: _controller.onStyleImageMissing,
                 onCameraChanged: (eventData) =>
                     setState(() => _controller.onCameraChanged(eventData)),
                 onOpenCreateRequest: () =>

@@ -91,6 +91,8 @@ PODS:
   - GTMSessionFetcher/Core (3.5.0)
   - GTMSessionFetcher/Full (3.5.0):
     - GTMSessionFetcher/Core
+  - h3_flutter (0.4.2):
+    - Flutter
   - image_picker_ios (0.0.1):
     - Flutter
   - mapbox_maps_flutter (2.19.1):
@@ -130,6 +132,7 @@ DEPENDENCIES:
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - geolocator_apple (from `.symlinks/plugins/geolocator_apple/darwin`)
   - google_sign_in_ios (from `.symlinks/plugins/google_sign_in_ios/darwin`)
+  - h3_flutter (from `.symlinks/plugins/h3_flutter/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
   - mapbox_maps_flutter (from `.symlinks/plugins/mapbox_maps_flutter/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
@@ -176,6 +179,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/geolocator_apple/darwin"
   google_sign_in_ios:
     :path: ".symlinks/plugins/google_sign_in_ios/darwin"
+  h3_flutter:
+    :path: ".symlinks/plugins/h3_flutter/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
   mapbox_maps_flutter:
@@ -214,6 +219,7 @@ SPEC CHECKSUMS:
   GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
   GTMAppAuth: f69bd07d68cd3b766125f7e072c45d7340dea0de
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
+  h3_flutter: 413e28527b70fb83db1d1d434c30e4b8744af2f9
   image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
   mapbox_maps_flutter: 632563764d2dff820a123312fa5b50417a214b1f
   MapboxCommon: b40bcf330493e0d218802a63cabbd2efe6ca303b
