@@ -224,6 +224,10 @@ class $AssetsIconsGen {
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
+  /// File path: assets/images/Big_golden_coin.png
+  AssetGenImage get bigGoldenCoin =>
+      const AssetGenImage('assets/images/Big_golden_coin.png');
+
   /// File path: assets/images/ammolite.png
   AssetGenImage get ammolite =>
       const AssetGenImage('assets/images/ammolite.png');
@@ -250,6 +254,9 @@ class $AssetsImagesGen {
   AssetGenImage get moonstone =>
       const AssetGenImage('assets/images/moonstone.png');
 
+  /// File path: assets/images/myTask.png
+  AssetGenImage get myTask => const AssetGenImage('assets/images/myTask.png');
+
   /// File path: assets/images/onyx.png
   AssetGenImage get onyx => const AssetGenImage('assets/images/onyx.png');
 
@@ -262,6 +269,7 @@ class $AssetsImagesGen {
 
   /// List of all assets
   List<AssetGenImage> get values => [
+        bigGoldenCoin,
         ammolite,
         goldenHonor,
         image,
@@ -269,6 +277,7 @@ class $AssetsImagesGen {
         lapislazuli,
         mapTriangleMarker,
         moonstone,
+        myTask,
         onyx,
         pearl,
         supernova

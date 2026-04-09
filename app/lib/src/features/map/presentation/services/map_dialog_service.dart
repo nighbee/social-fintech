@@ -319,6 +319,15 @@ class MapDialogService {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
+                          'Task Completion Confirmation',
+                          textAlign: TextAlign.center,
+                          style: TextStyles.bodyLarge.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
                           'Did $helperName help you complete the task?',
                           textAlign: TextAlign.center,
                           style: TextStyles.bodyMain.copyWith(

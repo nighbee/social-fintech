@@ -29,7 +29,10 @@ class DioExceptions implements Exception {
           errorMessage =
               data['message'] as String? ??
               data['error'] as String? ??
-              data['detail'] as String?;
+              data['detail'] as String? ??
+              data['status'] as String? ??
+              data['code'] as String? ??
+              data['error_code'] as String?;
           // If there's a nested errors object
           if (errorMessage == null && data['errors'] != null) {
             final errors = data['errors'];

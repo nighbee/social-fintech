@@ -79,21 +79,26 @@ class _RequestsOverlay extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 11,
-                          backgroundColor: Color(0xFF2A3341),
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.white70,
-                            size: 14,
-                          ),
+                          backgroundColor: const Color(0xFF2A3341),
+                          backgroundImage: application.applicantAvatarUrl.trim().isNotEmpty
+                              ? NetworkImage(application.applicantAvatarUrl.trim())
+                              : null,
+                          child: application.applicantAvatarUrl.trim().isNotEmpty
+                              ? null
+                              : const Icon(
+                                  Icons.person,
+                                  color: Colors.white70,
+                                  size: 14,
+                                ),
                         ),
                         const Gap(8),
                         Expanded(
                           child: Text(
                             isAcceptedLike
-                                ? '${_compactApplicant(application.applicantId)} has arrived'
-                                : '${_compactApplicant(application.applicantId)} wants to help you',
+                              ? '${_displayApplicantName(application)} has arrived'
+                              : '${_displayApplicantName(application)} wants to help you',
                             style: TextStyles.bodyMain.copyWith(
                               color: Colors.white70,
                             ),
@@ -170,5 +175,13 @@ class _RequestsOverlay extends StatelessWidget {
       return trimmed;
     }
     return trimmed.substring(0, 18);
+  }
+
+  String _displayApplicantName(MapTaskApplicationEntity application) {
+    final username = application.applicantUsername.trim();
+    if (username.isNotEmpty) {
+      return username;
+    }
+    return _compactApplicant(application.applicantId);
   }
 }

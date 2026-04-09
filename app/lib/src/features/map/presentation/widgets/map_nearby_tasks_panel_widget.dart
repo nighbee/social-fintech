@@ -257,7 +257,12 @@ class _NearbyTasksPanel extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    _TaskAvatar(seedText: normalizedTitle),
+                    _TaskAvatar(
+                      seedText: task.creatorUsername.trim().isNotEmpty
+                          ? task.creatorUsername
+                          : normalizedTitle,
+                      avatarUrl: task.creatorAvatarUrl,
+                    ),
                     const Gap(10),
                     Expanded(
                       child: Text(
@@ -405,15 +410,21 @@ class _ExpandablePanelDescriptionState extends State<_ExpandablePanelDescription
 }
 
 class _TaskAvatar extends StatelessWidget {
-  const _TaskAvatar({required this.seedText});
+  const _TaskAvatar({
+    required this.seedText,
+    this.avatarUrl = '',
+  });
 
   final String seedText;
+  final String avatarUrl;
 
   @override
   Widget build(BuildContext context) {
     final trimmed = seedText.trim();
     final first = trimmed.isEmpty ? '' : trimmed.substring(0, 1).toUpperCase();
     final hasLetter = RegExp(r'[A-ZА-Я0-9]').hasMatch(first);
+    final normalizedAvatarUrl = avatarUrl.trim();
+    final hasAvatar = normalizedAvatarUrl.isNotEmpty;
 
     return Container(
       width: 40,
@@ -429,19 +440,41 @@ class _TaskAvatar extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.28),
         ),
       ),
-      child: Center(
-        child: hasLetter
-            ? Text(
-                first,
-                style: TextStyles.bodyLarge.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+      child: ClipOval(
+        child: hasAvatar
+            ? Image.network(
+                normalizedAvatarUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Center(
+                  child: hasLetter
+                      ? Text(
+                          first,
+                          style: TextStyles.bodyLarge.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        )
+                      : const Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                 ),
               )
-            : const Icon(
-                Icons.person,
-                color: Colors.white,
-                size: 20,
+            : Center(
+                child: hasLetter
+                    ? Text(
+                        first,
+                        style: TextStyles.bodyLarge.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 20,
+                      ),
               ),
       ),
     );

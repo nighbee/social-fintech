@@ -51,12 +51,24 @@ class MapSelfMarkerService {
       await manager.setIconAllowOverlap(true);
       await manager.setIconIgnorePlacement(true);
     } on PlatformException catch (error) {
-      if (error.code == 'channel-error') {
+      if (_isRecoverableAnnotationError(error)) {
         await _disposeAnnotationLayer(invalidateToken: false);
         return;
       }
       rethrow;
     }
+  }
+
+  bool _isRecoverableAnnotationError(PlatformException error) {
+    final code = error.code.toLowerCase();
+    final message = (error.message ?? '').toLowerCase();
+    return code == 'channel-error' ||
+        message.contains('unable to establish connection on channel') ||
+        message.contains('no manager found with id') ||
+        message.contains('no manager found') ||
+        message.contains('no manager or annotation found') ||
+        message.contains('annotation id') ||
+        message.contains('dev.flutter.pigeon.mapbox_maps_flutter');
   }
 
   Future<void> applyMarkerSizeMultiplier(double multiplier) async {
@@ -73,7 +85,7 @@ class MapSelfMarkerService {
     try {
       await manager.update(existing);
     } on PlatformException catch (error) {
-      if (error.code != 'channel-error') {
+      if (!_isRecoverableAnnotationError(error)) {
         rethrow;
       }
     }
@@ -189,7 +201,7 @@ class MapSelfMarkerService {
       try {
         await manager.deleteAll();
       } on PlatformException catch (error) {
-        if (error.code != 'channel-error') {
+        if (!_isRecoverableAnnotationError(error)) {
           rethrow;
         }
       }
@@ -215,7 +227,7 @@ class MapSelfMarkerService {
         await _disposeAnnotationLayer(invalidateToken: false);
         return;
       } on PlatformException catch (error) {
-        if (error.code == 'channel-error') {
+        if (_isRecoverableAnnotationError(error)) {
           await _disposeAnnotationLayer(invalidateToken: false);
           return;
         }
@@ -225,7 +237,7 @@ class MapSelfMarkerService {
         try {
           await manager.delete(created);
         } on PlatformException catch (error) {
-          if (error.code != 'channel-error') {
+          if (!_isRecoverableAnnotationError(error)) {
             rethrow;
           }
         }
@@ -242,7 +254,7 @@ class MapSelfMarkerService {
       try {
         await manager.update(existing);
       } on PlatformException catch (error) {
-        if (error.code != 'channel-error') {
+        if (!_isRecoverableAnnotationError(error)) {
           rethrow;
         }
       }
@@ -289,7 +301,7 @@ class MapSelfMarkerService {
       try {
         await manager.delete(ann);
       } on PlatformException catch (error) {
-        if (error.code != 'channel-error') {
+        if (!_isRecoverableAnnotationError(error)) {
           rethrow;
         }
       }
@@ -314,7 +326,7 @@ class MapSelfMarkerService {
           return null;
         }
       } on PlatformException catch (error) {
-        if (error.code != 'channel-error' || attempt == _managerInitAttempts - 1) {
+        if (!_isRecoverableAnnotationError(error) || attempt == _managerInitAttempts - 1) {
           rethrow;
         }
       }

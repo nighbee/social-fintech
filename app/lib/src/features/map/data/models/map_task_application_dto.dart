@@ -13,6 +13,8 @@ class MapTaskApplicationDto extends BaseDto with _$MapTaskApplicationDto {
     @JsonKey(name: 'id', defaultValue: '') required String id,
     @JsonKey(name: 'task_id', defaultValue: '') required String taskId,
     @JsonKey(name: 'applicant_id', defaultValue: '') required String applicantId,
+    @JsonKey(name: 'applicant_username') String? applicantUsername,
+    @JsonKey(name: 'applicant_avatar_url') String? applicantAvatarUrl,
     @JsonKey(name: 'status', defaultValue: '') required String status,
     @JsonKey(name: 'created_at', defaultValue: '') required String createdAt,
   }) = _MapTaskApplicationDto;
@@ -25,6 +27,8 @@ class MapTaskApplicationDto extends BaseDto with _$MapTaskApplicationDto {
       id: id,
       taskId: taskId,
       applicantId: applicantId,
+      applicantUsername: applicantUsername ?? '',
+      applicantAvatarUrl: applicantAvatarUrl ?? '',
       status: status,
       createdAt: createdAt,
     );

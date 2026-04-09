@@ -1,8 +1,6 @@
 import 'dart:ui';
 
 import 'package:app/src/features/auth/domain/entities/user_entity.dart';
-import 'package:app/src/features/map/data/demo/map_demo_config.dart';
-import 'package:app/src/features/map/data/demo/map_demo_data.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
 import 'package:flutter/foundation.dart';
@@ -39,10 +37,12 @@ class MapChampionService {
     final code = error.code.toLowerCase();
     final message = (error.message ?? '').toLowerCase();
     return code == 'channel-error' ||
-      message.contains('unable to establish connection on channel') ||
+        message.contains('unable to establish connection on channel') ||
+        message.contains('no manager found with id') ||
+        message.contains('no manager found') ||
         message.contains('no manager or annotation found') ||
-      message.contains('annotation id') ||
-      message.contains('dev.flutter.pigeon.mapbox_maps_flutter');
+        message.contains('annotation id') ||
+        message.contains('dev.flutter.pigeon.mapbox_maps_flutter');
   }
 
   /// Initialize the annotation manager
@@ -81,7 +81,7 @@ class MapChampionService {
         },
       );
     } on PlatformException catch (error) {
-      if (error.code == 'channel-error') {
+      if (_isRecoverableAnnotationError(error)) {
         await dispose(invalidateToken: false);
         return;
       }
@@ -104,7 +104,7 @@ class MapChampionService {
       try {
         await manager.update(ann);
       } on PlatformException catch (error) {
-        if (error.code != 'channel-error') {
+        if (!_isRecoverableAnnotationError(error)) {
           rethrow;
         }
       }
@@ -220,11 +220,6 @@ class MapChampionService {
     if (fromH3 != null) {
       return fromH3;
     }
-    // Демо: `8520e60bfffffff` с h3-js не проходит h3IsValid в нативном FFI — фиксируем центр Алматы.
-    if (champion.userId == mapDemoChampionUserId ||
-        champion.h3Index.trim().toLowerCase() == mapDemoChampionH3Res5) {
-      return (lat: mapDemoAlmatyLatitude, lng: mapDemoAlmatyLongitude);
-    }
     return null;
   }
 
@@ -319,7 +314,7 @@ class MapChampionService {
     try {
       await manager.deleteAll();
     } on PlatformException catch (error) {
-      if (error.code == 'channel-error') {
+      if (_isRecoverableAnnotationError(error)) {
         return;
       }
       rethrow;
