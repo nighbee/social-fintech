@@ -904,6 +904,8 @@ func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, re
 			Score:       c.Score,
 			Username:    c.Username,
 			AvatarURL:   c.AvatarURL,
+			Latitude:    c.Latitude,
+			Longitude:   c.Longitude,
 			CityName:    c.CityName,
 			CountryName: c.CountryName,
 		})
@@ -945,11 +947,14 @@ func (s *Service) getLiveRegionChampionsFromCache(ctx context.Context, h3Indexes
 			continue
 		}
 
+		lat, lon := centerOfH3(h3Index)
 		pins = append(pins, ChampionPin{
 			H3Index:    h3Index,
 			Resolution: resolution,
 			UserID:     members[0],
 			Score:      int64(score),
+			Latitude:   lat,
+			Longitude:  lon,
 		})
 	}
 

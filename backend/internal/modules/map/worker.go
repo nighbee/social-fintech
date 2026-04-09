@@ -131,6 +131,7 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 			userID = pickChampionUserID(userID, tiedMembers, firstSeen, createdAtByUser)
 		}
 
+		lat, lon := centerOfH3(h3Index)
 		champion := &RegionChampion{
 			ID:         uuid.MustParse(uuid.NewString()),
 			H3Index:    h3Index,
@@ -139,6 +140,8 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 			Score:      int64(score),
 			Week:       week,
 			Year:       year,
+			Latitude:   lat,
+			Longitude:  lon,
 			UpdatedAt:  time.Now(),
 		}
 
@@ -180,6 +183,8 @@ func (w *Worker) snapshotGlobalGoldChampion(ctx context.Context) {
 		Score:       score,
 		Week:        week,
 		Year:        year,
+		Latitude:    0,
+		Longitude:   0,
 		CountryName: "Global",
 		UpdatedAt:   time.Now(),
 	}

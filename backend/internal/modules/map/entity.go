@@ -193,6 +193,8 @@ type RegionChampion struct {
 	Score      int64     `db:"score"       json:"score"`
 	Week       int       `db:"week"        json:"week"`
 	Year       int       `db:"year"        json:"year"`
+	Latitude   float64   `db:"latitude"    json:"latitude"`
+	Longitude  float64   `db:"longitude"   json:"longitude"`
 	UpdatedAt  time.Time `db:"updated_at"  json:"updated_at"`
 
 	// Enriched fields from geo-metadata
@@ -219,9 +221,11 @@ type ChampionPin struct {
 	Resolution  int    `json:"resolution"`
 	UserID      string `json:"user_id"`
 	Score       int64  `json:"score"`
-	Username    string `json:"username"`
-	AvatarURL   string `json:"avatar_url"`
-	CityName    string `json:"city_name,omitempty"`
-	CountryName string `json:"country_name,omitempty"`
+	Username    string  `json:"username"`
+	AvatarURL   string  `json:"avatar_url"`
+	Latitude    float64 `json:"latitude"`
+	Longitude   float64 `json:"longitude"`
+	CityName    string  `json:"city_name,omitempty"`
+	CountryName string  `json:"country_name,omitempty"`
 }
 

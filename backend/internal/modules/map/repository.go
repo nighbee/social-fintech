@@ -543,12 +543,14 @@ func (r *repository) UpsertRegionChampion(ctx context.Context, champion *RegionC
 	query := `
 		INSERT INTO region_champions (
 			id, h3_index, resolution, user_id, score, week, year,
-			city_name, region_name, country_name, updated_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+			latitude, longitude, city_name, region_name, country_name, updated_at
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
 		ON CONFLICT (h3_index, resolution, week, year)
 		DO UPDATE SET
 			user_id      = EXCLUDED.user_id,
 			score        = EXCLUDED.score,
+			latitude     = EXCLUDED.latitude,
+			longitude    = EXCLUDED.longitude,
 			city_name    = EXCLUDED.city_name,
 			region_name  = EXCLUDED.region_name,
 			country_name = EXCLUDED.country_name,
@@ -558,6 +560,7 @@ func (r *repository) UpsertRegionChampion(ctx context.Context, champion *RegionC
 	_, err := r.executor().ExecContext(ctx, query,
 		champion.ID, champion.H3Index, champion.Resolution, champion.UserID,
 		champion.Score, champion.Week, champion.Year,
+		champion.Latitude, champion.Longitude,
 		champion.CityName, champion.RegionName, champion.CountryName,
 	)
 	if err != nil {
@@ -569,7 +572,8 @@ func (r *repository) UpsertRegionChampion(ctx context.Context, champion *RegionC
 func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string, resolution, year, week int) ([]RegionChampion, error) {
 	query := `
 		SELECT
-			c.id, c.h3_index, c.resolution, c.user_id, c.score, c.week, c.year, c.updated_at,
+			c.id, c.h3_index, c.resolution, c.user_id, c.score, c.week, c.year,
+			c.latitude, c.longitude, c.updated_at,
 			COALESCE(c.city_name,    m.city_name,    '') AS city_name,
 			COALESCE(c.region_name,  m.region_name,  '') AS region_name,
 			COALESCE(c.country_name, m.country_name, '') AS country_name,
