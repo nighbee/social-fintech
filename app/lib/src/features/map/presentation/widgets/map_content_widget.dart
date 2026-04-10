@@ -470,6 +470,8 @@ class _MapContent extends StatelessWidget {
                       : isAwaitingCodeEntry
                           ? 'Approved. Enter the verification code from creator'
                           : '${executorCreatorName.trim().isEmpty ? 'Creator' : executorCreatorName.trim()} confirming help received',
+                  creatorName: executorCreatorName,
+                  avatarUrl: appliedTask?.creatorAvatarUrl ?? '',
                   onCloseTap: onExecutorCancel,
                 ),
               ),

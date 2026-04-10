@@ -3,10 +3,14 @@ part of 'package:app/src/features/map/presentation/pages/map_page.dart';
 class _ExecutorRequestStrip extends StatelessWidget {
   const _ExecutorRequestStrip({
     required this.message,
+    required this.creatorName,
+    required this.avatarUrl,
     required this.onCloseTap,
   });
 
   final String message;
+  final String creatorName;
+  final String avatarUrl;
   final VoidCallback onCloseTap;
 
   @override
@@ -33,10 +37,27 @@ class _ExecutorRequestStrip extends StatelessWidget {
           ),
           child: Row(
             children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: const Color(0xFF2A3341),
-                backgroundImage: Assets.images.image.provider(),
+              FutureBuilder<String>(
+                future: MapAvatarResolverService.instance.resolveAvatar(
+                  fallbackUrl: avatarUrl,
+                  username: creatorName,
+                ),
+                builder: (context, snapshot) {
+                  final resolvedUrl = snapshot.data?.trim() ?? '';
+                  return CircleAvatar(
+                    radius: 14,
+                    backgroundColor: const Color(0xFF2A3341),
+                    backgroundImage:
+                        resolvedUrl.isNotEmpty ? NetworkImage(resolvedUrl) : null,
+                    child: resolvedUrl.isNotEmpty
+                        ? null
+                        : const Icon(
+                            Icons.person,
+                            color: Colors.white70,
+                            size: 14,
+                          ),
+                  );
+                },
               ),
               const Gap(14),
               Expanded(
