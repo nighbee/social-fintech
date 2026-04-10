@@ -187,9 +187,10 @@ func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon
 		       t.workers_needed, t.workers_filled, t.verification_code, t.status, t.auto_shutdown_at,
 		       t.h3_res5, t.h3_res4, t.h3_res2, t.created_at, t.updated_at,
 		       u.username AS creator_username,
-		       u.avatar_url AS creator_avatar_url
+		       COALESCE(p.avatar_url, '') AS creator_avatar_url
 		FROM tasks t
 		JOIN users u ON u.id = t.creator_id
+		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE t.status = 'open'
 		  AND (t.auto_shutdown_at IS NULL OR t.auto_shutdown_at > NOW())
 		  AND t.id NOT IN (
@@ -220,10 +221,11 @@ func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([
 		       t.h3_res5, t.h3_res4, t.h3_res2, t.created_at, t.updated_at,
 		       ta.status AS application_status,
 		       u.username AS creator_username,
-		       u.avatar_url AS creator_avatar_url
+		       COALESCE(p.avatar_url, '') AS creator_avatar_url
 		FROM tasks t
 		JOIN task_applications ta ON t.id = ta.task_id
 		JOIN users u ON u.id = t.creator_id
+		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE ta.applicant_id = $1 AND ta.status != 'rejected'
 		ORDER BY ta.created_at DESC
 	`
@@ -342,9 +344,10 @@ func (r *repository) GetApplicationsByTaskID(ctx context.Context, taskID string)
 		SELECT ta.id, ta.task_id, ta.applicant_id, ta.status,
 		       ta.code_submitted_at, ta.confirmed_at, ta.created_at, ta.updated_at,
 		       u.username AS applicant_username,
-		       u.avatar_url AS applicant_avatar_url
+		       COALESCE(p.avatar_url, '') AS applicant_avatar_url
 		FROM task_applications ta
 		JOIN users u ON u.id = ta.applicant_id
+		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE ta.task_id = $1
 		ORDER BY ta.created_at ASC
 	`
@@ -360,9 +363,10 @@ func (r *repository) GetEnrichedApplicationByID(ctx context.Context, application
 		SELECT ta.id, ta.task_id, ta.applicant_id, ta.status,
 		       ta.code_submitted_at, ta.confirmed_at, ta.created_at, ta.updated_at,
 		       u.username AS applicant_username,
-		       u.avatar_url AS applicant_avatar_url
+		       COALESCE(p.avatar_url, '') AS applicant_avatar_url
 		FROM task_applications ta
 		JOIN users u ON u.id = ta.applicant_id
+		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE ta.id = $1
 	`
 	var app taskApplicationRow

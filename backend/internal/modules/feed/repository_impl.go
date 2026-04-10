@@ -303,14 +303,15 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
-		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 		       COALESCE(
-			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order) 
+			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order)
 			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
 		       ) as media_json,
 		       EXISTS(SELECT 1 FROM post_interactions pi WHERE pi.post_id = p.id AND pi.user_id = $2 AND pi.interaction_type = 'like') as viewer_has_liked
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
+		LEFT JOIN profiles prof ON prof.user_id = u.id
 		WHERE p.id = $1
 		  AND p.is_archived = false
 		  AND p.is_deleted = false
@@ -357,13 +358,14 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
-		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 		       COALESCE(
-			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order) 
+			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order)
 			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
 		       ) as media_json
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
+		LEFT JOIN profiles prof ON prof.user_id = u.id
 		WHERE p.is_archived = false AND p.is_deleted = false
 		  AND COALESCE(u.is_shadow_banned, false) = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
@@ -437,11 +439,12 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
 		       c.created_at,
 		       c.likes_count,
-		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 		       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 		FROM post_comments c
 		JOIN users u ON c.user_id = u.id
+		LEFT JOIN profiles prof ON prof.user_id = u.id
 		WHERE c.id = $1
 		  AND c.is_deleted = false
 		  AND c.is_hidden_by_reports = false
@@ -520,11 +523,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
 			       c.created_at,
 			       c.likes_count,
-			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
+			LEFT JOIN profiles prof ON prof.user_id = u.id
 			LEFT JOIN LATERAL (
 				SELECT COUNT(1) AS violations_30d
 				FROM author_policy_strikes aps
@@ -557,11 +561,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
 				       c.created_at,
 				       c.likes_count,
-				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
 				JOIN users u ON c.user_id = u.id
+				LEFT JOIN profiles prof ON prof.user_id = u.id
 				LEFT JOIN LATERAL (
 					SELECT COUNT(1) AS violations_30d
 					FROM author_policy_strikes aps
@@ -599,11 +604,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
 			       c.created_at,
 			       c.likes_count,
-			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
+			LEFT JOIN profiles prof ON prof.user_id = u.id
 			WHERE c.post_id = $1
 			  AND c.parent_comment_id = $3
 			  AND c.is_deleted = false
@@ -619,11 +625,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
 				       c.created_at,
 				       c.likes_count,
-				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, u.avatar_url,
+				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
 				JOIN users u ON c.user_id = u.id
+				LEFT JOIN profiles prof ON prof.user_id = u.id
 				WHERE c.post_id = $1
 				  AND c.parent_comment_id = $3
 				  AND c.is_deleted = false

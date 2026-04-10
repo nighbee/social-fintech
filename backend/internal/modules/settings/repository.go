@@ -656,10 +656,11 @@ func (r *PostgresRepository) ListBlockedUsers(ctx context.Context, userID string
 		SELECT
 			u.id AS user_id,
 			u.username,
-			COALESCE(u.avatar_url, '') AS avatar_url,
+			COALESCE(p.avatar_url, '') AS avatar_url,
 			u.last_active_at
 		FROM user_relationships ur
 		JOIN users u ON u.id = ur.target_user_id
+		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE ur.user_id = $1
 		  AND ur.relationship_type = 'block'
 	`
