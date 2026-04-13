@@ -384,12 +384,12 @@ func TestPatchFeedSettings_SchedulesPendingFor24Hours(t *testing.T) {
 	svc := NewService(repo, nil)
 
 	before := time.Now().Add(24 * time.Hour)
-	if err := svc.PatchFeedSettings(context.Background(), "user-1", FeedLimit30); err != nil {
+	if err := svc.PatchFeedSettings(context.Background(), "user-1", FeedLimit60); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	after := time.Now().Add(24 * time.Hour)
-	if pending != FeedLimit30 {
-		t.Fatalf("expected pending limit %d, got %d", FeedLimit30, pending)
+	if pending != FeedLimit60 {
+		t.Fatalf("expected pending limit %d, got %d", FeedLimit60, pending)
 	}
 	if applyAt.Before(before.Add(-2*time.Second)) || applyAt.After(after.Add(2*time.Second)) {
 		t.Fatalf("unexpected apply time: %s", applyAt)
@@ -468,3 +468,4 @@ func TestApplyDueHardDeletes_ReturnsErrorOnHardDeleteFailure(t *testing.T) {
 		t.Fatalf("expected delete failed error, got %v", err)
 	}
 }
+

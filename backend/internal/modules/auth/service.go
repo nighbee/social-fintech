@@ -316,7 +316,7 @@ func ensureUserCanAuthenticate(user *User) error {
 		return ErrInvalidCredentials
 	}
 	// Hard moderation block: account is fully blocked from authentication flows.
-	if user.IsShadowBanned {
+	if user.IsShadowBanned || strings.EqualFold(user.ActivationStatus, "blocked") {
 		return ErrAccountBlocked
 	}
 	return nil

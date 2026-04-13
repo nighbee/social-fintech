@@ -22,10 +22,11 @@ const (
 	h3ResCity     = 4
 	h3ResDistrict = 5
 
-	taskCooldownDays  = 7
-	maxWorkersNeeded  = 20
-	autoShutdownHours = 24
-	leaderboardTieTTL = 14 * 24 * time.Hour
+	taskCooldownDays     = 7
+	maxWorkersNeeded     = 20
+	autoShutdownHours    = 24
+	leaderboardTieTTL    = 14 * 24 * time.Hour
+	h3MetadataRefreshTTL = 7 * 24 * time.Hour
 )
 
 // validRewards lists the allowed Silver Seal reward values for a task.
@@ -255,7 +256,7 @@ func (s *Service) GetNearbyTasks(ctx context.Context, userID string, lat, lon, r
 			Latitude:         t.Latitude,
 			Longitude:        t.Longitude,
 			CreatedAt:        t.CreatedAt,
-			CreatorUsername:   t.CreatorUsername,
+			CreatorUsername:  t.CreatorUsername,
 			CreatorAvatarURL: t.CreatorAvatarURL,
 		})
 	}
@@ -283,7 +284,7 @@ func (s *Service) GetAppliedTasks(ctx context.Context, userID string) (*AppliedT
 			Latitude:          t.Latitude,
 			Longitude:         t.Longitude,
 			CreatedAt:         t.CreatedAt,
-			CreatorUsername:    t.CreatorUsername,
+			CreatorUsername:   t.CreatorUsername,
 			CreatorAvatarURL:  t.CreatorAvatarURL,
 			ApplicationStatus: &appStatus,
 		})
@@ -829,16 +830,22 @@ func (s *Service) updateLeaderboards(userID string, task *Task) {
 	score := economy.CentinelsToSeals(task.Reward)
 
 	if task.H3Res5 != nil && *task.H3Res5 != "" {
-		key := fmt.Sprintf("leaderboard:arena:%s:week:%d:%d", *task.H3Res5, year, week)
-		s.recordLeaderboardScore(key, userID, score, now)
+		if ok, err := s.repo.IsUserEligibleForLeaderboard(context.Background(), userID, h3ResDistrict); err == nil && ok {
+			key := fmt.Sprintf("leaderboard:arena:%s:week:%d:%d", *task.H3Res5, year, week)
+			s.recordLeaderboardScore(key, userID, score, now)
+		}
 	}
 	if task.H3Res4 != nil && *task.H3Res4 != "" {
-		key := fmt.Sprintf("leaderboard:city:%s:week:%d:%d", *task.H3Res4, year, week)
-		s.recordLeaderboardScore(key, userID, score, now)
+		if ok, err := s.repo.IsUserEligibleForLeaderboard(context.Background(), userID, h3ResCity); err == nil && ok {
+			key := fmt.Sprintf("leaderboard:city:%s:week:%d:%d", *task.H3Res4, year, week)
+			s.recordLeaderboardScore(key, userID, score, now)
+		}
 	}
 	if task.H3Res2 != nil && *task.H3Res2 != "" {
-		key := fmt.Sprintf("leaderboard:country:%s:week:%d:%d", *task.H3Res2, year, week)
-		s.recordLeaderboardScore(key, userID, score, now)
+		if ok, err := s.repo.IsUserEligibleForLeaderboard(context.Background(), userID, h3ResCountry); err == nil && ok {
+			key := fmt.Sprintf("leaderboard:country:%s:week:%d:%d", *task.H3Res2, year, week)
+			s.recordLeaderboardScore(key, userID, score, now)
+		}
 	}
 
 	globalKey := fmt.Sprintf("leaderboard:global:week:%d:%d", year, week)
@@ -897,6 +904,7 @@ func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, re
 
 	pins := make([]ChampionPin, 0, len(champs))
 	for _, c := range champs {
+		lat, lon := centerOfH3(c.H3Index)
 		pins = append(pins, ChampionPin{
 			H3Index:     c.H3Index,
 			Resolution:  c.Resolution,
@@ -904,8 +912,8 @@ func (s *Service) GetRegionChampions(ctx context.Context, h3Indexes []string, re
 			Score:       c.Score,
 			Username:    c.Username,
 			AvatarURL:   c.AvatarURL,
-			Latitude:    c.Latitude,
-			Longitude:   c.Longitude,
+			Latitude:    lat,
+			Longitude:   lon,
 			CityName:    c.CityName,
 			CountryName: c.CountryName,
 		})
@@ -937,13 +945,26 @@ func (s *Service) getLiveRegionChampionsFromCache(ctx context.Context, h3Indexes
 		}
 
 		key := fmt.Sprintf("leaderboard:%s:%s:week:%d:%d", leaderboard, h3Index, year, week)
-		members, err := s.cache.ZRevRange(ctx, key, 0, 0)
+		members, err := s.cache.ZRevRange(ctx, key, 0, 50)
 		if err != nil || len(members) == 0 {
 			continue
 		}
 
-		score, err := s.cache.ZScore(ctx, key, members[0])
-		if err != nil {
+		var selectedUserID string
+		var score float64
+		for _, candidate := range members {
+			eligible, eligibilityErr := s.repo.IsUserEligibleForLeaderboard(ctx, candidate, resolution)
+			if eligibilityErr != nil || !eligible {
+				continue
+			}
+			score, err = s.cache.ZScore(ctx, key, candidate)
+			if err != nil {
+				continue
+			}
+			selectedUserID = candidate
+			break
+		}
+		if selectedUserID == "" {
 			continue
 		}
 
@@ -951,7 +972,7 @@ func (s *Service) getLiveRegionChampionsFromCache(ctx context.Context, h3Indexes
 		pins = append(pins, ChampionPin{
 			H3Index:    h3Index,
 			Resolution: resolution,
-			UserID:     members[0],
+			UserID:     selectedUserID,
 			Score:      int64(score),
 			Latitude:   lat,
 			Longitude:  lon,
@@ -962,12 +983,18 @@ func (s *Service) getLiveRegionChampionsFromCache(ctx context.Context, h3Indexes
 }
 
 func (s *Service) ResolveH3ToLocation(ctx context.Context, h3Index string) (*H3GeoMetadata, error) {
-	// 1. Try cache
+	if !isValidH3Index(h3Index) {
+		return emptyH3Metadata(h3Index), nil
+	}
+
+	now := time.Now().UTC()
+
+	// 1. Try cache first; refresh stale/empty entries so bad data does not become permanent.
 	metadata, err := s.repo.GetH3GeoMetadata(ctx, h3Index)
 	if err != nil {
 		return nil, err
 	}
-	if metadata != nil {
+	if metadata != nil && !shouldRefreshH3Metadata(metadata, now) {
 		return metadata, nil
 	}
 
@@ -976,7 +1003,7 @@ func (s *Service) ResolveH3ToLocation(ctx context.Context, h3Index string) (*H3G
 	if err == nil {
 		metadata, err = s.repo.GetAdministrativeHierarchyByHex(ctx, hexWKT)
 		if err != nil {
-			return nil, err
+			metadata = nil
 		}
 	}
 
@@ -985,53 +1012,38 @@ func (s *Service) ResolveH3ToLocation(ctx context.Context, h3Index string) (*H3G
 		lat, lon := centerOfH3(h3Index)
 		metadata, err = s.repo.GetAdministrativeHierarchy(ctx, lat, lon)
 		if err != nil {
-			return nil, err
+			metadata = nil
 		}
 	}
 
-	// SAFETY GUARD: If metadata is still nil after both lookups, return safe default
-	// This prevents "nil pointer dereference" panics in rare edge cases where:
-	// - No administrative boundaries cover this H3 cell
-	// - Sparse/incomplete boundary data in region
-	// See: https://github.com/brightbund-backend/issues/XXX-geo-nil-metadata
+	// Safe default for missing or malformed geo metadata.
 	if metadata == nil {
-		metadata = &H3GeoMetadata{
-			H3Index:     h3Index,
-			CityName:    "",
-			RegionName:  "",
-			CountryName: "",
-			CountryCode: "",
-		}
+		metadata = emptyH3Metadata(h3Index)
 	}
-
 	metadata.H3Index = h3Index
 
-	// 4. Update cache
+	// 4. Update cache on every resolve path, including empty values.
 	if err := s.repo.UpsertH3GeoMetadata(ctx, metadata); err != nil {
 		return nil, err
 	}
-
 	return metadata, nil
 }
 
 func centerOfH3(h3Index string) (float64, float64) {
-	// h3 library: Cell is a uint64 type
-	// Parse hex string to uint64, then convert to Cell type
-	var cellUint uint64
-	fmt.Sscanf(h3Index, "%x", &cellUint)
-	cell := h3.Cell(cellUint)
-
+	cell, err := parseH3Cell(h3Index)
+	if err != nil {
+		return 0, 0
+	}
 	latLng := h3.CellToLatLng(cell)
 	return latLng.Lat, latLng.Lng
 }
 
 func boundaryWKTOfH3(h3Index string) (string, error) {
-	var cellUint uint64
-	if _, err := fmt.Sscanf(h3Index, "%x", &cellUint); err != nil {
+	cell, err := parseH3Cell(h3Index)
+	if err != nil {
 		return "", err
 	}
 
-	cell := h3.Cell(cellUint)
 	boundary := h3.CellToBoundary(cell)
 	if len(boundary) == 0 {
 		return "", fmt.Errorf("invalid h3 boundary")
@@ -1042,6 +1054,45 @@ func boundaryWKTOfH3(h3Index string) (string, error) {
 		coords = append(coords, fmt.Sprintf("%f %f", point.Lng, point.Lat))
 	}
 	coords = append(coords, fmt.Sprintf("%f %f", boundary[0].Lng, boundary[0].Lat))
-
 	return fmt.Sprintf("POLYGON((%s))", strings.Join(coords, ", ")), nil
+}
+
+func parseH3Cell(h3Index string) (h3.Cell, error) {
+	normalized := strings.ToLower(strings.TrimSpace(h3Index))
+	if normalized == "" {
+		return 0, fmt.Errorf("empty h3 index")
+	}
+	idx := h3.IndexFromString(normalized)
+	if idx == 0 {
+		return 0, fmt.Errorf("invalid h3 index")
+	}
+	return h3.Cell(idx), nil
+}
+
+func isValidH3Index(h3Index string) bool {
+	_, err := parseH3Cell(h3Index)
+	return err == nil
+}
+
+func shouldRefreshH3Metadata(metadata *H3GeoMetadata, now time.Time) bool {
+	if metadata == nil {
+		return true
+	}
+	if metadata.CityName == "" && metadata.RegionName == "" && metadata.CountryName == "" {
+		return true
+	}
+	if metadata.ResolvedAt.IsZero() {
+		return true
+	}
+	return now.Sub(metadata.ResolvedAt) >= h3MetadataRefreshTTL
+}
+
+func emptyH3Metadata(h3Index string) *H3GeoMetadata {
+	return &H3GeoMetadata{
+		H3Index:     h3Index,
+		CityName:    "",
+		RegionName:  "",
+		CountryName: "",
+		CountryCode: "",
+	}
 }

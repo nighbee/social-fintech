@@ -59,14 +59,15 @@ func TestSearchUsersByName(t *testing.T) {
 
 	users := []struct {
 		id        string
+		username  string
 		firstName string
 		lastName  string
 		shadow    bool
 	}{
-		{id: uuid.NewString(), firstName: "Alice", lastName: "Wonderland", shadow: false},
-		{id: uuid.NewString(), firstName: "Alice", lastName: "Smith", shadow: false},
-		{id: uuid.NewString(), firstName: "Bob", lastName: "Wonderland", shadow: false},
-		{id: uuid.NewString(), firstName: "Alice", lastName: "Shadow", shadow: true},
+		{id: uuid.NewString(), username: "captainbright", firstName: "Alice", lastName: "Wonderland", shadow: false},
+		{id: uuid.NewString(), username: "alice_smith", firstName: "Alice", lastName: "Smith", shadow: false},
+		{id: uuid.NewString(), username: "bob_wonder", firstName: "Bob", lastName: "Wonderland", shadow: false},
+		{id: uuid.NewString(), username: "alice_shadow", firstName: "Alice", lastName: "Shadow", shadow: true},
 	}
 
 	// Insert users + profiles
@@ -77,7 +78,7 @@ func TestSearchUsersByName(t *testing.T) {
 				created_at, updated_at, last_active_at
 			) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), NOW())
 		`, u.id, fmt.Sprintf("%s.%s@example.com", strings.ToLower(u.firstName), strings.ToLower(u.lastName)),
-			"u_"+strings.ReplaceAll(strings.ToLower(u.id), "-", "")[:12],
+			u.username,
 			u.firstName, u.lastName, u.shadow)
 		if err != nil {
 			t.Fatalf("insert user failed: %v", err)
@@ -130,13 +131,13 @@ func TestSearchUsersByName(t *testing.T) {
 
 	res, err = repo.SearchUsersByName(ctx, "captain", "", 20)
 	if err != nil {
-		t.Fatalf("display name search failed: %v", err)
+		t.Fatalf("nickname search failed: %v", err)
 	}
 	if len(res) != 1 {
-		t.Fatalf("expected 1 result for display name search, got %d", len(res))
+		t.Fatalf("expected 1 result for nickname search, got %d", len(res))
 	}
-	if res[0].DisplayName != "captainbright" {
-		t.Fatalf("unexpected display name result: %+v", res[0])
+	if res[0].Username != "captainbright" {
+		t.Fatalf("unexpected nickname result: %+v", res[0])
 	}
 }
 

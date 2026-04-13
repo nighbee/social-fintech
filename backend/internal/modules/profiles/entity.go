@@ -17,7 +17,7 @@ type Profile struct {
 	ReputationScore int    `db:"reputation_score" json:"reputation_score" example:"100"`
 	RankTier        string `db:"current_rank_tier" json:"rank_tier" example:"Quartz"`
 	// FeedTimeLimitMins controls the Anti-Doomscroll ceiling.
-	// 0 = No limit; 20/30/40 = limit in minutes. Defaults to 20.
+	// 0 = No limit; 20/40/60 = limit in minutes. Defaults to 20.
 	FeedTimeLimitMins int       `db:"feed_time_limit_mins" json:"feed_time_limit_mins" example:"20"`
 	CreatedAt         time.Time `db:"created_at" json:"created_at" example:"2024-01-15T10:30:00Z"`
 	UpdatedAt         time.Time `db:"updated_at" json:"updated_at" example:"2024-01-20T14:45:00Z"`
@@ -36,8 +36,8 @@ type UpdateProfileRequest struct {
 	Region      *string `json:"region" example:"California"`
 	City        *string `json:"city" example:"San Francisco"`
 	IsPublic    *bool   `json:"is_public" example:"true"`
-	// FeedTimeLimitMins: 0 = no limit, 20 / 30 / 40 = limit in minutes
-	FeedTimeLimitMins *int   `json:"feed_time_limit_mins" example:"30"`
+	// FeedTimeLimitMins: 0 = no limit, 20 / 40 / 60 = limit in minutes
+	FeedTimeLimitMins *int   `json:"feed_time_limit_mins" example:"60"`
 	ClientIP          string `json:"-"` // Not from JSON, set by handler
 }
 
@@ -91,6 +91,7 @@ type RelationshipStatus struct {
 // UserSearchResult — результат поиска реферера по имен/фамилии
 type UserSearchResult struct {
 	UserID      string `db:"user_id" json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Username    string `db:"username" json:"username" example:"john_doe"`
 	FirstName   string `db:"first_name" json:"first_name" example:"John"`
 	LastName    string `db:"last_name" json:"last_name" example:"Doe"`
 	DisplayName string `db:"display_name" json:"display_name" example:"John Doe"`

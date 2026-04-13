@@ -65,7 +65,7 @@ type nearbyTaskRow struct {
 type appliedTaskRow struct {
 	Task
 	ApplicationStatus string  `db:"application_status"`
-	CreatorUsername    *string `db:"creator_username"`
+	CreatorUsername   *string `db:"creator_username"`
 	CreatorAvatarURL  *string `db:"creator_avatar_url"`
 }
 
@@ -179,10 +179,12 @@ type RegionAssignmentResponse struct {
 }
 
 type UserRegionState struct {
-	H3Res5            *string    `db:"h3_res5"`
-	H3Res4            *string    `db:"h3_res4"`
-	H3Res2            *string    `db:"h3_res2"`
-	LocationUpdatedAt *time.Time `db:"location_updated_at"`
+	H3Res5              *string    `db:"h3_res5"`
+	H3Res4              *string    `db:"h3_res4"`
+	H3Res2              *string    `db:"h3_res2"`
+	ParticipateDistrict bool       `db:"participate_district"`
+	LocationOptIn       bool       `db:"location_opt_in"`
+	LocationUpdatedAt   *time.Time `db:"location_updated_at"`
 }
 
 type RegionChampion struct {
@@ -217,10 +219,10 @@ type H3GeoMetadata struct {
 }
 
 type ChampionPin struct {
-	H3Index     string `json:"h3_index"`
-	Resolution  int    `json:"resolution"`
-	UserID      string `json:"user_id"`
-	Score       int64  `json:"score"`
+	H3Index     string  `json:"h3_index"`
+	Resolution  int     `json:"resolution"`
+	UserID      string  `json:"user_id"`
+	Score       int64   `json:"score"`
 	Username    string  `json:"username"`
 	AvatarURL   string  `json:"avatar_url"`
 	Latitude    float64 `json:"latitude"`
@@ -228,4 +230,3 @@ type ChampionPin struct {
 	CityName    string  `json:"city_name,omitempty"`
 	CountryName string  `json:"country_name,omitempty"`
 }
-

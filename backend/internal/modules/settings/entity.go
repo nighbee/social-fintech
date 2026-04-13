@@ -27,8 +27,8 @@ const (
 
 	FeedLimitNoLimit = 0
 	FeedLimit20      = 20
-	FeedLimit30      = 30
 	FeedLimit40      = 40
+	FeedLimit60      = 60
 
 	TwoFAMethodSMS           = "sms"
 	TwoFAMethodEmail         = "email"

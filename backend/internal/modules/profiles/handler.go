@@ -1,6 +1,8 @@
 package profiles
 
 import (
+	"strings"
+
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -602,24 +604,41 @@ func (h *Handler) ReportUser(c *fiber.Ctx) error {
 }
 
 // SearchUsers godoc
-// @Summary Search users by first/last name
-// @Description Public search for referrer user selection
+// @Summary Search users by nickname or name
+// @Description Public search for referrer user selection. Supports nickname (username), display name, or first/last name.
 // @Tags Users
 // @Accept json
 // @Produce json
-// @Param first_name query string true "First name"
-// @Param last_name query string true "Last name"
+// @Param query query string false "Unified query (nickname/username, display name, or name)"
+// @Param first_name query string false "First name or generic query token"
+// @Param last_name query string false "Last name (optional)"
 // @Param limit query int false "Limit (max 50)"
 // @Success 200 {array} UserSearchResult
 // @Router /users/search [get]
 func (h *Handler) SearchUsers(c *fiber.Ctx) error {
+	query := c.Query("query")
 	firstName := c.Query("first_name")
 	lastName := c.Query("last_name")
+	if query != "" {
+		query = strings.TrimSpace(query)
+		if strings.HasPrefix(query, "@") {
+			query = strings.TrimPrefix(query, "@")
+		}
+		parts := strings.Fields(query)
+		if len(parts) >= 2 {
+			firstName = parts[0]
+			lastName = strings.Join(parts[1:], " ")
+		} else {
+			firstName = query
+			lastName = ""
+		}
+	}
 	limit := c.QueryInt("limit", 20)
 
 	results, err := h.service.SearchUsers(c.Context(), firstName, lastName, limit)
 	if err != nil {
 		logger.Error("failed to search users",
+			zap.String("query", query),
 			zap.String("first_name", firstName),
 			zap.String("last_name", lastName),
 			zap.Error(err),

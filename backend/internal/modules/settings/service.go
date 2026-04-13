@@ -102,7 +102,7 @@ func (s *Service) getUserPhone(ctx context.Context, userID string) (string, stri
 }
 
 func isValidFeedLimit(v int) bool {
-	return v == FeedLimitNoLimit || v == FeedLimit20 || v == FeedLimit30 || v == FeedLimit40
+	return v == FeedLimitNoLimit || v == FeedLimit20 || v == FeedLimit40 || v == FeedLimit60
 }
 
 func isValidPrivacy(v string) bool {

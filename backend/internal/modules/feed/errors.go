@@ -22,8 +22,8 @@ var (
 	ErrUserInCooldown = errors.New("user_in_cooldown: feed limit reached")
 
 	// ErrInvalidFeedTimeLimit is returned when the client sends a feed_time_limit_mins
-	// value that is not one of the allowed choices (0, 20, 30, 40).
-	ErrInvalidFeedTimeLimit = errors.New("feed_time_limit_mins must be 0 (no limit), 20, 30, or 40")
+	// value that is not one of the allowed choices (0, 20, 40, 60).
+	ErrInvalidFeedTimeLimit = errors.New("feed_time_limit_mins must be 0 (no limit), 20, 40, or 60")
 
 	// ── Posts ─────────────────────────────────────────────────────────────
 	// ErrPostNotFound is returned when a post ID does not match any persisted post.

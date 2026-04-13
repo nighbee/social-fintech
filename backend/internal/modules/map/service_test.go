@@ -245,6 +245,55 @@ func TestShouldKeepWeeklyRegion(t *testing.T) {
 	})
 }
 
+func TestH3Helpers(t *testing.T) {
+	t.Run("invalid h3 index returns false", func(t *testing.T) {
+		if isValidH3Index("bad-index") {
+			t.Fatal("expected invalid h3 index")
+		}
+	})
+
+	t.Run("valid h3 index parses correctly", func(t *testing.T) {
+		if !isValidH3Index("8a2a100704d7fff") {
+			t.Fatal("expected valid h3 index")
+		}
+		if _, err := parseH3Cell("8a2a100704d7fff"); err != nil {
+			t.Fatalf("parseH3Cell failed: %v", err)
+		}
+	})
+}
+
+func TestShouldRefreshH3Metadata(t *testing.T) {
+	now := time.Now().UTC()
+
+	if !shouldRefreshH3Metadata(nil, now) {
+		t.Fatal("nil metadata must be refreshed")
+	}
+
+	if !shouldRefreshH3Metadata(&H3GeoMetadata{H3Index: "8a2a100704d7fff"}, now) {
+		t.Fatal("empty metadata must be refreshed")
+	}
+
+	if shouldRefreshH3Metadata(&H3GeoMetadata{
+		H3Index:     "8a2a100704d7fff",
+		CityName:    "Almaty",
+		RegionName:  "Almaty",
+		CountryName: "Kazakhstan",
+		ResolvedAt:  now.Add(-2 * time.Hour),
+	}, now) {
+		t.Fatal("fresh metadata should not be refreshed")
+	}
+
+	if !shouldRefreshH3Metadata(&H3GeoMetadata{
+		H3Index:     "8a2a100704d7fff",
+		CityName:    "Almaty",
+		RegionName:  "Almaty",
+		CountryName: "Kazakhstan",
+		ResolvedAt:  now.Add(-8 * 24 * time.Hour),
+	}, now) {
+		t.Fatal("stale metadata should be refreshed")
+	}
+}
+
 // Utility validation function.
 func validateCoordinates(lat, lon float64) error {
 	if lat < -90 || lat > 90 {

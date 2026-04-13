@@ -772,7 +772,8 @@ func (h *Handler) CompleteTask(c *fiber.Ctx) error {
 
 // SetUserRegion godoc
 // @Summary Set user region using H3
-// @Description Assigns H3 cells (res 2/4/5) based on current location and privacy settings
+// @Description Assigns H3 cells (res 2/4/5) based on current location and privacy settings.
+// @Description Exact user coordinates are never exposed via this API or champion pins; map data uses H3 region centers only.
 // @Tags Map
 // @Accept json
 // @Produce json
@@ -815,6 +816,7 @@ func (h *Handler) SetUserRegion(c *fiber.Ctx) error {
 // @Description Returns the current champion for each of the supplied H3 cell indices
 // @Description at the given resolution and ISO week. Used by the Flutter map to render
 // @Description champion pins on the visible viewport.
+// @Description Privacy: exact user GPS is never exposed; pins use the H3 region center only.
 // @Tags Map
 // @Produce json
 // @Security Bearer
@@ -882,6 +884,7 @@ func (h *Handler) GetRegionChampions(c *fiber.Ctx) error {
 // @Description Returns the city, region, and country for a given H3 cell index.
 // @Description This endpoint performs a spatial lookup against the administrative_boundaries table
 // @Description using the H3 cell's center point. Result is cached in h3_geo_metadata for repeated lookups.
+// @Description Privacy: only region-level metadata is returned; no exact user location is ever exposed.
 // @Tags Map
 // @Produce json
 // @Security Bearer
@@ -889,7 +892,6 @@ func (h *Handler) GetRegionChampions(c *fiber.Ctx) error {
 // @Success 200 {object} H3AdminLookupResponse
 // @Failure 400 {object} map[string]string "Invalid H3 index"
 // @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 404 {object} map[string]string "H3 index could not be resolved to admin boundaries"
 // @Failure 500 {object} map[string]string "Internal error"
 // @Router /map/h3/{h3_index}/admin [get]
 func (h *Handler) GetH3AdminHierarchy(c *fiber.Ctx) error {
@@ -913,7 +915,15 @@ func (h *Handler) GetH3AdminHierarchy(c *fiber.Ctx) error {
 	}
 
 	if metadata == nil || (metadata.CityName == "" && metadata.CountryName == "") {
-		return c.Status(404).JSON(fiber.Map{"error": "h3_not_in_boundaries"})
+		resp := &H3AdminLookupResponse{
+			H3Index:     h3Index,
+			CityName:    "",
+			RegionName:  "",
+			CountryName: "",
+			CountryCode: "",
+			ResolvedAt:  time.Now().UTC().Format("2006-01-02T15:04:05Z"),
+		}
+		return c.JSON(resp)
 	}
 
 	resp := &H3AdminLookupResponse{

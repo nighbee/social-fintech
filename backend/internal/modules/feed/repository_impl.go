@@ -1065,7 +1065,7 @@ func (r *repository) HardBlockAuthorByTarget(ctx context.Context, targetType str
 	if _, err = tx.ExecContext(ctx, `
 		UPDATE users
 		SET is_shadow_banned = true,
-		    activation_status = 'suspicious',
+		    activation_status = 'blocked',
 		    restrictions_until = NOW() + INTERVAL '365 days',
 		    updated_at = NOW()
 		WHERE id = $1

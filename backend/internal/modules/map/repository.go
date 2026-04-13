@@ -42,6 +42,7 @@ type Repository interface {
 	// User region
 	GetUserRegionState(ctx context.Context, userID string) (*UserRegionState, error)
 	UpdateUserRegion(ctx context.Context, userID string, h3Res5, h3Res4, h3Res2 *string, participateDistrict, locationOptIn bool) error
+	IsUserEligibleForLeaderboard(ctx context.Context, userID string, resolution int) (bool, error)
 
 	// Champions
 	UpsertRegionChampion(ctx context.Context, champion *RegionChampion) error
@@ -192,6 +193,9 @@ func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon
 		JOIN users u ON u.id = t.creator_id
 		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE t.status = 'open'
+		  AND COALESCE(u.is_shadow_banned, false) = false
+		  AND u.deleted_at IS NULL
+		  AND COALESCE(u.activation_status, 'active') = 'active'
 		  AND (t.auto_shutdown_at IS NULL OR t.auto_shutdown_at > NOW())
 		  AND t.id NOT IN (
 			  SELECT task_id FROM task_applications WHERE applicant_id = $1 AND status != 'rejected'
@@ -211,7 +215,6 @@ func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon
 	return tasks, nil
 }
 
-
 func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([]appliedTaskRow, error) {
 	query := `
 		SELECT t.id, t.title, t.description, t.reward, t.creator_id,
@@ -227,6 +230,9 @@ func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([
 		JOIN users u ON u.id = t.creator_id
 		LEFT JOIN profiles p ON p.user_id = u.id
 		WHERE ta.applicant_id = $1 AND ta.status != 'rejected'
+		  AND COALESCE(u.is_shadow_banned, false) = false
+		  AND u.deleted_at IS NULL
+		  AND COALESCE(u.activation_status, 'active') = 'active'
 		ORDER BY ta.created_at DESC
 	`
 	var tasks []appliedTaskRow
@@ -503,7 +509,7 @@ func (r *repository) IncrementWorkersFilled(ctx context.Context, taskID string) 
 
 func (r *repository) GetUserRegionState(ctx context.Context, userID string) (*UserRegionState, error) {
 	query := `
-		SELECT h3_res5, h3_res4, h3_res2, location_updated_at
+		SELECT h3_res5, h3_res4, h3_res2, participate_district, location_opt_in, location_updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -515,6 +521,26 @@ func (r *repository) GetUserRegionState(ctx context.Context, userID string) (*Us
 		return nil, fmt.Errorf("failed to get user region state: %w", err)
 	}
 	return &state, nil
+}
+
+func (r *repository) IsUserEligibleForLeaderboard(ctx context.Context, userID string, resolution int) (bool, error) {
+	var eligible bool
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM users
+			WHERE id = $1
+			  AND deleted_at IS NULL
+			  AND COALESCE(is_shadow_banned, false) = false
+			  AND COALESCE(activation_status, 'active') = 'active'
+			  AND COALESCE(location_opt_in, false) = true
+			  AND ($2 != 5 OR COALESCE(participate_district, false) = true)
+		)
+	`
+	if err := sqlx.GetContext(ctx, r.executor(), &eligible, query, userID, resolution); err != nil {
+		return false, fmt.Errorf("failed to check leaderboard eligibility: %w", err)
+	}
+	return eligible, nil
 }
 
 func (r *repository) UpdateUserRegion(ctx context.Context, userID string, h3Res5, h3Res4, h3Res2 *string, participateDistrict, locationOptIn bool) error {
@@ -591,8 +617,12 @@ func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string,
 		  AND c.year = $2
 		  AND c.week = $3
 		  AND c.h3_index = ANY($4)
+		  AND u.deleted_at IS NULL
+		  AND COALESCE(u.is_shadow_banned, false) = false
+		  AND COALESCE(u.activation_status, 'active') = 'active'
+		  AND COALESCE(u.location_opt_in, false) = true
+		  AND ($1 != 5 OR COALESCE(u.participate_district, false) = true)
 	`
-
 
 	var champs []RegionChampion
 	if err := sqlx.SelectContext(ctx, r.executor(), &champs, query, resolution, year, week, pq.Array(h3Indexes)); err != nil {
@@ -600,7 +630,6 @@ func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string,
 	}
 	return champs, nil
 }
-
 
 func (r *repository) GetUsersCreatedAt(ctx context.Context, userIDs []string) (map[string]time.Time, error) {
 	if len(userIDs) == 0 {

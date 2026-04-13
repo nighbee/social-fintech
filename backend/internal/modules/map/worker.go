@@ -113,22 +113,31 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 			continue
 		}
 
-		members, err := w.cache.ZRevRange(ctx, key, 0, 0)
+		members, err := w.cache.ZRevRange(ctx, key, 0, 100)
 		if err != nil || len(members) == 0 {
 			continue
 		}
 
-		userID := members[0]
-		score, err := w.cache.ZScore(ctx, key, userID)
-		if err != nil {
+		userID, score, ok := w.pickTopEligibleMember(ctx, key, members, resolution)
+		if !ok {
 			continue
 		}
 
 		// Deterministic tie-break for equal scores.
 		if tiedMembers, tieErr := w.cache.ZRangeByExactScore(ctx, key, score); tieErr == nil {
-			firstSeen := w.getLeaderboardFirstSeen(ctx, key, tiedMembers)
-			createdAtByUser, _ := w.repo.GetUsersCreatedAt(ctx, tiedMembers)
-			userID = pickChampionUserID(userID, tiedMembers, firstSeen, createdAtByUser)
+			eligibleTies := make([]string, 0, len(tiedMembers))
+			for _, member := range tiedMembers {
+				eligible, eligibilityErr := w.repo.IsUserEligibleForLeaderboard(ctx, member, resolution)
+				if eligibilityErr != nil || !eligible {
+					continue
+				}
+				eligibleTies = append(eligibleTies, member)
+			}
+			if len(eligibleTies) > 0 {
+				firstSeen := w.getLeaderboardFirstSeen(ctx, key, eligibleTies)
+				createdAtByUser, _ := w.repo.GetUsersCreatedAt(ctx, eligibleTies)
+				userID = pickChampionUserID(userID, eligibleTies, firstSeen, createdAtByUser)
+			}
 		}
 
 		lat, lon := centerOfH3(h3Index)
@@ -174,6 +183,10 @@ func (w *Worker) snapshotGlobalGoldChampion(ctx context.Context) {
 	if userID == "" {
 		return
 	}
+	eligible, err := w.repo.IsUserEligibleForLeaderboard(ctx, userID, 0)
+	if err != nil || !eligible {
+		return
+	}
 
 	champion := &RegionChampion{
 		ID:          uuid.MustParse(uuid.NewString()),
@@ -192,6 +205,21 @@ func (w *Worker) snapshotGlobalGoldChampion(ctx context.Context) {
 	if err := w.repo.UpsertRegionChampion(ctx, champion); err != nil {
 		logger.Warn("failed to upsert global gold champion", zap.Int("year", year), zap.Int("week", week), zap.Error(err))
 	}
+}
+
+func (w *Worker) pickTopEligibleMember(ctx context.Context, leaderboardKey string, members []string, resolution int) (string, float64, bool) {
+	for _, member := range members {
+		eligible, err := w.repo.IsUserEligibleForLeaderboard(ctx, member, resolution)
+		if err != nil || !eligible {
+			continue
+		}
+		score, err := w.cache.ZScore(ctx, leaderboardKey, member)
+		if err != nil {
+			continue
+		}
+		return member, score, true
+	}
+	return "", 0, false
 }
 
 // sweepExpiredTasks finds all open tasks whose auto_shutdown_at has passed,
