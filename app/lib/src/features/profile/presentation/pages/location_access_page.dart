@@ -216,7 +216,7 @@ class _LocationAccessPageState extends State<LocationAccessPage> {
                               ),
                               const Gap(16),
                               const Text(
-                                'App explanation: "Geolocation will be only visible to allies you have added to the map. You can disable it at any time in the application settings"',
+                                'Your exact location is never shared with other users. The map shows only your region (district/city/country), and leaderboard markers are placed at region centers.',
                                 style: _kHelperSansStyle,
                               ),
                               if (_showsPreciseLocationSection) ...[
@@ -227,7 +227,7 @@ class _LocationAccessPageState extends State<LocationAccessPage> {
                                 ),
                                 const Gap(12),
                                 const Text(
-                                  'Allows app to use your specific location. With this setting off, app can only determine your approximate location.',
+                                  'Precise location improves region detection on your device. Other users still cannot see your exact point.',
                                   style: _kHelperSansStyle,
                                 ),
                               ],

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 import 'dart:ui' as ui;
-import 'dart:math' as math;
 
 import 'package:app/src/features/auth/domain/entities/user_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
@@ -350,37 +349,9 @@ class MapChampionService {
     required double? fallbackLatitude,
     required double? fallbackLongitude,
   }) {
-    final lat = fallbackLatitude;
-    final lng = fallbackLongitude;
-    final existingAnchor = _fallbackAnchorByH3[champion.h3Index];
-    if (existingAnchor != null) {
-      return existingAnchor;
-    }
-    if (lat == null || lng == null) {
-      return null;
-    }
-
-    final isKnownRegionChampion = champion.h3Index == assignedRegion.h3Res5 ||
-        champion.h3Index == assignedRegion.h3Res4 ||
-        champion.h3Index == assignedRegion.h3Res2;
-    if (!isKnownRegionChampion) {
-      return null;
-    }
-
-    final seed = champion.h3Index.codeUnits.fold<int>(0, (a, b) => a + b);
-    final angle = (seed % 360) * (math.pi / 180.0);
-    final radiusByResolution = switch (champion.resolution) {
-      5 => 0.0012,
-      4 => 0.0022,
-      _ => 0.0032,
-    };
-
-    final anchored = (
-      lat: lat + math.cos(angle) * radiusByResolution,
-      lng: lng + math.sin(angle) * radiusByResolution,
-    );
-    _fallbackAnchorByH3[champion.h3Index] = anchored;
-    return anchored;
+    // Privacy rule: never derive champion marker from the device GPS point.
+    // If API coordinates and H3 center are unavailable, we skip rendering.
+    return null;
   }
 
   /// Add champion with specific coordinates
