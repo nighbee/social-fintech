@@ -22,10 +22,10 @@ class _MapControlsPanel extends StatelessWidget {
         const SizedBox(height: 12),
         _MapControlButton(
           icon: Assets.icons.location.svg(
-            width: 35,
-            height: 35,
-            colorFilter:
-                const ColorFilter.mode(MapUiPalette.controlIcon, BlendMode.srcIn),
+            width: 24,
+            height: 24,
+            colorFilter: const ColorFilter.mode(
+                MapUiPalette.controlIcon, BlendMode.srcIn),
           ),
           onTap: onCurrentLocation,
         ),

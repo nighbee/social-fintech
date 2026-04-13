@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:app/src/core/service/storage/app_storage/storage_service.dart';
+import 'package:app/src/core/service/storage/key_store.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
@@ -105,6 +107,7 @@ class MapPageController {
   DateTime? _lastStyleRepairAt;
   int? _stickyChampionResolution;
   int? _fallbackChampionResolution;
+  bool? _lastLocationOptInSent;
 
   static const double _regionReassignDistanceMeters = 450;
   static const Duration _cameraGeoRefreshDebounceDuration =
@@ -783,6 +786,26 @@ class MapPageController {
   void _maybeAssignRegionForCurrentGeoContext({bool force = false}) {
     final lat = _latitudeForGeoContext;
     final lon = _longitudeForGeoContext;
+    final locationOptIn = _isLocationOptInEnabled();
+
+    if (!locationOptIn) {
+      if (!force && _lastLocationOptInSent == false) {
+        return;
+      }
+
+      _lastLocationOptInSent = false;
+      _mapBloc.add(
+        const MapEvent.assignRegion(
+          MapRegionAssignmentRequest(
+            latitude: 0,
+            longitude: 0,
+            locationOptIn: false,
+            participateDistrict: false,
+          ),
+        ),
+      );
+      return;
+    }
 
     if (!force && _lastRegionAssignLat != null && _lastRegionAssignLon != null) {
       final distanceMeters = geo.Geolocator.distanceBetween(
@@ -798,11 +821,26 @@ class MapPageController {
 
     _lastRegionAssignLat = lat;
     _lastRegionAssignLon = lon;
+    _lastLocationOptInSent = true;
     _mapBloc.add(
       MapEvent.assignRegion(
-        MapRegionAssignmentRequest(latitude: lat, longitude: lon),
+        MapRegionAssignmentRequest(
+          latitude: lat,
+          longitude: lon,
+          locationOptIn: true,
+        ),
       ),
     );
+  }
+
+  bool _isLocationOptInEnabled() {
+    try {
+      final label = prefsInstance.get<String>(KeyStore.locationAccessLabel);
+      return (label ?? '').trim() != 'Never';
+    } catch (_) {
+      // If prefs are unavailable, keep map behavior permissive by default.
+      return true;
+    }
   }
 
   void openCreateRequest(BuildContext context) {

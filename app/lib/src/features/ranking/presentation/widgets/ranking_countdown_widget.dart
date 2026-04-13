@@ -5,7 +5,12 @@ import 'package:flutter/material.dart';
 /// Simple countdown timer widget that counts down to 12:00 UTC
 /// Uses setState instead of BLoC for better performance
 class RankingCountdownWidget extends StatefulWidget {
-  const RankingCountdownWidget({super.key});
+  const RankingCountdownWidget({
+    super.key,
+    this.textStyle,
+  });
+
+  final TextStyle? textStyle;
 
   @override
   State<RankingCountdownWidget> createState() => _RankingCountdownWidgetState();
@@ -71,6 +76,7 @@ class _RankingCountdownWidgetState extends State<RankingCountdownWidget> {
   @override
   Widget build(BuildContext context) {
     return Text(_countdown,
-        style: TextStyles.titleXBig.copyWith(color: AppColors.colorffffffff));
+        style: widget.textStyle ??
+            TextStyles.titleXBig.copyWith(color: AppColors.colorffffffff));
   }
 }

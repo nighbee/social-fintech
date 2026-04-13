@@ -14,8 +14,8 @@ import 'package:go_router/go_router.dart';
 const List<String> _feedTimeLimitOptions = <String>[
   'No limit',
   '20 min',
-  '30 min',
   '40 min',
+  '60 min',
 ];
 
 class FeedTimeLimitPage extends StatefulWidget {

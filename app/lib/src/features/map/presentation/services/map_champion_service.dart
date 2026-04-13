@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'dart:ui' as ui;
 
+import 'package:app/gen/fonts.gen.dart';
 import 'package:app/src/features/auth/domain/entities/user_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_champion_entity.dart';
 import 'package:app/src/features/map/domain/entities/map_region_assignment_entity.dart';
@@ -16,7 +17,7 @@ import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 class MapChampionService {
   MapChampionService();
   static const int _managerInitAttempts = 3;
-  static const double _markerIconScale = 1.34;
+  static const double _markerIconScale = 1.30;
   static const double _minChampionSizeMultiplier = 0.9;
 
   double _markerSizeMultiplier = 1.0;
@@ -521,14 +522,14 @@ class MapChampionService {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
     const gold = Color(0xFFCEA548);
-    const circleSize = 86.0 * 1.18;
-    const strokeW = 2.0;
-    const shadowBlur = 4.0;
+    const circleSize = 98.0;
+    const strokeW = 3.0;
+    const shadowBlur = 5.0;
     const pad = shadowBlur + 2.0;
-    const width = circleSize + pad * 2;
+    const width = 164.0;
     const circleCx = width / 2;
     const circleCy = pad + circleSize / 2;
-    final fillRadius = 41.0 * 1.18;
+    const fillRadius = 46.0;
 
     final circleRect = Rect.fromCircle(
       center: Offset(circleCx, circleCy),
@@ -579,6 +580,7 @@ class MapChampionService {
             color: Colors.white,
             fontSize: 34,
             fontWeight: FontWeight.w700,
+            fontFamily: FontFamily.canelaDeckTrial,
           ),
         ),
         textDirection: TextDirection.ltr,
@@ -607,8 +609,9 @@ class MapChampionService {
         text: 'Champion',
         style: TextStyle(
           color: gold,
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
+          fontSize: 20,
+          fontWeight: FontWeight.w500,
+          fontFamily: FontFamily.canelaDeckTrial,
           letterSpacing: 0.15,
         ),
       ),

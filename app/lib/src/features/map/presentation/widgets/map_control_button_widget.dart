@@ -13,34 +13,35 @@ class _MapControlButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Material(
-          color: MapUiPalette.controlPanelBackground,
-          borderRadius: BorderRadius.circular(6),
-          child: InkWell(
-            onTap: onTap,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Material(
+            color: MapUiPalette.controlPanelBackground,
             borderRadius: BorderRadius.circular(6),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: MapUiPalette.controlPanelBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: MapUiPalette.panelTopGlow,
-                    blurRadius: 12,
-                    offset: const Offset(0, -3),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: MapUiPalette.controlPanelBorder,
+                    width: 0.5,
                   ),
-                  BoxShadow(
-                    color: MapUiPalette.panelDropShadow,
-                    blurRadius: 25,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: MapUiPalette.panelDropShadow,
+                      blurRadius: 4,
+                      spreadRadius: 0,
+                      offset: Offset(0, 0),
+                    ),
+                  ],
+                ),
+                child: Center(child: icon),
               ),
-              child: Center(child: icon),
             ),
           ),
         ),

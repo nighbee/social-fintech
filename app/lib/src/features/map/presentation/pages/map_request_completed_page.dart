@@ -14,31 +14,84 @@ class MapRequestCompletedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF121418),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Positioned(
-              left: 30,
-              bottom: 200,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                child: Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color.fromARGB(255, 16, 57, 21),
-                  ),
-                  height: 250,
-                  width: 300,
+      backgroundColor: const Color(0xFF12161B),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF12161B),
+                    Color(0xFF0A0D12),
+                  ],
                 ),
               ),
             ),
-            Padding(
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(0, 0.56),
+                    radius: 0.9,
+                    colors: [
+                      Color(0x4A214D36),
+                      Color(0x1A132820),
+                      Color(0x00000000),
+                    ],
+                    stops: [0.0, 0.5, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(-1.02, 0.08),
+                    radius: 1.08,
+                    colors: [
+                      Color(0x2E1E5A37),
+                      Color(0x10122820),
+                      Color(0x00000000),
+                    ],
+                    stops: [0.0, 0.46, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: const BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(1.02, 0.08),
+                    radius: 1.08,
+                    colors: [
+                      Color(0x2E1E5A37),
+                      Color(0x10122820),
+                      Color(0x00000000),
+                    ],
+                    stops: [0.0, 0.46, 1.0],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
               child: Column(
                 children: [
                   const Spacer(),
-                  Assets.icons.taskDone.svg(width: 110, height: 110),
+                  Assets.icons.taskDone.svg(width: 104, height: 104),
                   const Gap(16),
                   Text(
                     'Well done!',
@@ -56,22 +109,23 @@ class MapRequestCompletedPage extends StatelessWidget {
                   ),
                   const Spacer(),
                   CustomButton(
-                    text: 'ok',
+                    text: 'Ok',
                     onTap: () => context.go(RoutePaths.map),
                     borderRadius: 8,
-                    backgroundColor: const Color(0xFF121418),
-                    border: Border.all(color: Colors.white24),
+                    backgroundColor: Colors.transparent,
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.28)),
                     textStyle: TextStyles.bodyMain.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

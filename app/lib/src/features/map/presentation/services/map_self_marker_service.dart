@@ -15,7 +15,7 @@ class MapSelfMarkerService {
   MapSelfMarkerService();
   static const int _managerInitAttempts = 3;
   static const double _sortKey = 20000;
-  static const double _pinMapIconSize = 1.14;
+  static const double _pinMapIconSize = 1.24;
 
   double _markerSizeMultiplier = 1.0;
 

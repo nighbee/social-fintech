@@ -208,10 +208,10 @@ String feedTimeLimitLabelFromMins(int mins) {
       return 'No limit';
     case 20:
       return '20 min';
-    case 30:
-      return '30 min';
     case 40:
       return '40 min';
+    case 60:
+      return '60 min';
     default:
       return '20 min';
   }
@@ -223,10 +223,10 @@ int feedTimeLimitMinsFromLabel(String label) {
       return 0;
     case '20 min':
       return 20;
-    case '30 min':
-      return 30;
     case '40 min':
       return 40;
+    case '60 min':
+      return 60;
     default:
       return 20;
   }

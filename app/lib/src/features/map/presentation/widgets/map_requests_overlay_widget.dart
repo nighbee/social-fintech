@@ -32,62 +32,67 @@ class _RequestsOverlay extends StatelessWidget {
         selected == null ? applications : <MapTaskApplicationEntity>[selected];
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: MapUiPalette.panelBackground,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: MapUiPalette.panelBorder),
-            boxShadow: [
-              BoxShadow(
-                color: MapUiPalette.panelTopGlow,
-                blurRadius: 12,
-                offset: const Offset(0, -3),
+      borderRadius: BorderRadius.circular(6),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0x33202020),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0x992B2B2C),
+                width: 0.5,
               ),
-              BoxShadow(
-                color: MapUiPalette.panelDropShadow,
-                blurRadius: 25,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            children: visibleApps
-                .map(
-                  (application) {
-                    final normalizedStatus =
-                        application.status.trim().toLowerCase();
-                    final isAcceptedLike =
-                        selectedApplicationId == application.id ||
-                        normalizedStatus == 'accepted' ||
-                        normalizedStatus == 'code_verified' ||
-                        normalizedStatus == 'confirmed';
+            ),
+            child: Column(
+              children: visibleApps.map(
+                (application) {
+                  final normalizedStatus =
+                      application.status.trim().toLowerCase();
+                  final isAcceptedLike =
+                      selectedApplicationId == application.id ||
+                          normalizedStatus == 'accepted' ||
+                          normalizedStatus == 'code_verified' ||
+                          normalizedStatus == 'confirmed';
 
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.06),
-                          ),
+                  return Container(
+                    constraints: const BoxConstraints(minHeight: 54),
+                    padding: const EdgeInsets.fromLTRB(8, 12, 8, 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.05),
                         ),
                       ),
-                      child: Row(
-                        children: [
+                    ),
+                    child: Row(
+                      children: [
                         _ResolvedApplicantAvatar(application: application),
-                        const Gap(8),
+                        const Gap(10),
                         Expanded(
-                          child: Text(
-                            isAcceptedLike
-                              ? '${_displayApplicantName(application)} has arrived'
-                              : '${_displayApplicantName(application)} wants to help you',
-                            style: TextStyles.bodyMain.copyWith(
-                              color: Colors.white70,
+                          child: RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: _displayApplicantName(application),
+                                  style: TextStyles.bodyMain.copyWith(
+                                    color: const Color(0xFFCACACA),
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: isAcceptedLike
+                                      ? ' has arrived'
+                                      : ' wants to help you',
+                                  style: TextStyles.bodyMain.copyWith(
+                                    color: const Color(0xFF9B9B9B),
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -97,8 +102,8 @@ class _RequestsOverlay extends StatelessWidget {
                         if (isAcceptedLike) ...[
                           const Icon(
                             Icons.chat_bubble_outline,
-                            color: Colors.white70,
-                            size: 16,
+                            color: Color(0xFFD4D4D4),
+                            size: 17,
                           ),
                           const Gap(10),
                           InkWell(
@@ -109,7 +114,7 @@ class _RequestsOverlay extends StatelessWidget {
                               child: Icon(
                                 Icons.close,
                                 color: Color(0xFFEF4444),
-                                size: 18,
+                                size: 19,
                               ),
                             ),
                           ),
@@ -122,11 +127,11 @@ class _RequestsOverlay extends StatelessWidget {
                               child: Icon(
                                 Icons.close,
                                 color: Color(0xFFEF4444),
-                                size: 18,
+                                size: 19,
                               ),
                             ),
                           ),
-                          const Gap(8),
+                          const Gap(10),
                           InkWell(
                             onTap: () => onAccept(application),
                             borderRadius: BorderRadius.circular(6),
@@ -135,17 +140,17 @@ class _RequestsOverlay extends StatelessWidget {
                               child: Icon(
                                 Icons.check,
                                 color: Color(0xFF22C55E),
-                                size: 18,
+                                size: 19,
                               ),
                             ),
                           ),
                         ],
-                        ],
-                      ),
-                    );
-                  },
-                )
-                .toList(),
+                      ],
+                    ),
+                  );
+                },
+              ).toList(),
+            ),
           ),
         ),
       ),
@@ -189,9 +194,10 @@ class _ResolvedApplicantAvatar extends StatelessWidget {
       builder: (context, snapshot) {
         final avatarUrl = snapshot.data?.trim() ?? '';
         return CircleAvatar(
-          radius: 11,
+          radius: 12,
           backgroundColor: const Color(0xFF2A3341),
-          backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+          backgroundImage:
+              avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
           child: avatarUrl.isNotEmpty
               ? null
               : const Icon(

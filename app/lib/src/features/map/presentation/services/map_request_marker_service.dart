@@ -7,12 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 
 class MapRequestMarkerService {
-  static const double _defaultIconSize = 1.18;
-  static const double _selectedIconSize = 1.32;
+  static const double _defaultIconSize = 1.28;
+  static const double _selectedIconSize = 1.44;
   /// Figma: обычный таск (наведён / чужой).
-  static const double _figmaTriW = 37.327468872070455 * 1.08;
-  static const double _figmaTriH = 32.99999618530286 * 1.08;
-  static const double _creatorSizeBoost = 1.18;
+  static const double _figmaTriW = 37.327468872070455;
+  static const double _figmaTriH = 32.99999618530286;
+  static const double _creatorSizeBoost = 1.14;
   static const double _selectionIndicatorBaseIconSize = 1.0;
   static const double _coordEpsilon = 0.00001;
 
@@ -20,7 +20,6 @@ class MapRequestMarkerService {
 
   PointAnnotationManager? _annotationManager;
   PointAnnotationManager? _selectionIndicatorManager;
-  MapboxMap? _mapboxMap;
   Cancelable? _tapCancelable;
   final Map<String, PointAnnotation> _annotationsByTaskId =
       <String, PointAnnotation>{};
@@ -28,17 +27,12 @@ class MapRequestMarkerService {
   final Map<String, bool> _selectedByTaskId = <String, bool>{};
   final Map<String, MapTaskEntity> _tasksById = <String, MapTaskEntity>{};
   PointAnnotation? _selectionIndicator;
-  bool? _selectionIndicatorShowsGlow;
 
   Uint8List? _imgOther;
   Uint8List? _imgOtherSel;
   Uint8List? _imgCreator;
   Uint8List? _imgCreatorSel;
   final Map<String, int> _variantByTaskId = <String, int>{};
-  Uint8List? _selectionIndicatorGlowImage;
-  Uint8List? _selectionIndicatorPlainImage;
-  Timer? _selectionGlowTimer;
-  bool _showSelectionGlow = false;
 
   String? _selectedTaskId;
   void Function(String? selectedTaskId)? _onSelectionChanged;
@@ -68,7 +62,6 @@ class MapRequestMarkerService {
     }
 
     try {
-      _mapboxMap = map;
       _onSelectionChanged = onSelectionChanged;
       _imgOther ??= await _createTriangleMarkerImage(
         isCreator: false,
@@ -215,9 +208,6 @@ class MapRequestMarkerService {
   }
 
   Future<void> clearSelection() async {
-    _selectionGlowTimer?.cancel();
-    _selectionGlowTimer = null;
-    _showSelectionGlow = false;
     _selectedTaskId = null;
     await _updateSelectionIndicator();
     await _syncVisualsAndPositions();
@@ -242,19 +232,12 @@ class MapRequestMarkerService {
       await _deleteAllSafely(selectionManager);
     }
     _selectionIndicator = null;
-    _selectionIndicatorShowsGlow = null;
-    _selectionGlowTimer?.cancel();
-    _selectionGlowTimer = null;
-    _showSelectionGlow = false;
-    _selectionIndicatorGlowImage = null;
-    _selectionIndicatorPlainImage = null;
     _annotationsByTaskId.clear();
     _taskIdByAnnotationId.clear();
     _selectedByTaskId.clear();
     _tasksById.clear();
     _selectedTaskId = null;
     _onSelectionChanged = null;
-    _mapboxMap = null;
     _imgOther = null;
     _imgOtherSel = null;
     _imgCreator = null;
@@ -301,21 +284,10 @@ class MapRequestMarkerService {
   }
 
   Future<void> _handleTap(String taskId) async {
-    _selectionGlowTimer?.cancel();
     _selectedTaskId = taskId;
-    final task = _tasksById[taskId];
-    // Кольцо с «аватаром» только у своего запроса (mine|…), не у чужих треугольников.
-    _showSelectionGlow = task != null && _taskIsCreator(task);
     await _updateSelectionIndicator();
     _onSelectionChanged?.call(taskId);
     await _syncVisualsAndPositions();
-    _selectionGlowTimer = Timer(const Duration(seconds: 3), () async {
-      if (_selectedTaskId == null) {
-        return;
-      }
-      _showSelectionGlow = false;
-      await _updateSelectionIndicator();
-    });
   }
 
   Future<void> _updateSelectionIndicator() async {
@@ -324,182 +296,20 @@ class MapRequestMarkerService {
       return;
     }
 
-    final selectedTaskId = _selectedTaskId;
-    if (selectedTaskId == null) {
-      final existing = _selectionIndicator;
-      if (existing != null) {
-        try {
-          await manager.delete(existing);
-        } on PlatformException catch (error) {
-          if (!_isRecoverableAnnotationError(error)) {
-            rethrow;
-          }
-        }
-        _selectionIndicator = null;
-        _selectionIndicatorShowsGlow = null;
-      }
-      return;
-    }
-
-    final task = _tasksById[selectedTaskId];
-    if (task == null) {
-      return;
-    }
-    if (!_taskIsCreator(task)) {
-      final existing = _selectionIndicator;
-      if (existing != null) {
-        try {
-          await manager.delete(existing);
-        } on PlatformException catch (error) {
-          if (!_isRecoverableAnnotationError(error)) {
-            rethrow;
-          }
-        }
-        _selectionIndicator = null;
-        _selectionIndicatorShowsGlow = null;
-      }
-      return;
-    }
-
-    _selectionIndicatorGlowImage ??=
-        await _createSelectionIndicatorImage(showGlow: true);
-    _selectionIndicatorPlainImage ??=
-        await _createSelectionIndicatorImage(showGlow: false);
-    final indicatorImage = _showSelectionGlow
-        ? _selectionIndicatorGlowImage!
-        : _selectionIndicatorPlainImage!;
-
-    final pos = _displayCoords(task);
-    final geometry = Point(
-      coordinates: Position(pos.lon, pos.lat),
-    );
-
+    // Figma alignment: do not show extra tap-selection avatar/icon overlay.
     final existing = _selectionIndicator;
-    if (existing == null) {
+    if (existing != null) {
       try {
-        _selectionIndicator = await manager.create(
-          PointAnnotationOptions(
-            geometry: geometry,
-            iconAnchor: IconAnchor.BOTTOM,
-            image: indicatorImage,
-            iconSize: _selectionIndicatorBaseIconSize * _markerSizeMultiplier,
-          ),
-        );
+        await manager.delete(existing);
       } on PlatformException catch (error) {
-        if (_isRecoverableAnnotationError(error)) {
-          _selectionIndicator = null;
-          _selectionIndicatorShowsGlow = null;
-          return;
-        }
-        rethrow;
-      }
-      _selectionIndicatorShowsGlow = _showSelectionGlow;
-    } else {
-      if (_selectionIndicatorShowsGlow != _showSelectionGlow) {
-        try {
-          await manager.delete(existing);
-          _selectionIndicator = await manager.create(
-            PointAnnotationOptions(
-              geometry: geometry,
-              iconAnchor: IconAnchor.BOTTOM,
-              image: indicatorImage,
-              iconSize: _selectionIndicatorBaseIconSize * _markerSizeMultiplier,
-            ),
-          );
-        } on PlatformException catch (error) {
-          if (_isRecoverableAnnotationError(error)) {
-            _selectionIndicator = null;
-            _selectionIndicatorShowsGlow = null;
-            return;
-          }
-          rethrow;
-        }
-      } else {
-        existing
-          ..geometry = geometry
-          ..iconSize = _selectionIndicatorBaseIconSize * _markerSizeMultiplier;
-        try {
-          await manager.update(existing);
-        } on PlatformException catch (error) {
-          if (_isRecoverableAnnotationError(error)) {
-            _selectionIndicator = null;
-            _selectionIndicatorShowsGlow = null;
-            return;
-          }
+        if (!_isRecoverableAnnotationError(error)) {
           rethrow;
         }
       }
-      _selectionIndicatorShowsGlow = _showSelectionGlow;
+      _selectionIndicator = null;
     }
+    return;
 
-    // Force map to redraw
-    await _mapboxMap?.triggerRepaint();
-  }
-
-  Future<Uint8List> _createSelectionIndicatorImage({
-    required bool showGlow,
-  }) async {
-    const width = 220.0;
-    const height = 240.0;
-    final recorder = ui.PictureRecorder();
-    final canvas = ui.Canvas(recorder);
-
-    // Center position for the entire marker (circle + triangle)
-    const markerCenter = ui.Offset(width / 2, 140);
-    const circleCenter = ui.Offset(width / 2, 140);
-    const circleRadius = 24.0;
-
-    if (showGlow) {
-      // Circular glow under marker; large and non-rectangular.
-      final glowPaint = Paint()
-        ..shader = const RadialGradient(
-          colors: [
-            Color(0xA6000000),
-            Color(0x52000000),
-            Color(0x00000000),
-          ],
-          stops: [0.0, 0.58, 1.0],
-        ).createShader(
-          Rect.fromCircle(center: markerCenter, radius: 112),
-        );
-      canvas.drawCircle(markerCenter, 112, glowPaint);
-    }
-
-    // Draw black border on circle
-    final blackBorderPaint = Paint()
-      ..color = Colors.black
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0
-      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1);
-    canvas.drawCircle(circleCenter, circleRadius, blackBorderPaint);
-
-    // Draw one stable avatar placeholder (no network image swapping).
-    final avatarBgPaint = Paint()..color = const Color(0xFF5C6B81);
-    canvas.drawCircle(circleCenter, circleRadius - 2.5, avatarBgPaint);
-
-    final personPaint = Paint()..color = Colors.white;
-    canvas.drawCircle(
-      ui.Offset(circleCenter.dx, circleCenter.dy - 6),
-      6.2,
-      personPaint,
-    );
-    final bodyPath = Path()
-      ..moveTo(circleCenter.dx - 11, circleCenter.dy + 11)
-      ..quadraticBezierTo(
-        circleCenter.dx,
-        circleCenter.dy - 1,
-        circleCenter.dx + 11,
-        circleCenter.dy + 11,
-      )
-      ..lineTo(circleCenter.dx + 11, circleCenter.dy + 15)
-      ..lineTo(circleCenter.dx - 11, circleCenter.dy + 15)
-      ..close();
-    canvas.drawPath(bodyPath, personPaint);
-
-    final picture = recorder.endRecording();
-    final image = await picture.toImage(width.toInt(), height.toInt());
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    return byteData!.buffer.asUint8List();
   }
 
   Future<void> _syncVisualsAndPositions() async {
@@ -691,15 +501,14 @@ class MapRequestMarkerService {
 
     final gradientColors = isCreator
         ? const <Color>[
-            Color(0xFFE8EAED),
-            Color(0xFF6A8EC4),
-            Color(0xFF3D5F8A),
+            Color(0xFFEAF1FF),
+            Color(0xFF6C93CE),
+            Color(0xFF3A5886),
           ]
         : const <Color>[
-            // Нейтральное «серебро» без синевы (чужие заявки).
-            Color(0xFFF3F4F6),
-            Color(0xFFD9DEE5),
-            Color(0xFFB4BCC6),
+            Color(0xFFEEEEEE),
+            Color(0xFFA3A3A3),
+            Color(0x33000000),
           ];
 
     final fill = Paint()
@@ -713,11 +522,9 @@ class MapRequestMarkerService {
 
     // Обводка (Figma ~2px). Для чужих задач - серебряная, без "неон" свечения.
     final border = Paint()
-      ..color = isCreator
-          ? (isSelected ? const Color(0xFFFFFFFF) : const Color(0xFFF5F5F5))
-          : (isSelected
-              ? const Color(0xFFD0D6DE)
-              : const Color(0xFFB0B8C4))
+        ..color = isCreator
+          ? (isSelected ? const Color(0xFFFFFFFF) : const Color(0xFFD9E4F8))
+          : (isSelected ? const Color(0xFFFFFFFF) : const Color(0xFFECECEC))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..strokeJoin = StrokeJoin.round;

@@ -26,26 +26,10 @@ class MapDialogService {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF656565)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, -3),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 25,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
+                decoration: _popupDecoration(10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -109,26 +93,10 @@ class MapDialogService {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF656565)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, -3),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 25,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
+                decoration: _popupDecoration(10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -195,26 +163,10 @@ class MapDialogService {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF656565)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, -3),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 25,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
+                decoration: _popupDecoration(10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -266,15 +218,19 @@ class MapDialogService {
     if (selectedApplicationId != null) {
       for (final app in applications) {
         final normalizedStatus = app.status.trim().toLowerCase();
-        if (app.id == selectedApplicationId && normalizedStatus == 'code_verified') {
+        if (app.id == selectedApplicationId &&
+            normalizedStatus == 'code_verified') {
           selectedApplication = app;
           break;
         }
       }
     }
 
-    selectedApplication ??= applications.cast<MapTaskApplicationEntity?>().firstWhere(
-          (app) => app != null && app.status.trim().toLowerCase() == 'code_verified',
+    selectedApplication ??= applications
+        .cast<MapTaskApplicationEntity?>()
+        .firstWhere(
+          (app) =>
+              app != null && app.status.trim().toLowerCase() == 'code_verified',
           orElse: () => null,
         );
 
@@ -292,123 +248,113 @@ class MapDialogService {
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        final helperName = selectedApplication!.applicantUsername.trim().isNotEmpty
-            ? selectedApplication.applicantUsername.trim()
-            : _compactApplicant(selectedApplication.applicantId);
+        final helperName =
+            selectedApplication!.applicantUsername.trim().isNotEmpty
+                ? selectedApplication.applicantUsername.trim()
+                : _compactApplicant(selectedApplication.applicantId);
+        final displayHelperName = helperName
+            .replaceAll('_', ' ')
+            .replaceAll(RegExp(r'\s+'), ' ')
+            .trim();
+        final helperAvatarUrl = selectedApplication.applicantAvatarUrl.trim();
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 26),
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(16, 34, 16, 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF656565)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          blurRadius: 12,
-                          offset: const Offset(0, -3),
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.4),
-                          blurRadius: 25,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+          insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.16),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x1FFFFFFF),
+                      Color(0x08FFFFFF),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 16,
+                      offset: const Offset(0, 8),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: const Color(0xFF303237),
+                      backgroundImage: helperAvatarUrl.isEmpty
+                          ? null
+                          : NetworkImage(helperAvatarUrl),
+                      child: helperAvatarUrl.isEmpty
+                          ? const Icon(
+                              Icons.person,
+                              size: 22,
+                              color: Colors.white70,
+                            )
+                          : null,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Did ${displayHelperName.isEmpty ? helperName : displayHelperName} help you complete the\ntask?',
+                      textAlign: TextAlign.center,
+                      style: TextStyles.bodyMain.copyWith(
+                        color: Colors.white.withValues(alpha: 0.86),
+                        height: 1.18,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
                       children: [
-                        Text(
-                          'Task Completion Confirmation',
-                          textAlign: TextAlign.center,
-                          style: TextStyles.bodyLarge.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: CustomButton(
+                            text: 'Yes',
+                            onTap: () {
+                              onConfirm(selectedApplication!);
+                              Navigator.of(dialogContext).pop();
+                            },
+                            borderRadius: 10,
+                            backgroundColor: const Color(0xFFE5E5E8),
+                            textStyle: TextStyles.bodyMain.copyWith(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Did $helperName help you complete the task?',
-                          textAlign: TextAlign.center,
-                          style: TextStyles.bodyMain.copyWith(
-                            color: Colors.white70,
-                            height: 1.35,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: CustomButton(
+                            text: 'No',
+                            onTap: () => Navigator.of(dialogContext).pop(),
+                            borderRadius: 10,
+                            backgroundColor: Colors.transparent,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.62),
+                            ),
+                            textStyle: TextStyles.bodyMain.copyWith(
+                              color: Colors.white.withValues(alpha: 0.84),
+                              fontWeight: FontWeight.w500,
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: CustomButton(
-                                text: 'Yes',
-                                onTap: () {
-                                  onConfirm(selectedApplication!);
-                                  Navigator.of(dialogContext).pop();
-                                },
-                                borderRadius: 6,
-                                backgroundColor: const Color(0xFFE5E5E5),
-                                textStyle: TextStyles.bodyMain.copyWith(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: CustomButton(
-                                text: 'No',
-                                onTap: () => Navigator.of(dialogContext).pop(),
-                                borderRadius: 6,
-                                backgroundColor: Colors.transparent,
-                                border: Border.all(color: Colors.white38),
-                                textStyle: TextStyles.bodyMain.copyWith(
-                                  color: Colors.white70,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 8),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
+                  ],
                 ),
               ),
-              Positioned(
-                top: -15,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2A3341),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white70,
-                      size: 16,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -451,26 +397,10 @@ class MapDialogService {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFF656565)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      blurRadius: 12,
-                      offset: const Offset(0, -3),
-                    ),
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      blurRadius: 25,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
+                decoration: _popupDecoration(10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -513,5 +443,26 @@ class MapDialogService {
       return trimmed;
     }
     return trimmed.substring(0, 18);
+  }
+
+  BoxDecoration _popupDecoration(double radius) {
+    return BoxDecoration(
+      color: const Color(0xFF565A63).withValues(alpha: 0.42),
+      borderRadius: BorderRadius.circular(radius),
+      border:
+          Border.all(color: const Color(0xFF8B9099).withValues(alpha: 0.62)),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.white.withValues(alpha: 0.08),
+          blurRadius: 8,
+          offset: const Offset(0, -2),
+        ),
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.34),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
   }
 }

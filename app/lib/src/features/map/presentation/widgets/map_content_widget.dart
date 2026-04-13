@@ -84,15 +84,17 @@ class _MapContent extends StatelessWidget {
     final ctaHorizontalInset = 15.0;
     final floatingActionBottom = safeBottom + 18;
     final floatingPanelBottom = floatingActionBottom + 74;
+    final executorNearbyPanelBottom = safeBottom + 8;
     final confirmStatus =
-      viewModel.confirmCompletionResult.taskStatus.trim().toLowerCase();
-    final completedTaskId =
-      confirmStatus == 'completed' ? viewModel.confirmCompletionResult.taskId : '';
+        viewModel.confirmCompletionResult.taskStatus.trim().toLowerCase();
+    final completedTaskId = confirmStatus == 'completed'
+        ? viewModel.confirmCompletionResult.taskId
+        : '';
     final myTasksForUi = completedTaskId.isEmpty
-      ? viewModel.myTasks
-      : viewModel.myTasks
-        .where((task) => task.id.trim() != completedTaskId.trim())
-        .toList(growable: false);
+        ? viewModel.myTasks
+        : viewModel.myTasks
+            .where((task) => task.id.trim() != completedTaskId.trim())
+            .toList(growable: false);
     final myRequest = MapFlowEvaluator.findCreatorActiveTask(myTasksForUi);
 
     final lockedMessage = MapFlowEvaluator.buildCreateTaskLockMessage(
@@ -175,16 +177,16 @@ class _MapContent extends StatelessWidget {
         normalizedExecutorStatus != 'rejected' &&
         normalizedExecutorStatus != 'completed';
     final normalizedApplyStatus = normalizeStatus(applyResult.status);
-    final normalizedAppliedTaskStatus =
-      normalizeStatus(appliedTask?.applicationStatus ?? appliedTask?.status ?? '');
+    final normalizedAppliedTaskStatus = normalizeStatus(
+        appliedTask?.applicationStatus ?? appliedTask?.status ?? '');
     final canEnterCodeByStatus = isApprovedStatus(normalizedExecutorStatus) ||
         isApprovedStatus(normalizedApplyStatus) ||
         isApprovedStatus(normalizedAppliedTaskStatus);
     final isCodeVerified = hasVerifiedCurrentApplication;
     final isAwaitingCreatorApproval = !executorCompletionShown &&
-      hasActiveApplicationLifecycle &&
-      !canEnterCodeByStatus &&
-      !isCodeVerified;
+        hasActiveApplicationLifecycle &&
+        !canEnterCodeByStatus &&
+        !isCodeVerified;
     final isAwaitingCodeEntry = !executorCompletionShown &&
         hasActiveApplicationLifecycle &&
         canEnterCodeByStatus &&
@@ -193,13 +195,17 @@ class _MapContent extends StatelessWidget {
         hasActiveApplicationLifecycle &&
         isCodeVerified;
     final shouldShowVerifyShortcut = !executorFlowDismissed &&
-      !executorCompletionShown &&
-      hasActiveApplicationLifecycle &&
-      isAwaitingCodeEntry;
-    final hasExecutorFlowActive =
-      !executorFlowDismissed &&
-      (isAwaitingCreatorApproval || isAwaitingCodeEntry || isWaitingCreatorConfirm);
+        !executorCompletionShown &&
+        hasActiveApplicationLifecycle &&
+        isAwaitingCodeEntry;
+    final hasExecutorFlowActive = !executorFlowDismissed &&
+        (isAwaitingCreatorApproval ||
+            isAwaitingCodeEntry ||
+            isWaitingCreatorConfirm);
     final shouldShowExecutorTopStrip = hasExecutorFlowActive;
+    final isNearbyTaskCardVisible = !hasExecutorFlowActive &&
+        myRequest == null &&
+        selectedNearbyTask != null;
 
     const mapboxAccessToken = String.fromEnvironment(
       'MAPBOX_ACCESS_TOKEN',
@@ -249,57 +255,72 @@ class _MapContent extends StatelessWidget {
               child: SizedBox(
                 width: 400,
                 height: 107,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
+                child: ClipRect(
                   child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: const RadialGradient(
-                          center: Alignment.center,
-                          radius: 0.95,
-                          colors: [
-                            MapUiPalette.bannerGradientInner,
-                            MapUiPalette.bannerGradientOuter,
+                    filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          gradient: RadialGradient(
+                            center: const Alignment(-0.2, -1.2),
+                            radius: 1.6,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.12),
+                              Colors.transparent,
+                            ],
+                          ),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.22),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.public,
+                                  size: 16,
+                                  color: MapUiPalette.subtleText,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'GLOBAL RANKING CYCLE',
+                                  style: TextStyles.bodySecondary.copyWith(
+                                    color: MapUiPalette.subtleText,
+                                    letterSpacing: 0.45,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: RankingCountdownWidget(
+                                textStyle: TextStyles.titleXBig.copyWith(
+                                  color: Colors.white,
+                                  fontSize: 31,
+                                  height: 1,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              'Regional champions update worldwide...',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyles.bodySecondary.copyWith(
+                                color: MapUiPalette.mutedText,
+                                fontSize: 13,
+                              ),
+                            ),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: MapUiPalette.panelBorder.withValues(alpha: 0.55),
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: MapUiPalette.bannerShadow,
-                            blurRadius: 5,
-                            spreadRadius: 1,
-                            offset: Offset(0, 0),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'GLOBAL RANKING CYCLE',
-                            style: TextStyles.bodySecondary.copyWith(
-                              color: MapUiPalette.subtleText,
-                              letterSpacing: 0.35,
-                            ),
-                          ),
-                          const FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: RankingCountdownWidget(),
-                          ),
-                          Text(
-                            'Regional champions update worldwide...',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyles.bodySecondary.copyWith(
-                              color: MapUiPalette.mutedText,
-                            ),
-                          ),
-                        ],
                       ),
                     ),
                   ),
@@ -313,7 +334,9 @@ class _MapContent extends StatelessWidget {
           Positioned(
             left: requestPanelHorizontalInset,
             right: requestPanelHorizontalInset,
-            bottom: floatingPanelBottom,
+            bottom: myRequest != null
+                ? floatingPanelBottom
+                : executorNearbyPanelBottom,
             child: Transform.translate(
               offset: Offset.zero,
               child: myRequest != null
@@ -336,7 +359,7 @@ class _MapContent extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                                 child: BackdropFilter(
                                   filter:
-                                      ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                                      ImageFilter.blur(sigmaX: 8, sigmaY: 8),
                                   child: Container(
                                     padding: const EdgeInsets.fromLTRB(
                                         14, 16, 14, 12),
@@ -391,8 +414,9 @@ class _MapContent extends StatelessWidget {
                                                   color: Colors.black87,
                                                   fontWeight: FontWeight.w600,
                                                 ),
-                                                padding: const EdgeInsets
-                                                    .symmetric(vertical: 8),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 8),
                                               ),
                                             ),
                                             const SizedBox(width: 10),
@@ -410,8 +434,9 @@ class _MapContent extends StatelessWidget {
                                                 textStyle: TextStyles.bodyMain
                                                     .copyWith(
                                                         color: Colors.white70),
-                                                padding: const EdgeInsets
-                                                    .symmetric(vertical: 8),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 8),
                                               ),
                                             ),
                                           ],
@@ -428,9 +453,8 @@ class _MapContent extends StatelessWidget {
                     })()
                   : _NearbyTasksPanel(
                       tasks: <MapTaskEntity>[selectedNearbyTask!],
-                      onApply: (taskId) => mapBloc.add(
-                          MapEvent.applyToTask(
-                              MapTaskIdRequest(taskId: taskId))),
+                      onApply: (taskId) => mapBloc.add(MapEvent.applyToTask(
+                          MapTaskIdRequest(taskId: taskId))),
                     ),
             ),
           ),
@@ -502,33 +526,56 @@ class _MapContent extends StatelessWidget {
                       onTap: () {},
                       isDisabled: true,
                       borderRadius: 8,
-                      backgroundColor: Colors.white.withValues(alpha: 0.24),
+                      backgroundColor: MapUiPalette.ctaBackground,
+                      disabledBackgroundColor:
+                          const Color(0xFF121212).withValues(alpha: 0.42),
+                      border: Border.all(
+                        color: const Color(0x992B2B2C),
+                        width: 0.5,
+                      ),
                       textStyle: TextStyles.bodyMain.copyWith(
-                        color: Colors.white70,
+                        color: Colors.white,
                         fontWeight: FontWeight.w500,
+                      ),
+                      disabledTextStyle: TextStyles.bodyMain.copyWith(
+                        color: const Color(0xFFCACACA).withValues(alpha: 0.74),
+                        fontWeight: FontWeight.w600,
                       ),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                     )
-              : isWaitingCreatorConfirm
-                  ? CustomButton(
-                      text: 'Waiting for creator confirmation',
-                      onTap: () {},
-                      isDisabled: true,
-                      borderRadius: 8,
-                      backgroundColor: Colors.white.withValues(alpha: 0.24),
-                      textStyle: TextStyles.bodyMain.copyWith(
-                        color: Colors.white70,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                    )
-                  : _CreateRequestCta(
-                      myRequest: myRequest,
-                      hasMyTasksLoaded: viewModel.hasMyTasksLoaded,
-                      isCreatingTask: viewModel.isCreatingTask,
-                      lockedMessage: lockedMessage,
-                      onOpenCreateRequest: onOpenCreateRequest,
-                    ),
+                  : isWaitingCreatorConfirm
+                      ? CustomButton(
+                          text: 'Waiting for creator confirmation',
+                          onTap: () {},
+                          isDisabled: true,
+                          borderRadius: 8,
+                          backgroundColor: MapUiPalette.ctaBackground,
+                          disabledBackgroundColor:
+                              const Color(0xFF121212).withValues(alpha: 0.42),
+                          border: Border.all(
+                            color: const Color(0x992B2B2C),
+                            width: 0.5,
+                          ),
+                          textStyle: TextStyles.bodyMain.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          disabledTextStyle: TextStyles.bodyMain.copyWith(
+                            color:
+                                const Color(0xFFCACACA).withValues(alpha: 0.74),
+                            fontWeight: FontWeight.w600,
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        )
+                      : isNearbyTaskCardVisible
+                          ? const SizedBox.shrink()
+                          : _CreateRequestCta(
+                              myRequest: myRequest,
+                              hasMyTasksLoaded: viewModel.hasMyTasksLoaded,
+                              isCreatingTask: viewModel.isCreatingTask,
+                              lockedMessage: lockedMessage,
+                              onOpenCreateRequest: onOpenCreateRequest,
+                            ),
         ),
       ],
     );
@@ -553,7 +600,8 @@ class _CreateRequestCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final disabled = isCreatingTask || !hasMyTasksLoaded || lockedMessage != null;
+    final disabled =
+        isCreatingTask || !hasMyTasksLoaded || lockedMessage != null;
 
     void handleTap() {
       if (disabled) {
@@ -587,49 +635,102 @@ class _CreateRequestCta extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(
-          height: 50,
-          child: CustomButton(
-            text: 'Create a request for help',
-            onTap: handleTap,
-            isDisabled: disabled,
-            borderRadius: 6,
-            backgroundColor: disabled
-                ? MapUiPalette.ctaDisabledBackground
-                : MapUiPalette.ctaBackground,
-            border: Border.all(color: MapUiPalette.ctaBorder),
-            textStyle: TextStyles.bodyLarge.copyWith(
-              color: disabled ? Colors.white54 : Colors.white,
+        if (disabled && lockedMessage != null)
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF121212),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: const Color(0x992B2B2C),
+                width: 0.5,
+              ),
             ),
-            prefixIcon: Icon(
-              Icons.add,
-              color: disabled ? Colors.white54 : Colors.white,
-              size: 18,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 50,
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add,
+                          size: 18,
+                          color:
+                              const Color(0xFFCACACA).withValues(alpha: 0.68),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Create a request for help',
+                          style: TextStyles.bodyLarge.copyWith(
+                            color:
+                                const Color(0xFFCACACA).withValues(alpha: 0.68),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: Text(
+                    lockedMessage!,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyles.bodyMain.copyWith(
+                      color: const Color(0xFFCACACA),
+                      fontSize: 10,
+                      height: 1.2,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          )
+        else
+          SizedBox(
+            height: 50,
+            child: CustomButton(
+              text: 'Create a request for help',
+              onTap: handleTap,
+              isDisabled: disabled,
+              borderRadius: 6,
+              backgroundColor: MapUiPalette.ctaBackground,
+              disabledBackgroundColor:
+                  const Color(0xFF121212).withValues(alpha: 0.42),
+              border: Border.all(
+                color:
+                    disabled ? const Color(0x992B2B2C) : MapUiPalette.ctaBorder,
+                width: disabled ? 0.5 : 1,
+              ),
+              textStyle: TextStyles.bodyLarge.copyWith(
+                color: Colors.white,
+              ),
+              disabledTextStyle: TextStyles.bodyLarge.copyWith(
+                color: const Color(0xFFCACACA).withValues(alpha: 0.74),
+                fontWeight: FontWeight.w600,
+              ),
+              prefixIcon: Icon(
+                Icons.add,
+                color: disabled
+                    ? const Color(0xFFCACACA).withValues(alpha: 0.72)
+                    : Colors.white,
+                size: 18,
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            ),
           ),
-        ),
         if (!hasMyTasksLoaded) ...[
           const SizedBox(height: 8),
           Text(
             'Checking request availability...',
             textAlign: TextAlign.center,
             style: TextStyles.bodyMain.copyWith(
-              color: Colors.white60,
-              fontSize: 11,
-              height: 1.2,
-            ),
-          ),
-        ] else if (lockedMessage != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            lockedMessage!,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyles.bodyMain.copyWith(
-              color: Colors.white60,
-              fontSize: 11,
+              color: const Color(0xFFCACACA).withValues(alpha: 0.56),
+              fontSize: 10,
               height: 1.2,
             ),
           ),

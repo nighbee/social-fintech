@@ -1,8 +1,8 @@
 <svg width="37" height="37" viewBox="0 0 37 37" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M3.08325 18.5H7.70825" stroke="#CACACA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M29.2917 18.5H33.9167" stroke="#CACACA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M18.5 3.08334V7.70834" stroke="#CACACA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M18.5 29.2917V33.9167" stroke="#CACACA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M18.4999 29.2917C24.46 29.2917 29.2916 24.4601 29.2916 18.5C29.2916 12.5399 24.46 7.70834 18.4999 7.70834C12.5398 7.70834 7.70825 12.5399 7.70825 18.5C7.70825 24.4601 12.5398 29.2917 18.4999 29.2917Z" stroke="#CACACA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M18.5 23.125C21.0543 23.125 23.125 21.0543 23.125 18.5C23.125 15.9457 21.0543 13.875 18.5 13.875C15.9457 13.875 13.875 15.9457 13.875 18.5C13.875 21.0543 15.9457 23.125 18.5 23.125Z" stroke="#CACACA" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M3.08325 18.5H7.70825" stroke="#CACACA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M29.2917 18.5H33.9167" stroke="#CACACA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M18.5 3.08334V7.70834" stroke="#CACACA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M18.5 29.2917V33.9167" stroke="#CACACA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M18.4999 29.2917C24.46 29.2917 29.2916 24.4601 29.2916 18.5C29.2916 12.5399 24.46 7.70834 18.4999 7.70834C12.5398 7.70834 7.70825 12.5399 7.70825 18.5C7.70825 24.4601 12.5398 29.2917 18.4999 29.2917Z" stroke="#CACACA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M18.5 23.125C21.0543 23.125 23.125 21.0543 23.125 18.5C23.125 15.9457 21.0543 13.875 18.5 13.875C15.9457 13.875 13.875 15.9457 13.875 18.5C13.875 21.0543 15.9457 23.125 18.5 23.125Z" stroke="#CACACA" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

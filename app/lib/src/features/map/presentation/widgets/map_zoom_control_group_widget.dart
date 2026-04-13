@@ -13,52 +13,78 @@ class _MapZoomControlGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(6),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          width: 44,
-          decoration: BoxDecoration(
-            color: MapUiPalette.controlPanelBackground,
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: MapUiPalette.controlPanelBorder),
-            boxShadow: [
-              BoxShadow(
-                color: MapUiPalette.panelTopGlow,
-                blurRadius: 12,
-                offset: const Offset(0, -3),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            width: 44,
+            decoration: BoxDecoration(
+              color: MapUiPalette.controlPanelBackground,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: MapUiPalette.controlPanelBorder,
+                width: 0.5,
               ),
-              BoxShadow(
-                color: MapUiPalette.panelDropShadow,
-                blurRadius: 25,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _MapZoomHalfButton(
-                onTap: onTapPlus,
-                icon: Assets.icons.plusIcon.svg(
-                  width: 28,
-                  height: 28,
-                  colorFilter:
-                      const ColorFilter.mode(MapUiPalette.controlIcon, BlendMode.srcIn),
+              boxShadow: const [
+                BoxShadow(
+                  color: MapUiPalette.panelDropShadow,
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                  offset: Offset(0, 0),
                 ),
-              ),
-              const Divider(height: 1, thickness: 1, color: MapUiPalette.controlPanelBorder),
-              _MapZoomHalfButton(
-                onTap: onTapMinus,
-                icon: Container(
-                  width: 28,
-                  height: 1,
-                  decoration: BoxDecoration(
-                    color: MapUiPalette.controlIcon,
-                    borderRadius: BorderRadius.circular(2),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _MapZoomHalfButton(
+                  onTap: onTapPlus,
+                  icon: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 18,
+                          height: 2,
+                          decoration: BoxDecoration(
+                            color: MapUiPalette.controlIcon,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        Container(
+                          width: 2,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: MapUiPalette.controlIcon,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+                const Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: MapUiPalette.controlPanelBorder),
+                _MapZoomHalfButton(
+                  onTap: onTapMinus,
+                  icon: Transform.translate(
+                    offset: const Offset(0, -0.5),
+                    child: Container(
+                      width: 18,
+                      height: 2,
+                      decoration: BoxDecoration(
+                        color: MapUiPalette.controlIcon,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

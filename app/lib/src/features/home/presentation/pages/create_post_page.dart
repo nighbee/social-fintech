@@ -58,15 +58,29 @@ class _CreatePostPageState extends State<CreatePostPage>
   }
 
   Future<void> _pickPhoto() async {
-    await ImagePickerHelper.showImagePicker(
+    await ImagePickerHelper.showMediaPicker(
       context: context,
       imageQuality: 60,
       maxWidth: 1280,
       maxHeight: 1280,
-      onImageSelected: (bytes, fileName) {
+      onMediaSelected: (bytes, fileName) {
         _bloc.add(HomeEvent.addPostPhoto(bytes, fileName));
       },
+      onError: (message) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      },
     );
+  }
+
+  bool _isVideoFileName(String fileName) {
+    final name = fileName.toLowerCase();
+    return name.endsWith('.mp4') ||
+        name.endsWith('.mov') ||
+        name.endsWith('.m4v') ||
+        name.endsWith('.webm');
   }
 
   void _submit() {
@@ -316,6 +330,40 @@ class _CreatePostPageState extends State<CreatePostPage>
                                         }
                                       },
                                       itemBuilder: (context, index) {
+                                        final fileName =
+                                            viewModel.postComposerPhotos[index].fileName;
+                                        if (_isVideoFileName(fileName)) {
+                                          return Container(
+                                            color: const Color(0xFF111216),
+                                            child: Center(
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  const Icon(
+                                                    Icons.play_circle_fill,
+                                                    color: Colors.white70,
+                                                    size: 56,
+                                                  ),
+                                                  const Gap(8),
+                                                  Text(
+                                                    'Video selected',
+                                                    style: TextStyles.bodyLarge.copyWith(
+                                                      color: Colors.white,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  const Gap(4),
+                                                  Text(
+                                                    'Max duration: 2 min',
+                                                    style: TextStyles.bodyMain.copyWith(
+                                                      color: Colors.white70,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        }
                                         return Image.memory(
                                           viewModel
                                               .postComposerPhotos[index].bytes,

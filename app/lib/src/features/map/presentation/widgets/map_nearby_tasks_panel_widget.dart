@@ -20,152 +20,196 @@ class _MyRequestPanel extends StatelessWidget {
     final code = _extractVerificationCode(task.status);
     final title = _truncateTitleForHeader(task.title);
     final avatar = avatarUrl?.trim() ?? '';
-    final requiredText =
-        'Required: ${task.workersNeeded} heroes  |  Reward: ${task.reward.toStringAsFixed(0)}';
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: MapUiPalette.panelBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: MapUiPalette.panelBorder),
-            boxShadow: [
-              BoxShadow(
-                color: MapUiPalette.panelTopGlow,
-                blurRadius: 12,
-                offset: const Offset(0, -3),
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.16),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0x1FFFFFFF),
+                  Color(0x08FFFFFF),
+                ],
               ),
-              BoxShadow(
-                color: MapUiPalette.panelDropShadow,
-                blurRadius: 25,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              InkWell(
-                onTap: onToggleExpanded,
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2A3341),
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InkWell(
+                  onTap: onToggleExpanded,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 30,
+                          height: 30,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF303237),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                            ),
                           ),
-                        ),
-                        child: ClipOval(
-                          child: avatar.isNotEmpty
-                              ? Image.network(
-                                  avatar,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(
+                          child: ClipOval(
+                            child: avatar.isNotEmpty
+                                ? Image.network(
+                                    avatar,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.person,
+                                      color: Colors.white70,
+                                      size: 16,
+                                    ),
+                                  )
+                                : const Icon(
                                     Icons.person,
                                     color: Colors.white70,
                                     size: 16,
                                   ),
-                                )
-                              : const Icon(
-                                  Icons.person,
-                                  color: Colors.white70,
-                                  size: 16,
+                          ),
+                        ),
+                        const Gap(10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyles.bodyLarge.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
                                 ),
-                        ),
-                      ),
-                      const Gap(10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyles.bodyLarge.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                            Text(
-                              'Code:$code',
-                              style: TextStyles.bodyMain.copyWith(
-                                color: Colors.white54,
+                              Text(
+                                'Code:$code',
+                                style: TextStyles.bodyMain.copyWith(
+                                  color: Colors.white54,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      Icon(
-                        isExpanded
-                            ? Icons.keyboard_arrow_up_rounded
-                            : Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white70,
-                        size: 22,
-                      ),
-                    ],
+                        Text(
+                          'view my request',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: Colors.white.withValues(alpha: 0.74),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              if (isExpanded)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ExpandablePanelDescription(
-                        text: task.description.isEmpty
-                            ? 'No description provided.'
-                            : task.description,
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        requiredText,
-                        style: TextStyles.bodyMain.copyWith(
-                          color: Colors.white60,
-                          fontSize: 12,
+                if (isExpanded)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ExpandablePanelDescription(
+                          text: task.description.isEmpty
+                              ? 'No description provided.'
+                              : task.description,
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        width: double.infinity,
-                        child: InkWell(
-                          onTap: onCancel,
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: const Color(0xAAE14D4D),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Text(
+                              'Required:',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: const Color(0xFF9B9B9B),
+                                fontSize: 12,
                               ),
                             ),
-                            child: Text(
-                              'Cancel my request',
+                            const SizedBox(width: 4),
+                            Text(
+                              '${task.workersNeeded} heroes',
                               style: TextStyles.bodyMain.copyWith(
-                                color: const Color(0xFFE26D6D),
-                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFCACACA),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Image.asset(
+                              'assets/images/Heroes.png',
+                              width: 14,
+                              height: 14,
+                              fit: BoxFit.contain,
+                            ),
+                            const Spacer(),
+                            Text(
+                              'Reward:',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: const Color(0xFF9B9B9B),
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              task.reward.toStringAsFixed(0),
+                              style: TextStyles.bodyMain.copyWith(
+                                color: const Color(0xFFCACACA),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Assets.icons.silverCoin.svg(width: 20, height: 20),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: InkWell(
+                            onTap: onCancel,
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.black.withValues(alpha: 0.14),
+                                border: Border.all(
+                                  color: const Color(0x99E14D4D),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancel my request',
+                                style: TextStyles.bodyMain.copyWith(
+                                  color: const Color(0xFFF06D6D),
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -215,9 +259,8 @@ class _NearbyTasksPanel extends StatelessWidget {
     }
 
     final task = tasks.first;
-    final normalizedTitle = task.title.trim().isEmpty
-        ? 'Help request'
-        : task.title.trim();
+    final normalizedTitle =
+        task.title.trim().isEmpty ? 'Help request' : task.title.trim();
     final hasDescription = task.description.trim().isNotEmpty;
     final description = hasDescription
         ? task.description
@@ -229,113 +272,145 @@ class _NearbyTasksPanel extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 410),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(6),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: const Color(0x33202020),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: MapUiPalette.panelBorder),
-            boxShadow: [
-              BoxShadow(
-                color: MapUiPalette.panelTopGlow,
-                blurRadius: 12,
-                offset: const Offset(0, -3),
-              ),
-              BoxShadow(
-                color: MapUiPalette.panelDropShadow,
-                blurRadius: 25,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 16, 12, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    _TaskAvatar(
-                      seedText: task.creatorUsername.trim().isNotEmpty
-                          ? task.creatorUsername
-                          : normalizedTitle,
-                      username: task.creatorUsername,
-                      avatarUrl: task.creatorAvatarUrl,
-                    ),
-                    const Gap(10),
-                    Expanded(
-                      child: Text(
-                        normalizedTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyles.titleMain.copyWith(
-                          color: const Color(0xFFF2F2F2),
-                          fontSize: 18,
-                          height: 1.05,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0x40202020),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0x12FFFFFF),
+                      Color(0x00FFFFFF),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: const Color(0x992B2B2C),
+                    width: 0.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                _ExpandablePanelDescription(
-                  text: description,
-                  collapsedMaxLines: 6,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Required: ${task.workersNeeded} heroes',
-                        style: TextStyles.bodyMain.copyWith(
-                          color: Colors.white60,
-                          fontSize: 12,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          _TaskAvatar(
+                            seedText: task.creatorUsername.trim().isNotEmpty
+                                ? task.creatorUsername
+                                : normalizedTitle,
+                            username: task.creatorUsername,
+                            avatarUrl: task.creatorAvatarUrl,
+                          ),
+                          const Gap(10),
+                          Expanded(
+                            child: Text(
+                              normalizedTitle,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyles.titleMain.copyWith(
+                                color: const Color(0xFFF2F2F2),
+                                fontSize: 18,
+                                height: 1.05,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      _ExpandablePanelDescription(
+                        text: description,
+                        collapsedMaxLines: 6,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Text(
+                            'Required:',
+                            style: TextStyles.bodyMain.copyWith(
+                              color: const Color(0xFF9B9B9B),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${task.workersNeeded} heroes',
+                            style: TextStyles.bodyMain.copyWith(
+                              color: const Color(0xFFCACACA),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Image.asset(
+                            'assets/images/Heroes.png',
+                            width: 14,
+                            height: 14,
+                            fit: BoxFit.contain,
+                          ),
+                          const Spacer(),
+                          Text(
+                            'Reward:',
+                            style: TextStyles.bodyMain.copyWith(
+                              color: const Color(0xFF9B9B9B),
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            task.reward.toStringAsFixed(0),
+                            style: TextStyles.bodyMain.copyWith(
+                              color: const Color(0xFFCACACA),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Assets.icons.silverCoin.svg(width: 20, height: 20),
+                        ],
+                      ),
+                      const SizedBox(height: 25),
+                      SizedBox(
+                        width: double.infinity,
+                        child: InkWell(
+                          onTap: () => onApply(task.id),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Container(
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE5E5E5),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'I can help',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: Colors.black87,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    Assets.icons.silverCoin.svg(width: 18, height: 18),
-                    const SizedBox(width: 4),
-                    Text(
-                      task.reward.toStringAsFixed(0),
-                      style: TextStyles.bodyMain.copyWith(
-                        color: Colors.white60,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 25),
-                SizedBox(
-                  width: double.infinity,
-                  child: InkWell(
-                    onTap: () => onApply(task.id),
-                    borderRadius: BorderRadius.circular(6),
-                    child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE5E5E5),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'I can help',
-                        style: TextStyles.bodyMain.copyWith(
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
         ),
       ),
     );
@@ -356,7 +431,8 @@ class _ExpandablePanelDescription extends StatefulWidget {
       _ExpandablePanelDescriptionState();
 }
 
-class _ExpandablePanelDescriptionState extends State<_ExpandablePanelDescription> {
+class _ExpandablePanelDescriptionState
+    extends State<_ExpandablePanelDescription> {
   bool _expanded = false;
 
   @override
@@ -382,7 +458,8 @@ class _ExpandablePanelDescriptionState extends State<_ExpandablePanelDescription
             Text(
               widget.text,
               maxLines: _expanded ? null : widget.collapsedMaxLines,
-              overflow: _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+              overflow:
+                  _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
               style: style,
             ),
             if (isOverflowing)
@@ -443,7 +520,7 @@ class _TaskAvatar extends StatelessWidget {
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF5E7698), Color(0xFF2E3C52)],
+              colors: [Color(0xFF5A5D64), Color(0xFF35383E)],
             ),
             border: Border.all(
               color: Colors.white.withValues(alpha: 0.28),

@@ -113,6 +113,7 @@ class ImagePickerHelper {
   static Future<void> showMediaPicker({
     required BuildContext context,
     required Function(Uint8List bytes, String fileName) onMediaSelected,
+    Function(String message)? onError,
     int imageQuality = 80,
     double? maxWidth = 1280,
     double? maxHeight = 1280,
@@ -169,6 +170,7 @@ class ImagePickerHelper {
                     await _pickVideo(
                       picker,
                       onMediaSelected,
+                      onError: onError,
                     );
                   },
                 ),
@@ -315,15 +317,24 @@ class ImagePickerHelper {
   static Future<void> _pickVideo(
     ImagePicker picker,
     Function(Uint8List bytes, String fileName) onMediaSelected,
+    {
+    Function(String message)? onError,
+  }
   ) async {
     try {
-      final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
+      final XFile? video = await picker.pickVideo(
+        source: ImageSource.gallery,
+        maxDuration: const Duration(minutes: 2),
+      );
       if (video != null) {
         final bytes = await video.readAsBytes();
         onMediaSelected(bytes, video.name);
+      } else {
+        onError?.call('Video was not selected. Max duration is 2 minutes.');
       }
     } catch (e) {
       debugPrint('Error picking video: $e');
+      onError?.call('Failed to pick video. Please try again.');
     }
   }
 }

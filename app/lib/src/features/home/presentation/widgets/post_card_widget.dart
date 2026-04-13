@@ -6,6 +6,7 @@ import 'package:gap/gap.dart';
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
+import 'package:app/src/features/home/domain/entities/media_attachment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
@@ -32,8 +33,12 @@ class PostCardWidget extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     final homeBloc = bloc;
-    final imageUrls = post.mediaAttachments.map((item) => item.url).toList();
-    final hasImages = imageUrls.isNotEmpty;
+    final mediaAttachments = post.mediaAttachments;
+    final hasMedia = mediaAttachments.isNotEmpty;
+    final imageUrls = mediaAttachments
+        .where((item) => item.type.toLowerCase() == 'image')
+        .map((item) => item.url)
+        .toList(growable: false);
     final rankMeta = _resolveRankMeta(post.author.rank, post.author.rankSubLevel);
     final avatarUrl = post.author.profilePicUrl.trim().isNotEmpty
         ? post.author.profilePicUrl
@@ -133,9 +138,9 @@ class PostCardWidget extends StatelessWidget
             post.contentText,
             style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
           ),
-          if (hasImages) ...[
+          if (hasMedia) ...[
             const Gap(12),
-            PostImageGrid(imageUrls: imageUrls),
+            PostImageGrid(attachments: mediaAttachments),
           ],
           const Gap(12),
           Row(
@@ -490,35 +495,88 @@ class _PostAvatar extends StatelessWidget {
 }
 
 class PostImageGrid extends StatelessWidget {
-  final List<String> imageUrls;
+  final List<MediaAttachmentEntity> attachments;
 
-  const PostImageGrid({super.key, required this.imageUrls});
+  const PostImageGrid({super.key, required this.attachments});
+
+  bool _isVideo(MediaAttachmentEntity item) {
+    return item.type.toLowerCase() == 'video';
+  }
+
+  Widget _mediaTile(
+    MediaAttachmentEntity item, {
+    required double height,
+    double? width,
+  }) {
+    if (_isVideo(item)) {
+      final thumb = item.thumbnailUrl.trim();
+      final thumbWidget = thumb.isNotEmpty
+          ? CustomNetworkImage(
+              imageUrl: thumb,
+              height: height,
+              width: width,
+              borderRadius: BorderRadius.circular(8),
+            )
+          : Container(
+              width: width,
+              height: height,
+              decoration: BoxDecoration(
+                color: const Color(0xFF121418),
+                borderRadius: BorderRadius.circular(8),
+              ),
+            );
+
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          thumbWidget,
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.45),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 34,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return CustomNetworkImage(
+      imageUrl: item.url,
+      height: height,
+      width: width,
+      borderRadius: BorderRadius.circular(8),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrls.length == 1) {
-      return CustomNetworkImage(
-        imageUrl: imageUrls[0],
+    if (attachments.length == 1) {
+      return _mediaTile(
+        attachments[0],
         height: 200,
         width: double.infinity,
-        borderRadius: BorderRadius.circular(8),
       );
-    } else if (imageUrls.length == 2) {
+    } else if (attachments.length == 2) {
       return Row(
         children: [
           Expanded(
-            child: CustomNetworkImage(
-              imageUrl: imageUrls[0],
+            child: _mediaTile(
+              attachments[0],
               height: 150,
-              borderRadius: BorderRadius.circular(8),
             ),
           ),
           const Gap(8),
           Expanded(
-            child: CustomNetworkImage(
-              imageUrl: imageUrls[1],
+            child: _mediaTile(
+              attachments[1],
               height: 150,
-              borderRadius: BorderRadius.circular(8),
             ),
           ),
         ],
@@ -527,28 +585,25 @@ class PostImageGrid extends StatelessWidget {
       // 3 or more images
       return Column(
         children: [
-          CustomNetworkImage(
-            imageUrl: imageUrls[0],
+          _mediaTile(
+            attachments[0],
             height: 200,
             width: double.infinity,
-            borderRadius: BorderRadius.circular(8),
           ),
           const Gap(8),
           Row(
             children: [
               Expanded(
-                child: CustomNetworkImage(
-                  imageUrl: imageUrls[1],
+                child: _mediaTile(
+                  attachments[1],
                   height: 100,
-                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
               const Gap(8),
               Expanded(
-                child: CustomNetworkImage(
-                  imageUrl: imageUrls[2],
+                child: _mediaTile(
+                  attachments[2],
                   height: 100,
-                  borderRadius: BorderRadius.circular(8),
                 ),
               ),
             ],
