@@ -316,19 +316,18 @@ class ImagePickerHelper {
 
   static Future<void> _pickVideo(
     ImagePicker picker,
-    Function(Uint8List bytes, String fileName) onMediaSelected,
-    {
+    Function(Uint8List bytes, String fileName) onMediaSelected, {
     Function(String message)? onError,
-  }
-  ) async {
+  }) async {
     try {
       final XFile? video = await picker.pickVideo(
         source: ImageSource.gallery,
         maxDuration: const Duration(minutes: 2),
       );
       if (video != null) {
-        final bytes = await video.readAsBytes();
-        onMediaSelected(bytes, video.name);
+        // For large videos, avoid loading full bytes into memory on iOS.
+        // We pass an empty byte payload and the local file path instead.
+        onMediaSelected(Uint8List(0), video.path);
       } else {
         onError?.call('Video was not selected. Max duration is 2 minutes.');
       }

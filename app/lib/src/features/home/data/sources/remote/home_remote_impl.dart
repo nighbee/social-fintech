@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:app/src/core/api/client/dio/dio_client.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
@@ -46,6 +48,7 @@ class HomeRemoteImpl implements IHomeRemote {
   HomeRemoteImpl(@Named.from(DioClient) this._restClient);
 
   final RestClient _restClient;
+  static const int _defaultVideoDurationSeconds = 120;
 
   @override
   Future<Either<DomainException, FeedDto>> getFeed(FeedRequest request) async {
@@ -71,7 +74,9 @@ class HomeRemoteImpl implements IHomeRemote {
   }) async {
     try {
       final uploadedAttachments = <MediaAttachmentRequest>[];
+      final uploadedVideoUrls = <String>{};
       for (final payload in localMediaPayloads) {
+        final isVideo = _isVideoFileName(payload.localUrl);
         final uploaded = await uploadFeedMedia(
           UploadFeedMediaRequest(
             bytes: payload.bytes,
@@ -79,9 +84,15 @@ class HomeRemoteImpl implements IHomeRemote {
           ),
         );
         if (uploaded.isLeft()) {
-          return uploaded.fold(Left.new, (_) => throw StateError('unreachable'));
+          return uploaded.fold(
+              Left.new, (_) => throw StateError('unreachable'));
         }
-        uploaded.fold((_) {}, (attachment) => uploadedAttachments.add(attachment));
+        uploaded.fold((_) {}, (attachment) {
+          uploadedAttachments.add(attachment);
+          if (isVideo) {
+            uploadedVideoUrls.add(attachment.url);
+          }
+        });
       }
 
       final mergedRequest = request.copyWith(
@@ -91,9 +102,32 @@ class HomeRemoteImpl implements IHomeRemote {
         ],
       );
 
+      final requestPayload = mergedRequest.toJson();
+      final mediaRaw = requestPayload['media_attachments'];
+      if (mediaRaw is List) {
+        final normalizedMedia = <Map<String, dynamic>>[];
+        for (final item in mediaRaw) {
+          if (item is Map) {
+            final map = item.map(
+              (key, value) => MapEntry(key.toString(), value),
+            );
+            final type = (map['type'] ?? '').toString().toLowerCase();
+            final url = (map['url'] ?? '').toString();
+            if (type == 'video') {
+              final hasDuration = map['duration_seconds'] != null;
+              if (!hasDuration || uploadedVideoUrls.contains(url)) {
+                map['duration_seconds'] = _defaultVideoDurationSeconds;
+              }
+            }
+            normalizedMedia.add(map);
+          }
+        }
+        requestPayload['media_attachments'] = normalizedMedia;
+      }
+
       final response = await _restClient.post(
         EndPoints.posts,
-        data: formData ?? mergedRequest.toJson(),
+        data: formData ?? requestPayload,
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
@@ -200,12 +234,28 @@ class HomeRemoteImpl implements IHomeRemote {
     UploadFeedMediaRequest request,
   ) async {
     try {
-      final formData = FormData.fromMap(<String, dynamic>{
-        'file': MultipartFile.fromBytes(
-          request.bytes,
-          filename: request.fileName,
-        ),
-      });
+      final isVideo = _isVideoFileName(request.fileName);
+      final localFile = File(request.fileName);
+      final canStreamFromPath = request.bytes.isEmpty && localFile.existsSync();
+      final multipartFile = canStreamFromPath
+          ? await MultipartFile.fromFile(
+              request.fileName,
+              filename: request.fileName.split('/').last,
+            )
+          : MultipartFile.fromBytes(
+              request.bytes,
+              filename: request.fileName,
+            );
+
+      final formFields = <String, dynamic>{
+        'file': multipartFile,
+      };
+      if (isVideo) {
+        formFields['duration_seconds'] =
+            _defaultVideoDurationSeconds.toString();
+      }
+
+      final formData = FormData.fromMap(formFields);
       final response = await _restClient.post(
         EndPoints.feedMediaUpload,
         data: formData,
@@ -330,7 +380,8 @@ class HomeRemoteImpl implements IHomeRemote {
     PostIdRequest requestId,
   ) async {
     try {
-      final response = await _restClient.delete(EndPoints.postById(requestId.postId));
+      final response =
+          await _restClient.delete(EndPoints.postById(requestId.postId));
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
         return Right(StatusResponseDto.fromJson(payload));
@@ -415,7 +466,8 @@ class HomeRemoteImpl implements IHomeRemote {
   }
 
   @override
-  Future<Either<DomainException, List<NotificationDto>>> getNotifications() async {
+  Future<Either<DomainException, List<NotificationDto>>>
+      getNotifications() async {
     try {
       final response = await _restClient.get('/notifications');
       return response.fold((error) => Left(error), (result) {
@@ -497,5 +549,13 @@ class HomeRemoteImpl implements IHomeRemote {
           .toList(growable: false);
     }
     return const <Map<String, dynamic>>[];
+  }
+
+  bool _isVideoFileName(String fileName) {
+    final name = fileName.toLowerCase();
+    return name.endsWith('.mp4') ||
+        name.endsWith('.mov') ||
+        name.endsWith('.m4v') ||
+        name.endsWith('.webm');
   }
 }
