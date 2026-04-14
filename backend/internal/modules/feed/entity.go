@@ -54,7 +54,12 @@ type MediaAttachment struct {
 	Type         string `json:"type"` // "image" or "video"
 	URL          string `json:"url"`
 	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	// DurationSeconds is required for video attachments. Feed rejects videos longer than MaxVideoDurationSeconds.
+	DurationSeconds int `json:"duration_seconds,omitempty"`
 }
+
+// MaxVideoDurationSeconds caps feed video length at 2 minutes (basic phase-2 enforcement).
+const MaxVideoDurationSeconds = 120
 
 type Post struct {
 	ID                uuid.UUID `json:"id" db:"id"`

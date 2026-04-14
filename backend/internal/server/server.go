@@ -120,7 +120,8 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Get("/me/stats", profilesHandler.GetMyStats)
 	profilesGroup.Get("/me/allies", profilesHandler.GetMyAllies)
 	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
-	profilesGroup.Get("/search", profilesHandler.SearchProfilesForFeed)
+	// Global profile search removed (not part of product scope).
+	// profilesGroup.Get("/search", profilesHandler.SearchProfilesForFeed)
 	// Profile posts grid & list (must be before /:user_id to avoid Fiber routing ambiguity)
 	profilesGroup.Get("/me/posts", feedHandler.GetMyPostsGrid)
 	profilesGroup.Get("/me/posts/list", feedHandler.GetMyPostsList)

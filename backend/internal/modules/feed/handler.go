@@ -95,6 +95,26 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 		}
 		mediaType = "video"
 		maxSize = maxVideoSizeBytes
+		// Basic 2-minute cap: client must report duration_seconds in the form.
+		// Phase-3 will replace this with a server-side ffprobe check.
+		if durStr := c.FormValue("duration_seconds"); durStr != "" {
+			if dur, convErr := strconv.Atoi(durStr); convErr == nil {
+				if dur <= 0 {
+					return c.Status(400).JSON(fiber.Map{
+						"error":   "invalid_duration",
+						"message": "duration_seconds must be a positive integer",
+					})
+				}
+				if dur > MaxVideoDurationSeconds {
+					return c.Status(400).JSON(fiber.Map{
+						"error":       "video_too_long",
+						"message":     fmt.Sprintf("Maximum video duration is %d seconds", MaxVideoDurationSeconds),
+						"max_seconds": MaxVideoDurationSeconds,
+						"received":    dur,
+					})
+				}
+			}
+		}
 	} else if strings.HasPrefix(contentType, "image/") {
 		if !allowedImageMimes[contentType] {
 			return c.Status(400).JSON(fiber.Map{
@@ -395,6 +415,9 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 	postResp, err := h.service.CreatePost(c.Context(), userID, &req)
 	if err != nil {
 		if err == ErrPostRequiresMedia {
+			return validationErr(c, err.Error())
+		}
+		if err == ErrVideoTooLong || err == ErrVideoDurationRequired {
 			return validationErr(c, err.Error())
 		}
 		if err == ErrPublishingRestricted {

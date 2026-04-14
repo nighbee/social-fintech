@@ -115,6 +115,14 @@ var (
 	// the maximum number of allowed media items (e.g. > 10 for a post).
 	ErrTooManyMediaAttachments = errors.New("too_many_media_attachments: maximum is 10 items per post")
 
+	// ErrVideoTooLong is returned when a video media attachment exceeds the
+	// 2-minute cap enforced for feed posts (phase-2 basic enforcement).
+	ErrVideoTooLong = errors.New("video_too_long: maximum video duration is 120 seconds")
+
+	// ErrVideoDurationRequired is returned when a video attachment is missing
+	// its duration_seconds field — clients must report duration on upload.
+	ErrVideoDurationRequired = errors.New("video_duration_required: duration_seconds must be provided for video attachments")
+
 	// ── Visibility / Privacy ──────────────────────────────────────────────
 	// ErrFeedNotAuthorized is returned when the viewer is not allowed to see
 	// the requested post (e.g. ALLIES_ONLY and viewer is not an ally).

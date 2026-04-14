@@ -326,6 +326,14 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 	// Normalize media type to lowercase to match DB check constraint (image/video).
 	for i := range req.MediaAttachments {
 		req.MediaAttachments[i].Type = strings.ToLower(req.MediaAttachments[i].Type)
+		if req.MediaAttachments[i].Type == "video" {
+			if req.MediaAttachments[i].DurationSeconds <= 0 {
+				return nil, ErrVideoDurationRequired
+			}
+			if req.MediaAttachments[i].DurationSeconds > MaxVideoDurationSeconds {
+				return nil, ErrVideoTooLong
+			}
+		}
 	}
 
 	post := &Post{
