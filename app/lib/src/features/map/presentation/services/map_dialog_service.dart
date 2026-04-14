@@ -263,26 +263,26 @@ class MapDialogService {
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.16),
+                  color: const Color(0xFF4E5560).withValues(alpha: 0.48),
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color(0x1FFFFFFF),
-                      Color(0x08FFFFFF),
+                      Color(0x42FFFFFF),
+                      Color(0x1CFFFFFF),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
                   border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                      Border.all(color: Colors.white.withValues(alpha: 0.3)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.22),
-                      blurRadius: 16,
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 14,
                       offset: const Offset(0, 8),
                     ),
                   ],
@@ -309,7 +309,7 @@ class MapDialogService {
                       'Did ${displayHelperName.isEmpty ? helperName : displayHelperName} help you complete the\ntask?',
                       textAlign: TextAlign.center,
                       style: TextStyles.bodyMain.copyWith(
-                        color: Colors.white.withValues(alpha: 0.86),
+                        color: Colors.white.withValues(alpha: 0.92),
                         height: 1.18,
                       ),
                     ),
