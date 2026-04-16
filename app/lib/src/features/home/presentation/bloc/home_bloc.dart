@@ -329,7 +329,12 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     result.fold(
       (error) => emit(HomeState.loadingError(error.message)),
       (feed) {
-        _viewModel = _viewModel.copyWith(feed: feed);
+        _viewModel = _viewModel.copyWith(
+          feed: _mergeIncomingFeedWithCurrent(
+            current: _viewModel.feed,
+            incoming: feed,
+          ),
+        );
         emit(HomeState.loaded(viewModel: _viewModel));
       },
     );
@@ -1180,6 +1185,34 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
         );
       }).toList(),
     );
+  }
+
+  FeedEntity _mergeIncomingFeedWithCurrent({
+    required FeedEntity current,
+    required FeedEntity incoming,
+  }) {
+    if (current.items.isEmpty || incoming.items.isEmpty) {
+      return incoming;
+    }
+
+    final mergedItems = incoming.items.map((incomingPost) {
+      PostResponseEntity? currentPost;
+      for (final item in current.items) {
+        if (item.postId == incomingPost.postId) {
+          currentPost = item;
+          break;
+        }
+      }
+      if (currentPost == null) {
+        return incomingPost;
+      }
+      return _mergePostForLikeUpdate(
+        current: currentPost,
+        incoming: incomingPost,
+      );
+    }).toList(growable: false);
+
+    return incoming.copyWith(items: mergedItems);
   }
 
   PostResponseEntity _mergePostForLikeUpdate({

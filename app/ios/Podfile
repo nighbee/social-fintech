@@ -4,6 +4,16 @@
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
 
+# Some environments launch Xcode/CocoaPods with malformed HOME like `/Users`,
+# which leads to broken plugin paths such as `/Users/.pub-cache/...`.
+resolved_home = Dir.home
+if ENV['HOME'].to_s.strip.empty? || ENV['HOME'] == '/Users'
+  ENV['HOME'] = resolved_home
+end
+if ENV['PUB_CACHE'].to_s.strip.empty? || ENV['PUB_CACHE'] == '/Users/.pub-cache'
+  ENV['PUB_CACHE'] = File.join(ENV['HOME'], '.pub-cache')
+end
+
 project 'Runner', {
   'Debug' => :debug,
   'Profile' => :release,
@@ -27,9 +37,31 @@ require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelpe
 
 flutter_ios_podfile_setup
 
+def ensure_flutter_plugins_ready
+  sign_in_header = File.expand_path(
+    File.join(
+      '.symlinks',
+      'plugins',
+      'sign_in_with_apple',
+      'ios',
+      'Classes',
+      'SignInWithApplePlugin.h'
+    ),
+    __dir__
+  )
+  return if File.exist?(sign_in_header)
+
+  app_dir = File.expand_path('..', __dir__)
+  puts 'sign_in_with_apple iOS header missing, running flutter pub get...'
+  Dir.chdir(app_dir) do
+    system('flutter', 'pub', 'get') || raise('flutter pub get failed')
+  end
+end
+
 target 'Runner' do
   use_frameworks!
 
+  ensure_flutter_plugins_ready
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths

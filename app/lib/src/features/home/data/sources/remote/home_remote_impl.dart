@@ -41,6 +41,7 @@ import 'package:app/src/features/home/domain/requests/upload_feed_media_request.
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
+import 'package:video_compress/video_compress.dart';
 
 @named
 @LazySingleton(as: IHomeRemote)
@@ -59,6 +60,7 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
+        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -77,6 +79,29 @@ class HomeRemoteImpl implements IHomeRemote {
       final uploadedVideoUrls = <String>{};
       for (final payload in localMediaPayloads) {
         final isVideo = _isVideoFileName(payload.localUrl);
+        MediaAttachmentRequest? uploadedThumb;
+        if (isVideo) {
+          try {
+            final thumbBytes = await VideoCompress.getByteThumbnail(
+              payload.localUrl,
+              quality: 80,
+              position: -1,
+            );
+            if (thumbBytes != null && thumbBytes.isNotEmpty) {
+              final thumbName =
+                  'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
+              final thumbUpload = await uploadFeedMedia(
+                UploadFeedMediaRequest(bytes: thumbBytes, fileName: thumbName),
+              );
+              thumbUpload.fold((_) {}, (attachment) {
+                uploadedThumb = attachment;
+              });
+            }
+          } catch (_) {
+            // thumbnail is best-effort; skip on failure
+          }
+        }
+
         final uploaded = await uploadFeedMedia(
           UploadFeedMediaRequest(
             bytes: payload.bytes,
@@ -88,9 +113,12 @@ class HomeRemoteImpl implements IHomeRemote {
               Left.new, (_) => throw StateError('unreachable'));
         }
         uploaded.fold((_) {}, (attachment) {
-          uploadedAttachments.add(attachment);
+          final enriched = (isVideo && uploadedThumb != null)
+              ? attachment.copyWith(thumbnailUrl: uploadedThumb!.url)
+              : attachment;
+          uploadedAttachments.add(enriched);
           if (isVideo) {
-            uploadedVideoUrls.add(attachment.url);
+            uploadedVideoUrls.add(enriched.url);
           }
         });
       }
@@ -113,6 +141,12 @@ class HomeRemoteImpl implements IHomeRemote {
             );
             final type = (map['type'] ?? '').toString().toLowerCase();
             final url = (map['url'] ?? '').toString();
+            if (url.isNotEmpty) {
+              // Backend contract is currently inconsistent across versions:
+              // some builds read `url`, others expect media-specific fields.
+              map['video_1080p_url'] = url;
+              map['image_url'] = url;
+            }
             if (type == 'video') {
               final hasDuration = map['duration_seconds'] != null;
               if (!hasDuration || uploadedVideoUrls.contains(url)) {
@@ -131,6 +165,21 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
+        _normalizePostPayload(payload);
+        final mediaFromResponse = payload['media_attachments'];
+        final mediaFromRequest = requestPayload['media_attachments'];
+        final shouldFallbackMedia = localMediaPayloads.isNotEmpty &&
+            mediaFromRequest is List &&
+            mediaFromRequest.isNotEmpty &&
+            (mediaFromResponse is! List || mediaFromResponse.isEmpty);
+        if (shouldFallbackMedia) {
+          payload['media_attachments'] = mediaFromRequest;
+        }
+
+        final responseContent = (payload['content_text'] ?? '').toString().trim();
+        if (responseContent.isEmpty && request.caption.trim().isNotEmpty) {
+          payload['content_text'] = request.caption;
+        }
         return Right(PostResponseDto.fromJson(payload));
       });
     } catch (e) {
@@ -149,6 +198,7 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
+        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -167,6 +217,7 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
+        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -185,6 +236,7 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
+        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -259,6 +311,10 @@ class HomeRemoteImpl implements IHomeRemote {
       final response = await _restClient.post(
         EndPoints.feedMediaUpload,
         data: formData,
+        options: Options(
+          sendTimeout: const Duration(minutes: 3),
+          receiveTimeout: const Duration(minutes: 3),
+        ),
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
@@ -549,6 +605,68 @@ class HomeRemoteImpl implements IHomeRemote {
           .toList(growable: false);
     }
     return const <Map<String, dynamic>>[];
+  }
+
+  void _normalizeFeedPayload(Map<String, dynamic> payload) {
+    final items = payload['items'];
+    if (items is! List) return;
+    for (final item in items) {
+      if (item is! Map) continue;
+      final post = item.map((k, v) => MapEntry(k.toString(), v));
+      _normalizePostPayload(post);
+      item
+        ..clear()
+        ..addAll(post);
+    }
+  }
+
+  void _normalizePostPayload(Map<String, dynamic> payload) {
+    final media = payload['media_attachments'];
+    if (media is! List) return;
+    for (final raw in media) {
+      if (raw is! Map) continue;
+      final map = raw.map((k, v) => MapEntry(k.toString(), v));
+
+      final currentUrl = (map['url'] ?? '').toString().trim();
+      if (currentUrl.isEmpty) {
+        final fallbackUrl = _firstNonEmptyString(
+          map,
+          const [
+            'video_1080p_url',
+            'video_url',
+            'image_url',
+            'file_url',
+            'src',
+          ],
+        );
+        if (fallbackUrl.isNotEmpty) {
+          map['url'] = fallbackUrl;
+        }
+      }
+
+      final currentType = (map['type'] ?? '').toString().trim().toLowerCase();
+      if (currentType.isEmpty) {
+        final resolvedUrl = (map['url'] ?? '').toString().toLowerCase();
+        map['type'] = resolvedUrl.endsWith('.mp4') ||
+                resolvedUrl.endsWith('.mov') ||
+                resolvedUrl.endsWith('.m4v') ||
+                resolvedUrl.endsWith('.webm')
+            ? 'video'
+            : 'image';
+      }
+
+      raw
+        ..clear()
+        ..addAll(map);
+    }
+  }
+
+  String _firstNonEmptyString(Map<String, dynamic> source, List<String> keys) {
+    for (final key in keys) {
+      final value = (source[key] ?? '').toString().trim();
+      if (value.isNotEmpty) return value;
+    }
+    return '';
   }
 
   bool _isVideoFileName(String fileName) {

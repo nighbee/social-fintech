@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'dart:io';
+
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -10,6 +13,8 @@ import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
+import 'package:video_compress/video_compress.dart';
+import 'package:video_player/video_player.dart';
 
 class CreatePostPage extends StatefulWidget {
   const CreatePostPage({super.key});
@@ -28,6 +33,8 @@ class _CreatePostPageState extends State<CreatePostPage>
   CommentControlOption _commentControl = CommentControlOption.everyone;
   bool _isSubmitting = false;
   int _photoPageIndex = 0;
+  final Map<String, Uint8List> _videoThumbCache = <String, Uint8List>{};
+  final Set<String> _videoThumbLoading = <String>{};
 
   @override
   void initState() {
@@ -63,6 +70,7 @@ class _CreatePostPageState extends State<CreatePostPage>
       imageQuality: 60,
       maxWidth: 1280,
       maxHeight: 1280,
+      videoQuality: VideoQuality.Res1280x720Quality,
       onMediaSelected: (bytes, fileName) {
         _bloc.add(HomeEvent.addPostPhoto(bytes, fileName));
       },
@@ -81,6 +89,39 @@ class _CreatePostPageState extends State<CreatePostPage>
         name.endsWith('.mov') ||
         name.endsWith('.m4v') ||
         name.endsWith('.webm');
+  }
+
+  Future<Uint8List?> _getVideoThumb(String localPath) async {
+    if (_videoThumbCache.containsKey(localPath)) {
+      return _videoThumbCache[localPath];
+    }
+    if (_videoThumbLoading.contains(localPath)) {
+      return null;
+    }
+    _videoThumbLoading.add(localPath);
+    try {
+      final bytes = await VideoCompress.getByteThumbnail(
+        localPath,
+        quality: 80,
+        position: -1, // default frame
+      );
+      if (bytes != null) {
+        _videoThumbCache[localPath] = bytes;
+      }
+      return bytes;
+    } catch (_) {
+      return null;
+    } finally {
+      _videoThumbLoading.remove(localPath);
+    }
+  }
+
+  Future<void> _openVideoPreview(String localPath) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _VideoPreviewPage(localPath: localPath),
+      ),
+    );
   }
 
   void _submit() {
@@ -333,35 +374,72 @@ class _CreatePostPageState extends State<CreatePostPage>
                                         final fileName =
                                             viewModel.postComposerPhotos[index].fileName;
                                         if (_isVideoFileName(fileName)) {
-                                          return Container(
-                                            color: const Color(0xFF111216),
-                                            child: Center(
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  const Icon(
-                                                    Icons.play_circle_fill,
-                                                    color: Colors.white70,
-                                                    size: 56,
+                                          return FutureBuilder<Uint8List?>(
+                                            future: _getVideoThumb(fileName),
+                                            builder: (context, snapshot) {
+                                              final thumbBytes = snapshot.data;
+                                              return Material(
+                                                color: const Color(0xFF111216),
+                                                child: InkWell(
+                                                  onTap: () => _openVideoPreview(fileName),
+                                                  child: Stack(
+                                                    fit: StackFit.expand,
+                                                    children: [
+                                                      if (thumbBytes != null)
+                                                        Image.memory(
+                                                          thumbBytes,
+                                                          fit: BoxFit.cover,
+                                                        )
+                                                      else
+                                                        const Center(
+                                                          child: CircularProgressIndicator(
+                                                            color: Colors.white54,
+                                                            strokeWidth: 2,
+                                                          ),
+                                                        ),
+                                                      Center(
+                                                        child: Container(
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.black
+                                                                .withValues(alpha: 0.35),
+                                                            shape: BoxShape.circle,
+                                                          ),
+                                                          padding: const EdgeInsets.all(10),
+                                                          child: const Icon(
+                                                            Icons.play_arrow_rounded,
+                                                            color: Colors.white,
+                                                            size: 44,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      Positioned(
+                                                        left: 12,
+                                                        bottom: 12,
+                                                        child: Container(
+                                                          decoration: BoxDecoration(
+                                                            color: Colors.black
+                                                                .withValues(alpha: 0.6),
+                                                            borderRadius:
+                                                                BorderRadius.circular(6),
+                                                          ),
+                                                          padding: const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 6,
+                                                          ),
+                                                          child: Text(
+                                                            'Предпросмотр',
+                                                            style: TextStyles.bodyMain.copyWith(
+                                                              color: Colors.white,
+                                                              fontWeight: FontWeight.w600,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                  const Gap(8),
-                                                  Text(
-                                                    'Video selected',
-                                                    style: TextStyles.bodyLarge.copyWith(
-                                                      color: Colors.white,
-                                                      fontWeight: FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                  const Gap(4),
-                                                  Text(
-                                                    'Max duration: 2 min',
-                                                    style: TextStyles.bodyMain.copyWith(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
+                                                ),
+                                              );
+                                            },
                                           );
                                         }
                                         return Image.memory(
@@ -564,6 +642,107 @@ class _PhotoOverlayChip extends StatelessWidget {
               ),
             )
           : Icon(icon, size: 14, color: Colors.white),
+    );
+  }
+}
+
+class _VideoPreviewPage extends StatefulWidget {
+  const _VideoPreviewPage({required this.localPath});
+
+  final String localPath;
+
+  @override
+  State<_VideoPreviewPage> createState() => _VideoPreviewPageState();
+}
+
+class _VideoPreviewPageState extends State<_VideoPreviewPage> {
+  VideoPlayerController? _controller;
+  Object? _initError;
+
+  @override
+  void initState() {
+    super.initState();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      final controller = VideoPlayerController.file(File(widget.localPath));
+      _controller = controller;
+      await controller.initialize();
+      await controller.setLooping(true);
+      if (!mounted) return;
+      setState(() {});
+      await controller.play();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _initError = e);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Предпросмотр'),
+      ),
+      body: Center(
+        child: _initError != null
+            ? Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Не удалось загрузить видео.\n$_initError',
+                  style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            : controller == null || !controller.value.isInitialized
+                ? const CircularProgressIndicator(color: Colors.white54)
+                : GestureDetector(
+                    onTap: () {
+                      if (!controller.value.isInitialized) return;
+                      if (controller.value.isPlaying) {
+                        controller.pause();
+                      } else {
+                        controller.play();
+                      }
+                      setState(() {});
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AspectRatio(
+                          aspectRatio: controller.value.aspectRatio,
+                          child: VideoPlayer(controller),
+                        ),
+                        if (!controller.value.isPlaying)
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 56,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+      ),
     );
   }
 }
