@@ -321,8 +321,8 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
 				       'type', media_type, 
-				       'url', media_url, 
-				       'url_low', media_url_low, 
+				       'video_1080p_url', video_1080p_url,
+				       'video_480p_url', video_480p_url,
 				       'thumbnail_url', thumbnail_url,
 				       'processing_status', processing_status
 				   ) ORDER BY media_order)
