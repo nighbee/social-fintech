@@ -25,6 +25,7 @@ import (
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/storage"
 	"github.com/brightbund-backend/internal/server"
+	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -115,6 +116,15 @@ func main() {
 	defer redisCache.Close()
 
 	logger.Info("redis connection established", zap.String("address", cfg.Redis.Address))
+	
+	// Create Asynq client for background tasks (Video Processing)
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{
+		Addr:     cfg.Redis.Address,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+	defer asynqClient.Close()
+	logger.Info("asynq client initialized")
 
 	if err := db.HealthCheck(context.Background()); err != nil {
 		logger.Fatal("db health check failed", zap.Error(err))
@@ -229,7 +239,7 @@ func main() {
 		LocalShareHigh:     cfg.Feed.LocalShareHigh,
 	})
 	feedCache := feed.NewCacheRepository(redisCache)
-	feedService := feed.NewService(feedRepo, feedCache, profilesRepo)
+	feedService := feed.NewService(feedRepo, feedCache, profilesRepo, asynqClient)
 
 	// Workers have been moved to cmd/worker to unblock API event loop
 	// Handlers that depended on workers directly are injected appropriately OR refactored
@@ -238,7 +248,7 @@ func main() {
 	// but for now we'll rely on the existing worker initialization for interface compliance if needed, just without .Start())
 
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
-	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, cfg.Storage.PublicURL)
+	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, cfg.Storage.PublicURL, cfg.Storage.TempBucket)
 	logger.Info("feed module initialized")
 
 	settingsRepo := settings.NewRepository(db.DB)

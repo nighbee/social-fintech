@@ -15,7 +15,9 @@ import (
 )
 
 type ObjectStorage interface {
-	Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Upload(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Download(ctx context.Context, bucketName, objectName string) (io.ReadCloser, error)
+	Delete(ctx context.Context, bucketName, objectName string) error
 }
 
 type MapService interface {
@@ -153,9 +155,9 @@ func (s *Service) UploadAvatar(ctx context.Context, userID, filename, contentTyp
 		}
 	}
 
-	// Keep object key bucket-relative; bucket name is added by storage client.
+	// Keep object key bucket-relative; bucket name is added by storage client or passed as "" for default.
 	objectName := fmt.Sprintf("%s/%s%s", userID, uuid.NewString(), ext)
-	url, err := s.storage.Upload(ctx, objectName, reader, size, contentType)
+	url, err := s.storage.Upload(ctx, "", objectName, reader, size, contentType)
 	if err != nil {
 		return nil, err
 	}

@@ -18,7 +18,7 @@ type Client struct {
 	publicURL string
 }
 
-// NewMinioClient initializes a MinIO client and ensures bucket exists.
+// NewMinioClient initializes a MinIO client and ensures buckets exist.
 func NewMinioClient(cfg config.StorageConfig) (*Client, error) {
 	if cfg.Endpoint == "" || cfg.AccessKey == "" || cfg.SecretKey == "" || cfg.Bucket == "" {
 		return nil, fmt.Errorf("storage config is incomplete")
@@ -32,30 +32,36 @@ func NewMinioClient(cfg config.StorageConfig) (*Client, error) {
 		return nil, err
 	}
 
-	exists, err := cli.BucketExists(context.Background(), cfg.Bucket)
-	if err != nil {
-		return nil, err
+	buckets := []string{cfg.Bucket}
+	if cfg.TempBucket != "" {
+		buckets = append(buckets, cfg.TempBucket)
 	}
-	if !exists {
-		if err := cli.MakeBucket(context.Background(), cfg.Bucket, minio.MakeBucketOptions{}); err != nil {
+
+	for _, b := range buckets {
+		exists, err := cli.BucketExists(context.Background(), b)
+		if err != nil {
 			return nil, err
 		}
-	}
-	// Make avatar objects publicly readable for direct URL access from mobile/web.
-	// This is required because profile.avatar_url is stored as a static URL.
-	policy := fmt.Sprintf(`{
-		"Version":"2012-10-17",
-		"Statement":[
-			{
-				"Effect":"Allow",
-				"Principal":{"AWS":["*"]},
-				"Action":["s3:GetObject"],
-				"Resource":["arn:aws:s3:::%s/*"]
+		if !exists {
+			if err := cli.MakeBucket(context.Background(), b, minio.MakeBucketOptions{}); err != nil {
+				return nil, err
 			}
-		]
-	}`, cfg.Bucket)
-	if err := cli.SetBucketPolicy(context.Background(), cfg.Bucket, policy); err != nil {
-		return nil, err
+		}
+
+		policy := fmt.Sprintf(`{
+			"Version":"2012-10-17",
+			"Statement":[
+				{
+					"Effect":"Allow",
+					"Principal":{"AWS":["*"]},
+					"Action":["s3:GetObject"],
+					"Resource":["arn:aws:s3:::%s/*"]
+				}
+			]
+		}`, b)
+		if err := cli.SetBucketPolicy(context.Background(), b, policy); err != nil {
+			return nil, err
+		}
 	}
 
 	return &Client{
@@ -65,9 +71,14 @@ func NewMinioClient(cfg config.StorageConfig) (*Client, error) {
 	}, nil
 }
 
-// Upload uploads object to MinIO and returns public URL.
-func (c *Client) Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
-	_, err := c.minio.PutObject(ctx, c.bucket, objectName, reader, size, minio.PutObjectOptions{
+// Upload uploads object to a bucket and returns public URL.
+// If bucketName is empty, it uses the default bucket.
+func (c *Client) Upload(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+	if bucketName == "" {
+		bucketName = c.bucket
+	}
+
+	_, err := c.minio.PutObject(ctx, bucketName, objectName, reader, size, minio.PutObjectOptions{
 		ContentType: contentType,
 	})
 	if err != nil {
@@ -75,7 +86,23 @@ func (c *Client) Upload(ctx context.Context, objectName string, reader io.Reader
 	}
 
 	if c.publicURL != "" {
-		return fmt.Sprintf("%s/%s/%s", c.publicURL, c.bucket, objectName), nil
+		return fmt.Sprintf("%s/%s/%s", c.publicURL, bucketName, objectName), nil
 	}
-	return fmt.Sprintf("%s/%s", c.bucket, objectName), nil
+	return fmt.Sprintf("%s/%s", bucketName, objectName), nil
+}
+
+// Download retrieves an object from a bucket.
+func (c *Client) Download(ctx context.Context, bucketName, objectName string) (io.ReadCloser, error) {
+	if bucketName == "" {
+		bucketName = c.bucket
+	}
+	return c.minio.GetObject(ctx, bucketName, objectName, minio.GetObjectOptions{})
+}
+
+// Delete removes an object from a bucket.
+func (c *Client) Delete(ctx context.Context, bucketName, objectName string) error {
+	if bucketName == "" {
+		bucketName = c.bucket
+	}
+	return c.minio.RemoveObject(ctx, bucketName, objectName, minio.RemoveObjectOptions{})
 }

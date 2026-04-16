@@ -16,6 +16,8 @@ import (
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/logger"
+	"github.com/brightbund-backend/internal/platform/storage"
+	"github.com/hibiken/asynq"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -56,6 +58,31 @@ func main() {
 	}
 	defer db.Close()
 
+	// Storage Client for workers (Feed/Profile)
+	var storageClient *storage.Client
+	if cfg.Storage.Endpoint != "" {
+		sc, err := storage.NewMinioClient(cfg.Storage)
+		if err != nil {
+			logger.Warn("storage client init failed for workers", zap.Error(err))
+		}
+		storageClient = sc
+	}
+
+	// Asynq Server for background tasks
+	asynqServer := asynq.NewServer(asynq.RedisClientOpt{
+		Addr:     cfg.Redis.Address,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	}, asynq.Config{
+		Concurrency: 2, // Limit concurrent FFmpeg jobs to avoid CPU exhaustion
+		Queues: map[string]int{
+			"critical": 6,
+			"default":  3,
+			"low":      1,
+		},
+	})
+	defer db.Close()
+
 	redisCache, err := cache.New(cache.Config{
 		Address:      cfg.Redis.Address,
 		Password:     cfg.Redis.Password,
@@ -84,6 +111,8 @@ func main() {
 	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
 
+	videoWorker := feed.NewVideoWorker(feedRepo, storageClient, cfg.Storage.FFmpegPath, cfg.Storage.TempBucket)
+
 	settingsRepo := settings.NewRepository(db.DB)
 	settingsService := settings.NewService(settingsRepo, nil)
 	settingsHardDeleteWorker := settings.NewHardDeleteWorker(settingsService)
@@ -101,6 +130,17 @@ func main() {
 	settingsHardDeleteWorker.Start()
 	logger.Info("settings hard-delete worker started")
 
+	// Start Asynq Server for Video Processing
+	mux := asynq.NewServeMux()
+	mux.HandleFunc(feed.TypeVideoProcessing, videoWorker.ProcessVideoTask)
+
+	go func() {
+		if err := asynqServer.Run(mux); err != nil {
+			logger.Fatal("asynq server error", zap.Error(err))
+		}
+	}()
+	logger.Info("asynq task server started")
+
 	// Wait for shutdown signals
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
@@ -109,7 +149,7 @@ func main() {
 	logger.Info("shutting down workers...")
 
 	var wg sync.WaitGroup
-	wg.Add(4)
+	wg.Add(5)
 
 	go func() {
 		defer wg.Done()
@@ -133,6 +173,12 @@ func main() {
 		defer wg.Done()
 		settingsHardDeleteWorker.Stop()
 		logger.Info("settings hard-delete worker stopped")
+	}()
+
+	go func() {
+		defer wg.Done()
+		asynqServer.Shutdown()
+		logger.Info("asynq task server stopped")
 	}()
 
 	wg.Wait()

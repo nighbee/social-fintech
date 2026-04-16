@@ -33,9 +33,10 @@ type testRepo struct {
 	createPolicyStrikeFn    func(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error
 	hardBlockAuthorFn       func(ctx context.Context, targetType string, targetID uuid.UUID) error
 
-	batchFlushLikesFn    func(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
-	batchFlushSealsFn    func(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
-	upsertFatigueStateFn func(ctx context.Context, state *FeedFatigueState) error
+	batchFlushLikesFn             func(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
+	batchFlushSealsFn             func(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
+	upsertFatigueStateFn          func(ctx context.Context, state *FeedFatigueState) error
+	updateMediaProcessingResultFn func(ctx context.Context, mediaID uuid.UUID, url1080p, url480p, thumbnail, status string) error
 
 	lastCreatedPost *Post
 }
@@ -225,6 +226,13 @@ func (r *testRepo) HideTargetByReports(ctx context.Context, targetType string, t
 func (r *testRepo) HardBlockAuthorByTarget(ctx context.Context, targetType string, targetID uuid.UUID) error {
 	if r.hardBlockAuthorFn != nil {
 		return r.hardBlockAuthorFn(ctx, targetType, targetID)
+	}
+	return nil
+}
+
+func (r *testRepo) UpdateMediaProcessingResult(ctx context.Context, mediaID uuid.UUID, url1080p, url480p, thumbURL, status string) error {
+	if r.updateMediaProcessingResultFn != nil {
+		return r.updateMediaProcessingResultFn(ctx, mediaID, url1080p, url480p, thumbURL, status)
 	}
 	return nil
 }

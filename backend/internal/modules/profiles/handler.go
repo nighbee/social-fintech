@@ -621,9 +621,7 @@ func (h *Handler) SearchUsers(c *fiber.Ctx) error {
 	lastName := c.Query("last_name")
 	if query != "" {
 		query = strings.TrimSpace(query)
-		if strings.HasPrefix(query, "@") {
-			query = strings.TrimPrefix(query, "@")
-		}
+		query = strings.TrimPrefix(query, "@")
 		parts := strings.Fields(query)
 		if len(parts) >= 2 {
 			firstName = parts[0]

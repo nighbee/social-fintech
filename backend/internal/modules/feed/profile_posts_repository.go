@@ -36,7 +36,7 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 		SELECT
 			p.id AS post_id,
 			COALESCE(
-				(SELECT pm.media_url  FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order ASC LIMIT 1),
+				(SELECT COALESCE(pm.thumbnail_url, pm.video_1080p_url) FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order ASC LIMIT 1),
 				''
 			) AS thumbnail_url,
 			COALESCE(
@@ -88,6 +88,7 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 		if createdAt.Valid {
 			item.CreatedAt = createdAt.Time
 		}
+		item.ThumbnailURL = r.buildURL(item.ThumbnailURL)
 		items = append(items, item)
 	}
 
@@ -132,9 +133,11 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		LEFT JOIN profiles prof ON prof.user_id = u.id
 		LEFT JOIN LATERAL (
 			SELECT json_agg(json_build_object(
-				'type',          pm.media_type,
-				'url',           pm.media_url,
-				'thumbnail_url', pm.thumbnail_url
+				'type',              pm.media_type,
+				'video_1080p_url',   pm.video_1080p_url,
+				'video_480p_url',    pm.video_480p_url,
+				'thumbnail_url',     pm.thumbnail_url,
+				'processing_status', pm.processing_status
 			) ORDER BY pm.media_order) AS media_json
 			FROM post_media pm
 			WHERE pm.post_id = p.id
@@ -185,6 +188,11 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		}
 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
+		for i := range resp.MediaAttachments {
+			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
+			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
+		}
 		resp.CommentPermission = commentPerm
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		applyHiddenLikesForViewer(&resp, viewerID)

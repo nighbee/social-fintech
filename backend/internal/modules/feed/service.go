@@ -2,13 +2,18 @@ package feed
 
 import (
 	"context"
+	"encoding/json"
 	"math"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/settings"
+	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/google/uuid"
+	"github.com/hibiken/asynq"
+	"go.uber.org/zap"
 )
 
 const (
@@ -40,15 +45,17 @@ var severeReportReasons = map[string]struct{}{
 type Service struct {
 	repo        Repository
 	cache       CacheRepository
+	asynqClient *asynq.Client
 	profileRepo *profiles.Repository
 	settingsSvc settings.PublicService
 }
 
-func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Repository) *Service {
+func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Repository, asynqClient *asynq.Client) *Service {
 	return &Service{
 		repo:        repo,
 		cache:       cache,
 		profileRepo: profileRepo,
+		asynqClient: asynqClient,
 	}
 }
 
@@ -323,16 +330,25 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 		return nil, ErrPostRequiresMedia
 	}
 
-	// Normalize media type to lowercase to match DB check constraint (image/video).
+	// Normalize media type and set initial processing state
 	for i := range req.MediaAttachments {
-		req.MediaAttachments[i].Type = strings.ToLower(req.MediaAttachments[i].Type)
-		if req.MediaAttachments[i].Type == "video" {
-			if req.MediaAttachments[i].DurationSeconds <= 0 {
+		m := &req.MediaAttachments[i]
+		m.Type = strings.ToLower(m.Type)
+		if m.ID == uuid.Nil {
+			m.ID = uuid.New()
+		}
+
+		if m.Type == "video" {
+			if m.DurationSeconds <= 0 {
 				return nil, ErrVideoDurationRequired
 			}
-			if req.MediaAttachments[i].DurationSeconds > MaxVideoDurationSeconds {
+			if m.DurationSeconds > MaxVideoDurationSeconds {
 				return nil, ErrVideoTooLong
 			}
+			m.ProcessingStatus = ProcessingStatusProcessing
+			m.OriginalPath = extractObjectPath(m.URL_1080p)
+		} else {
+			m.ProcessingStatus = ProcessingStatusReady
 		}
 	}
 
@@ -353,6 +369,28 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 	err := s.repo.CreatePost(ctx, post, req.MediaAttachments)
 	if err != nil {
 		return nil, err
+	}
+
+	// Enqueue video processing tasks
+	if s.asynqClient != nil {
+		for _, m := range req.MediaAttachments {
+			if m.Type == "video" {
+				payload, _ := json.Marshal(VideoProcessingPayload{
+					MediaID:      m.ID,
+					OriginalPath: m.OriginalPath,
+				})
+				task := asynq.NewTask(TypeVideoProcessing, payload)
+				if _, err := s.asynqClient.EnqueueContext(ctx, task, asynq.Timeout(15*time.Minute)); err != nil {
+					logger.Error("failed to enqueue video processing task",
+						zap.Error(err),
+						zap.String("media_id", m.ID.String()))
+				} else {
+					logger.Info("enqueued video processing task",
+						zap.String("media_id", m.ID.String()),
+						zap.String("original_path", m.OriginalPath))
+				}
+			}
+		}
 	}
 
 	return s.repo.GetPost(ctx, post.ID, userID)
@@ -433,7 +471,7 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 	seen := make(map[string]struct{}, len(req.MediaAttachments))
 	for _, item := range req.MediaAttachments {
 		item.Type = strings.ToLower(item.Type)
-		key := item.Type + "|" + item.URL + "|" + item.ThumbnailURL
+		key := item.Type + "|" + item.URL_1080p + "|" + item.ThumbnailURL
 		if _, exists := seen[key]; exists {
 			continue
 		}
@@ -882,4 +920,19 @@ func (s *Service) GetUserPostsList(ctx context.Context, authorID, viewerID uuid.
 		return nil, err
 	}
 	return &FeedResponse{Items: items, NextCursor: nextCursor}, nil
+}
+
+func extractObjectPath(publicURL string) string {
+	u, err := url.Parse(publicURL)
+	if err != nil {
+		return ""
+	}
+	// Object path usually follows the /uploads/ prefix or similar.
+	// If the URL is http://host/uploads/media/uuid.ext, we want media/uuid.ext
+	p := strings.TrimPrefix(u.Path, "/")
+	if strings.HasPrefix(p, "uploads/") {
+		return strings.TrimPrefix(p, "uploads/")
+	}
+	// Fallback: just return the path after the first segment if it looks relative
+	return p
 }

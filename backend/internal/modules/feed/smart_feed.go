@@ -146,7 +146,8 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		LEFT JOIN LATERAL (
 			SELECT json_agg(json_build_object(
 				'type', pm.media_type,
-				'url', pm.media_url,
+				'video_1080p_url', pm.video_1080p_url,
+				'video_480p_url', pm.video_480p_url,
 				'thumbnail_url', pm.thumbnail_url
 			) ORDER BY pm.media_order) as media_json
 			FROM post_media pm 
@@ -192,6 +193,11 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		}
 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
+		for i := range resp.MediaAttachments {
+			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
+			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
+		}
 
 		// Derive computed fields
 		resp.CommentPermission = commentPerm

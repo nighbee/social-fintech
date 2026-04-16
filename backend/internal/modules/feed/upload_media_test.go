@@ -14,14 +14,22 @@ import (
 )
 
 type mockUploadStorage struct {
-	uploadFn func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	uploadFn func(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error)
 }
 
-func (m *mockUploadStorage) Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+func (m *mockUploadStorage) Upload(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
 	if m.uploadFn != nil {
-		return m.uploadFn(ctx, objectName, reader, size, contentType)
+		return m.uploadFn(ctx, bucketName, objectName, reader, size, contentType)
 	}
 	return "https://cdn.example.com/" + objectName, nil
+}
+
+func (m *mockUploadStorage) Download(ctx context.Context, bucketName, objectName string) (io.ReadCloser, error) {
+	return nil, nil
+}
+
+func (m *mockUploadStorage) Delete(ctx context.Context, bucketName, objectName string) error {
+	return nil
 }
 
 func buildMultipartRequest(t *testing.T, fieldName, fileName, contentType string, payload []byte) (*bytes.Buffer, string) {
@@ -51,7 +59,7 @@ func newUploadTestApp(storage ObjectStorage) *fiber.App {
 	app := fiber.New(fiber.Config{
 		BodyLimit: int(maxVideoSizeBytes) + 1024,
 	})
-	h := NewHandler(nil, nil, nil, storage, "")
+	h := NewHandler(nil, nil, nil, storage, "", "temp-uploads")
 
 	app.Post("/upload", func(c *fiber.Ctx) error {
 		c.Locals("user_id", "11111111-1111-1111-1111-111111111111")
@@ -93,7 +101,7 @@ func TestUploadMedia_RejectsOversizedImage(t *testing.T) {
 
 func TestUploadMedia_ReturnsStorageFailure(t *testing.T) {
 	app := newUploadTestApp(&mockUploadStorage{
-		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+		uploadFn: func(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
 			return "", errors.New("storage service unavailable")
 		},
 	})
@@ -112,7 +120,7 @@ func TestUploadMedia_ReturnsStorageFailure(t *testing.T) {
 
 func TestUploadMedia_ReturnsInsufficientStorage(t *testing.T) {
 	app := newUploadTestApp(&mockUploadStorage{
-		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+		uploadFn: func(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
 			return "", errors.New("disk full")
 		},
 	})
@@ -131,7 +139,7 @@ func TestUploadMedia_ReturnsInsufficientStorage(t *testing.T) {
 
 func TestUploadMedia_ReturnsStoragePermissionDenied(t *testing.T) {
 	app := newUploadTestApp(&mockUploadStorage{
-		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+		uploadFn: func(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
 			return "", errors.New("access denied by storage policy")
 		},
 	})
@@ -150,7 +158,7 @@ func TestUploadMedia_ReturnsStoragePermissionDenied(t *testing.T) {
 
 func TestUploadMedia_Success(t *testing.T) {
 	app := newUploadTestApp(&mockUploadStorage{
-		uploadFn: func(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
+		uploadFn: func(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error) {
 			return "https://cdn.example.com/" + objectName, nil
 		},
 	})

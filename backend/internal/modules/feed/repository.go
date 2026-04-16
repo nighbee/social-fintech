@@ -57,6 +57,9 @@ type Repository interface {
 	ToggleLike(ctx context.Context, postID uuid.UUID, userID uuid.UUID) error
 	BatchFlushLikes(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 	BatchFlushSeals(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
+
+	// Video Processing
+	UpdateMediaProcessingResult(ctx context.Context, mediaID uuid.UUID, url1080p, url480p, thumbURL, status string) error
 }
 
 // CacheRepository interface for Redis high-frequency syncs (Write-behind).

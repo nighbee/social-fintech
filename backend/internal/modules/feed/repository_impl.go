@@ -135,11 +135,25 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 	}
 
 	for i, m := range media {
+		mediaID := m.ID
+		if mediaID == uuid.Nil {
+			mediaID = uuid.New()
+		}
+
 		mediaQuery := `
-			INSERT INTO post_media (post_id, media_type, media_url, thumbnail_url, media_order, created_at)
-			VALUES ($1, $2, $3, $4, $5, NOW())
+			INSERT INTO post_media (
+				id, post_id, media_type, video_1080p_url, video_480p_url, 
+				thumbnail_url, processing_status, original_path, 
+				media_order, created_at
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
 		`
-		_, err = tx.ExecContext(ctx, mediaQuery, post.ID, m.Type, m.URL, m.ThumbnailURL, i)
+		_, err = tx.ExecContext(
+			ctx, mediaQuery,
+			mediaID, post.ID, m.Type, m.URL_1080p, m.URL_480p,
+			m.ThumbnailURL, m.ProcessingStatus, m.OriginalPath,
+			i,
+		)
 		if err != nil {
 			return err
 		}
@@ -305,7 +319,13 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 		       COALESCE(
-			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order)
+			       (SELECT json_agg(json_build_object(
+				       'type', media_type, 
+				       'url', media_url, 
+				       'url_low', media_url_low, 
+				       'thumbnail_url', thumbnail_url,
+				       'processing_status', processing_status
+				   ) ORDER BY media_order)
 			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
 		       ) as media_json,
 		       EXISTS(SELECT 1 FROM post_interactions pi WHERE pi.post_id = p.id AND pi.user_id = $2 AND pi.interaction_type = 'like') as viewer_has_liked
@@ -342,7 +362,8 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 
 	_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 	for i := range resp.MediaAttachments {
-		resp.MediaAttachments[i].URL = r.buildURL(resp.MediaAttachments[i].URL)
+		resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+		resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
 		resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
 	}
 
@@ -360,7 +381,13 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
 		       COALESCE(
-			       (SELECT json_agg(json_build_object('type', media_type, 'url', media_url, 'thumbnail_url', thumbnail_url) ORDER BY media_order)
+			       (SELECT json_agg(json_build_object(
+				       'type', media_type, 
+				       'video_1080p_url', video_1080p_url, 
+				       'video_480p_url', video_480p_url, 
+				       'thumbnail_url', thumbnail_url,
+				       'processing_status', processing_status
+				   ) ORDER BY media_order)
 			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
 		       ) as media_json
 		FROM posts p
@@ -410,7 +437,8 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		for i := range resp.MediaAttachments {
-			resp.MediaAttachments[i].URL = r.buildURL(resp.MediaAttachments[i].URL)
+			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
 			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
 		}
 
@@ -481,7 +509,8 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		var list []MediaAttachment
 		_ = json.Unmarshal(mediaJSON, &list)
 		for i := range list {
-			list[i].URL = r.buildURL(list[i].URL)
+			list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
+			list[i].URL_480p = r.buildURL(list[i].URL_480p)
 			list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
 		}
 		resp.MediaAttachments = list
@@ -680,7 +709,8 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			var list []MediaAttachment
 			_ = json.Unmarshal(mediaJSON, &list)
 			for i := range list {
-				list[i].URL = r.buildURL(list[i].URL)
+				list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
+				list[i].URL_480p = r.buildURL(list[i].URL_480p)
 				list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
 			}
 			resp.MediaAttachments = list
@@ -1425,4 +1455,17 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 	}
 
 	return items, nextCursor, nil
+}
+
+func (r *repository) UpdateMediaProcessingResult(ctx context.Context, mediaID uuid.UUID, url1080p, url480p, thumbURL, status string) error {
+	const query = `
+		UPDATE post_media
+		SET video_1080p_url = $2,
+		    video_480p_url = $3,
+		    thumbnail_url = $4,
+		    processing_status = $5
+		WHERE id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query, mediaID, url1080p, url480p, thumbURL, status)
+	return err
 }

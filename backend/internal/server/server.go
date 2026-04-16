@@ -24,9 +24,12 @@ import (
 
 func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
-		ReadTimeout:  cfg.Server.ReadTimeout,
-		WriteTimeout: cfg.Server.WriteTimeout,
-		IdleTimeout:  cfg.Server.IdleTimeout,
+		ReadTimeout:     cfg.Server.ReadTimeout,
+		WriteTimeout:    cfg.Server.WriteTimeout,
+		IdleTimeout:     cfg.Server.IdleTimeout,
+		BodyLimit:       500 * 1024 * 1024, // 500 MB
+		ReadBufferSize:  16 * 1024,
+		WriteBufferSize: 16 * 1024,
 	})
 
 	// Request ID для трейсинга

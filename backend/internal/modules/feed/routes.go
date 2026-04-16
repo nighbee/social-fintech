@@ -4,21 +4,22 @@ import (
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/platform/cache"
+	"github.com/hibiken/asynq"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
 )
 
-func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profilesRepo *profiles.Repository, economyService economy.Service, publicURL string, authMiddleware fiber.Handler) {
+func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profilesRepo *profiles.Repository, economyService economy.Service, asynqClient *asynq.Client, storageClient ObjectStorage, publicURL, tempBucket string, authMiddleware fiber.Handler) {
 	// Initialize layers
 	repo := NewRepository(db, publicURL)
 	cacheRepo := NewCacheRepository(redisClient)
-	service := NewService(repo, cacheRepo, profilesRepo)
+	service := NewService(repo, cacheRepo, profilesRepo, asynqClient)
 	// Start Background Workers
 	interactionWorker := NewInteractionWorker(redisClient, repo)
 	interactionWorker.Start()
 
 	// Initialize layers
-	handler := NewHandler(service, interactionWorker, economyService, nil, publicURL)
+	handler := NewHandler(service, interactionWorker, economyService, storageClient, publicURL, tempBucket)
 
 	// API Grouping
 	api := app.Group("/api/v1/feed", authMiddleware)

@@ -38,6 +38,23 @@ const (
 	ReportReasonManipulation = "manipulation"
 )
 
+// Processing Statuses
+const (
+	ProcessingStatusReady      = "ready"
+	ProcessingStatusProcessing = "processing"
+	ProcessingStatusFailed     = "failed"
+)
+
+// Task Types
+const (
+	TypeVideoProcessing = "video:processing"
+)
+
+type VideoProcessingPayload struct {
+	MediaID      uuid.UUID `json:"media_id"`
+	OriginalPath string    `json:"original_path"`
+}
+
 type FeedFatigueState struct {
 	UserID                   uuid.UUID `json:"user_id" db:"user_id"`
 	AccumulatedActiveSeconds int       `json:"accumulated_active_seconds" db:"accumulated_active_seconds"`
@@ -51,15 +68,20 @@ type FeedFatigueState struct {
 }
 
 type MediaAttachment struct {
-	Type         string `json:"type"` // "image" or "video"
-	URL          string `json:"url"`
-	ThumbnailURL string `json:"thumbnail_url,omitempty"`
+	ID               uuid.UUID `json:"id,omitempty"` // Internal ID for tracking
+	Type             string    `json:"type"`         // "image" or "video"
+	URL_1080p        string    `json:"video_1080p_url"`
+	URL_480p         string    `json:"video_480p_url,omitempty"`
+	ThumbnailURL     string    `json:"thumbnail_url,omitempty"`
+	ProcessingStatus string    `json:"processing_status,omitempty"`
+	// OriginalPath is internal reference to the raw file in temp bucket
+	OriginalPath string `json:"-"`
 	// DurationSeconds is required for video attachments. Feed rejects videos longer than MaxVideoDurationSeconds.
 	DurationSeconds int `json:"duration_seconds,omitempty"`
 }
 
-// MaxVideoDurationSeconds caps feed video length at 2 minutes (basic phase-2 enforcement).
-const MaxVideoDurationSeconds = 120
+// MaxVideoDurationSeconds caps feed video length at 10 minutes (increased for 500MB uploads).
+const MaxVideoDurationSeconds = 600
 
 type Post struct {
 	ID                uuid.UUID `json:"id" db:"id"`

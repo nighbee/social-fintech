@@ -19,26 +19,36 @@ import (
 )
 
 type ObjectStorage interface {
-	Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Upload(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Download(ctx context.Context, bucketName, objectName string) (io.ReadCloser, error)
+	Delete(ctx context.Context, bucketName, objectName string) error
 }
 
 type Handler struct {
-	service   *Service
-	worker    *InteractionWorker
-	economy   economy.Service
-	storage   ObjectStorage
-	publicURL string
+	service    *Service
+	worker     *InteractionWorker
+	economy    economy.Service
+	storage    ObjectStorage
+	publicURL  string
+	tempBucket string
 }
 
-func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, storageClient ObjectStorage, publicURL string) *Handler {
-	return &Handler{service: service, worker: worker, economy: economyService, storage: storageClient, publicURL: publicURL}
+func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, storageClient ObjectStorage, publicURL, tempBucket string) *Handler {
+	return &Handler{
+		service:    service,
+		worker:     worker,
+		economy:    economyService,
+		storage:    storageClient,
+		publicURL:  publicURL,
+		tempBucket: tempBucket,
+	}
 }
 
 // Constants for media upload hardening (SAFETY)
 const (
 	// Maximum file sizes by MIME category
 	maxImageSizeBytes = 10 * 1024 * 1024  // 10 MB for images (PNG, JPEG, WebP)
-	maxVideoSizeBytes = 100 * 1024 * 1024 // 100 MB for videos (MP4, WebM)
+	maxVideoSizeBytes = 500 * 1024 * 1024 // 500 MB for videos (MP4, WebM)
 )
 
 // Allowed MIME types (whitelist defense against abuse)
@@ -61,7 +71,7 @@ var allowedVideoMimes = map[string]bool{
 // @Accept multipart/form-data
 // @Produce json
 // @Security Bearer
-// @Param file formData file true "Media file (JPEG/PNG/WebP/MP4/WebM/MOV)"
+// @Param file formData file true "Media file (JPEG/PNG/WebP/MP4/WebM/MOV) - Max 500MB for video, 10MB for image"
 // @Success 201 {object} PostResponse
 // @Failure 400 {object} map[string]string "Invalid file (size/type/format)"
 // @Failure 401 {object} map[string]string "Unauthorized"
@@ -173,7 +183,12 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 	}
 
 	// Attempt upload with error differentiation for storage failures
-	publicURL, err := h.storage.Upload(c.Context(), objectName, src, file.Size, contentType)
+	bucket := "" // default bucket
+	if mediaType == "video" {
+		bucket = h.tempBucket
+	}
+
+	publicURL, err := h.storage.Upload(c.Context(), bucket, objectName, src, file.Size, contentType)
 	if err != nil {
 		logger.Error("failed to upload to storage",
 			zap.Error(err),

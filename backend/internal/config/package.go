@@ -105,12 +105,14 @@ type FirebaseConfig struct {
 }
 
 type StorageConfig struct {
-	Endpoint  string `yaml:"endpoint"`
-	AccessKey string `yaml:"access_key"`
-	SecretKey string `yaml:"secret_key"`
-	Bucket    string `yaml:"bucket"`
-	UseSSL    bool   `yaml:"use_ssl"`
-	PublicURL string `yaml:"public_url"`
+	Endpoint   string `yaml:"endpoint"`
+	AccessKey  string `yaml:"access_key"`
+	SecretKey  string `yaml:"secret_key"`
+	Bucket     string `yaml:"bucket"`
+	TempBucket string `yaml:"temp_bucket"`
+	FFmpegPath string `yaml:"ffmpeg_path"`
+	UseSSL     bool   `yaml:"use_ssl"`
+	PublicURL  string `yaml:"public_url"`
 }
 
 type ServerConfig struct {
@@ -267,6 +269,12 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("MINIO_PUBLIC_URL"); v != "" {
 		cfg.Storage.PublicURL = v
+	}
+	if v := os.Getenv("MINIO_TEMP_BUCKET"); v != "" {
+		cfg.Storage.TempBucket = v
+	}
+	if v := os.Getenv("FFMPEG_PATH"); v != "" {
+		cfg.Storage.FFmpegPath = v
 	}
 
 	// oauth
