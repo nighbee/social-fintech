@@ -72,6 +72,8 @@ type MediaAttachment struct {
 	Type             string    `json:"type"`         // "image" or "video"
 	URL_1080p        string    `json:"video_1080p_url"`
 	URL_480p         string    `json:"video_480p_url,omitempty"`
+	URL              string    `json:"url,omitempty"`
+	ImageURL         string    `json:"image_url,omitempty"`
 	ThumbnailURL     string    `json:"thumbnail_url,omitempty"`
 	ProcessingStatus string    `json:"processing_status,omitempty"`
 	// OriginalPath is internal reference to the raw file in temp bucket
