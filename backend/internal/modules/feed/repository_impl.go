@@ -321,6 +321,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
 				       'type', media_type, 
+				       'url', video_1080p_url,
 				       'video_1080p_url', video_1080p_url,
 				       'video_480p_url', video_480p_url,
 				       'thumbnail_url', thumbnail_url,
@@ -363,6 +364,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 	for i := range resp.MediaAttachments {
 		resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+		resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
 		resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
 		resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
 	}
@@ -383,6 +385,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
 				       'type', media_type, 
+				       'url', video_1080p_url, 
 				       'video_1080p_url', video_1080p_url, 
 				       'video_480p_url', video_480p_url, 
 				       'thumbnail_url', thumbnail_url,
@@ -438,6 +441,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		for i := range resp.MediaAttachments {
 			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+			resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
 			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
 			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
 		}
@@ -464,7 +468,17 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error) {
 	query := `
 		SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-		       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+		       COALESCE((
+			           SELECT jsonb_agg(jsonb_build_object(
+			               'type', m->>'type',
+			               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
+			               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
+			               'video_480p_url', m->>'video_480p_url',
+			               'thumbnail_url', m->>'thumbnail_url',
+			               'processing_status', m->>'processing_status'
+			           ))
+			           FROM jsonb_array_elements(c.media_attachments) AS m
+			       ), '[]'::jsonb) as media_json,
 		       c.created_at,
 		       c.likes_count,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
@@ -510,6 +524,7 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		_ = json.Unmarshal(mediaJSON, &list)
 		for i := range list {
 			list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
+			list[i].URL = list[i].URL_1080p
 			list[i].URL_480p = r.buildURL(list[i].URL_480p)
 			list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
 		}
@@ -549,7 +564,17 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 	if parentID == nil {
 		query = `
 			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-			       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+			       COALESCE((
+			           SELECT jsonb_agg(jsonb_build_object(
+			               'type', m->>'type',
+			               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
+			               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
+			               'video_480p_url', m->>'video_480p_url',
+			               'thumbnail_url', m->>'thumbnail_url',
+			               'processing_status', m->>'processing_status'
+			           ))
+			           FROM jsonb_array_elements(c.media_attachments) AS m
+			       ), '[]'::jsonb) as media_json,
 			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
@@ -587,7 +612,17 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		if cursor != "" {
 			query = `
 				SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-				       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+				       COALESCE((
+				           SELECT jsonb_agg(jsonb_build_object(
+				               'type', m->>'type',
+				               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
+				               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
+				               'video_480p_url', m->>'video_480p_url',
+				               'thumbnail_url', m->>'thumbnail_url',
+				               'processing_status', m->>'processing_status'
+				           ))
+				           FROM jsonb_array_elements(c.media_attachments) AS m
+				       ), '[]'::jsonb) as media_json,
 				       c.created_at,
 				       c.likes_count,
 				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
@@ -630,7 +665,17 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		// breaks the UX contract (count is visible but list appears empty).
 		query = `
 			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-			       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+			       COALESCE((
+			           SELECT jsonb_agg(jsonb_build_object(
+			               'type', m->>'type',
+			               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
+			               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
+			               'video_480p_url', m->>'video_480p_url',
+			               'thumbnail_url', m->>'thumbnail_url',
+			               'processing_status', m->>'processing_status'
+			           ))
+			           FROM jsonb_array_elements(c.media_attachments) AS m
+			       ), '[]'::jsonb) as media_json,
 			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
@@ -651,7 +696,17 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		if cursor != "" {
 			query = `
 				SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-				       COALESCE(c.media_attachments, '[]'::jsonb) as media_json,
+				       COALESCE((
+				           SELECT jsonb_agg(jsonb_build_object(
+				               'type', m->>'type',
+				               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
+				               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
+				               'video_480p_url', m->>'video_480p_url',
+				               'thumbnail_url', m->>'thumbnail_url',
+				               'processing_status', m->>'processing_status'
+				           ))
+				           FROM jsonb_array_elements(c.media_attachments) AS m
+				       ), '[]'::jsonb) as media_json,
 				       c.created_at,
 				       c.likes_count,
 				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
@@ -710,6 +765,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			_ = json.Unmarshal(mediaJSON, &list)
 			for i := range list {
 				list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
+				list[i].URL = list[i].URL_1080p
 				list[i].URL_480p = r.buildURL(list[i].URL_480p)
 				list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
 			}

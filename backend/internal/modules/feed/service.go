@@ -338,6 +338,10 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 			m.ID = uuid.New()
 		}
 
+		if m.URL_1080p == "" && m.URL != "" {
+			m.URL_1080p = m.URL
+		}
+
 		if m.Type == "video" {
 			if m.DurationSeconds <= 0 {
 				return nil, ErrVideoDurationRequired
