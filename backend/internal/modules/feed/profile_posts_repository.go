@@ -134,6 +134,8 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		LEFT JOIN LATERAL (
 			SELECT json_agg(json_build_object(
 				'type',              pm.media_type,
+				'url',               pm.video_1080p_url,
+				'image_url',         pm.video_1080p_url,
 				'video_1080p_url',   pm.video_1080p_url,
 				'video_480p_url',    pm.video_480p_url,
 				'thumbnail_url',     pm.thumbnail_url,
@@ -190,6 +192,8 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		for i := range resp.MediaAttachments {
 			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+			resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
+			resp.MediaAttachments[i].ImageURL = resp.MediaAttachments[i].URL_1080p
 			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
 			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
 		}
