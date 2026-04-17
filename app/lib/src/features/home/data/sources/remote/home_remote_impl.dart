@@ -132,6 +132,21 @@ class HomeRemoteImpl implements IHomeRemote {
 
       final requestPayload = mergedRequest.toJson();
       final mediaRaw = requestPayload['media_attachments'];
+      final fallbackMedia = uploadedAttachments.map((item) {
+        final map = <String, dynamic>{
+          'type': item.type,
+          'url': item.url,
+          'thumbnail_url': item.thumbnailUrl,
+        };
+        if (item.url.isNotEmpty) {
+          map['video_1080p_url'] = item.url;
+          map['image_url'] = item.url;
+        }
+        if (item.type.toLowerCase() == 'video') {
+          map['duration_seconds'] = _defaultVideoDurationSeconds;
+        }
+        return map;
+      }).toList(growable: false);
       if (mediaRaw is List) {
         final normalizedMedia = <Map<String, dynamic>>[];
         for (final item in mediaRaw) {
@@ -156,7 +171,10 @@ class HomeRemoteImpl implements IHomeRemote {
             normalizedMedia.add(map);
           }
         }
-        requestPayload['media_attachments'] = normalizedMedia;
+        requestPayload['media_attachments'] =
+            normalizedMedia.isNotEmpty ? normalizedMedia : fallbackMedia;
+      } else if (fallbackMedia.isNotEmpty) {
+        requestPayload['media_attachments'] = fallbackMedia;
       }
 
       final response = await _restClient.post(
@@ -318,6 +336,7 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
+        _normalizeSingleMediaPayload(payload);
         final dto = MediaAttachmentDto.fromJson(payload);
         return Right(
           MediaAttachmentRequest(
@@ -626,38 +645,41 @@ class HomeRemoteImpl implements IHomeRemote {
     for (final raw in media) {
       if (raw is! Map) continue;
       final map = raw.map((k, v) => MapEntry(k.toString(), v));
-
-      final currentUrl = (map['url'] ?? '').toString().trim();
-      if (currentUrl.isEmpty) {
-        final fallbackUrl = _firstNonEmptyString(
-          map,
-          const [
-            'video_1080p_url',
-            'video_url',
-            'image_url',
-            'file_url',
-            'src',
-          ],
-        );
-        if (fallbackUrl.isNotEmpty) {
-          map['url'] = fallbackUrl;
-        }
-      }
-
-      final currentType = (map['type'] ?? '').toString().trim().toLowerCase();
-      if (currentType.isEmpty) {
-        final resolvedUrl = (map['url'] ?? '').toString().toLowerCase();
-        map['type'] = resolvedUrl.endsWith('.mp4') ||
-                resolvedUrl.endsWith('.mov') ||
-                resolvedUrl.endsWith('.m4v') ||
-                resolvedUrl.endsWith('.webm')
-            ? 'video'
-            : 'image';
-      }
+      _normalizeSingleMediaPayload(map);
 
       raw
         ..clear()
         ..addAll(map);
+    }
+  }
+
+  void _normalizeSingleMediaPayload(Map<String, dynamic> map) {
+    final currentUrl = (map['url'] ?? '').toString().trim();
+    if (currentUrl.isEmpty) {
+      final fallbackUrl = _firstNonEmptyString(
+        map,
+        const [
+          'video_1080p_url',
+          'video_url',
+          'image_url',
+          'file_url',
+          'src',
+        ],
+      );
+      if (fallbackUrl.isNotEmpty) {
+        map['url'] = fallbackUrl;
+      }
+    }
+
+    final currentType = (map['type'] ?? '').toString().trim().toLowerCase();
+    if (currentType.isEmpty) {
+      final resolvedUrl = (map['url'] ?? '').toString().toLowerCase();
+      map['type'] = resolvedUrl.endsWith('.mp4') ||
+              resolvedUrl.endsWith('.mov') ||
+              resolvedUrl.endsWith('.m4v') ||
+              resolvedUrl.endsWith('.webm')
+          ? 'video'
+          : 'image';
     }
   }
 

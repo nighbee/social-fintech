@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
+import 'package:video_player/video_player.dart';
 
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -509,41 +510,11 @@ class PostImageGrid extends StatelessWidget {
     double? width,
   }) {
     if (_isVideo(item)) {
-      final thumb = item.thumbnailUrl.trim();
-      final thumbWidget = thumb.isNotEmpty
-          ? CustomNetworkImage(
-              imageUrl: thumb,
-              height: height,
-              width: width,
-              borderRadius: BorderRadius.circular(8),
-            )
-          : Container(
-              width: width,
-              height: height,
-              decoration: BoxDecoration(
-                color: const Color(0xFF121418),
-                borderRadius: BorderRadius.circular(8),
-              ),
-            );
-
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          thumbWidget,
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.45),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.play_arrow_rounded,
-              color: Colors.white,
-              size: 34,
-            ),
-          ),
-        ],
+      return _InlineVideoTile(
+        videoUrl: item.url.trim(),
+        thumbnailUrl: item.thumbnailUrl.trim(),
+        height: height,
+        width: width,
       );
     }
 
@@ -611,5 +582,175 @@ class PostImageGrid extends StatelessWidget {
         ],
       );
     }
+  }
+}
+
+class _InlineVideoTile extends StatefulWidget {
+  const _InlineVideoTile({
+    required this.videoUrl,
+    required this.thumbnailUrl,
+    required this.height,
+    this.width,
+  });
+
+  final String videoUrl;
+  final String thumbnailUrl;
+  final double height;
+  final double? width;
+
+  @override
+  State<_InlineVideoTile> createState() => _InlineVideoTileState();
+}
+
+class _InlineVideoTileState extends State<_InlineVideoTile> {
+  VideoPlayerController? _controller;
+  Object? _initError;
+  bool _isInitializing = false;
+  bool _isStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.videoUrl.isNotEmpty) {
+      _init();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlineVideoTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.videoUrl != widget.videoUrl) {
+      _controller?.dispose();
+      _controller = null;
+      _initError = null;
+      _isStarted = false;
+      if (widget.videoUrl.isNotEmpty) {
+        _init();
+      }
+    }
+  }
+
+  Future<void> _init() async {
+    if (_isInitializing) return;
+    _isInitializing = true;
+    try {
+      final controller = VideoPlayerController.networkUrl(
+        Uri.parse(widget.videoUrl),
+      );
+      _controller = controller;
+      await controller.initialize();
+      await controller.setLooping(true);
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _initError = e);
+    } finally {
+      _isInitializing = false;
+    }
+  }
+
+  Future<void> _togglePlay() async {
+    final controller = _controller;
+    if (controller == null) return;
+    if (!controller.value.isInitialized) return;
+    if (controller.value.isPlaying) {
+      await controller.pause();
+    } else {
+      await controller.play();
+      _isStarted = true;
+    }
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = _controller;
+    final thumbWidget = widget.thumbnailUrl.isNotEmpty
+        ? CustomNetworkImage(
+            imageUrl: widget.thumbnailUrl,
+            height: widget.height,
+            width: widget.width,
+            borderRadius: BorderRadius.circular(8),
+          )
+        : Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              color: const Color(0xFF121418),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          );
+
+    final canShowVideo = controller != null && controller.value.isInitialized;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: _togglePlay,
+          child: SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (canShowVideo && _isStarted)
+                  SizedBox.expand(
+                    child: FittedBox(
+                      fit: BoxFit.cover,
+                      child: SizedBox(
+                        width: controller.value.size.width,
+                        height: controller.value.size.height,
+                        child: VideoPlayer(controller),
+                      ),
+                    ),
+                  )
+                else
+                  thumbWidget,
+                if (_initError != null)
+                  Positioned(
+                    left: 12,
+                    right: 12,
+                    bottom: 12,
+                    child: Text(
+                      'Видео пока недоступно',
+                      style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                if (!canShowVideo && _isInitializing)
+                  const CircularProgressIndicator(
+                    color: Colors.white54,
+                    strokeWidth: 2,
+                  ),
+                if (_initError == null && (!canShowVideo || !controller.value.isPlaying))
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
