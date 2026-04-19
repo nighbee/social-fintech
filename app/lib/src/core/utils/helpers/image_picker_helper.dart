@@ -118,7 +118,7 @@ class ImagePickerHelper {
     int imageQuality = 80,
     double? maxWidth = 1280,
     double? maxHeight = 1280,
-    VideoQuality videoQuality = VideoQuality.Res1920x1080Quality,
+    VideoQuality videoQuality = VideoQuality.Res1280x720Quality,
   }) async {
     final ImagePicker picker = ImagePicker();
 
@@ -172,7 +172,7 @@ class ImagePickerHelper {
                     await _pickVideo(
                       picker,
                       onMediaSelected,
-                      videoQuality: videoQuality,
+                      compressQuality: videoQuality,
                       onError: onError,
                     );
                   },
@@ -320,8 +320,8 @@ class ImagePickerHelper {
   static Future<void> _pickVideo(
     ImagePicker picker,
     Function(Uint8List bytes, String fileName) onMediaSelected, {
+    required VideoQuality compressQuality,
     Function(String message)? onError,
-    VideoQuality videoQuality = VideoQuality.Res1920x1080Quality,
   }) async {
     try {
       final XFile? video = await picker.pickVideo(
@@ -329,36 +329,20 @@ class ImagePickerHelper {
         maxDuration: const Duration(minutes: 2),
       );
       if (video != null) {
-        // Сжимаем видео сразу после выбора, чтобы:
-        // - можно было быстро предпросмотреть итоговый файл перед отправкой
-        // - не держать весь видос в памяти (дальше мы отправляем по file path)
-        //
-        // Примечание: video_compress сам подберет итоговую развертку/битрейт;
-        // в случае ошибки пробуем понизить качество до 720p.
-        MediaInfo? info = await VideoCompress.compressVideo(
+        // Сжатие под выбранное качество (см. VideoQuality в video_compress)
+        final info = await VideoCompress.compressVideo(
           video.path,
-          quality: videoQuality,
+          quality: compressQuality,
           deleteOrigin: false,
           includeAudio: true,
         );
-        info ??= await VideoCompress.compressVideo(
-          video.path,
-          quality: VideoQuality.Res1280x720Quality,
-          deleteOrigin: false,
-          includeAudio: true,
-        );
-
-        if (info == null || info.file == null) {
+        if (info != null && info.file != null) {
+          final compressedFile = info.file!;
+          final bytes = await compressedFile.readAsBytes();
+          onMediaSelected(bytes, compressedFile.path);
+        } else {
           onError?.call('Failed to compress video.');
-          return;
         }
-
-        final compressedFile = info.file!;
-
-        // IMPORTANT:
-        // bytes передаем пустыми, чтобы upload стримился с диска по пути
-        // (см. HomeRemoteImpl.uploadFeedMedia: bytes.isEmpty -> fromFile()).
-        onMediaSelected(Uint8List(0), compressedFile.path);
       } else {
         onError?.call('Video was not selected. Max duration is 2 minutes.');
       }

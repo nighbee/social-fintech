@@ -7,6 +7,7 @@ part 'create_post_request.g.dart';
 
 @freezed
 class CreatePostRequest extends BaseRequest with _$CreatePostRequest {
+  @JsonSerializable(explicitToJson: true)
   const factory CreatePostRequest({
     required String caption,
     @JsonKey(name: 'media_attachments')

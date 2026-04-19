@@ -40,8 +40,8 @@ import 'package:app/src/features/home/domain/requests/update_post_request.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:injectable/injectable.dart';
-import 'package:video_compress/video_compress.dart';
 
 @named
 @LazySingleton(as: IHomeRemote)
@@ -60,7 +60,6 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
-        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -79,29 +78,6 @@ class HomeRemoteImpl implements IHomeRemote {
       final uploadedVideoUrls = <String>{};
       for (final payload in localMediaPayloads) {
         final isVideo = _isVideoFileName(payload.localUrl);
-        MediaAttachmentRequest? uploadedThumb;
-        if (isVideo) {
-          try {
-            final thumbBytes = await VideoCompress.getByteThumbnail(
-              payload.localUrl,
-              quality: 80,
-              position: -1,
-            );
-            if (thumbBytes != null && thumbBytes.isNotEmpty) {
-              final thumbName =
-                  'thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
-              final thumbUpload = await uploadFeedMedia(
-                UploadFeedMediaRequest(bytes: thumbBytes, fileName: thumbName),
-              );
-              thumbUpload.fold((_) {}, (attachment) {
-                uploadedThumb = attachment;
-              });
-            }
-          } catch (_) {
-            // thumbnail is best-effort; skip on failure
-          }
-        }
-
         final uploaded = await uploadFeedMedia(
           UploadFeedMediaRequest(
             bytes: payload.bytes,
@@ -113,12 +89,9 @@ class HomeRemoteImpl implements IHomeRemote {
               Left.new, (_) => throw StateError('unreachable'));
         }
         uploaded.fold((_) {}, (attachment) {
-          final enriched = (isVideo && uploadedThumb != null)
-              ? attachment.copyWith(thumbnailUrl: uploadedThumb!.url)
-              : attachment;
-          uploadedAttachments.add(enriched);
+          uploadedAttachments.add(attachment);
           if (isVideo) {
-            uploadedVideoUrls.add(enriched.url);
+            uploadedVideoUrls.add(attachment.url);
           }
         });
       }
@@ -132,21 +105,6 @@ class HomeRemoteImpl implements IHomeRemote {
 
       final requestPayload = mergedRequest.toJson();
       final mediaRaw = requestPayload['media_attachments'];
-      final fallbackMedia = uploadedAttachments.map((item) {
-        final map = <String, dynamic>{
-          'type': item.type,
-          'url': item.url,
-          'thumbnail_url': item.thumbnailUrl,
-        };
-        if (item.url.isNotEmpty) {
-          map['video_1080p_url'] = item.url;
-          map['image_url'] = item.url;
-        }
-        if (item.type.toLowerCase() == 'video') {
-          map['duration_seconds'] = _defaultVideoDurationSeconds;
-        }
-        return map;
-      }).toList(growable: false);
       if (mediaRaw is List) {
         final normalizedMedia = <Map<String, dynamic>>[];
         for (final item in mediaRaw) {
@@ -155,26 +113,18 @@ class HomeRemoteImpl implements IHomeRemote {
               (key, value) => MapEntry(key.toString(), value),
             );
             final type = (map['type'] ?? '').toString().toLowerCase();
-            final url = (map['url'] ?? '').toString();
-            if (url.isNotEmpty) {
-              // Backend contract is currently inconsistent across versions:
-              // some builds read `url`, others expect media-specific fields.
-              map['video_1080p_url'] = url;
-              map['image_url'] = url;
-            }
+            final mediaUrl =
+                (map['video_1080p_url'] ?? map['url'] ?? '').toString();
             if (type == 'video') {
               final hasDuration = map['duration_seconds'] != null;
-              if (!hasDuration || uploadedVideoUrls.contains(url)) {
+              if (!hasDuration || uploadedVideoUrls.contains(mediaUrl)) {
                 map['duration_seconds'] = _defaultVideoDurationSeconds;
               }
             }
             normalizedMedia.add(map);
           }
         }
-        requestPayload['media_attachments'] =
-            normalizedMedia.isNotEmpty ? normalizedMedia : fallbackMedia;
-      } else if (fallbackMedia.isNotEmpty) {
-        requestPayload['media_attachments'] = fallbackMedia;
+        requestPayload['media_attachments'] = normalizedMedia;
       }
 
       final response = await _restClient.post(
@@ -183,21 +133,6 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
-        _normalizePostPayload(payload);
-        final mediaFromResponse = payload['media_attachments'];
-        final mediaFromRequest = requestPayload['media_attachments'];
-        final shouldFallbackMedia = localMediaPayloads.isNotEmpty &&
-            mediaFromRequest is List &&
-            mediaFromRequest.isNotEmpty &&
-            (mediaFromResponse is! List || mediaFromResponse.isEmpty);
-        if (shouldFallbackMedia) {
-          payload['media_attachments'] = mediaFromRequest;
-        }
-
-        final responseContent = (payload['content_text'] ?? '').toString().trim();
-        if (responseContent.isEmpty && request.caption.trim().isNotEmpty) {
-          payload['content_text'] = request.caption;
-        }
         return Right(PostResponseDto.fromJson(payload));
       });
     } catch (e) {
@@ -216,7 +151,6 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
-        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -235,7 +169,6 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
-        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -254,7 +187,6 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
-        _normalizeFeedPayload(payload);
         return Right(FeedDto.fromJson(payload));
       });
     } catch (e) {
@@ -307,14 +239,18 @@ class HomeRemoteImpl implements IHomeRemote {
       final isVideo = _isVideoFileName(request.fileName);
       final localFile = File(request.fileName);
       final canStreamFromPath = request.bytes.isEmpty && localFile.existsSync();
+      final uploadName = request.fileName.split(RegExp(r'[/\\]')).last;
+      final contentType = _multipartContentType(uploadName, isVideo: isVideo);
       final multipartFile = canStreamFromPath
           ? await MultipartFile.fromFile(
               request.fileName,
-              filename: request.fileName.split('/').last,
+              filename: uploadName,
+              contentType: contentType,
             )
           : MultipartFile.fromBytes(
               request.bytes,
-              filename: request.fileName,
+              filename: uploadName,
+              contentType: contentType,
             );
 
       final formFields = <String, dynamic>{
@@ -329,14 +265,9 @@ class HomeRemoteImpl implements IHomeRemote {
       final response = await _restClient.post(
         EndPoints.feedMediaUpload,
         data: formData,
-        options: Options(
-          sendTimeout: const Duration(minutes: 3),
-          receiveTimeout: const Duration(minutes: 3),
-        ),
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
-        _normalizeSingleMediaPayload(payload);
         final dto = MediaAttachmentDto.fromJson(payload);
         return Right(
           MediaAttachmentRequest(
@@ -626,76 +557,27 @@ class HomeRemoteImpl implements IHomeRemote {
     return const <Map<String, dynamic>>[];
   }
 
-  void _normalizeFeedPayload(Map<String, dynamic> payload) {
-    final items = payload['items'];
-    if (items is! List) return;
-    for (final item in items) {
-      if (item is! Map) continue;
-      final post = item.map((k, v) => MapEntry(k.toString(), v));
-      _normalizePostPayload(post);
-      item
-        ..clear()
-        ..addAll(post);
-    }
-  }
-
-  void _normalizePostPayload(Map<String, dynamic> payload) {
-    final media = payload['media_attachments'];
-    if (media is! List) return;
-    for (final raw in media) {
-      if (raw is! Map) continue;
-      final map = raw.map((k, v) => MapEntry(k.toString(), v));
-      _normalizeSingleMediaPayload(map);
-
-      raw
-        ..clear()
-        ..addAll(map);
-    }
-  }
-
-  void _normalizeSingleMediaPayload(Map<String, dynamic> map) {
-    final currentUrl = (map['url'] ?? '').toString().trim();
-    if (currentUrl.isEmpty) {
-      final fallbackUrl = _firstNonEmptyString(
-        map,
-        const [
-          'video_1080p_url',
-          'video_url',
-          'image_url',
-          'file_url',
-          'src',
-        ],
-      );
-      if (fallbackUrl.isNotEmpty) {
-        map['url'] = fallbackUrl;
-      }
-    }
-
-    final currentType = (map['type'] ?? '').toString().trim().toLowerCase();
-    if (currentType.isEmpty) {
-      final resolvedUrl = (map['url'] ?? '').toString().toLowerCase();
-      map['type'] = resolvedUrl.endsWith('.mp4') ||
-              resolvedUrl.endsWith('.mov') ||
-              resolvedUrl.endsWith('.m4v') ||
-              resolvedUrl.endsWith('.webm')
-          ? 'video'
-          : 'image';
-    }
-  }
-
-  String _firstNonEmptyString(Map<String, dynamic> source, List<String> keys) {
-    for (final key in keys) {
-      final value = (source[key] ?? '').toString().trim();
-      if (value.isNotEmpty) return value;
-    }
-    return '';
-  }
-
   bool _isVideoFileName(String fileName) {
     final name = fileName.toLowerCase();
     return name.endsWith('.mp4') ||
         name.endsWith('.mov') ||
         name.endsWith('.m4v') ||
         name.endsWith('.webm');
+  }
+
+  MediaType? _multipartContentType(String fileName, {required bool isVideo}) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return MediaType('image', 'jpeg');
+    }
+    if (lower.endsWith('.png')) return MediaType('image', 'png');
+    if (lower.endsWith('.webp')) return MediaType('image', 'webp');
+    if (lower.endsWith('.mp4')) return MediaType('video', 'mp4');
+    if (lower.endsWith('.mov') || lower.endsWith('.m4v')) {
+      return MediaType('video', 'quicktime');
+    }
+    if (lower.endsWith('.webm')) return MediaType('video', 'webm');
+    if (isVideo) return MediaType('video', 'mp4');
+    return MediaType('image', 'jpeg');
   }
 }

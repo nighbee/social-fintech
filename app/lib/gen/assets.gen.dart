@@ -228,6 +228,9 @@ class $AssetsImagesGen {
   AssetGenImage get bigGoldenCoin =>
       const AssetGenImage('assets/images/Big_golden_coin.png');
 
+  /// File path: assets/images/Heroes.png
+  AssetGenImage get heroes => const AssetGenImage('assets/images/Heroes.png');
+
   /// File path: assets/images/ammolite.png
   AssetGenImage get ammolite =>
       const AssetGenImage('assets/images/ammolite.png');
@@ -270,6 +273,7 @@ class $AssetsImagesGen {
   /// List of all assets
   List<AssetGenImage> get values => [
         bigGoldenCoin,
+        heroes,
         ammolite,
         goldenHonor,
         image,

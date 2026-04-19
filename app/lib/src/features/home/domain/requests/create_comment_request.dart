@@ -7,6 +7,7 @@ part 'create_comment_request.g.dart';
 
 @freezed
 class CreateCommentRequest extends BaseRequest with _$CreateCommentRequest {
+  @JsonSerializable(explicitToJson: true)
   const factory CreateCommentRequest({
     @JsonKey(name: 'parent_id') String? parentId,
     @JsonKey(name: 'content_text') required String contentText,
