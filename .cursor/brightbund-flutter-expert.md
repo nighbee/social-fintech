@@ -76,6 +76,13 @@ You are the **BrightBund Flutter Expert** - the definitive authority on the Brig
 5. **Testing**: Follow progressive testing approach focusing on business logic
 6. **Review**: Verify adherence to architectural standards and performance requirements
 
+### Command Restrictions
+
+- **Do not run `flutter analyze`**
+- **Do not run `flutter format`**
+- **Do not run `flutter pub run build_runner`**
+- If code generation or analysis is needed, provide instructions to the user instead of executing these commands.
+
 ## BrightBund-Specific Knowledge
 
 ### Project Structure
@@ -162,10 +169,128 @@ flutter clean
 - **Requests**: Use Freezed for request objects in Domain layer. Do NOT use UseCases.
 - **BLoC**: Use Freezed for events/states, follow base_bloc patterns
 - **UI Components**: STRICTLY use `Class` widgets. Do NOT use helper methods for widget trees.
+- **Bottom Sheet Locality**: For feature-specific bottom sheets, keep trigger mixin and bottom sheet widget classes in the same file.
 - **BLoC Resolution**: Use `GetIt` for all BLoC injections.
 - **State Listening**: Use `BaseBlocWidget`, `BlocBuilder`, `BlocConsumer` or `BlocListener`. Do NOT use `BlocProvider` in the widget tree.
 - **Error Handling**: Return Either<Failure, Result> from repositories
 - **DI**: Constructor injection, register services via Injectable annotations
+
+### DTO / Entity / API Extension Style (BrightBund)
+
+- **DTO style (Freezed only)**:
+  - DTOs must use `@freezed`, extend `BaseDto`, and include `fromJson`.
+  - API fields should follow backend naming with `@JsonKey(name: ...)`.
+  - Keep the backend contract strict in DTOs:
+    - mark a field `required` when the backend contract normally returns it;
+    - make a field nullable only when the backend really may omit it or send `null`;
+    - do not make core response fields nullable "just to be safe", because that hides backend contract regressions.
+  - Every DTO must provide `toEntity()`.
+
+- **Entity style (Freezed only)**:
+  - Entities must use `@freezed` and include `fromJson`.
+  - Keep entity fields non-null by default.
+  - In the main entity constructor, use `required` for real domain data.
+  - Use `@Default(...)` mainly inside `empty` constructors or for fields that are truly optional by domain meaning.
+  - Add `empty` constructor for each new entity.
+  - If a DTO field is nullable because the backend may omit it, map the fallback in `toEntity()` (for example `?? ''`, `?? 0`, `?? false`, empty object).
+
+- **Request style**:
+  - Requests must live in domain layer and use `@freezed` + `BaseRequest`.
+  - Add helper methods like `toQuery()` when endpoint uses query params.
+
+- **Datasource / Repository extension style**:
+  - When adding new backend flow, add new methods in parallel to existing ones.
+  - Do not replace or mutate existing mock-based methods unless explicitly requested.
+  - `IHomeRemote` and `IHomeRepository` must expose new methods first; implementation maps DTO -> Entity only.
+  - Preserve old behavior while introducing new API contract types.
+
+- **BLoC event extension style**:
+  - Add new events with clear domain names that match the new backend-aligned flow.
+  - Do not add `V2` suffixes by default. Use a temporary alternate name only when keeping two distinct flows alive in parallel is genuinely required.
+  - Wire handlers in bloc, but do not attach to UI until explicitly requested.
+  - Keep existing events and current user flow untouched unless the new flow is meant to replace them.
+  - For interaction endpoints with queued/toggle backend semantics (e.g. `POST /posts/{post_id}/likes`), prefer `toggleX` naming over forcing separate like/unlike names.
+
+### BLoC Best Practices
+
+#### Event Pattern
+- **Events carry data in properties** - Event constructors contain the data
+- **Access data via `event.property`** - In event handlers, use `event.postId` not function parameters
+- **Example**:
+  ```dart
+  // Event definition
+  const factory HomeEvent.likePost(String postId) = _LikePost;
+
+  // Handler implementation
+  Future<void> _likePost(_LikePost event, Emitter emit) async {
+    // Access via event.postId, NOT parameter
+    final result = await _repository.likePost(event.postId);
+  }
+  ```
+
+#### State Management
+- **Keep states minimal** - Only use: `_Initial`, `_Loading`, `_LoadingError`, `_Loaded`
+- **NEVER add flags to states** - Do NOT add `isLoading`, `errorMessage`, or any other flags
+- **Keep ViewModel clean** - ViewModel should only contain data, no state flags
+- **Example**:
+  ```dart
+  @freezed
+  class HomeState with _$HomeState {
+    const factory HomeState.initial() = _Initial;
+    const factory HomeState.loading({required HomeViewModel viewModel}) = _Loading;
+    const factory HomeState.loadingError(String message) = _LoadingError;
+    const factory HomeState.loaded({required HomeViewModel viewModel}) = _Loaded;
+    // NO other states like _LikePostLoading, _CommentsError, etc.
+  }
+  ```
+
+#### State Consumption in Widgets
+- **Use `state.when` pattern** - Always prefer `state.when()` over `if (state is _SomeState)`
+- **Use `state.maybeWhen`** - For optional handlers with `orElse` fallback
+- **Use `state.whenOrNull`** - For safe null handling
+- **NEVER use `buildWhen`** - Let BlocBuilder rebuild naturally on all state changes
+- **Example**:
+  ```dart
+  BlocBuilder<HomeBloc, HomeState>(
+    bloc: getIt<HomeBloc>(),
+    builder: (context, state) {
+      return state.when(
+        initial: () => SplashScreen(),
+        loading: (viewModel) => LoadingIndicator(),
+        loadingError: (message) => ErrorWidget(message),
+        loaded: (viewModel) => ContentWidget(viewModel: viewModel),
+      );
+    },
+  )
+  ```
+
+#### Bloc Injection
+- **Use GetIt for Bloc injection** - Always use `getIt<HomeBloc>()` not `context.read<HomeBloc>()`
+- **Pass bloc to BlocBuilder** - Use `bloc` parameter: `BlocBuilder(bloc: bloc, ...)`
+- **Example**:
+  ```dart
+  class MyWidget extends StatelessWidget {
+    @override
+    Widget build(BuildContext context) {
+      final bloc = getIt<HomeBloc>();
+
+      return BlocBuilder<HomeBloc, HomeState>(
+        bloc: bloc,
+        builder: (context, state) {
+          return state.when(...);
+        },
+      );
+    }
+  }
+  ```
+
+#### Event Dispatching
+- **Use bloc reference** - Dispatch events via bloc reference from GetIt
+- **Example**:
+  ```dart
+  final bloc = getIt<HomeBloc>();
+  bloc.add(HomeEvent.likePost(postId));
+  ```
 
 ## Repository Pattern Example
 

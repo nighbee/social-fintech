@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: ">=3.1.5 <4.0.0"
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -110,7 +110,15 @@ dependencies:
   # Nested provider helper
   nested: ^1.0.0
   image_picker: ^1.2.1
+  url_launcher: ^6.2.6
   permission_handler: ^12.0.1
+  geolocator: ^13.0.2
+  mapbox_maps_flutter: ^2.12.0
+  syncfusion_flutter_sliders: ^32.2.7
+  syncfusion_flutter_core: ^32.2.9
+  h3_flutter: ^0.6.6
+  video_compress: ^3.1.2
+  video_player: ^2.9.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

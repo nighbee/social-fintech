@@ -1,0 +1,22 @@
+-- Add H3 region fields to users and tasks
+
+ALTER TABLE users
+	ADD COLUMN IF NOT EXISTS h3_res5 VARCHAR(20),
+	ADD COLUMN IF NOT EXISTS h3_res4 VARCHAR(20),
+	ADD COLUMN IF NOT EXISTS h3_res2 VARCHAR(20),
+	ADD COLUMN IF NOT EXISTS participate_district BOOLEAN NOT NULL DEFAULT true,
+	ADD COLUMN IF NOT EXISTS location_opt_in BOOLEAN NOT NULL DEFAULT false,
+	ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP;
+
+CREATE INDEX IF NOT EXISTS idx_users_h3_res5 ON users(h3_res5);
+CREATE INDEX IF NOT EXISTS idx_users_h3_res4 ON users(h3_res4);
+CREATE INDEX IF NOT EXISTS idx_users_h3_res2 ON users(h3_res2);
+
+ALTER TABLE tasks
+	ADD COLUMN IF NOT EXISTS h3_res5 VARCHAR(20),
+	ADD COLUMN IF NOT EXISTS h3_res4 VARCHAR(20),
+	ADD COLUMN IF NOT EXISTS h3_res2 VARCHAR(20);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_h3_res5 ON tasks(h3_res5);
+CREATE INDEX IF NOT EXISTS idx_tasks_h3_res4 ON tasks(h3_res4);
+CREATE INDEX IF NOT EXISTS idx_tasks_h3_res2 ON tasks(h3_res2);

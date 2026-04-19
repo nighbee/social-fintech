@@ -60,7 +60,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
               CustomButton(
                 text: 'Button with Icon',
                 onTap: () {},
-                icon: const Icon(Icons.add, color: Colors.white),
+                prefixIcon: const Icon(Icons.add, color: Colors.white),
               ),
               Gap(16),
               CustomButton(
@@ -74,9 +74,9 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
               CustomOutlinedButton(
                 text: 'Custom Border Color',
                 onTap: () {},
-                borderColor: AppColors.blueText1,
+                borderColor: AppColors.colorff74afe3,
                 textStyle: TextStyles.titleMain.copyWith(
-                  color: AppColors.blueText1,
+                  color: AppColors.colorff74afe3,
                 ),
               ),
             ],
@@ -126,7 +126,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
                               width: 20,
                               height: 20,
                               colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
+                                AppColors.colorff838383,
                                 BlendMode.srcIn,
                               ),
                             ),
@@ -138,7 +138,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
                               width: 20,
                               height: 20,
                               colorFilter: const ColorFilter.mode(
-                                AppColors.textGray2,
+                                AppColors.colorff838383,
                                 BlendMode.srcIn,
                               ),
                             ),
@@ -160,7 +160,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
                 hintText: 'Search',
                 prefixIcon: Padding(
                   padding: const EdgeInsets.only(left: 16),
-                  child: Icon(Icons.search, color: AppColors.textGray2),
+                  child: Icon(Icons.search, color: AppColors.colorff838383),
                 ),
               ),
             ],
@@ -172,7 +172,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
               Container(
                 decoration: BoxDecoration(
                   color: context.theme.mainBackground,
-                  border: Border.all(color: AppColors.whiteBackground),
+                  border: Border.all(color: AppColors.colorffffffff),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const CustomAppBar(title: 'App Bar with Title'),
@@ -181,7 +181,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
               Container(
                 decoration: BoxDecoration(
                   color: context.theme.mainBackground,
-                  border: Border.all(color: AppColors.whiteBackground),
+                  border: Border.all(color: AppColors.colorffffffff),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const CustomAppBar(showLeading: false),
@@ -213,19 +213,19 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
           _buildSection(
             title: 'Colors',
             children: [
-              _buildColorItem('Main Background', AppColors.mainBackground),
+              _buildColorItem('Main Background', AppColors.colorff19191A),
               Gap(8),
-              _buildColorItem('Black Background', AppColors.blackBackground),
+              _buildColorItem('Black Background', AppColors.colorff000000),
               Gap(8),
-              _buildColorItem('White Background', AppColors.whiteBackground),
+              _buildColorItem('White Background', AppColors.colorffffffff),
               Gap(8),
-              _buildColorItem('Blue Text 1', AppColors.blueText1),
+              _buildColorItem('Blue Text 1', AppColors.colorff74afe3),
               Gap(8),
-              _buildColorItem('Text Gray 2', AppColors.textGray2),
+              _buildColorItem('Text Gray 2', AppColors.colorff838383),
               Gap(8),
-              _buildColorItem('Button Gray 1', AppColors.btnGray1),
+              _buildColorItem('Button Gray 1', AppColors.colorffdbdbdb),
               Gap(8),
-              _buildColorItem('Button Gray 2', AppColors.btnGray2),
+              _buildColorItem('Button Gray 2', AppColors.colorffa9a9a9),
             ],
           ),
           Gap(40),
@@ -256,7 +256,7 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
           height: 40,
           decoration: BoxDecoration(
             color: color,
-            border: Border.all(color: AppColors.whiteBackground, width: 1),
+            border: Border.all(color: AppColors.colorffffffff, width: 1),
             borderRadius: BorderRadius.circular(4),
           ),
         ),
@@ -266,3 +266,4 @@ class _WidgetBookPageState extends State<WidgetBookPage> {
     );
   }
 }
+

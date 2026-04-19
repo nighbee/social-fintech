@@ -33,11 +33,11 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- Indexes for Profiles
-CREATE INDEX idx_profiles_updated_at ON profiles(updated_at DESC);
-CREATE INDEX idx_profiles_reputation ON profiles(reputation_score DESC); -- For Leaderboards
+CREATE INDEX IF NOT EXISTS idx_profiles_updated_at ON profiles(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_reputation ON profiles(reputation_score DESC); -- For Leaderboards
 
 -- Spatial index for "People near me" or Feed logic
-CREATE INDEX idx_profiles_location ON profiles 
+CREATE INDEX IF NOT EXISTS idx_profiles_location ON profiles 
     USING GIST(ST_SetSRID(ST_MakePoint(location_lon, location_lat), 4326))
     WHERE location_lat IS NOT NULL AND location_lon IS NOT NULL;
 
@@ -55,9 +55,9 @@ CREATE TABLE IF NOT EXISTS user_relationships (
     CHECK (user_id != target_user_id)
 );
 
-CREATE INDEX idx_user_relationships_user ON user_relationships(user_id, relationship_type);
-CREATE INDEX idx_user_relationships_target ON user_relationships(target_user_id, relationship_type);
-CREATE INDEX idx_user_relationships_created ON user_relationships(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_relationships_user ON user_relationships(user_id, relationship_type);
+CREATE INDEX IF NOT EXISTS idx_user_relationships_target ON user_relationships(target_user_id, relationship_type);
+CREATE INDEX IF NOT EXISTS idx_user_relationships_created ON user_relationships(created_at DESC);
 
 -- 4. User Reports (Moderation)
 CREATE TABLE IF NOT EXISTS user_reports (
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS user_reports (
     CHECK (reporter_id != reported_user_id)
 );
 
-CREATE INDEX idx_user_reports_status ON user_reports(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_user_reports_status ON user_reports(status, created_at DESC);
 
 -- Comments for DB Docs
 COMMENT ON TABLE profiles IS 'Extended user profile information including rank, visuals, and cached stats';

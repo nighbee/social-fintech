@@ -8,19 +8,27 @@ import (
 	"strings"
 	"time"
 
+	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/google/uuid"
 )
 
 type ObjectStorage interface {
-	Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Upload(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Download(ctx context.Context, bucketName, objectName string) (io.ReadCloser, error)
+	Delete(ctx context.Context, bucketName, objectName string) error
+}
+
+type MapService interface {
+	ResolveH3ToLocation(ctx context.Context, h3Index string) (*mapmodule.H3GeoMetadata, error)
 }
 
 type Service struct {
 	repo       *Repository
 	storage    ObjectStorage
 	geolocator geolocation.Service
+	mapService MapService
 	cache      StatsCache // Optional cache for profile statistics
 }
 
@@ -34,11 +42,12 @@ type LocationInput struct {
 
 const maxAvatarSizeBytes = 5 * 1024 * 1024 // 5MB
 
-func NewService(repo *Repository, storage ObjectStorage, cache StatsCache) *Service {
+func NewService(repo *Repository, storage ObjectStorage, cache StatsCache, mapService MapService) *Service {
 	return &Service{
 		repo:       repo,
 		storage:    storage,
 		geolocator: geolocation.NewIPAPIClient(),
+		mapService: mapService,
 		cache:      cache,
 	}
 }
@@ -63,13 +72,13 @@ func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *Updat
 		}
 	}
 
-	// Auto-populate location if not provided and IP is available
+	// Resolve location from client IP if not provided
 	if req.ClientIP != "" && req.Country == nil && req.City == nil {
+		// 2. Fall back to IP-based location if coordinates are missing
 		if loc, err := s.geolocator.GetLocationByIP(ctx, req.ClientIP); err == nil {
 			req.Country = &loc.Country
 			req.City = &loc.City
 		}
-		// Silently ignore geolocation errors - user can still update other fields
 	}
 
 	p, err := s.repo.UpdateProfile(ctx, userID, req)
@@ -146,9 +155,9 @@ func (s *Service) UploadAvatar(ctx context.Context, userID, filename, contentTyp
 		}
 	}
 
-	// Keep object key bucket-relative; bucket name is added by storage client.
+	// Keep object key bucket-relative; bucket name is added by storage client or passed as "" for default.
 	objectName := fmt.Sprintf("%s/%s%s", userID, uuid.NewString(), ext)
-	url, err := s.storage.Upload(ctx, objectName, reader, size, contentType)
+	url, err := s.storage.Upload(ctx, "", objectName, reader, size, contentType)
 	if err != nil {
 		return nil, err
 	}

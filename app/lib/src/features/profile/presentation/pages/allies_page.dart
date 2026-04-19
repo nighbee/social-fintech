@@ -1,5 +1,6 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
@@ -33,11 +34,6 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
     super.dispose();
   }
 
-  int _getAlliesCount(ProfileState state) {
-    return state.whenOrNull(loaded: (viewModel) => viewModel.allies.length) ??
-        0;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -58,7 +54,7 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 15),
             decoration: BoxDecoration(
-              color: const Color(0xFF6D6D6D).withOpacity(0.35),
+              color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: const Color(0xFF656565)),
             ),
@@ -90,11 +86,12 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
         bloc: getIt<ProfileBloc>(),
         starterEvent: const ProfileEvent.loadCurrentUserAllies(),
         builder: (context, state, bloc) {
-          final alliesCount = _getAlliesCount(state);
-
           return Column(
             children: [
-              _SearchBar(controller: _searchController),
+              _SearchBar(
+                controller: _searchController,
+                onChanged: (_) {},
+              ),
               _SortButton(
                 selectedSort: _selectedSort,
                 onTap: () {

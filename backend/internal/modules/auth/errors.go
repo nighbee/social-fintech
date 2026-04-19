@@ -8,6 +8,7 @@ var (
 	ErrUserNotFound         = errors.New("user_not_found")
 	ErrSessionNotFound      = errors.New("session_not_found")
 	ErrInvalidRefresh       = errors.New("invalid_refresh")
+	ErrAccountBlocked       = errors.New("account_blocked")
 
 	ErrEmailExists        = errors.New("email_exists")
 	ErrInvalidCredentials = errors.New("invalid_credentials")

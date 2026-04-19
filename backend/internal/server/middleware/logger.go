@@ -11,6 +11,12 @@ import (
 func Logger(logger *zap.Logger) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		start := time.Now()
+		path := c.Path()
+
+		// Skip logging for health checks
+		if path == "/health" || path == "/api/v1/health" {
+			return c.Next()
+		}
 
 		// Логируем входящий запрос
 		logger.Info("incoming_request",

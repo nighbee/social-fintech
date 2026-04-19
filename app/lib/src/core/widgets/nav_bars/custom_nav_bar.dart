@@ -5,9 +5,14 @@ import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 
 class CustomNavBar extends StatelessWidget {
-  const CustomNavBar({required this.currentTab, super.key});
+  const CustomNavBar({
+    required this.currentTab,
+    this.onBeforeNavigate,
+    super.key,
+  });
 
   final String currentTab;
+  final ValueChanged<String>? onBeforeNavigate;
 
   @override
   Widget build(BuildContext context) {
@@ -19,104 +24,112 @@ class CustomNavBar extends StatelessWidget {
       RoutePaths.profile,
     ];
 
-    final List<String> titles = ['Home', 'Map', 'Rating', 'Chats', 'Profile'];
+    final List<String> titles = [
+      'Home',
+      'Map',
+      'Rating',
+      'Chats',
+      'Profile',
+    ];
+    final safeBottom = MediaQuery.of(context).viewPadding.bottom;
+    final currentIndex = paths.indexOf(currentTab).clamp(0, paths.length - 1);
 
     return Container(
       clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
-        color: AppColors.blackBackground,
+        color: AppColors.colorff000000,
+        border: Border(top: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-          ),
-          child: BottomNavigationBar(
-            elevation: 0,
-            backgroundColor: Colors.transparent,
-            currentIndex: paths.indexOf(currentTab),
-            unselectedItemColor: AppColors.textGray2,
-            selectedItemColor: AppColors.blueText1,
-            type: BottomNavigationBarType.fixed,
-            selectedLabelStyle: TextStyles.titleTag.copyWith(
-              color: AppColors.blueText1,
+        padding: EdgeInsets.only(
+          left: 12,
+          right: 12,
+          top: 8,
+          bottom: safeBottom > 0 ? safeBottom : 10,
+        ),
+        child: Row(
+          children: List<Widget>.generate(paths.length, (index) {
+            final bool isSelected = index == currentIndex;
+            return Expanded(
+              child: _NavBarItem(
+                title: titles[index],
+                isSelected: isSelected,
+                icon: _buildIcon(index, isSelected),
+                onTap: () {
+                  final targetPath = paths[index];
+                  if (targetPath != currentTab) {
+                    onBeforeNavigate?.call(targetPath);
+                  }
+                  context.go(targetPath);
+                },
+              ),
+            );
+          }),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIcon(int index, bool isSelected) {
+    final color = isSelected ? Colors.white : AppColors.textGray2;
+    final filter = ColorFilter.mode(color, BlendMode.srcIn);
+    switch (index) {
+      case 0:
+        return Assets.icons.feedIcon
+            .svg(width: 20, height: 20, colorFilter: filter);
+      case 1:
+        return Assets.icons.mapIcon
+            .svg(width: 20, height: 20, colorFilter: filter);
+      case 2:
+        return Assets.icons.ratingIcon
+            .svg(width: 20, height: 20, colorFilter: filter);
+      case 3:
+        return Assets.icons.chatsIcon
+            .svg(width: 20, height: 20, colorFilter: filter);
+      case 4:
+        return Assets.icons.profileIcon
+            .svg(width: 20, height: 20, colorFilter: filter);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+}
+
+class _NavBarItem extends StatelessWidget {
+  const _NavBarItem({
+    required this.title,
+    required this.isSelected,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final bool isSelected;
+  final Widget icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            icon,
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: TextStyles.bodyMain.copyWith(
+                color: isSelected ? Colors.white : AppColors.textGray2,
+                fontSize: 11,
+                height: 1.2,
+              ),
             ),
-            unselectedLabelStyle: TextStyles.titleTag
-                .copyWith(color: AppColors.textGray2),
-            onTap: (int index) {
-              context.go(paths[index]);
-            },
-            items: titles.asMap().entries.map((entry) {
-              final int index = entry.key;
-              final title = entry.value;
-              final isSelected = index == paths.indexOf(currentTab);
-
-              Widget iconWidget;
-              switch (index) {
-                case 0:
-                  iconWidget = Assets.icons.feedIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 1:
-                  iconWidget = Assets.icons.mapIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 2:
-                  iconWidget = Assets.icons.ratingIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 3:
-                  iconWidget = Assets.icons.chatsIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                case 4:
-                  iconWidget = Assets.icons.profileIcon.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      isSelected ? AppColors.blueText1 : AppColors.textGray2,
-                      BlendMode.srcIn,
-                    ),
-                  );
-                  break;
-                default:
-                  iconWidget = const SizedBox();
-              }
-
-              return BottomNavigationBarItem(
-                label: title,
-                icon: SizedBox(width: 24, height: 24, child: iconWidget),
-              );
-            }).toList(),
-          ),
+          ],
         ),
       ),
     );

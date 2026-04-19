@@ -33,6 +33,7 @@ func (r *Repository) GetProfile(ctx context.Context, userID string) (*Profile, e
 			COALESCE(p.location_city, '') as location_city, 
 			p.is_profile_public, 
 			COALESCE(w.balance / 100, 0) as reputation_score,
+			COALESCE(u.feed_time_limit_mins, 20) as feed_time_limit_mins,
 			p.created_at, p.updated_at 
 		FROM profiles p
 		JOIN users u ON p.user_id = u.id
@@ -106,6 +107,20 @@ func (r *Repository) UpdateProfile(ctx context.Context, userID string, req *Upda
 			if err != nil {
 				return nil, fmt.Errorf("update user info failed: %w", err)
 			}
+		}
+	}
+
+	// Handle feed_time_limit_mins being stored in the users table
+	if req.FeedTimeLimitMins != nil {
+		validLimits := map[int]bool{0: true, 20: true, 40: true, 60: true}
+		if !validLimits[*req.FeedTimeLimitMins] {
+			return nil, fmt.Errorf("invalid feed_time_limit_mins: must be 0, 20, 40, or 60")
+		}
+		_, err = tx.ExecContext(ctx,
+			"UPDATE users SET feed_time_limit_mins = $1, updated_at = NOW() WHERE id = $2",
+			*req.FeedTimeLimitMins, userID)
+		if err != nil {
+			return nil, fmt.Errorf("update feed time limit failed: %w", err)
 		}
 	}
 
@@ -243,10 +258,11 @@ func (r *Repository) GetProfileStats(ctx context.Context, userID string) (*Profi
 	}
 	var t totalsRow
 	err = r.db.GetContext(ctx, &t, `
-		WITH uw AS (SELECT id FROM wallets WHERE user_id = $1)
-		SELECT
-			COALESCE((SELECT SUM(amount) FROM ledger_entries WHERE sender_wallet_id IN (SELECT id FROM uw)), 0) AS total_sent,
-			COALESCE((SELECT SUM(amount) FROM ledger_entries WHERE receiver_wallet_id IN (SELECT id FROM uw)), 0) AS total_received
+		SELECT 
+			COALESCE(SUM(total_sent_amount), 0) AS total_sent,
+			COALESCE(SUM(total_received_amount), 0) AS total_received
+		FROM wallets 
+		WHERE user_id = $1
 	`, userID)
 	if err != nil {
 		return nil, fmt.Errorf("get totals failed: %w", err)
@@ -436,32 +452,92 @@ func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName 
 		limit = 50
 	}
 
-	firstPattern := "%"
-	lastPattern := "%"
-	if firstName != "" {
-		firstPattern = "%" + strings.ToLower(firstName) + "%"
-	}
-	if lastName != "" {
-		lastPattern = "%" + strings.ToLower(lastName) + "%"
-	}
+	firstName = strings.ToLower(strings.TrimSpace(firstName))
+	lastName = strings.ToLower(strings.TrimSpace(lastName))
+	joinedQuery := strings.TrimSpace(strings.Join([]string{firstName, lastName}, " "))
 
 	// Initialize as empty slice so JSON returns [] instead of null when empty
 	rows := []UserSearchResult{}
-	err := r.db.SelectContext(ctx, &rows, `
-		SELECT
-			u.id as user_id,
-			COALESCE(u.first_name, '') as first_name,
-			COALESCE(u.last_name, '') as last_name,
-			COALESCE(p.display_name, '') as display_name,
-			COALESCE(p.avatar_url, '') as avatar_url
-		FROM users u
-		LEFT JOIN profiles p ON p.user_id = u.id
-		WHERE u.is_shadow_banned = false
-		  AND LOWER(COALESCE(u.first_name, '')) LIKE $1
-		  AND LOWER(COALESCE(u.last_name, '')) LIKE $2
-		ORDER BY u.first_name, u.last_name
-		LIMIT $3
-	`, firstPattern, lastPattern, limit)
+	var err error
+
+	if lastName == "" {
+		pattern := "%" + firstName + "%"
+		prefixPattern := firstName + "%"
+		err = r.db.SelectContext(ctx, &rows, `
+			SELECT
+				u.id as user_id,
+				COALESCE(u.username, '') as username,
+				COALESCE(u.first_name, '') as first_name,
+				COALESCE(u.last_name, '') as last_name,
+				COALESCE(p.display_name, '') as display_name,
+				COALESCE(p.avatar_url, '') as avatar_url
+			FROM users u
+			LEFT JOIN profiles p ON p.user_id = u.id
+			WHERE u.is_shadow_banned = false
+			  AND COALESCE(u.activation_status, 'active') = 'active'
+			  AND u.deleted_at IS NULL
+			  AND (
+			  	LOWER(COALESCE(u.username, '')) LIKE $1
+			  	OR LOWER(COALESCE(u.first_name, '')) LIKE $1
+			  	OR LOWER(COALESCE(u.last_name, '')) LIKE $1
+			  	OR LOWER(COALESCE(p.display_name, '')) LIKE $1
+			  )
+			ORDER BY
+				CASE
+					WHEN LOWER(COALESCE(u.username, '')) = $2 THEN 0
+					WHEN LOWER(COALESCE(u.username, '')) LIKE $3 THEN 1
+					WHEN LOWER(COALESCE(p.display_name, '')) = $2 THEN 2
+					WHEN LOWER(TRIM(COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, ''))) = $2 THEN 3
+					WHEN LOWER(COALESCE(p.display_name, '')) LIKE $3 THEN 4
+					ELSE 5
+				END,
+				COALESCE(u.username, ''),
+				COALESCE(p.display_name, ''),
+				u.first_name,
+				u.last_name
+			LIMIT $4
+		`, pattern, firstName, prefixPattern, limit)
+	} else {
+		firstPattern := "%" + firstName + "%"
+		lastPattern := "%" + lastName + "%"
+		displayPattern := "%" + joinedQuery + "%"
+		prefixPattern := joinedQuery + "%"
+		err = r.db.SelectContext(ctx, &rows, `
+			SELECT
+				u.id as user_id,
+				COALESCE(u.username, '') as username,
+				COALESCE(u.first_name, '') as first_name,
+				COALESCE(u.last_name, '') as last_name,
+				COALESCE(p.display_name, '') as display_name,
+				COALESCE(p.avatar_url, '') as avatar_url
+			FROM users u
+			LEFT JOIN profiles p ON p.user_id = u.id
+			WHERE u.is_shadow_banned = false
+			  AND COALESCE(u.activation_status, 'active') = 'active'
+			  AND u.deleted_at IS NULL
+			  AND (
+			  	(
+			  		LOWER(COALESCE(u.first_name, '')) LIKE $1
+			  		AND LOWER(COALESCE(u.last_name, '')) LIKE $2
+			  	)
+			  	OR LOWER(COALESCE(p.display_name, '')) LIKE $3
+			  	OR LOWER(COALESCE(u.username, '')) LIKE $3
+			  )
+			ORDER BY
+				CASE
+					WHEN LOWER(COALESCE(p.display_name, '')) = $4 THEN 0
+					WHEN LOWER(COALESCE(u.username, '')) = $4 THEN 1
+					WHEN LOWER(COALESCE(p.display_name, '')) LIKE $5 THEN 2
+					WHEN LOWER(COALESCE(u.username, '')) LIKE $5 THEN 3
+					ELSE 4
+				END,
+				COALESCE(u.username, ''),
+				COALESCE(p.display_name, ''),
+				u.first_name,
+				u.last_name
+			LIMIT $6
+		`, firstPattern, lastPattern, displayPattern, joinedQuery, prefixPattern, limit)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("search users failed: %w", err)
 	}

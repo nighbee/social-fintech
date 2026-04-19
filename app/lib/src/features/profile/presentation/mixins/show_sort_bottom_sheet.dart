@@ -16,7 +16,7 @@ mixin ShowSortBottomSheet {
     context.showRoundedModalBottomSheet(
       backgroundColor: Colors.transparent,
       child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020).withOpacity(0.20),
+        backgroundColor: const Color(0xFF202020).withValues(alpha: 0.20),
         enableGlassEffect: false,
         enableDropShadow: false,
         showDivider: false,

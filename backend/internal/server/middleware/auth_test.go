@@ -92,14 +92,44 @@ func (m *MockAuthRepository) SetAdminStatus(ctx context.Context, userID string, 
 func (m *MockAuthRepository) GetUserByPhone(ctx context.Context, countryCode, number string) (*auth.User, error) {
 	return nil, nil
 }
+func (m *MockAuthRepository) GetUserPasswordHashByID(ctx context.Context, userID string) (string, error) {
+	return "", nil
+}
 func (m *MockAuthRepository) UsernameExists(ctx context.Context, username string) (bool, error) {
 	return false, nil
 }
 func (m *MockAuthRepository) CreateIdentity(ctx context.Context, identity *auth.Identity) error {
 	return nil
 }
+func (m *MockAuthRepository) UpdateUserPasswordHashByID(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error {
+	return nil
+}
+func (m *MockAuthRepository) ListActiveSessionsByUser(ctx context.Context, userID string) ([]auth.Session, error) {
+	return nil, nil
+}
+func (m *MockAuthRepository) CountActiveSessionsByUser(ctx context.Context, userID string) (int, error) {
+	return 0, nil
+}
+func (m *MockAuthRepository) RevokeSessionForUser(ctx context.Context, userID, sessionID string, revokedAt time.Time) error {
+	return nil
+}
+func (m *MockAuthRepository) RevokeAllSessionsExceptForUser(ctx context.Context, userID, currentSessionID string, revokedAt time.Time) error {
+	return nil
+}
+func (m *MockAuthRepository) RevokeAllSessionsForUser(ctx context.Context, userID string, revokedAt time.Time) error {
+	return nil
+}
+func (m *MockAuthRepository) GetUserPhoneByID(ctx context.Context, userID string) (string, string, error) {
+	return "", "", nil
+}
 func (m *MockAuthRepository) GetUserByIdentity(ctx context.Context, provider, subject string) (*auth.User, error) {
 	return nil, nil
+}
+func (m *MockAuthRepository) RecordRegistrationSignal(ctx context.Context, deviceID, ip string, now time.Time) (int, int, error) {
+	return 0, 0, nil
+}
+func (m *MockAuthRepository) RecordActivationLogin(ctx context.Context, userID string, now time.Time) (string, bool, error) {
+	return "active", false, nil
 }
 
 func TestRequireAuth(t *testing.T) {

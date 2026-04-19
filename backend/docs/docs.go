@@ -20,9 +20,77 @@ const docTemplate = `{
         },
         "version": "{{.Version}}"
     },
-    "host": "{{.Host}}",
+    "host": "",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/reports": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Admin endpoint with filters by status/target_type/reason.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Moderation"
+                ],
+                "summary": "List moderation reports",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "pending/reviewed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "post/comment",
+                        "name": "target_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "report reason",
+                        "name": "reason",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.ReportsListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/auth/check-email": {
             "post": {
                 "description": "Check if an email is already registered in the system",
@@ -43,7 +111,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailRequest"
+                            "$ref": "#/definitions/auth.CheckEmailRequest"
                         }
                     }
                 ],
@@ -51,19 +119,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailResponse"
+                            "$ref": "#/definitions/auth.CheckEmailResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -89,7 +157,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneAuthRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneAuthRequest"
                         }
                     }
                 ],
@@ -97,31 +165,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -147,7 +215,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneRegisterRequest"
                         }
                     }
                 ],
@@ -155,31 +223,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -205,7 +273,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
@@ -213,25 +281,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -257,7 +325,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailLoginRequest"
+                            "$ref": "#/definitions/auth.EmailLoginRequest"
                         }
                     }
                 ],
@@ -265,25 +333,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -314,13 +382,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -346,7 +414,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeRequest"
+                            "$ref": "#/definitions/auth.PhoneCodeRequest"
                         }
                     }
                 ],
@@ -354,31 +422,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeResponse"
+                            "$ref": "#/definitions/auth.PhoneCodeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -404,7 +472,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyRequest"
+                            "$ref": "#/definitions/auth.PhoneVerifyRequest"
                         }
                     }
                 ],
@@ -412,25 +480,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyResponse"
+                            "$ref": "#/definitions/auth.PhoneVerifyResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -456,7 +524,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.RefreshRequest"
+                            "$ref": "#/definitions/auth.RefreshRequest"
                         }
                     }
                 ],
@@ -464,25 +532,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -508,7 +576,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailRegisterRequest"
+                            "$ref": "#/definitions/auth.EmailRegisterRequest"
                         }
                     }
                 ],
@@ -516,25 +584,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -560,7 +628,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.PhoneRegisterRequest"
                         }
                     }
                 ],
@@ -568,25 +636,68 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/comments/{comment_id}/likes": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Toggles like interaction on a comment synchronously",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Like a comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comment UUID",
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.CommentResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -616,7 +727,7 @@ const docTemplate = `{
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ClaimDailyAccrualRequest"
+                            "$ref": "#/definitions/economy.ClaimDailyAccrualRequest"
                         }
                     }
                 ],
@@ -624,25 +735,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AccrualResponse"
+                            "$ref": "#/definitions/economy.AccrualResponse"
                         }
                     },
                     "400": {
                         "description": "Already claimed today or cap reached",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -673,7 +784,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AdjustBalanceRequest"
+                            "$ref": "#/definitions/economy.AdjustBalanceRequest"
                         }
                     }
                 ],
@@ -681,31 +792,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -756,31 +867,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ViolationLogsResponse"
+                            "$ref": "#/definitions/economy.ViolationLogsResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -808,19 +919,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -870,25 +981,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransactionHistoryResponse"
+                            "$ref": "#/definitions/economy.TransactionHistoryResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -916,19 +1027,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.LimitsResponse"
+                            "$ref": "#/definitions/economy.LimitsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -966,7 +1077,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToPostRequest"
+                            "$ref": "#/definitions/economy.GiveSealToPostRequest"
                         }
                     }
                 ],
@@ -974,25 +1085,25 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1020,19 +1131,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ReferralStatsResponse"
+                            "$ref": "#/definitions/economy.ReferralStatsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1063,7 +1174,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferRequest"
+                            "$ref": "#/definitions/economy.TransferRequest"
                         }
                     }
                 ],
@@ -1071,31 +1182,31 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "429": {
                         "description": "Transfer limit exceeded",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1133,7 +1244,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToUserRequest"
+                            "$ref": "#/definitions/economy.GiveSealToUserRequest"
                         }
                     }
                 ],
@@ -1141,25 +1252,1112 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/feed": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Fetch mixed feed (Allies + Local Geo + World)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get mixed feed",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Max results",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Viewer latitude for local feed mixing",
+                        "name": "lat",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "Viewer longitude for local feed mixing",
+                        "name": "lon",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/media/upload": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Uploads an image or video and returns its URL",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Upload media",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Media file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/feed.PostResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/state": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns accumulated active seconds, cooldown status, and break_seconds_remaining (0-300). Applies the hard break/reset state machine: if a 5-min break has expired the state is fully reset; if the user was away ≥ 5 min during an active phase the timer resets to 0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Fetch current feed fatigue state",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedStateResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/feed/state/sync": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Pings the server with DeltaSeconds. Evaluated by anti-cheat engine.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Sync active feed time",
+                "parameters": [
+                    {
+                        "description": "Sync payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.SyncFeedStateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedStateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/map/champions": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the current champion for each of the supplied H3 cell indices\nat the given resolution and ISO week. Used by the Flutter map to render\nchampion pins on the visible viewport.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Get champions for H3 cells",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comma-separated H3 cell IDs (e.g. 852830803fffffff,852830813fffffff)",
+                        "name": "h3",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 5,
+                        "description": "H3 resolution (2=country, 4=city, 5=district)",
+                        "name": "resolution",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Year (defaults to current)",
+                        "name": "year",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "ISO week number (defaults to current)",
+                        "name": "week",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mapmodule.ChampionPin"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing h3 parameter",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/map/region": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Assigns H3 cells (res 2/4/5) based on current location and privacy settings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Set user region using H3",
+                "parameters": [
+                    {
+                        "description": "Region assignment",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid coordinates",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Create a post containing text, media attachments, and privacy controls",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Create a new feed post",
+                "parameters": [
+                    {
+                        "description": "Post creation payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.CreatePostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/feed.PostResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Soft-deletes an existing post. Only post author can delete.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Delete own post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Post not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Updates post privacy settings after publication (comment_permission and/or hide_likes_count).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Update own post settings",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Post update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.UpdatePostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.PostResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Post not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/comments": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Fetch threaded comments for a specific post. Pass parent_id to get replies for a specific comment.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Get post comments",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Optional comment UUID to fetch replies for",
+                        "name": "parent_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.ThreadedCommentsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Comment or reply on a specific post",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Comment on a post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Comment payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.CreateCommentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/feed.CommentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Commenting disabled or restricted",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/comments/{comment_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Soft-deletes a comment. Allowed for comment author or admin moderator.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Moderation"
+                ],
+                "summary": "Delete comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comment UUID",
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/comments/{comment_id}/report": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates moderation report for a comment.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Moderation"
+                ],
+                "summary": "Report comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comment UUID",
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Report reason and optional description",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.ReportCommentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/likes": {
+            "get": {
+                "description": "Fetch paginated list of users who liked the post",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Fetch post likes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.InteractionListResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Toggles like interaction synchronously and returns updated state",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Like a post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.PostResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/report": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates moderation report for a post.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Moderation"
+                ],
+                "summary": "Report post",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Report reason and optional description",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.ReportPostRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/seals": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Fetch all users who contributed Silver Seals and their messages",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Fetch post seals",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.SealListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deducts silver from the viewer and credits the post author. Validates balance, cooldown, and self-seal rules via the Economy module.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Interactions"
+                ],
+                "summary": "Give Silver Seal to post (Economy)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Seal Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.SendSealRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Seal sent вЂ” returns ledger_entry_id and new sender balance",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "insufficient_balance",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "cooldown active",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1187,7 +2385,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "401": {
@@ -1275,7 +2473,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.UpdateProfileRequest"
+                            "$ref": "#/definitions/profiles.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -1283,7 +2481,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -1334,7 +2532,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -1378,7 +2576,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Updated profile with new avatar URL",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -1411,6 +2609,128 @@ const docTemplate = `{
                 }
             }
         },
+        "/profiles/me/posts": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a paginated 3x3-style grid of the authenticated user's posts (thumbnails only). Use next_cursor to paginate. Default limit is 18.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profiles"
+                ],
+                "summary": "Get own profile posts grid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor (RFC3339Nano timestamp)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 18,
+                        "description": "Items per page (max 30)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.UserPostsGridResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/me/posts/list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns full PostResponse entries for the authenticated user's posts. Pass anchor_post_id to start the list at a specific post (inclusive), or use cursor for standard pagination.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profiles"
+                ],
+                "summary": "Get own profile posts list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start list at this post ID (inclusive)",
+                        "name": "anchor_post_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor (RFC3339Nano timestamp)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Items per page (max 30)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/profiles/me/rank": {
             "get": {
                 "security": [
@@ -1433,7 +2753,7 @@ const docTemplate = `{
                     "200": {
                         "description": "User's current rank",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse"
+                            "$ref": "#/definitions/ranks.CurrentRankResponse"
                         }
                     },
                     "401": {
@@ -1479,7 +2799,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "401": {
@@ -1520,7 +2840,7 @@ const docTemplate = `{
                     "200": {
                         "description": "List of all ranks",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankListResponse"
+                            "$ref": "#/definitions/ranks.RankListResponse"
                         }
                     },
                     "500": {
@@ -1582,7 +2902,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.ProfileSearchResult"
+                                "$ref": "#/definitions/profiles.ProfileSearchResult"
                             }
                         }
                     },
@@ -1638,7 +2958,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Public profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.PublicProfileResponse"
+                            "$ref": "#/definitions/profiles.PublicProfileResponse"
                         }
                     },
                     "400": {
@@ -1707,7 +3027,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -1874,6 +3194,160 @@ const docTemplate = `{
                 }
             }
         },
+        "/profiles/{user_id}/posts": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a paginated grid of a user's public (or ally-visible) posts. Viewer must be authenticated.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profiles"
+                ],
+                "summary": "Get another user's profile posts grid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Author UUID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor (RFC3339Nano timestamp)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 18,
+                        "description": "Items per page (max 30)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.UserPostsGridResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/profiles/{user_id}/posts/list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns full PostResponse entries for a user's visible posts. Pass anchor_post_id to start at a specific post (inclusive).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Profiles"
+                ],
+                "summary": "Get another user's profile posts list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Author UUID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Start list at this post ID (inclusive)",
+                        "name": "anchor_post_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor (RFC3339Nano timestamp)",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "Items per page (max 30)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/feed.FeedResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid user_id",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/profiles/{user_id}/relationship": {
             "get": {
                 "security": [
@@ -1902,7 +3376,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Relationship status",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.RelationshipStatus"
+                            "$ref": "#/definitions/profiles.RelationshipStatus"
                         }
                     },
                     "400": {
@@ -1961,7 +3435,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ReportRequest"
+                            "$ref": "#/definitions/profiles.ReportRequest"
                         }
                     }
                 ],
@@ -2090,7 +3564,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "400": {
@@ -2122,6 +3596,1026 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to retrieve stats",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates a task at the given coordinates. Charges 1–3 Silver Seals upfront.\nThe response includes ` + "`" + `verification_code` + "`" + ` which is shown ONLY to the creator\nand must be shared with helpers out-of-band (via chat) to verify completion.\nA 7-day cooldown applies between task creations per user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Create a map task",
+                "parameters": [
+                    {
+                        "description": "Task creation payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.CreateTaskRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.CreateTaskResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error (invalid_title | invalid_reward | invalid_workers | invalid_coordinates)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "402": {
+                        "description": "Insufficient Silver Seals",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Cooldown active — must wait 7 days",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/applied": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns tasks that the worker has applied to.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Find tasks applied to",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.AppliedTasksResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/my": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns all tasks where the caller is the creator.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "List tasks created by me",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.AppliedTasksResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/nearby": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns open tasks within a given radius (metres) of the provided coordinates.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Find tasks nearby",
+                "parameters": [
+                    {
+                        "type": "number",
+                        "description": "Latitude",
+                        "name": "lat",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "description": "Longitude",
+                        "name": "lon",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "number",
+                        "default": 2000,
+                        "description": "Radius in metres",
+                        "name": "radius_m",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 50,
+                        "description": "Max results",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.NearbyTasksResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid coordinates",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the details of a single task.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Get task details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.TaskResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Cancels an open task and refunds the Silver Seal charge to the creator.\nOnly allowed while no worker has been confirmed yet (workers_filled == 0).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Cancel a task (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.CancelTaskResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Task already completed or cancelled, or has active workers",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns all applications for the given task.\nOnly the task creator can call this endpoint.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "List applicants for a task (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/mapmodule.ApplicationResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications/{application_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Executor withdraws/cancels their pending or accepted application, removing it from the task.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Withdraw an application (helper only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Cannot withdraw",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the applicant",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task or application not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications/{application_id}/accept": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Marks an application as accepted, allowing the helper to proceed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Accept a helper's application (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Application not pending",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task or application not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Task is already full",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications/{application_id}/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "User1 presses \"Yes, this person helped me\" in the confirmation popup.\nThe application must already be in ` + "`" + `code_verified` + "`" + ` status.\nTriggers a Silver Seal transfer to the helper and increments ` + "`" + `workers_filled` + "`" + `.\nWhen ` + "`" + `workers_filled` + "`" + ` reaches ` + "`" + `workers_needed` + "`" + ` the task moves to ` + "`" + `completed` + "`" + `.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Confirm a helper completed the task (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.ConfirmCompletionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Application not in code_verified state",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task or application not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Task already completed or cancelled",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications/{application_id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Marks an application as rejected.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Reject a helper's application (creator only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Application not pending",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the task creator",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task or application not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/applications/{application_id}/verify-code": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "User2 enters the code they received from the creator in chat.\nOn success the application moves to ` + "`" + `code_verified` + "`" + ` status,\nwhich enables the creator to confirm completion.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Submit the 4-digit verification code (helper)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "4-digit code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.SubmitVerificationCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.VerifyCodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Wrong code",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not the applicant",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Application not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Code already verified",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/tasks/{task_id}/apply": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "User2 applies to help with the given task. Creates a pending application\nand opens a direct chat between the applicant and the creator.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Apply to help with a task (\"I can help\")",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.ApplyToTaskResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Cannot apply to your own task",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Task not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Already applied | Task full | Task not open",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -2173,7 +4667,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.UserSearchResult"
+                                "$ref": "#/definitions/profiles.UserSearchResult"
                             }
                         }
                     }
@@ -2182,7 +4676,1853 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse": {
+        "auth.CheckEmailRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                }
+            }
+        },
+        "auth.CheckEmailResponse": {
+            "type": "object",
+            "properties": {
+                "exists": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "auth.EmailLoginRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                },
+                "device_id": {
+                    "type": "string",
+                    "example": "device-uuid-12345"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "SecurePass123!"
+                },
+                "user_agent": {
+                    "type": "string",
+                    "example": "BrightBund-iOS/1.0"
+                }
+            }
+        },
+        "auth.EmailRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string",
+                    "example": "1.0.0"
+                },
+                "date_of_birth": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string",
+                    "example": "2000-01-01"
+                },
+                "device_id": {
+                    "type": "string",
+                    "example": "device-uuid-12345"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "SecurePass123!"
+                },
+                "referrer_user_id": {
+                    "type": "string",
+                    "example": "FRIEND123"
+                },
+                "user_agent": {
+                    "type": "string",
+                    "example": "BrightBund-iOS/1.0"
+                }
+            }
+        },
+        "auth.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string",
+                    "example": "invalid_credentials"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Invalid email or password"
+                }
+            }
+        },
+        "auth.FirebasePhoneAuthRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "firebase_id_token": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.FirebasePhoneRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "firebase_id_token": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "referrer_user_id": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.LoginRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "provider_token": {
+                    "type": "string"
+                },
+                "provider_type": {
+                    "$ref": "#/definitions/auth.ProviderType"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.LoginResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/auth.User"
+                }
+            }
+        },
+        "auth.PhoneCodeRequest": {
+            "type": "object",
+            "properties": {
+                "country_code": {
+                    "type": "string",
+                    "example": "+1"
+                },
+                "phone_number": {
+                    "type": "string",
+                    "example": "5551234567"
+                },
+                "purpose": {
+                    "description": "login|register",
+                    "type": "string",
+                    "example": "register"
+                }
+            }
+        },
+        "auth.PhoneCodeResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PhoneRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "referrer_user_id": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PhoneVerifyRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.PhoneVerifyResponse": {
+            "type": "object",
+            "properties": {
+                "access_token": {
+                    "type": "string"
+                },
+                "refresh_token": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/auth.User"
+                },
+                "verification_id": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "auth.ProviderType": {
+            "type": "string",
+            "enum": [
+                "apple",
+                "google",
+                "email",
+                "phone"
+            ],
+            "x-enum-varnames": [
+                "ProviderApple",
+                "ProviderGoogle",
+                "ProviderEmail",
+                "ProviderPhone"
+            ]
+        },
+        "auth.RefreshRequest": {
+            "type": "object",
+            "properties": {
+                "refresh_token": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.User": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "h3_res2": {
+                    "type": "string"
+                },
+                "h3_res4": {
+                    "type": "string"
+                },
+                "h3_res5": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_admin": {
+                    "type": "boolean"
+                },
+                "is_shadow_banned": {
+                    "type": "boolean"
+                },
+                "last_active_at": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "location_opt_in": {
+                    "type": "boolean"
+                },
+                "location_updated_at": {
+                    "type": "string"
+                },
+                "participate_district": {
+                    "type": "boolean"
+                },
+                "referral_code": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.AccrualResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "new_balance": {
+                    "type": "number"
+                },
+                "next_claim": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "economy.AdjustBalanceRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency",
+                "reason",
+                "user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "$ref": "#/definitions/economy.CurrencyCode"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.BalanceResponse": {
+            "type": "object",
+            "properties": {
+                "gold_balance": {
+                    "type": "number",
+                    "example": 10
+                },
+                "last_accrual_at": {
+                    "type": "string"
+                },
+                "silver_balance": {
+                    "type": "number",
+                    "example": 4.5
+                },
+                "silver_free_balance": {
+                    "type": "number",
+                    "example": 3
+                }
+            }
+        },
+        "economy.ClaimDailyAccrualRequest": {
+            "type": "object",
+            "properties": {
+                "idempotency_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.CurrencyCode": {
+            "type": "string",
+            "enum": [
+                "SILVER_SEAL",
+                "GOLD_SEAL"
+            ],
+            "x-enum-varnames": [
+                "CurrencySilverSeal",
+                "CurrencyGoldSeal"
+            ]
+        },
+        "economy.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "INSUFFICIENT_FUNDS"
+                },
+                "error": {
+                    "type": "string",
+                    "example": "INSUFFICIENT_FUNDS"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "You don't have enough Seals"
+                }
+            }
+        },
+        "economy.GiveSealToPostRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency",
+                "receiver_user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "maximum": 10,
+                    "minimum": 1
+                },
+                "comment": {
+                    "type": "string",
+                    "maxLength": 500
+                },
+                "currency": {
+                    "type": "string",
+                    "enum": [
+                        "SILVER_SEAL",
+                        "GOLD_SEAL"
+                    ]
+                },
+                "idempotency_key": {
+                    "type": "string"
+                },
+                "receiver_user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.GiveSealToUserRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "currency": {
+                    "type": "string",
+                    "enum": [
+                        "SILVER_SEAL",
+                        "GOLD_SEAL"
+                    ]
+                },
+                "idempotency_key": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string",
+                    "maxLength": 200
+                }
+            }
+        },
+        "economy.LimitsResponse": {
+            "type": "object",
+            "properties": {
+                "daily_accrual_claimed": {
+                    "type": "boolean"
+                },
+                "monthly_transfer_limit": {
+                    "type": "integer"
+                },
+                "monthly_transferred": {
+                    "type": "integer"
+                },
+                "next_accrual": {
+                    "type": "string"
+                },
+                "next_reset": {
+                    "type": "string"
+                },
+                "remaining": {
+                    "type": "integer"
+                }
+            }
+        },
+        "economy.Referral": {
+            "type": "object",
+            "properties": {
+                "bonus_ledger_entry_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "referee_user_id": {
+                    "type": "string"
+                },
+                "referrer_user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.ReferralStatsResponse": {
+            "type": "object",
+            "properties": {
+                "active_referrals": {
+                    "type": "integer"
+                },
+                "referrals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/economy.Referral"
+                    }
+                },
+                "total_earned": {
+                    "type": "number"
+                },
+                "total_referrals": {
+                    "type": "integer"
+                }
+            }
+        },
+        "economy.TransactionCategory": {
+            "type": "string",
+            "enum": [
+                "DAILY_ACCRUAL",
+                "REFERRAL_BONUS",
+                "P2P_TRANSFER",
+                "TASK_CREATION",
+                "IAP_DEPOSIT",
+                "SYSTEM_CORRECTION",
+                "TASK_REWARD",
+                "TASK_REFUND",
+                "POST_SEAL"
+            ],
+            "x-enum-varnames": [
+                "CategoryDailyAccrual",
+                "CategoryReferralBonus",
+                "CategoryP2PTransfer",
+                "CategoryTaskCreation",
+                "CategoryIAPDeposit",
+                "CategorySystemCorrection",
+                "CategoryTaskReward",
+                "CategoryTaskRefund",
+                "CategoryPostSeal"
+            ]
+        },
+        "economy.TransactionHistoryResponse": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "transactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/economy.TransactionItem"
+                    }
+                }
+            }
+        },
+        "economy.TransactionItem": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "category": {
+                    "$ref": "#/definitions/economy.TransactionCategory"
+                },
+                "currency": {
+                    "$ref": "#/definitions/economy.CurrencyCode"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "other_user": {
+                    "$ref": "#/definitions/economy.UserInfo"
+                },
+                "reference": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.TransferRequest": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency",
+                "recipient_user_id"
+            ],
+            "properties": {
+                "amount": {
+                    "type": "number",
+                    "example": 1.5
+                },
+                "currency": {
+                    "type": "string",
+                    "enum": [
+                        "SILVER_SEAL",
+                        "GOLD_SEAL"
+                    ],
+                    "example": "SILVER_SEAL"
+                },
+                "idempotency_key": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "example": "Payment for task"
+                },
+                "recipient_user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "economy.TransferResponse": {
+            "type": "object",
+            "properties": {
+                "created_new": {
+                    "type": "boolean"
+                },
+                "ledger_entry_id": {
+                    "type": "string",
+                    "example": "123e4567-e89b-12d3-a456-426614174000"
+                },
+                "receiver_balance": {
+                    "type": "number",
+                    "example": 6.5
+                },
+                "sender_balance": {
+                    "type": "number",
+                    "example": 3.5
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.UserInfo": {
+            "type": "object",
+            "properties": {
+                "avatar": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.ViolationLog": {
+            "type": "object",
+            "properties": {
+                "amount_attempted": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "object"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ip_address": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "violation_type": {
+                    "$ref": "#/definitions/economy.ViolationType"
+                }
+            }
+        },
+        "economy.ViolationLogsResponse": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "violations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/economy.ViolationLog"
+                    }
+                }
+            }
+        },
+        "economy.ViolationType": {
+            "type": "string",
+            "enum": [
+                "COOLDOWN_BREACH",
+                "RATE_LIMIT_EXCEEDED",
+                "FREE_SILVER_CAP",
+                "MONTHLY_LIMIT_EXCEEDED",
+                "INSUFFICIENT_FUNDS_ATTEMPT",
+                "REPEAT_TRANSFER_PATTERN"
+            ],
+            "x-enum-varnames": [
+                "ViolationCooldownBreach",
+                "ViolationRateLimitExceeded",
+                "ViolationFreeSilverCap",
+                "ViolationMonthlyLimitExceeded",
+                "ViolationInsufficientFundsAttempt",
+                "ViolationRepeatTransferPattern"
+            ]
+        },
+        "feed.AuthorInfo": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "profile_pic_url": {
+                    "type": "string"
+                },
+                "rank": {
+                    "type": "string"
+                },
+                "rank_sub_level": {
+                    "description": "RankSubLevel is the sub-level label within the rank tier (e.g. \"Intention\")",
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.CommentResponse": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/feed.AuthorInfo"
+                },
+                "comment_id": {
+                    "type": "string"
+                },
+                "content_text": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "likes_count": {
+                    "type": "integer"
+                },
+                "media_attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.MediaAttachment"
+                    }
+                },
+                "parent_comment_id": {
+                    "type": "string"
+                },
+                "reply_count": {
+                    "description": "Number of direct child replies",
+                    "type": "integer"
+                },
+                "root_comment_id": {
+                    "type": "string"
+                },
+                "time_ago": {
+                    "type": "string"
+                },
+                "viewer_has_liked": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "feed.CreateCommentRequest": {
+            "type": "object",
+            "properties": {
+                "content_text": {
+                    "type": "string"
+                },
+                "media_attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.MediaAttachment"
+                    }
+                },
+                "parent_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.CreatePostRequest": {
+            "type": "object",
+            "properties": {
+                "caption": {
+                    "type": "string"
+                },
+                "comment_permission": {
+                    "type": "string"
+                },
+                "hide_likes_count": {
+                    "type": "boolean"
+                },
+                "location_city": {
+                    "type": "string"
+                },
+                "location_country": {
+                    "type": "string"
+                },
+                "location_lat": {
+                    "type": "number"
+                },
+                "location_lon": {
+                    "type": "number"
+                },
+                "media_attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.MediaAttachment"
+                    }
+                },
+                "visibility": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.FeedResponse": {
+            "type": "object",
+            "properties": {
+                "feed_degraded": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.PostResponse"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.FeedStateResponse": {
+            "type": "object",
+            "properties": {
+                "accumulated_active_seconds": {
+                    "type": "integer"
+                },
+                "accumulated_break_seconds": {
+                    "description": "AccumulatedBreakSeconds exposes how many off-feed seconds have been served so far.\nClient can use this to animate the break countdown even between sync calls.",
+                    "type": "integer"
+                },
+                "action_required": {
+                    "description": "\"trigger_friction\", \"enforce_cooldown\", or omitted",
+                    "type": "string"
+                },
+                "break_seconds_remaining": {
+                    "description": "0-300; 0 = not in break",
+                    "type": "integer"
+                },
+                "is_in_cooldown": {
+                    "type": "boolean"
+                },
+                "max_allowed_seconds": {
+                    "type": "integer"
+                },
+                "server_timestamp": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.InteractionListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.InteractionResponse"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.InteractionResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/feed.AuthorInfo"
+                }
+            }
+        },
+        "feed.MediaAttachment": {
+            "type": "object",
+            "properties": {
+                "thumbnail_url": {
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"image\" or \"video\"",
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.Permissions": {
+            "type": "object",
+            "properties": {
+                "can_comment": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "feed.PostGridItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "has_multiple_media": {
+                    "type": "boolean"
+                },
+                "media_type": {
+                    "description": "\"image\" | \"video\" | \"\"",
+                    "type": "string"
+                },
+                "post_id": {
+                    "type": "string"
+                },
+                "thumbnail_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.PostMetrics": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "integer"
+                },
+                "likes": {
+                    "type": "integer"
+                },
+                "shares": {
+                    "type": "integer"
+                },
+                "silvers": {
+                    "type": "integer"
+                }
+            }
+        },
+        "feed.PostResponse": {
+            "type": "object",
+            "properties": {
+                "author": {
+                    "$ref": "#/definitions/feed.AuthorInfo"
+                },
+                "content_text": {
+                    "type": "string"
+                },
+                "hide_likes_count": {
+                    "type": "boolean"
+                },
+                "is_own_post": {
+                    "description": "IsOwnPost lets the client show/hide the ··· edit/delete options menu",
+                    "type": "boolean"
+                },
+                "media_attachments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.MediaAttachment"
+                    }
+                },
+                "metrics": {
+                    "$ref": "#/definitions/feed.PostMetrics"
+                },
+                "permissions": {
+                    "$ref": "#/definitions/feed.Permissions"
+                },
+                "post_id": {
+                    "type": "string"
+                },
+                "time_ago": {
+                    "type": "string"
+                },
+                "viewer_has_liked": {
+                    "description": "ViewerHasLiked lets the client render the ❤️ heart as filled immediately",
+                    "type": "boolean"
+                },
+                "visibility": {
+                    "description": "Visibility is returned so the client can show the globe 🌐 or allies 👥 icon",
+                    "type": "string"
+                }
+            }
+        },
+        "feed.ReportCommentRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.ReportItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "moderation_status": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "reporter_id": {
+                    "type": "string"
+                },
+                "target_id": {
+                    "type": "string"
+                },
+                "target_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.ReportPostRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.ReportsListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.ReportItem"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "feed.SealListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.SealResponse"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.SealResponse": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/feed.AuthorInfo"
+                }
+            }
+        },
+        "feed.SendSealRequest": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "comment": {
+                    "type": "string"
+                },
+                "idempotency_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.SyncFeedStateRequest": {
+            "type": "object",
+            "properties": {
+                "delta_seconds": {
+                    "type": "integer"
+                },
+                "device_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.ThreadedCommentsResponse": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.CommentResponse"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "feed.UpdatePostRequest": {
+            "type": "object",
+            "properties": {
+                "comment_permission": {
+                    "type": "string"
+                },
+                "hide_likes_count": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "feed.UserPostsGridResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/feed.PostGridItem"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.ApplicationResponse": {
+            "type": "object",
+            "properties": {
+                "applicant_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.AppliedTasksResponse": {
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
+                    }
+                }
+            }
+        },
+        "mapmodule.ApplyToTaskResponse": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "always \"pending\" on creation",
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.CancelTaskResponse": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.ChampionPin": {
+            "type": "object",
+            "properties": {
+                "h3_index": {
+                    "type": "string"
+                },
+                "resolution": {
+                    "type": "integer"
+                },
+                "score": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.ConfirmCompletionResponse": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "reward": {
+                    "description": "seals paid to user2",
+                    "type": "number"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "task_status": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.CreateTaskRequest": {
+            "type": "object",
+            "properties": {
+                "auto_shutdown": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Please pick up the red package from the lobby"
+                },
+                "latitude": {
+                    "type": "number",
+                    "example": 37.7749
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -122.4194
+                },
+                "reward": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "title": {
+                    "type": "string",
+                    "example": "Pick up a package"
+                },
+                "workers_needed": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "mapmodule.CreateTaskResponse": {
+            "type": "object",
+            "properties": {
+                "auto_shutdown_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "reward": {
+                    "description": "in seals",
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "verification_code": {
+                    "type": "string"
+                },
+                "workers_filled": {
+                    "type": "integer"
+                },
+                "workers_needed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "mapmodule.NearbyTasksResponse": {
+            "type": "object",
+            "properties": {
+                "tasks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
+                    }
+                }
+            }
+        },
+        "mapmodule.RegionAssignmentRequest": {
+            "type": "object",
+            "properties": {
+                "latitude": {
+                    "type": "number",
+                    "example": 37.7749
+                },
+                "location_opt_in": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "longitude": {
+                    "type": "number",
+                    "example": -122.4194
+                },
+                "participate_district": {
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "mapmodule.RegionAssignmentResponse": {
+            "type": "object",
+            "properties": {
+                "h3_res2": {
+                    "type": "string"
+                },
+                "h3_res4": {
+                    "type": "string"
+                },
+                "h3_res5": {
+                    "type": "string"
+                },
+                "location_opt_in": {
+                    "type": "boolean"
+                },
+                "participate_district": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "mapmodule.SubmitVerificationCodeRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string",
+                    "example": "4821"
+                }
+            }
+        },
+        "mapmodule.TaskResponse": {
+            "type": "object",
+            "properties": {
+                "auto_shutdown_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "reward": {
+                    "description": "in seals",
+                    "type": "number"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "workers_filled": {
+                    "type": "integer"
+                },
+                "workers_needed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "mapmodule.VerifyCodeResponse": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"code_verified\" on success",
+                    "type": "string"
+                }
+            }
+        },
+        "profiles.AllyProfile": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "rank_tier": {
+                    "description": "Computed",
+                    "type": "string"
+                },
+                "reputation_score": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "profiles.Profile": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://storage.example.com/avatars/user123/avatar.jpg"
+                },
+                "bio": {
+                    "type": "string",
+                    "example": "Explorer and adventurer"
+                },
+                "city": {
+                    "type": "string",
+                    "example": "San Francisco"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "United States"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T10:30:00Z"
+                },
+                "date_of_birth": {
+                    "type": "string",
+                    "example": "2000-01-01"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "Alice Wonderland"
+                },
+                "feed_time_limit_mins": {
+                    "description": "FeedTimeLimitMins controls the Anti-Doomscroll ceiling.\n0 = No limit; 20/30/40 = limit in minutes. Defaults to 20.",
+                    "type": "integer",
+                    "example": 20
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "is_public": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Wonderland"
+                },
+                "rank_tier": {
+                    "type": "string",
+                    "example": "Quartz"
+                },
+                "reputation_score": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "updated_at": {
+                    "type": "string",
+                    "example": "2024-01-20T14:45:00Z"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "profiles.ProfileSearchResult": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://storage.example.com/avatars/u1.jpg"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "rank_tier": {
+                    "type": "string",
+                    "example": "Quartz"
+                },
+                "reputation_score": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "profiles.ProfileStats": {
+            "type": "object",
+            "properties": {
+                "gold_balance": {
+                    "description": "in centinels (50 Seals)",
+                    "type": "integer",
+                    "example": 5000
+                },
+                "silver_balance": {
+                    "description": "in centinels (125 Seals)",
+                    "type": "integer",
+                    "example": 12500
+                },
+                "total_received": {
+                    "description": "in centinels",
+                    "type": "integer",
+                    "example": 20000
+                },
+                "total_sent": {
+                    "description": "in centinels",
+                    "type": "integer",
+                    "example": 8000
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "profiles.PublicProfileResponse": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://storage.example.com/avatar.jpg"
+                },
+                "bio": {
+                    "type": "string",
+                    "example": "Explorer and adventurer"
+                },
+                "city": {
+                    "type": "string",
+                    "example": "San Francisco"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "United States"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "Alice Wonderland"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Wonderland"
+                },
+                "rank_tier": {
+                    "type": "string",
+                    "example": "Quartz"
+                },
+                "reputation_score": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "profiles.RelationshipStatus": {
+            "type": "object",
+            "properties": {
+                "i_blocked_them": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "i_follow_them": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "i_restricted_them": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "they_blocked_me": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "they_follow_me": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "profiles.ReportRequest": {
+            "type": "object",
+            "required": [
+                "reason"
+            ],
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Sent spam messages"
+                },
+                "reason": {
+                    "type": "string",
+                    "enum": [
+                        "spam",
+                        "harassment",
+                        "inappropriate",
+                        "fake_account",
+                        "other"
+                    ],
+                    "example": "spam"
+                }
+            }
+        },
+        "profiles.UpdateProfileRequest": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://storage.example.com/avatar.jpg"
+                },
+                "bio": {
+                    "type": "string",
+                    "example": "Explorer and adventurer"
+                },
+                "city": {
+                    "type": "string",
+                    "example": "San Francisco"
+                },
+                "country": {
+                    "type": "string",
+                    "example": "United States"
+                },
+                "display_name": {
+                    "description": "Combined name or custom display name",
+                    "type": "string",
+                    "example": "Alice Wonderland"
+                },
+                "feed_time_limit_mins": {
+                    "description": "FeedTimeLimitMins: 0 = no limit, 20 / 30 / 40 = limit in minutes",
+                    "type": "integer",
+                    "example": 30
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Alice"
+                },
+                "is_public": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Wonderland"
+                },
+                "region": {
+                    "type": "string",
+                    "example": "California"
+                }
+            }
+        },
+        "profiles.UserSearchResult": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://storage.example.com/avatars/u1.jpg"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "John"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "ranks.CurrentRankResponse": {
             "type": "object",
             "properties": {
                 "current_seals": {
@@ -2232,18 +6572,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_brightbund-backend_internal_modules_ranks.RankListResponse": {
+        "ranks.RankListResponse": {
             "type": "object",
             "properties": {
                 "ranks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankWithLevels"
+                        "$ref": "#/definitions/ranks.RankWithLevels"
                     }
                 }
             }
         },
-        "github_com_brightbund-backend_internal_modules_ranks.RankWithLevels": {
+        "ranks.RankWithLevels": {
             "type": "object",
             "properties": {
                 "description": {
@@ -2279,12 +6619,12 @@ const docTemplate = `{
                 "sub_levels": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo"
+                        "$ref": "#/definitions/ranks.SubLevelInfo"
                     }
                 }
             }
         },
-        "github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo": {
+        "ranks.SubLevelInfo": {
             "type": "object",
             "properties": {
                 "level": {
@@ -2295,1076 +6635,6 @@ const docTemplate = `{
                 },
                 "min_seals": {
                     "type": "integer"
-                }
-            }
-        },
-        "internal_modules_auth.CheckEmailRequest": {
-            "type": "object",
-            "properties": {
-                "email": {
-                    "type": "string",
-                    "example": "john.doe@example.com"
-                }
-            }
-        },
-        "internal_modules_auth.CheckEmailResponse": {
-            "type": "object",
-            "properties": {
-                "exists": {
-                    "type": "boolean",
-                    "example": true
-                }
-            }
-        },
-        "internal_modules_auth.EmailLoginRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string",
-                    "example": "1.0.0"
-                },
-                "device_id": {
-                    "type": "string",
-                    "example": "device-uuid-12345"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "john.doe@example.com"
-                },
-                "password": {
-                    "type": "string",
-                    "example": "SecurePass123!"
-                },
-                "user_agent": {
-                    "type": "string",
-                    "example": "BrightBund-iOS/1.0"
-                }
-            }
-        },
-        "internal_modules_auth.EmailRegisterRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string",
-                    "example": "1.0.0"
-                },
-                "date_of_birth": {
-                    "description": "YYYY-MM-DD",
-                    "type": "string",
-                    "example": "2000-01-01"
-                },
-                "device_id": {
-                    "type": "string",
-                    "example": "device-uuid-12345"
-                },
-                "email": {
-                    "type": "string",
-                    "example": "john.doe@example.com"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "John"
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Doe"
-                },
-                "password": {
-                    "type": "string",
-                    "example": "SecurePass123!"
-                },
-                "referrer_user_id": {
-                    "type": "string",
-                    "example": "FRIEND123"
-                },
-                "user_agent": {
-                    "type": "string",
-                    "example": "BrightBund-iOS/1.0"
-                }
-            }
-        },
-        "internal_modules_auth.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "type": "string",
-                    "example": "invalid_credentials"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "Invalid email or password"
-                }
-            }
-        },
-        "internal_modules_auth.FirebasePhoneAuthRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "firebase_id_token": {
-                    "type": "string"
-                },
-                "user_agent": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.FirebasePhoneRegisterRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string"
-                },
-                "date_of_birth": {
-                    "description": "YYYY-MM-DD",
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "firebase_id_token": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string"
-                },
-                "referrer_user_id": {
-                    "type": "string"
-                },
-                "user_agent": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.LoginRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "provider_token": {
-                    "type": "string"
-                },
-                "provider_type": {
-                    "$ref": "#/definitions/internal_modules_auth.ProviderType"
-                },
-                "user_agent": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.LoginResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "refresh_token": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
-                }
-            }
-        },
-        "internal_modules_auth.PhoneCodeRequest": {
-            "type": "object",
-            "properties": {
-                "country_code": {
-                    "type": "string",
-                    "example": "+1"
-                },
-                "phone_number": {
-                    "type": "string",
-                    "example": "5551234567"
-                },
-                "purpose": {
-                    "description": "login|register",
-                    "type": "string",
-                    "example": "register"
-                }
-            }
-        },
-        "internal_modules_auth.PhoneCodeResponse": {
-            "type": "object",
-            "properties": {
-                "expires_at": {
-                    "type": "string"
-                },
-                "verification_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.PhoneRegisterRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string"
-                },
-                "date_of_birth": {
-                    "description": "YYYY-MM-DD",
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string"
-                },
-                "referrer_user_id": {
-                    "type": "string"
-                },
-                "user_agent": {
-                    "type": "string"
-                },
-                "verification_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.PhoneVerifyRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string"
-                },
-                "code": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "user_agent": {
-                    "type": "string"
-                },
-                "verification_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.PhoneVerifyResponse": {
-            "type": "object",
-            "properties": {
-                "access_token": {
-                    "type": "string"
-                },
-                "refresh_token": {
-                    "type": "string"
-                },
-                "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
-                },
-                "verification_id": {
-                    "type": "string"
-                },
-                "verified": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "internal_modules_auth.ProviderType": {
-            "type": "string",
-            "enum": [
-                "apple",
-                "google",
-                "email",
-                "phone"
-            ],
-            "x-enum-varnames": [
-                "ProviderApple",
-                "ProviderGoogle",
-                "ProviderEmail",
-                "ProviderPhone"
-            ]
-        },
-        "internal_modules_auth.RefreshRequest": {
-            "type": "object",
-            "properties": {
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.User": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "date_of_birth": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_admin": {
-                    "type": "boolean"
-                },
-                "is_shadow_banned": {
-                    "type": "boolean"
-                },
-                "last_active_at": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string"
-                },
-                "referral_code": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.AccrualResponse": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "number"
-                },
-                "new_balance": {
-                    "type": "number"
-                },
-                "next_claim": {
-                    "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "internal_modules_economy.AdjustBalanceRequest": {
-            "type": "object",
-            "required": [
-                "amount",
-                "currency",
-                "reason",
-                "user_id"
-            ],
-            "properties": {
-                "amount": {
-                    "type": "integer"
-                },
-                "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
-                },
-                "reason": {
-                    "type": "string",
-                    "maxLength": 255
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.BalanceResponse": {
-            "type": "object",
-            "properties": {
-                "gold_balance": {
-                    "type": "number",
-                    "example": 10
-                },
-                "last_accrual_at": {
-                    "type": "string"
-                },
-                "silver_balance": {
-                    "type": "number",
-                    "example": 4.5
-                },
-                "silver_free_balance": {
-                    "type": "number",
-                    "example": 3
-                }
-            }
-        },
-        "internal_modules_economy.ClaimDailyAccrualRequest": {
-            "type": "object",
-            "properties": {
-                "idempotency_key": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.CurrencyCode": {
-            "type": "string",
-            "enum": [
-                "SILVER_SEAL",
-                "GOLD_SEAL"
-            ],
-            "x-enum-varnames": [
-                "CurrencySilverSeal",
-                "CurrencyGoldSeal"
-            ]
-        },
-        "internal_modules_economy.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string",
-                    "example": "INSUFFICIENT_FUNDS"
-                },
-                "error": {
-                    "type": "string",
-                    "example": "INSUFFICIENT_FUNDS"
-                },
-                "message": {
-                    "type": "string",
-                    "example": "You don't have enough Seals"
-                }
-            }
-        },
-        "internal_modules_economy.GiveSealToPostRequest": {
-            "type": "object",
-            "required": [
-                "amount",
-                "currency",
-                "receiver_user_id"
-            ],
-            "properties": {
-                "amount": {
-                    "type": "integer",
-                    "maximum": 10,
-                    "minimum": 1
-                },
-                "currency": {
-                    "type": "string",
-                    "enum": [
-                        "SILVER_SEAL",
-                        "GOLD_SEAL"
-                    ]
-                },
-                "idempotency_key": {
-                    "type": "string"
-                },
-                "receiver_user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.GiveSealToUserRequest": {
-            "type": "object",
-            "required": [
-                "amount",
-                "currency"
-            ],
-            "properties": {
-                "amount": {
-                    "type": "number"
-                },
-                "currency": {
-                    "type": "string",
-                    "enum": [
-                        "SILVER_SEAL",
-                        "GOLD_SEAL"
-                    ]
-                },
-                "idempotency_key": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string",
-                    "maxLength": 200
-                }
-            }
-        },
-        "internal_modules_economy.LimitsResponse": {
-            "type": "object",
-            "properties": {
-                "daily_accrual_claimed": {
-                    "type": "boolean"
-                },
-                "monthly_transfer_limit": {
-                    "type": "integer"
-                },
-                "monthly_transferred": {
-                    "type": "integer"
-                },
-                "next_accrual": {
-                    "type": "string"
-                },
-                "next_reset": {
-                    "type": "string"
-                },
-                "remaining": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_modules_economy.Referral": {
-            "type": "object",
-            "properties": {
-                "bonus_ledger_entry_id": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "referee_user_id": {
-                    "type": "string"
-                },
-                "referrer_user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.ReferralStatsResponse": {
-            "type": "object",
-            "properties": {
-                "active_referrals": {
-                    "type": "integer"
-                },
-                "referrals": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_modules_economy.Referral"
-                    }
-                },
-                "total_earned": {
-                    "type": "number"
-                },
-                "total_referrals": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_modules_economy.TransactionCategory": {
-            "type": "string",
-            "enum": [
-                "DAILY_ACCRUAL",
-                "REFERRAL_BONUS",
-                "P2P_TRANSFER",
-                "TASK_CREATION",
-                "IAP_DEPOSIT",
-                "SYSTEM_CORRECTION",
-                "TASK_REWARD",
-                "POST_SEAL"
-            ],
-            "x-enum-varnames": [
-                "CategoryDailyAccrual",
-                "CategoryReferralBonus",
-                "CategoryP2PTransfer",
-                "CategoryTaskCreation",
-                "CategoryIAPDeposit",
-                "CategorySystemCorrection",
-                "CategoryTaskReward",
-                "CategoryPostSeal"
-            ]
-        },
-        "internal_modules_economy.TransactionHistoryResponse": {
-            "type": "object",
-            "properties": {
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "transactions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_modules_economy.TransactionItem"
-                    }
-                }
-            }
-        },
-        "internal_modules_economy.TransactionItem": {
-            "type": "object",
-            "properties": {
-                "amount": {
-                    "type": "number"
-                },
-                "category": {
-                    "$ref": "#/definitions/internal_modules_economy.TransactionCategory"
-                },
-                "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "other_user": {
-                    "$ref": "#/definitions/internal_modules_economy.UserInfo"
-                },
-                "reference": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.TransferRequest": {
-            "type": "object",
-            "required": [
-                "amount",
-                "currency",
-                "recipient_user_id"
-            ],
-            "properties": {
-                "amount": {
-                    "type": "number",
-                    "example": 1.5
-                },
-                "currency": {
-                    "type": "string",
-                    "enum": [
-                        "SILVER_SEAL",
-                        "GOLD_SEAL"
-                    ],
-                    "example": "SILVER_SEAL"
-                },
-                "idempotency_key": {
-                    "type": "string"
-                },
-                "reason": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "example": "Payment for task"
-                },
-                "recipient_user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "internal_modules_economy.TransferResponse": {
-            "type": "object",
-            "properties": {
-                "ledger_entry_id": {
-                    "type": "string",
-                    "example": "123e4567-e89b-12d3-a456-426614174000"
-                },
-                "receiver_balance": {
-                    "type": "number",
-                    "example": 6.5
-                },
-                "sender_balance": {
-                    "type": "number",
-                    "example": 3.5
-                },
-                "timestamp": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.UserInfo": {
-            "type": "object",
-            "properties": {
-                "avatar": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_economy.ViolationLog": {
-            "type": "object",
-            "properties": {
-                "amount_attempted": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "details": {
-                    "type": "object"
-                },
-                "endpoint": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "ip_address": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                },
-                "violation_type": {
-                    "$ref": "#/definitions/internal_modules_economy.ViolationType"
-                }
-            }
-        },
-        "internal_modules_economy.ViolationLogsResponse": {
-            "type": "object",
-            "properties": {
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                },
-                "violations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/internal_modules_economy.ViolationLog"
-                    }
-                }
-            }
-        },
-        "internal_modules_economy.ViolationType": {
-            "type": "string",
-            "enum": [
-                "COOLDOWN_BREACH",
-                "RATE_LIMIT_EXCEEDED",
-                "FREE_SILVER_CAP",
-                "MONTHLY_LIMIT_EXCEEDED",
-                "INSUFFICIENT_FUNDS_ATTEMPT",
-                "REPEAT_TRANSFER_PATTERN"
-            ],
-            "x-enum-varnames": [
-                "ViolationCooldownBreach",
-                "ViolationRateLimitExceeded",
-                "ViolationFreeSilverCap",
-                "ViolationMonthlyLimitExceeded",
-                "ViolationInsufficientFundsAttempt",
-                "ViolationRepeatTransferPattern"
-            ]
-        },
-        "internal_modules_profiles.AllyProfile": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "display_name": {
-                    "type": "string"
-                },
-                "rank_tier": {
-                    "description": "Computed",
-                    "type": "string"
-                },
-                "reputation_score": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_profiles.Profile": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string",
-                    "example": "https://storage.example.com/avatars/user123/avatar.jpg"
-                },
-                "bio": {
-                    "type": "string",
-                    "example": "Explorer and adventurer"
-                },
-                "city": {
-                    "type": "string",
-                    "example": "San Francisco"
-                },
-                "country": {
-                    "type": "string",
-                    "example": "United States"
-                },
-                "created_at": {
-                    "type": "string",
-                    "example": "2024-01-15T10:30:00Z"
-                },
-                "date_of_birth": {
-                    "type": "string",
-                    "example": "2000-01-01"
-                },
-                "display_name": {
-                    "type": "string",
-                    "example": "Alice Wonderland"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "Alice"
-                },
-                "is_public": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Wonderland"
-                },
-                "rank_tier": {
-                    "type": "string",
-                    "example": "Quartz"
-                },
-                "reputation_score": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "updated_at": {
-                    "type": "string",
-                    "example": "2024-01-20T14:45:00Z"
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "internal_modules_profiles.ProfileSearchResult": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string",
-                    "example": "https://storage.example.com/avatars/u1.jpg"
-                },
-                "display_name": {
-                    "type": "string",
-                    "example": "John Doe"
-                },
-                "rank_tier": {
-                    "type": "string",
-                    "example": "Quartz"
-                },
-                "reputation_score": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "internal_modules_profiles.ProfileStats": {
-            "type": "object",
-            "properties": {
-                "gold_balance": {
-                    "description": "in centinels (50 Seals)",
-                    "type": "integer",
-                    "example": 5000
-                },
-                "silver_balance": {
-                    "description": "in centinels (125 Seals)",
-                    "type": "integer",
-                    "example": 12500
-                },
-                "total_received": {
-                    "description": "in centinels",
-                    "type": "integer",
-                    "example": 20000
-                },
-                "total_sent": {
-                    "description": "in centinels",
-                    "type": "integer",
-                    "example": 8000
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "internal_modules_profiles.PublicProfileResponse": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string",
-                    "example": "https://storage.example.com/avatar.jpg"
-                },
-                "bio": {
-                    "type": "string",
-                    "example": "Explorer and adventurer"
-                },
-                "city": {
-                    "type": "string",
-                    "example": "San Francisco"
-                },
-                "country": {
-                    "type": "string",
-                    "example": "United States"
-                },
-                "display_name": {
-                    "type": "string",
-                    "example": "Alice Wonderland"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "Alice"
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Wonderland"
-                },
-                "rank_tier": {
-                    "type": "string",
-                    "example": "Quartz"
-                },
-                "reputation_score": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "internal_modules_profiles.RelationshipStatus": {
-            "type": "object",
-            "properties": {
-                "i_blocked_them": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "i_follow_them": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "i_restricted_them": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "they_blocked_me": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "they_follow_me": {
-                    "type": "boolean",
-                    "example": false
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "internal_modules_profiles.ReportRequest": {
-            "type": "object",
-            "required": [
-                "reason"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string",
-                    "example": "Sent spam messages"
-                },
-                "reason": {
-                    "type": "string",
-                    "enum": [
-                        "spam",
-                        "harassment",
-                        "inappropriate",
-                        "fake_account",
-                        "other"
-                    ],
-                    "example": "spam"
-                }
-            }
-        },
-        "internal_modules_profiles.UpdateProfileRequest": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string",
-                    "example": "https://storage.example.com/avatar.jpg"
-                },
-                "bio": {
-                    "type": "string",
-                    "example": "Explorer and adventurer"
-                },
-                "city": {
-                    "type": "string",
-                    "example": "San Francisco"
-                },
-                "country": {
-                    "type": "string",
-                    "example": "United States"
-                },
-                "display_name": {
-                    "description": "Combined name or custom display name",
-                    "type": "string",
-                    "example": "Alice Wonderland"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "Alice"
-                },
-                "is_public": {
-                    "type": "boolean",
-                    "example": true
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Wonderland"
-                },
-                "region": {
-                    "type": "string",
-                    "example": "California"
-                }
-            }
-        },
-        "internal_modules_profiles.UserSearchResult": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string",
-                    "example": "https://storage.example.com/avatars/u1.jpg"
-                },
-                "display_name": {
-                    "type": "string",
-                    "example": "John Doe"
-                },
-                "first_name": {
-                    "type": "string",
-                    "example": "John"
-                },
-                "last_name": {
-                    "type": "string",
-                    "example": "Doe"
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
                 }
             }
         }
@@ -3382,7 +6652,7 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8081",
+	Host:             "",
 	BasePath:         "/api/v1",
 	Schemes:          []string{},
 	Title:            "BrightBund API",

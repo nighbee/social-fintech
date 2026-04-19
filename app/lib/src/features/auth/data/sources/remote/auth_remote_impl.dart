@@ -1,11 +1,14 @@
+import 'dart:developer';
 import 'dart:io';
 
+import 'package:app/src/features/auth/data/models/user_search_dto.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:injectable/injectable.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
+import 'package:app/src/core/utils/device_id.dart';
 import 'package:app/src/core/utils/loggers/log.dart';
 import 'package:app/src/features/auth/data/models/login_dto.dart';
 import 'package:app/src/features/auth/data/models/phone_code_response_dto.dart';
@@ -17,6 +20,7 @@ class AuthRemoteImpl implements IAuthRemote {
   AuthRemoteImpl(@Named('DioClient') this._client);
 
   final RestClient _client;
+  final DeviceId _deviceId = DeviceId();
 
   // Cache for app version
   String? _appVersion;
@@ -41,8 +45,8 @@ class AuthRemoteImpl implements IAuthRemote {
   @override
   Future<Either<DomainException, LoginDto>> loginWithGoogle({
     required String providerToken,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -70,8 +74,8 @@ class AuthRemoteImpl implements IAuthRemote {
   @override
   Future<Either<DomainException, LoginDto>> loginWithApple({
     required String providerToken,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -102,9 +106,7 @@ class AuthRemoteImpl implements IAuthRemote {
   }) async {
     final result = await _client.post(
       EndPoints.authCheckEmail,
-      data: {
-        'email': email,
-      },
+      data: {'email': email},
     );
 
     return result.fold((error) => Left(error), (response) {
@@ -121,8 +123,8 @@ class AuthRemoteImpl implements IAuthRemote {
   Future<Either<DomainException, LoginDto>> loginWithEmail({
     required String email,
     required String password,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -134,12 +136,12 @@ class AuthRemoteImpl implements IAuthRemote {
       'user_agent': userAgent,
     };
 
-    print('=== LOGIN EMAIL REQUEST ===');
-    print('URL: ${EndPoints.authLoginEmail}');
-    print('Email: $email');
-    print('Password: $password');
-    print('Data: $requestData');
-    print('===========================');
+    log('=== LOGIN EMAIL REQUEST ===');
+    log('URL: ${EndPoints.authLoginEmail}');
+    log('Email: $email');
+    log('Password: $password');
+    log('Data: $requestData');
+    log('===========================');
 
     final result = await _client.post(
       EndPoints.authLoginEmail,
@@ -148,17 +150,17 @@ class AuthRemoteImpl implements IAuthRemote {
 
     return result.fold(
       (error) {
-        print('=== LOGIN EMAIL ERROR ===');
-        print('Error: ${error.message}');
-        print('Error type: ${error.runtimeType}');
-        print('=========================');
+        log('=== LOGIN EMAIL ERROR ===');
+        log('Error: ${error.message}');
+        log('Error type: ${error.runtimeType}');
+        log('=========================');
         Log.error('AuthRemote', 'Login Email Error: ${error.message}');
         return Left(error);
       },
       (response) {
-        print('=== LOGIN EMAIL SUCCESS ===');
-        print('Response: ${response.data}');
-        print('===========================');
+        log('=== LOGIN EMAIL SUCCESS ===');
+        log('Response: ${response.data}');
+        log('===========================');
         Log.debug('AuthRemote', 'Login Email Success:');
         Log.debug('AuthRemote', 'Response: ${response.data}');
         try {
@@ -180,10 +182,10 @@ class AuthRemoteImpl implements IAuthRemote {
     required String password,
     required String firstName,
     required String lastName,
-    required String deviceId,
     required String dateOfBirth,
-    required String referral,
+    String? referral,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -196,7 +198,8 @@ class AuthRemoteImpl implements IAuthRemote {
       'app_version': appVersion,
       'user_agent': userAgent,
       'date_of_birth': dateOfBirth,
-      // 'referral': referral,
+      if ((referral ?? '').trim().isNotEmpty)
+        'referrer_user_id': referral!.trim(),
     };
 
     Log.debug('AuthRemote', 'Register Email Request:');
@@ -258,8 +261,8 @@ class AuthRemoteImpl implements IAuthRemote {
   Future<Either<DomainException, LoginDto>> verifyPhoneCode({
     required String verificationId,
     required String code,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final result = await _client.post(
       EndPoints.authPhoneVerify,
       data: {
@@ -284,10 +287,10 @@ class AuthRemoteImpl implements IAuthRemote {
     required String verificationId,
     required String firstName,
     required String lastName,
-    required String deviceId,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final result = await _client.post(
       EndPoints.authRegisterPhone,
       data: {
@@ -295,8 +298,9 @@ class AuthRemoteImpl implements IAuthRemote {
         'first_name': firstName,
         'last_name': lastName,
         'device_id': deviceId,
-        if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
-        if (referral != null) 'referral': referral,
+        'date_of_birth': dateOfBirth,
+        if ((referral ?? '').trim().isNotEmpty)
+          'referrer_user_id': referral!.trim(),
       },
     );
 
@@ -320,8 +324,8 @@ class AuthRemoteImpl implements IAuthRemote {
   @override
   Future<Either<DomainException, LoginDto>> firebasePhoneLogin({
     required String firebaseIdToken,
-    required String deviceId,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -335,19 +339,14 @@ class AuthRemoteImpl implements IAuthRemote {
       },
     );
 
-    return result.fold(
-      (error) => Left(error),
-      (response) {
-        try {
-          final dto = LoginDto.fromJson(response.data);
-          return Right(dto);
-        } catch (e) {
-          return Left(
-            NetworkException(message: 'Failed to parse response: $e'),
-          );
-        }
-      },
-    );
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final dto = LoginDto.fromJson(response.data);
+        return Right(dto);
+      } catch (e) {
+        return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
   }
 
   @override
@@ -355,10 +354,10 @@ class AuthRemoteImpl implements IAuthRemote {
     required String firebaseIdToken,
     required String firstName,
     required String lastName,
-    required String deviceId,
-    String? dateOfBirth,
+    required String dateOfBirth,
     String? referral,
   }) async {
+    final deviceId = await _deviceId.getDeviceId();
     final appVersion = await _getAppVersion();
     final userAgent = _getUserAgent();
 
@@ -369,8 +368,9 @@ class AuthRemoteImpl implements IAuthRemote {
       'device_id': deviceId,
       'app_version': appVersion,
       'user_agent': userAgent,
-      if (dateOfBirth != null) 'date_of_birth': dateOfBirth,
-      if (referral != null) 'referral': referral,
+      'date_of_birth': dateOfBirth,
+      if ((referral ?? '').trim().isNotEmpty)
+        'referrer_user_id': referral!.trim(),
     };
 
     final result = await _client.post(
@@ -378,18 +378,42 @@ class AuthRemoteImpl implements IAuthRemote {
       data: requestData,
     );
 
-    return result.fold(
-      (error) => Left(error),
-      (response) {
-        try {
-          final dto = LoginDto.fromJson(response.data);
-          return Right(dto);
-        } catch (e) {
-          return Left(
-            NetworkException(message: 'Failed to parse response: $e'),
-          );
-        }
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final dto = LoginDto.fromJson(response.data);
+        return Right(dto);
+      } catch (e) {
+        return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
+  }
+
+  @override
+  Future<Either<DomainException, List<UserSearchDto>>> searchUsers({
+    required String firstName,
+    required String lastName,
+    int limit = 20,
+  }) async {
+    final result = await _client.get(
+      EndPoints.usersSearch,
+      queryParameters: {
+        'first_name': firstName,
+        'last_name': lastName,
+        'limit': limit,
       },
     );
+
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final List<dynamic> jsonList = response.data;
+        final users =
+            jsonList.map((json) => UserSearchDto.fromJson(json)).toList();
+        return Right(users);
+      } catch (e) {
+        return Left(
+          NetworkException(message: 'Failed to parse response: $e'),
+        );
+      }
+    });
   }
 }

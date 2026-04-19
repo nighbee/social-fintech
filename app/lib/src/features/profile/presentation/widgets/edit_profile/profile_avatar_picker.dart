@@ -1,4 +1,5 @@
 import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
@@ -11,17 +12,31 @@ class ProfileAvatarPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedUrl = imageUrl.trim();
+
     return Center(
       child: Stack(
         children: [
-          CustomNetworkImage(
-            imageUrl: imageUrl.isNotEmpty
-                ? imageUrl
-                : 'https://i.pravatar.cc/150',
-            width: 100,
-            height: 100,
-            borderRadius: BorderRadius.circular(50),
-          ),
+          normalizedUrl.isNotEmpty
+              ? CustomNetworkImage(
+                  imageUrl: normalizedUrl,
+                  width: 100,
+                  height: 100,
+                  borderRadius: BorderRadius.circular(50),
+                )
+              : Container(
+                  width: 100,
+                  height: 100,
+                  decoration: const BoxDecoration(
+                    color: AppColors.colorff2A2A2B,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_outline,
+                    size: 36,
+                    color: AppColors.colorff9CA3AF,
+                  ),
+                ),
           Positioned(
             right: 0,
             bottom: 0,

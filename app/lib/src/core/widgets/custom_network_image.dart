@@ -10,6 +10,8 @@ class CustomNetworkImage extends StatelessWidget {
     this.height,
     this.fit = BoxFit.cover,
     this.borderRadius,
+    this.cacheWidth,
+    this.cacheHeight,
   });
 
   final String imageUrl;
@@ -17,6 +19,8 @@ class CustomNetworkImage extends StatelessWidget {
   final double? height;
   final BoxFit fit;
   final BorderRadius? borderRadius;
+  final int? cacheWidth;
+  final int? cacheHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -27,12 +31,15 @@ class CustomNetworkImage extends StatelessWidget {
         width: width,
         height: height,
         fit: fit,
+        cacheWidth: cacheWidth,
+        cacheHeight: cacheHeight,
+        filterQuality: FilterQuality.low,
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Container(
             width: width,
             height: height,
-            color: AppColors.surface,
+            color: AppColors.colorff2A2A2B,
             child: Center(
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
@@ -40,7 +47,7 @@ class CustomNetworkImage extends StatelessWidget {
                           loadingProgress.expectedTotalBytes!
                     : null,
                 strokeWidth: 2,
-                color: AppColors.textSecondary,
+                color: AppColors.colorff9CA3AF,
               ),
             ),
           );
@@ -49,10 +56,10 @@ class CustomNetworkImage extends StatelessWidget {
           return Container(
             width: width,
             height: height,
-            color: AppColors.surface,
+            color: AppColors.colorff2A2A2B,
             child: Icon(
               Icons.broken_image,
-              color: AppColors.textSecondary,
+              color: AppColors.colorff9CA3AF,
               size: 32,
             ),
           );

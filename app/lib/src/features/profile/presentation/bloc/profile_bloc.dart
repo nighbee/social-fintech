@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/features/profile/domain/entities/relationship_status_entity.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:injectable/injectable.dart';
@@ -21,10 +23,11 @@ part 'profile_state.dart';
 
 class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
   ProfileBloc(@Named.from(ProfileRepositoryImpl) this._repository)
-    : super(_Initial());
+      : super(_Initial());
 
   final IProfileRepository _repository;
   ProfileViewModel _viewModel = ProfileViewModel();
+  bool _isProfileLoadInProgress = false;
 
   @override
   Future<void> onEventHandler(ProfileEvent event, Emitter emit) async {
@@ -68,21 +71,49 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
 
       final result = await _repository.uploadAvatar(formData);
 
-      result.fold((error) => emit(ProfileState.loadingError(error.message)), (
-        profile,
-      ) {
-        _viewModel = _viewModel.copyWith(profile: profile);
-        emit(ProfileState.loaded(viewModel: _viewModel));
-      });
+      await result.fold(
+        (error) async {
+          if (emit.isDone) return;
+          emit(ProfileState.loadingError(error.message));
+        },
+        (profile) async {
+          final previousAvatarUrl = _viewModel.profile.avatarUrl;
+          _viewModel = _viewModel.copyWith(profile: profile);
+
+          await _evictAvatarCache(previousAvatarUrl);
+          await _evictAvatarCache(profile.avatarUrl);
+
+          if (emit.isDone) return;
+          emit(ProfileState.loaded(viewModel: _viewModel));
+        },
+      );
     } catch (e) {
+      if (emit.isDone) return;
       emit(ProfileState.loadingError(e.toString()));
     }
   }
 
+  Future<void> _evictAvatarCache(String url) async {
+    final normalizedUrl = url.trim();
+    if (normalizedUrl.isEmpty) return;
+
+    await NetworkImage(normalizedUrl).evict();
+
+    if (normalizedUrl.contains('localhost')) {
+      await NetworkImage(
+        normalizedUrl.replaceAll('localhost', '10.0.2.2'),
+      ).evict();
+    }
+  }
+
   Future<void> _loadProfile(_LoadProfile event, Emitter emit) async {
+    if (_isProfileLoadInProgress) return;
+    _isProfileLoadInProgress = true;
     try {
       emit(ProfileState.loading(viewModel: _viewModel));
-      final result = await _repository.getCurrentUser();
+      final result = await _repository.getCurrentUser().timeout(
+            const Duration(seconds: 15),
+          );
 
       result.fold((error) => emit(ProfileState.loadingError(error.message)), (
         profile,
@@ -90,8 +121,16 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
         _viewModel = _viewModel.copyWith(profile: profile);
         emit(ProfileState.loaded(viewModel: _viewModel));
       });
+    } on TimeoutException {
+      emit(
+        const ProfileState.loadingError(
+          'Profile loading timeout. Please try again.',
+        ),
+      );
     } catch (e) {
       emit(ProfileState.loadingError(e.toString()));
+    } finally {
+      _isProfileLoadInProgress = false;
     }
   }
 
@@ -356,6 +395,7 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
   }
 
   Future<void> _logout(Emitter emit) async {
+    _isProfileLoadInProgress = false;
     _viewModel = ProfileViewModel();
     emit(ProfileState.initial());
   }

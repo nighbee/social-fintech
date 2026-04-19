@@ -6,10 +6,12 @@ import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/models/ally_profile_dto.dart';
+import 'package:app/src/features/profile/data/models/profile_search_result_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_dto.dart';
 import 'package:app/src/features/profile/data/models/public_profile_dto.dart';
 import 'package:app/src/features/profile/data/models/relationship_status_dto.dart';
 import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.dart';
+import 'package:app/src/features/profile/domain/requests/search_profiles_request.dart';
 import 'package:app/src/features/profile/domain/requests/update_profile_request.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 
@@ -62,6 +64,33 @@ class ProfileRemoteImpl implements IProfileRemote {
           result.data as Map<String, dynamic>,
         );
         return Right(dto);
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<ProfileSearchResultDto>>> searchProfiles(
+    SearchProfilesRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.profileSearch,
+        queryParameters: request.toQuery(),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final List<dynamic> dataList = result.data as List<dynamic>;
+        final List<ProfileSearchResultDto> profiles = dataList
+            .map(
+              (json) => ProfileSearchResultDto.fromJson(
+                json as Map<String, dynamic>,
+              ),
+            )
+            .toList();
+
+        return Right(profiles);
       });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));

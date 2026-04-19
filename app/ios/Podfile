@@ -1,0 +1,90 @@
+# Uncomment this line to define a global platform for your project
+# platform :ios, '14.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+# Some environments launch Xcode/CocoaPods with malformed HOME like `/Users`,
+# which leads to broken plugin paths such as `/Users/.pub-cache/...`.
+resolved_home = Dir.home
+if ENV['HOME'].to_s.strip.empty? || ENV['HOME'] == '/Users'
+  ENV['HOME'] = resolved_home
+end
+if ENV['PUB_CACHE'].to_s.strip.empty? || ENV['PUB_CACHE'] == '/Users/.pub-cache'
+  ENV['PUB_CACHE'] = File.join(ENV['HOME'], '.pub-cache')
+end
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  if File.exist?(generated_xcode_build_settings_path)
+    File.foreach(generated_xcode_build_settings_path) do |line|
+      matches = line.match(/FLUTTER_ROOT\=(.*)/)
+      next unless matches
+      candidate = matches[1].strip
+      podhelper_candidate = File.expand_path(
+        File.join('packages', 'flutter_tools', 'bin', 'podhelper'),
+        candidate
+      )
+      return candidate if File.exist?("#{podhelper_candidate}.rb")
+    end
+  end
+
+  flutter_binary = `which flutter`.strip
+  unless flutter_binary.empty?
+    fallback_root = File.expand_path('..', File.expand_path('..', flutter_binary))
+    podhelper_fallback = File.expand_path(
+      File.join('packages', 'flutter_tools', 'bin', 'podhelper.rb'),
+      fallback_root
+    )
+    return fallback_root if File.exist?(podhelper_fallback)
+  end
+
+  raise "FLUTTER_ROOT not found. Run 'flutter pub get' in app/ and ensure 'which flutter' points to a valid Flutter SDK"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+def ensure_flutter_plugins_ready
+  sign_in_header = File.expand_path(
+    File.join(
+      '.symlinks',
+      'plugins',
+      'sign_in_with_apple',
+      'ios',
+      'Classes',
+      'SignInWithApplePlugin.h'
+    ),
+    __dir__
+  )
+  return if File.exist?(sign_in_header)
+
+  app_dir = File.expand_path('..', __dir__)
+  puts 'sign_in_with_apple iOS header missing, running flutter pub get...'
+  Dir.chdir(app_dir) do
+    system('flutter', 'pub', 'get') || raise('flutter pub get failed')
+  end
+end
+
+target 'Runner' do
+  use_frameworks!
+
+  ensure_flutter_plugins_ready
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+end

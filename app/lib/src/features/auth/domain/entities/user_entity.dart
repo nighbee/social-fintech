@@ -14,6 +14,7 @@ class UserEntity extends BaseEntity with _$UserEntity {
     required String lastName,
     required String dateOfBirth,
     required String avatarUrl,
+    @Default('') String referralCode,
     // required DateTime createdAt,
     // required DateTime updatedAt,
   }) = _UserEntity;

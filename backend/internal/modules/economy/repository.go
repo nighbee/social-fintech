@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -17,6 +19,7 @@ type Repository interface {
 	GetOrCreateWallet(ctx context.Context, userID string, currency CurrencyCode) (*Wallet, error)
 	UpdateWallet(ctx context.Context, wallet *Wallet) error
 	UpdateWalletWithVersion(ctx context.Context, wallet *Wallet, expectedVersion int64) error
+	IncrementWalletBalanceAtomic(ctx context.Context, walletID string, amount int64) (int64, error)
 
 	CreateLedgerEntry(ctx context.Context, entry *LedgerEntry) error
 	GetUserTransactionHistory(ctx context.Context, userID string, currency CurrencyCode, category *TransactionCategory, limit, offset int) ([]*LedgerEntry, int, error)
@@ -25,6 +28,8 @@ type Repository interface {
 	CreateReferral(ctx context.Context, referral *Referral) error
 	GetReferralsByReferrer(ctx context.Context, referrerUserID string) ([]*Referral, error)
 	GetReferralByReferee(ctx context.Context, refereeUserID string) (*Referral, error)
+	ActivateReferral(ctx context.Context, refereeUserID, bonusLedgerEntryID string) error
+	GetUserActivationState(ctx context.Context, userID string) (string, *sql.NullTime, error)
 
 	GetOrCreateTransferLimit(ctx context.Context, userID, monthYear string) (*TransferLimit, error)
 	UpdateTransferLimit(ctx context.Context, limit *TransferLimit, oldTransfersCount int, oldTotalSent int64) error
@@ -37,6 +42,9 @@ type Repository interface {
 
 	GetPairCooldown(ctx context.Context, senderID, receiverID string) (*PairCooldown, error)
 	UpsertPairCooldown(ctx context.Context, cooldown *PairCooldown) error
+	UpsertGoldPeriodStat(ctx context.Context, userID string, periodYear, periodWeek int, amount int64) error
+	GetTopGoldUserForWeek(ctx context.Context, periodYear, periodWeek int) (string, int64, error)
+	UpsertProfileSealProjection(ctx context.Context, senderID, receiverID string, sealsDelta int64, receiverGoldBalanceCentinels int64, receiverRankTier string) error
 }
 
 type repository struct {
@@ -75,6 +83,7 @@ func (r *repository) getExecutor() sqlx.ExtContext {
 func (r *repository) GetWallet(ctx context.Context, userID string, currency CurrencyCode) (*Wallet, error) {
 	query := `
 		SELECT id, user_id, currency, balance, free_balance, 
+		       total_sent_amount, total_received_amount,
 		       last_daily_accrual_at, last_transfer_at, version, created_at, updated_at
 		FROM wallets
 		WHERE user_id = $1 AND currency = $2
@@ -101,15 +110,17 @@ func (r *repository) GetOrCreateWallet(ctx context.Context, userID string, curre
 		return nil, err
 	}
 
+	newID := uuid.New().String()
 	query := `
-		INSERT INTO wallets (user_id, currency, balance, free_balance, version)
-		VALUES ($1, $2, 0, 0, 1)
+		INSERT INTO wallets (id, user_id, currency, balance, free_balance, version, total_sent_amount, total_received_amount)
+		VALUES ($3, $1, $2, 0, 0, 1, 0, 0)
 		RETURNING id, user_id, currency, balance, free_balance, 
+		          total_sent_amount, total_received_amount,
 		          last_daily_accrual_at, last_transfer_at, version, created_at, updated_at
 	`
 
 	var newWallet Wallet
-	err = sqlx.GetContext(ctx, r.getExecutor(), &newWallet, query, userID, currency)
+	err = sqlx.GetContext(ctx, r.getExecutor(), &newWallet, query, userID, currency, newID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create wallet: %w", err)
 	}
@@ -122,16 +133,18 @@ func (r *repository) UpdateWallet(ctx context.Context, wallet *Wallet) error {
 		UPDATE wallets
 		SET balance = $1,
 		    free_balance = $2,
-		    last_daily_accrual_at = $3,
-		    last_transfer_at = $4,
+		    total_sent_amount = $3,
+		    total_received_amount = $4,
+		    last_daily_accrual_at = $5,
+		    last_transfer_at = $6,
 		    version = version + 1,
 		    updated_at = NOW()
-		WHERE id = $5
+		WHERE id = $7
 		RETURNING version
 	`
 
 	err := sqlx.GetContext(ctx, r.getExecutor(), &wallet.Version, query,
-		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID)
+		wallet.Balance, wallet.FreeBalance, wallet.TotalSentAmount, wallet.TotalReceivedAmount, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update wallet: %w", err)
 	}
@@ -144,26 +157,50 @@ func (r *repository) UpdateWalletWithVersion(ctx context.Context, wallet *Wallet
 		UPDATE wallets
 		SET balance = $1,
 		    free_balance = $2,
-		    last_daily_accrual_at = $3,
-		    last_transfer_at = $4,
+		    total_sent_amount = $3,
+		    total_received_amount = $4,
+		    last_daily_accrual_at = $5,
+		    last_transfer_at = $6,
 		    version = version + 1,
 		    updated_at = NOW()
-		WHERE id = $5 AND version = $6
+		WHERE id = $7 AND version = $8
 		RETURNING version
 	`
 
 	var newVersion int64
 	err := sqlx.GetContext(ctx, r.getExecutor(), &newVersion, query,
-		wallet.Balance, wallet.FreeBalance, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID, expectedVersion)
+		wallet.Balance, wallet.FreeBalance, wallet.TotalSentAmount, wallet.TotalReceivedAmount, wallet.LastDailyAccrualAt, wallet.LastTransferAt, wallet.ID, expectedVersion)
 	if err == sql.ErrNoRows {
+		fmt.Printf("DEBUG OPTIMISTIC: ID='%s', Version=%d, Balance=%d\n", wallet.ID, expectedVersion, wallet.Balance)
 		return ErrOptimisticLock
 	}
 	if err != nil {
+		fmt.Printf("DEBUG UPDATE ERROR: %v\n", err)
 		return fmt.Errorf("failed to update wallet with version: %w", err)
 	}
 
 	wallet.Version = newVersion
 	return nil
+}
+
+func (r *repository) IncrementWalletBalanceAtomic(ctx context.Context, walletID string, amount int64) (int64, error) {
+	query := `
+		UPDATE wallets
+		SET balance = balance + $1,
+		    total_received_amount = total_received_amount + $1,
+		    version = version + 1,
+		    updated_at = NOW()
+		WHERE id = $2
+		RETURNING balance
+	`
+
+	var newBalance int64
+	err := sqlx.GetContext(ctx, r.getExecutor(), &newBalance, query, amount, walletID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to increment wallet balance atomically: %w", err)
+	}
+
+	return newBalance, nil
 }
 
 func (r *repository) CreateLedgerEntry(ctx context.Context, entry *LedgerEntry) error {
@@ -174,9 +211,14 @@ func (r *repository) CreateLedgerEntry(ctx context.Context, entry *LedgerEntry) 
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
+	var metadataVal interface{}
+	if entry.Metadata != nil {
+		metadataVal = string(entry.Metadata)
+	}
+
 	_, err := r.getExecutor().ExecContext(ctx, query,
 		entry.ID, entry.Amount, entry.Currency, entry.SenderWalletID, entry.ReceiverWalletID,
-		entry.Category, entry.ReferenceID, entry.Metadata, entry.CreatedAt)
+		entry.Category, entry.ReferenceID, metadataVal, entry.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create ledger entry: %w", err)
 	}
@@ -266,6 +308,93 @@ func (r *repository) GetLedgerEntryByReferenceID(ctx context.Context, referenceI
 	return &entry, nil
 }
 
+func (r *repository) UpsertGoldPeriodStat(ctx context.Context, userID string, periodYear, periodWeek int, amount int64) error {
+	query := `
+		INSERT INTO gold_reputation_period_stats (
+			user_id, period_type, period_year, period_week, gold_received_centinels, computed_at
+		) VALUES ($1, 'weekly', $2, $3, $4, NOW())
+		ON CONFLICT (user_id, period_type, period_year, period_week)
+		DO UPDATE SET
+			gold_received_centinels = gold_reputation_period_stats.gold_received_centinels + EXCLUDED.gold_received_centinels,
+			computed_at = NOW()
+	`
+
+	if _, err := r.getExecutor().ExecContext(ctx, query, userID, periodYear, periodWeek, amount); err != nil {
+		return fmt.Errorf("failed to upsert gold period stat: %w", err)
+	}
+
+	return nil
+}
+
+func (r *repository) GetTopGoldUserForWeek(ctx context.Context, periodYear, periodWeek int) (string, int64, error) {
+	query := `
+		SELECT user_id::text, gold_received_centinels
+		FROM gold_reputation_period_stats
+		WHERE period_type = 'weekly'
+		  AND period_year = $1
+		  AND period_week = $2
+		ORDER BY gold_received_centinels DESC, user_id ASC
+		LIMIT 1
+	`
+	// DETERMINISTIC TIE-BREAK RULE:
+	// When multiple users have the same gold_received_centinels score:
+	// 1. PRIMARY: gold_received_centinels DESC (higher score wins)
+	// 2. SECONDARY (TIE-BREAK): user_id ASC (alphabetically first UUID wins)
+	// This ensures the same champion is selected consistently across server restarts,
+	// data rebuilds, and concurrent queries. Prevents "phantom leader changes" where
+	// users see different champions in the same week.
+
+	type Result struct {
+		UserID string `db:"user_id"`
+		Amount int64  `db:"gold_received_centinels"`
+	}
+
+	var result Result
+	err := sqlx.GetContext(ctx, r.getExecutor(), &result, query, periodYear, periodWeek)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", 0, nil
+		}
+		return "", 0, fmt.Errorf("failed to get top gold user for week: %w", err)
+	}
+
+	return result.UserID, result.Amount, nil
+}
+
+func (r *repository) UpsertProfileSealProjection(ctx context.Context, senderID, receiverID string, sealsDelta int64, receiverGoldBalanceCentinels int64, receiverRankTier string) error {
+	senderQuery := `
+		INSERT INTO profiles (
+			user_id, total_gold_seals_received, total_silver_seals_given, reputation_score, current_rank_tier, created_at, updated_at
+		) VALUES ($1, 0, $2, 0, 'Pearl', NOW(), NOW())
+		ON CONFLICT (user_id)
+		DO UPDATE SET
+			total_silver_seals_given = profiles.total_silver_seals_given + EXCLUDED.total_silver_seals_given,
+			updated_at = NOW()
+	`
+
+	if _, err := r.getExecutor().ExecContext(ctx, senderQuery, senderID, sealsDelta); err != nil {
+		return fmt.Errorf("failed to upsert sender profile seal projection: %w", err)
+	}
+
+	receiverQuery := `
+		INSERT INTO profiles (
+			user_id, total_gold_seals_received, total_silver_seals_given, reputation_score, current_rank_tier, created_at, updated_at
+		) VALUES ($1, $2, 0, $3, $4, NOW(), NOW())
+		ON CONFLICT (user_id)
+		DO UPDATE SET
+			total_gold_seals_received = profiles.total_gold_seals_received + EXCLUDED.total_gold_seals_received,
+			reputation_score = EXCLUDED.reputation_score,
+			current_rank_tier = EXCLUDED.current_rank_tier,
+			updated_at = NOW()
+	`
+
+	if _, err := r.getExecutor().ExecContext(ctx, receiverQuery, receiverID, sealsDelta, receiverGoldBalanceCentinels/CentinelsPerSeal, receiverRankTier); err != nil {
+		return fmt.Errorf("failed to upsert receiver profile seal projection: %w", err)
+	}
+
+	return nil
+}
+
 func (r *repository) CreateReferral(ctx context.Context, referral *Referral) error {
 	query := `
 		INSERT INTO referrals (
@@ -319,6 +448,36 @@ func (r *repository) GetReferralByReferee(ctx context.Context, refereeUserID str
 	}
 
 	return &referral, nil
+}
+
+func (r *repository) ActivateReferral(ctx context.Context, refereeUserID, bonusLedgerEntryID string) error {
+	_, err := r.getExecutor().ExecContext(ctx, `
+		UPDATE referrals
+		SET is_active = true,
+		    bonus_ledger_entry_id = $2
+		WHERE referee_user_id = $1
+	`, refereeUserID, bonusLedgerEntryID)
+	if err != nil {
+		return fmt.Errorf("failed to activate referral: %w", err)
+	}
+	return nil
+}
+
+func (r *repository) GetUserActivationState(ctx context.Context, userID string) (string, *sql.NullTime, error) {
+	row := struct {
+		ActivationStatus string       `db:"activation_status"`
+		Restrictions     sql.NullTime `db:"restrictions_until"`
+	}{}
+	if err := sqlx.GetContext(ctx, r.getExecutor(), &row, `SELECT activation_status, restrictions_until FROM users WHERE id = $1`, userID); err != nil {
+		// Backward compatibility for stale local DBs where activation columns are missing.
+		// In this case treat user as active to avoid hard 500 on task/economy flows.
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "activation_status") || strings.Contains(errMsg, "restrictions_until") {
+			return "active", nil, nil
+		}
+		return "", nil, fmt.Errorf("failed to scan activation state: %w", err)
+	}
+	return row.ActivationStatus, &row.Restrictions, nil
 }
 
 func (r *repository) GetOrCreateTransferLimit(ctx context.Context, userID, monthYear string) (*TransferLimit, error) {

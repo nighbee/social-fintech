@@ -25,6 +25,23 @@ func Run(db *sqlx.DB, migrationsDir string) error {
 		return err
 	}
 
+	// Bootstrap: schema_migrations is empty but DB already has user tables,
+	// meaning it was seeded via docker-entrypoint-initdb.d before this migrate
+	// tool existed. Mark all files as applied so we don't re-run them.
+	if len(applied) == 0 && dbHasUserTables(db) {
+		for _, file := range files {
+			_, err := db.Exec(
+				`INSERT INTO schema_migrations (filename) VALUES ($1) ON CONFLICT DO NOTHING`,
+				file,
+			)
+			if err != nil {
+				return fmt.Errorf("bootstrap record %s: %w", file, err)
+			}
+		}
+		fmt.Printf("bootstrap: marked %d existing migrations as applied\n", len(files))
+		return nil
+	}
+
 	for _, file := range files {
 		if applied[file] {
 			continue
@@ -44,14 +61,26 @@ func Run(db *sqlx.DB, migrationsDir string) error {
 }
 
 func ensureSchemaMigrations(db *sqlx.DB) error {
-	query := `
+	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (
-			filename TEXT PRIMARY KEY,
+			filename   TEXT PRIMARY KEY,
 			applied_at TIMESTAMP NOT NULL DEFAULT NOW()
 		)
-	`
-	_, err := db.Exec(query)
+	`)
 	return err
+}
+
+// dbHasUserTables returns true when the database was already bootstrapped
+// via docker-entrypoint-initdb.d (checking for the wallets table).
+func dbHasUserTables(db *sqlx.DB) bool {
+	var exists bool
+	_ = db.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM information_schema.tables
+			WHERE table_schema = 'public' AND table_name = 'wallets'
+		)
+	`).Scan(&exists)
+	return exists
 }
 
 func listSQLFiles(dir string) ([]string, error) {
@@ -92,6 +121,19 @@ func appliedMigrations(db *sqlx.DB) (map[string]bool, error) {
 }
 
 func applyMigration(db *sqlx.DB, filename, sqlText string) error {
+	// Some historical migration files contain explicit BEGIN/COMMIT blocks.
+	// Running those inside an outer Go tx causes nested transaction issues
+	// (e.g. "unexpected transaction status idle").
+	if hasExplicitTransactionControl(sqlText) {
+		if _, err := db.Exec(sqlText); err != nil {
+			return fmt.Errorf("apply %s: %w", filename, err)
+		}
+		if _, err := db.Exec(`INSERT INTO schema_migrations (filename) VALUES ($1)`, filename); err != nil {
+			return fmt.Errorf("record %s: %w", filename, err)
+		}
+		return nil
+	}
+
 	tx, err := db.Beginx()
 	if err != nil {
 		return err
@@ -107,4 +149,11 @@ func applyMigration(db *sqlx.DB, filename, sqlText string) error {
 	}
 
 	return tx.Commit()
+}
+
+func hasExplicitTransactionControl(sqlText string) bool {
+	upper := strings.ToUpper(sqlText)
+	return strings.Contains(upper, "\nBEGIN;") ||
+		strings.Contains(upper, "\nCOMMIT;") ||
+		strings.Contains(upper, "\nROLLBACK;")
 }

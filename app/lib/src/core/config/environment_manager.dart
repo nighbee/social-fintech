@@ -28,6 +28,10 @@ enum EnvironmentType {
 @LazySingleton()
 class EnvironmentManager {
   EnvironmentManager(this._storage);
+  static const String _devBaseUrlOverride = String.fromEnvironment(
+    'DEV_BASE_URL',
+    defaultValue: '',
+  );
 
   final IAppStorage _storage;
   EnvironmentType? _currentEnvironment;
@@ -36,7 +40,19 @@ class EnvironmentManager {
       _currentEnvironment ??= _loadEnvironment();
 
   bool get isDevelopment => currentEnvironment == EnvironmentType.dev;
-  String get baseUrl => currentEnvironment.url;
+  String get baseUrl {
+    if (kIsWeb && currentEnvironment == EnvironmentType.dev) {
+      return EndPoints.baseUrl;
+    }
+    if (currentEnvironment == EnvironmentType.dev &&
+        _devBaseUrlOverride.trim().isNotEmpty) {
+      return _devBaseUrlOverride.trim();
+    }
+    if (currentEnvironment == EnvironmentType.dev) {
+      return _defaultDevBaseUrl;
+    }
+    return currentEnvironment.url;
+  }
 
   EnvironmentType _loadEnvironment() {
     try {
@@ -56,7 +72,7 @@ class EnvironmentManager {
       Log.i('Switching to environment: ${env.name}');
       await _storage.setEnvironment(env.name);
       _currentEnvironment = env;
-      _updateApiClient(env.url);
+      _updateApiClient(_resolveBaseUrl(env));
     } catch (e) {
       Log.e('Failed to switch environment: $e');
       rethrow;
@@ -67,5 +83,25 @@ class EnvironmentManager {
     if (getIt.isRegistered<RestClient>(instanceName: 'DioClient')) {
       getIt<RestClient>(instanceName: 'DioClient').setBaseUrl(ipAddress: url);
     }
+  }
+
+  String _resolveBaseUrl(EnvironmentType env) {
+    if (kIsWeb && env == EnvironmentType.dev) {
+      return EndPoints.baseUrl;
+    }
+    if (env == EnvironmentType.dev && _devBaseUrlOverride.trim().isNotEmpty) {
+      return _devBaseUrlOverride.trim();
+    }
+    if (env == EnvironmentType.dev) {
+      return _defaultDevBaseUrl;
+    }
+    return env.url;
+  }
+
+  String get _defaultDevBaseUrl {
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android => EndPoints.baseUrlDev,
+      _ => EndPoints.baseUrl,
+    };
   }
 }

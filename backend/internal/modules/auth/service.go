@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"strings"
 	"time"
 
@@ -15,7 +16,17 @@ import (
 type EconomyService interface {
 	GetOrCreateWallets(ctx context.Context, userID string) error
 	ProcessReferralBonus(ctx context.Context, referrerUserID, refereeUserID string) error
+	RegisterPendingReferral(ctx context.Context, referrerUserID, refereeUserID string) error
+	ActivateDeferredReferral(ctx context.Context, refereeUserID string) error
+	GrantSignupBonus(ctx context.Context, userID string) error
 }
+
+const (
+	activationDeviceRegistrationsLimit = 3
+	activationIPRegistrationsLimit     = 5
+	activationDeviceSuspiciousLimit    = 6
+	activationIPSuspiciousLimit        = 10
+)
 
 // бизнес логика которая связывает jwt, repo, sms и verifiers
 type Service struct {
@@ -113,26 +124,48 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				return nil, err
 			}
 		} else {
-			username, err := s.generateUniqueUsername(ctx, providerUser.Email)
+			// Initial registration via OAuth (provider name/dob might be missing)
+			username, err := s.generateUniqueUsername(ctx, "", "", nil)
 			if err != nil {
 				s.logger.Error("failed_to_generate_username", zap.Error(err))
 				return nil, err
 			}
 
 			now := time.Now()
+			activationStatus, restrictionsUntil, activationErr := s.resolveInitialActivation(ctx, req.DeviceID, ip)
+			if activationErr != nil {
+				s.logger.Warn("initial_activation_resolution_failed", zap.Error(activationErr))
+				activationStatus = "restricted"
+				restrictionsUntil = nil
+			}
 			user = &User{
-				ID:             uuid.NewString(),
-				Email:          providerUser.Email,
-				Username:       username,
-				AvatarURL:      "",
-				IsShadowBanned: false,
-				CreatedAt:      now,
-				UpdatedAt:      now,
-				LastActiveAt:   now,
+				ID:               uuid.NewString(),
+				Email:            providerUser.Email,
+				Username:         username,
+				AvatarURL:        "",
+				IsShadowBanned:   false,
+				ActivationStatus: activationStatus,
+				ActivationUnlockedAt: func() *time.Time {
+					if activationStatus == "active" {
+						t := now
+						return &t
+					}
+					return nil
+				}(),
+				RestrictionsUntil: restrictionsUntil,
+				CreatedAt:         now,
+				UpdatedAt:         now,
+				LastActiveAt:      now,
 			}
 			if err := s.repo.CreateUser(ctx, user); err != nil {
 				s.logger.Error("failed_to_create_user", zap.Error(err))
 				return nil, err
+			}
+
+			if s.economyService != nil {
+				if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+					s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+				}
 			}
 
 			s.logger.Info("new_user_created",
@@ -153,6 +186,10 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				return nil, err
 			}
 		}
+	}
+
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
 	}
 
 	last, err := s.repo.GetLastSessionByUser(ctx, user.ID)
@@ -199,7 +236,9 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	s.logger.Info("oauth_login_success",
 		zap.String("user_id", user.ID),
@@ -212,6 +251,75 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 		RefreshToken: refresh,
 		User:         *user,
 	}, nil
+}
+
+func (s *Service) onSuccessfulLogin(ctx context.Context, userID string) (bool, error) {
+	now := time.Now()
+	_, activated, err := s.repo.RecordActivationLogin(ctx, userID, now)
+	if err != nil {
+		return false, err
+	}
+	_ = s.repo.TouchUser(ctx, userID, now)
+	if activated && s.economyService != nil {
+		if err := s.economyService.ActivateDeferredReferral(ctx, userID); err != nil {
+			s.logger.Warn("activate_deferred_referral_failed", zap.String("user_id", userID), zap.Error(err))
+		}
+	}
+	return activated, nil
+}
+
+func (s *Service) resolveInitialActivation(ctx context.Context, deviceID, ip string) (string, *time.Time, error) {
+	if isTrustedRegistrationIP(ip) {
+		unlockedAt := time.Now()
+		return "active", &unlockedAt, nil
+	}
+
+	deviceCount, ipCount, err := s.repo.RecordRegistrationSignal(ctx, deviceID, ip, time.Now())
+	if err != nil {
+		return "", nil, err
+	}
+
+	status, until := classifyInitialActivation(deviceCount, ipCount, time.Now())
+	return status, until, nil
+}
+
+func classifyInitialActivation(deviceCount, ipCount int, now time.Time) (string, *time.Time) {
+	if deviceCount > activationDeviceRegistrationsLimit || ipCount > activationIPRegistrationsLimit {
+		// Escalate to suspicious when device/IP signal is far above baseline.
+		if deviceCount > activationDeviceSuspiciousLimit || ipCount > activationIPSuspiciousLimit {
+			until := now.Add(120 * time.Hour)
+			return "suspicious", &until
+		}
+		until := now.Add(72 * time.Hour)
+		return "restricted", &until
+	}
+
+	unlockedAt := now
+	return "active", &unlockedAt
+}
+
+func isTrustedRegistrationIP(rawIP string) bool {
+	ip := net.ParseIP(strings.TrimSpace(rawIP))
+	if ip == nil {
+		return false
+	}
+
+	if ip.IsLoopback() || ip.IsPrivate() {
+		return true
+	}
+
+	return false
+}
+
+func ensureUserCanAuthenticate(user *User) error {
+	if user == nil {
+		return ErrInvalidCredentials
+	}
+	// Hard moderation block: account is fully blocked from authentication flows.
+	if user.IsShadowBanned || strings.EqualFold(user.ActivationStatus, "blocked") {
+		return ErrAccountBlocked
+	}
+	return nil
 }
 
 // регистрация с имелйлом и паролем + запрос данных. Хэш пароля + токены + сессия
@@ -251,37 +359,62 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		return nil, err
 	}
 
-	username, err := s.generateUniqueUsername(ctx, req.Email)
+	username, err := s.generateUniqueUsername(ctx, req.FirstName, req.LastName, &dob)
 	if err != nil {
 		s.logger.Error("failed_to_generate_username", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
 	}
 
 	now := time.Now()
+	activationStatus, restrictionsUntil, err := s.resolveInitialActivation(ctx, req.DeviceID, ip)
+	if err != nil {
+		s.logger.Warn("initial_activation_resolution_failed", zap.Error(err))
+		activationStatus = "restricted"
+		restrictionsUntil = nil
+	}
 	user := &User{
-		ID:             uuid.NewString(),
-		Email:          req.Email,
-		Username:       username,
-		PasswordHash:   string(hash),
-		FirstName:      req.FirstName,
-		LastName:       req.LastName,
-		DateOfBirth:    &dob,
-		ReferralCode:   "",
-		PhoneCountry:   nil,
-		PhoneNumber:    nil,
-		AvatarURL:      "",
-		IsShadowBanned: false,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-		LastActiveAt:   now,
+		ID:               uuid.NewString(),
+		Email:            req.Email,
+		Username:         username,
+		PasswordHash:     string(hash),
+		FirstName:        req.FirstName,
+		LastName:         req.LastName,
+		DateOfBirth:      &dob,
+		ReferralCode:     "",
+		PhoneCountry:     nil,
+		PhoneNumber:      nil,
+		AvatarURL:        "",
+		IsShadowBanned:   false,
+		ActivationStatus: activationStatus,
+		ActivationUnlockedAt: func() *time.Time {
+			if activationStatus == "active" {
+				t := now
+				return &t
+			}
+			return nil
+		}(),
+		RestrictionsUntil: restrictionsUntil,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+		LastActiveAt:      now,
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		s.logger.Error("failed_to_create_user_in_registration", zap.String("email", req.Email), zap.Error(err))
 		return nil, err
 	}
 
-	if req.ReferrerUserID != "" {
-		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+	if s.economyService != nil {
+		if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+			s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+		}
+	}
+
+	if req.ReferrerUserID != "" && s.economyService != nil {
+		referralFn := s.economyService.RegisterPendingReferral
+		if activationStatus == "active" {
+			referralFn = s.economyService.ProcessReferralBonus
+		}
+		if err := referralFn(ctx, req.ReferrerUserID, user.ID); err != nil {
 			s.logger.Warn("referral_bonus_failed",
 				zap.String("referrer_user_id", req.ReferrerUserID),
 				zap.String("referee_user_id", user.ID),
@@ -325,7 +458,9 @@ func (s *Service) RegisterEmail(ctx context.Context, req EmailRegisterRequest, i
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	return &LoginResponse{
 		AccessToken:  access,
@@ -351,6 +486,9 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 	if user.PasswordHash == "" {
 		s.logger.Warn("email_login_no_password_hash", zap.String("email", req.Email))
 		return nil, ErrInvalidCredentials
+	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
 	}
 
 	hashPrefix := user.PasswordHash
@@ -390,7 +528,9 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	return &LoginResponse{
 		AccessToken:  access,
@@ -510,6 +650,9 @@ func (s *Service) VerifyPhoneCode(ctx context.Context, req PhoneVerifyRequest, i
 	if err != nil {
 		return nil, ErrUserNotFound
 	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
+	}
 
 	session := &Session{
 		ID:           uuid.NewString(),
@@ -579,37 +722,61 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		return nil, ErrInvalidDateOfBirth
 	}
 
-	base := "user" + v.PhoneNumber
-	username, err := s.generateUniqueUsername(ctx, base+"@phone.local")
+	username, err := s.generateUniqueUsername(ctx, req.FirstName, req.LastName, &dob)
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now()
+	activationStatus, restrictionsUntil, err := s.resolveInitialActivation(ctx, req.DeviceID, ip)
+	if err != nil {
+		s.logger.Warn("initial_activation_resolution_failed", zap.Error(err))
+		activationStatus = "restricted"
+		restrictionsUntil = nil
+	}
 	phoneCountry := v.PhoneCountry
 	phoneNumber := v.PhoneNumber
 	user := &User{
-		ID:             uuid.NewString(),
-		Email:          "",
-		Username:       username,
-		FirstName:      req.FirstName,
-		LastName:       req.LastName,
-		DateOfBirth:    &dob,
-		ReferralCode:   "",
-		PhoneCountry:   &phoneCountry,
-		PhoneNumber:    &phoneNumber,
-		AvatarURL:      "",
-		IsShadowBanned: false,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-		LastActiveAt:   now,
+		ID:               uuid.NewString(),
+		Email:            "",
+		Username:         username,
+		FirstName:        req.FirstName,
+		LastName:         req.LastName,
+		DateOfBirth:      &dob,
+		ReferralCode:     "",
+		PhoneCountry:     &phoneCountry,
+		PhoneNumber:      &phoneNumber,
+		AvatarURL:        "",
+		IsShadowBanned:   false,
+		ActivationStatus: activationStatus,
+		ActivationUnlockedAt: func() *time.Time {
+			if activationStatus == "active" {
+				t := now
+				return &t
+			}
+			return nil
+		}(),
+		RestrictionsUntil: restrictionsUntil,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+		LastActiveAt:      now,
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		return nil, err
 	}
 
-	if req.ReferrerUserID != "" {
-		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+	if s.economyService != nil {
+		if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+			s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+		}
+	}
+
+	if req.ReferrerUserID != "" && s.economyService != nil {
+		referralFn := s.economyService.RegisterPendingReferral
+		if activationStatus == "active" {
+			referralFn = s.economyService.ProcessReferralBonus
+		}
+		if err := referralFn(ctx, req.ReferrerUserID, user.ID); err != nil {
 			s.logger.Warn("referral_bonus_failed",
 				zap.String("referrer_user_id", req.ReferrerUserID),
 				zap.String("referee_user_id", user.ID),
@@ -656,7 +823,9 @@ func (s *Service) RegisterPhone(ctx context.Context, req PhoneRegisterRequest, i
 		return nil, err
 	}
 
-	_ = s.repo.TouchUser(ctx, user.ID, time.Now())
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
 
 	return &LoginResponse{
 		AccessToken:  access,
@@ -775,6 +944,9 @@ func (s *Service) FirebasePhoneAuth(ctx context.Context, req FirebasePhoneAuthRe
 		}
 		return nil, err
 	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
+	}
 
 	// Create session
 	now := time.Now()
@@ -876,8 +1048,7 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	}
 
 	// Generate username
-	base := "user" + number
-	username, err := s.generateUniqueUsername(ctx, base+"@phone.local")
+	username, err := s.generateUniqueUsername(ctx, req.FirstName, req.LastName, &dob)
 	if err != nil {
 		return nil, err
 	}
@@ -902,6 +1073,12 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	}
 	if err := s.repo.CreateUser(ctx, user); err != nil {
 		return nil, err
+	}
+
+	if s.economyService != nil {
+		if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+			s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+		}
 	}
 
 	if req.ReferrerUserID != "" {
@@ -960,12 +1137,20 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	}, nil
 }
 
-// для генерациии юзернейма универсального
-func (s *Service) generateUniqueUsername(ctx context.Context, email string) (string, error) {
-	base := strings.Split(email, "@")[0]
-	base = cleanUsername(base)
-	username := base
+// для генерациии юзернейма универсального (имя_фамилия_деньрождения)
+func (s *Service) generateUniqueUsername(ctx context.Context, firstName, lastName string, dob *time.Time) (string, error) {
+	var base string
+	if firstName != "" && lastName != "" && dob != nil {
+		base = fmt.Sprintf("%s_%s_%02d",
+			cleanUsername(firstName),
+			cleanUsername(lastName),
+			dob.Day())
+	} else {
+		// Fallback for cases where name/dob is missing (e.g. initial OAuth)
+		base = "user_" + strings.ReplaceAll(uuid.NewString()[:8], "-", "")
+	}
 
+	username := base
 	for i := 0; i < 20; i++ {
 		exists, err := s.repo.UsernameExists(ctx, username)
 		if err != nil {
@@ -974,10 +1159,11 @@ func (s *Service) generateUniqueUsername(ctx context.Context, email string) (str
 		if !exists {
 			return username, nil
 		}
-		username = fmt.Sprintf("%s%d", base, i+1)
+		// If base exists, append a counter
+		username = fmt.Sprintf("%s_%d", base, i+1)
 	}
 
-	return "", fmt.Errorf("unable to generate username")
+	return "", fmt.Errorf("unable to generate unique username after 20 attempts")
 }
 
 // EnsureAdmins promotes the given emails to admin status

@@ -1,12 +1,5 @@
 {
-  "dart.flutterRunAdditionalArgs": [
-    "--flavor",
-    "dev"
-  ],
-  "dart.flutterDebugAdditionalArgs": [
-    "--flavor",
-    "dev"
-  ],
-  "dart.flutterHotReloadOnSave": "always"
+  "dart.flutterHotReloadOnSave": "always",
+  "dart.flutterSdkPath": "/Users/pyro/Development/flutter"
 }
 

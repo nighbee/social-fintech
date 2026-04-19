@@ -3,17 +3,15 @@ services:
     image: postgis/postgis:16-3.4-alpine
     container_name: brightbund-db
     restart: unless-stopped
-    ports:
-      - "5434:5432"
+    # PORTS REMOVED: PostgreSQL is now only reachable via internal Docker network for security.
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: brightbund
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d brightbund"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,12 +22,13 @@ services:
     image: redis:7-alpine
     container_name: brightbund-redis
     restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
     ports:
       - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,33 +38,33 @@ services:
   api:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: brightbund-api
+    command: ["./api"]
     restart: unless-stopped
-    ports:
-      - "8081:8080"
     volumes:
-      - ./backend:/app
-      - /app/tmp
-      - /app/bin
+      - ./backend/config.yaml:/root/config.yaml
+      - ./backend/migrations:/root/migrations
+      - ./google:/root/google
     environment:
-      - CONFIG_PATH=/app/config.yaml
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=user
-      - DB_PASSWORD=password
-      - DB_NAME=brightbund
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - DB_SSLMODE=disable
-      - GIN_MODE=debug
-      - JWT_SECRET=dev-secret-key-change-in-production-12345
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_USE_SSL=false
-      - MINIO_BUCKET=brightbund-media
-      - MINIO_PUBLIC_URL=http://localhost:9000
+      - CONFIG_PATH=${CONFIG_PATH}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_SSLMODE=${DB_SSLMODE}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - GIN_MODE=${GIN_MODE}
+      - JWT_SECRET=${JWT_SECRET}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_USE_SSL=${MINIO_USE_SSL}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL}
     depends_on:
       db:
         condition: service_healthy
@@ -73,20 +72,65 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
       - brightbund-network
-    command: air -c .air.toml
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: brightbund-worker
+    restart: unless-stopped
+    command: ["./worker"]
+    volumes:
+      - ./backend/config.yaml:/root/config.yaml
+      - ./google:/root/google
+    environment:
+      - CONFIG_PATH=${CONFIG_PATH}
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DB_SSLMODE=${DB_SSLMODE}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - GIN_MODE=${GIN_MODE}
+      - JWT_SECRET=${JWT_SECRET}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_USE_SSL=${MINIO_USE_SSL}
+      - MINIO_BUCKET=${MINIO_BUCKET}
+      - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      api:
+        condition: service_healthy
+    networks:
+      - brightbund-network
 
   minio:
     image: minio/minio:latest
     container_name: brightbund-minio
     restart: unless-stopped
     ports:
-      - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
@@ -97,6 +141,39 @@ services:
       retries: 5
     networks:
       - brightbund-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: brightbund-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      api:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    networks:
+      - brightbund-network
+
+  fail2ban:
+    image: crazymax/fail2ban:latest
+    container_name: brightbund-fail2ban
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./fail2ban/jail.local:/etc/fail2ban/jail.local:ro
+      - ./fail2ban/filter.d:/etc/fail2ban/filter.d:ro
+      - ./nginx/logs:/var/log/nginx:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=UTC
+    depends_on:
+      - nginx
 
   # app:
   #   build:

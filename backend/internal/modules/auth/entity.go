@@ -4,22 +4,34 @@ import "time"
 
 // модель для аккаунта для хранения имени, юзернейма имейла и дату рождения тд...
 type User struct {
-	ID             string     `db:"id" json:"id"`
-	Email          string     `db:"email" json:"email"`
-	Username       string     `db:"username" json:"username"`
-	PasswordHash   string     `db:"password_hash" json:"-"`
-	FirstName      string     `db:"first_name" json:"first_name"`
-	LastName       string     `db:"last_name" json:"last_name"`
-	DateOfBirth    *time.Time `db:"date_of_birth" json:"date_of_birth"`
-	ReferralCode   string     `db:"referral_code" json:"referral_code"`
-	PhoneCountry   *string    `db:"phone_country_code" json:"-"`
-	PhoneNumber    *string    `db:"phone_number" json:"-"`
-	AvatarURL      string     `db:"avatar_url" json:"avatar_url"`
-	IsShadowBanned bool       `db:"is_shadow_banned" json:"is_shadow_banned"`
-	IsAdmin        bool       `db:"is_admin" json:"is_admin"`
-	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
-	LastActiveAt   time.Time  `db:"last_active_at" json:"last_active_at"`
+	ID                    string     `db:"id" json:"id"`
+	Email                 string     `db:"email" json:"email"`
+	Username              string     `db:"username" json:"username"`
+	PasswordHash          string     `db:"password_hash" json:"-"`
+	FirstName             string     `db:"first_name" json:"first_name"`
+	LastName              string     `db:"last_name" json:"last_name"`
+	DateOfBirth           *time.Time `db:"date_of_birth" json:"date_of_birth"`
+	ReferralCode          string     `db:"referral_code" json:"referral_code"`
+	PhoneCountry          *string    `db:"phone_country_code" json:"-"`
+	PhoneNumber           *string    `db:"phone_number" json:"-"`
+	AvatarURL             string     `db:"avatar_url" json:"avatar_url"`
+	IsShadowBanned        bool       `db:"is_shadow_banned" json:"is_shadow_banned"`
+	IsAdmin               bool       `db:"is_admin" json:"is_admin"`
+	H3Res5                *string    `db:"h3_res5" json:"h3_res5,omitempty"`
+	H3Res4                *string    `db:"h3_res4" json:"h3_res4,omitempty"`
+	H3Res2                *string    `db:"h3_res2" json:"h3_res2,omitempty"`
+	ParticipateDistrict   bool       `db:"participate_district" json:"participate_district"`
+	LocationOptIn         bool       `db:"location_opt_in" json:"location_opt_in"`
+	LocationUpdatedAt     *time.Time `db:"location_updated_at" json:"location_updated_at,omitempty"`
+	FeedTimeLimitMins     int        `db:"feed_time_limit_mins" json:"-"`
+	ActivationStatus      string     `db:"activation_status" json:"-"`
+	ActivationUnlockedAt  *time.Time `db:"activation_unlocked_at" json:"-"`
+	RestrictionsUntil     *time.Time `db:"restrictions_until" json:"-"`
+	DeletedAt             *time.Time `db:"deleted_at" json:"-"`
+	HardDeleteScheduledAt *time.Time `db:"hard_delete_scheduled_at" json:"-"`
+	CreatedAt             time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt             time.Time  `db:"updated_at" json:"updated_at"`
+	LastActiveAt          time.Time  `db:"last_active_at" json:"last_active_at"`
 }
 
 // модель для определенной сессии входа, чтобы рефрешить и трекать их (юзер активити)
@@ -69,15 +81,15 @@ type LoginRequest struct {
 
 // регистрация по имейлу
 type EmailRegisterRequest struct {
-	Email       string `json:"email" example:"john.doe@example.com"`
-	Password    string `json:"password" example:"SecurePass123!"`
-	FirstName   string `json:"first_name" example:"John"`
-	LastName    string `json:"last_name" example:"Doe"`
-	DateOfBirth string `json:"date_of_birth" example:"2000-01-01"` // YYYY-MM-DD
-	ReferrerUserID   string `json:"referrer_user_id" example:"FRIEND123"`
-	DeviceID    string `json:"device_id" example:"device-uuid-12345"`
-	UserAgent   string `json:"user_agent" example:"BrightBund-iOS/1.0"`
-	AppVersion  string `json:"app_version" example:"1.0.0"`
+	Email          string `json:"email" example:"john.doe@example.com"`
+	Password       string `json:"password" example:"SecurePass123!"`
+	FirstName      string `json:"first_name" example:"John"`
+	LastName       string `json:"last_name" example:"Doe"`
+	DateOfBirth    string `json:"date_of_birth" example:"2000-01-01"` // YYYY-MM-DD
+	ReferrerUserID string `json:"referrer_user_id" example:"FRIEND123"`
+	DeviceID       string `json:"device_id" example:"device-uuid-12345"`
+	UserAgent      string `json:"user_agent" example:"BrightBund-iOS/1.0"`
+	AppVersion     string `json:"app_version" example:"1.0.0"`
 }
 
 //логин по имейлу
@@ -134,7 +146,7 @@ type PhoneRegisterRequest struct {
 	FirstName      string `json:"first_name"`
 	LastName       string `json:"last_name"`
 	DateOfBirth    string `json:"date_of_birth"` // YYYY-MM-DD
-	ReferrerUserID      string `json:"referrer_user_id"`
+	ReferrerUserID string `json:"referrer_user_id"`
 	DeviceID       string `json:"device_id"`
 	UserAgent      string `json:"user_agent"`
 	AppVersion     string `json:"app_version"`
@@ -168,7 +180,7 @@ type FirebasePhoneRegisterRequest struct {
 	FirstName       string `json:"first_name"`
 	LastName        string `json:"last_name"`
 	DateOfBirth     string `json:"date_of_birth"` // YYYY-MM-DD
-	ReferrerUserID        string `json:"referrer_user_id"`
+	ReferrerUserID  string `json:"referrer_user_id"`
 	DeviceID        string `json:"device_id"`
 	UserAgent       string `json:"user_agent"`
 	AppVersion      string `json:"app_version"`

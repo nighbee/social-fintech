@@ -5,10 +5,10 @@ import 'package:flutter/foundation.dart';
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  
+
   String? _verificationId;
   int? _resendToken;
-  
+
   Future<String> verifyPhoneNumber({
     required String phoneNumber,
     required Function(String verificationId) onCodeSent,
@@ -16,7 +16,7 @@ class FirebaseAuthService {
     Function(PhoneAuthCredential credential)? onAutoVerify,
   }) async {
     final completer = Completer<String>();
-    
+
     try {
       // Configure Firebase Auth settings for Android
       if (Platform.isAndroid) {
@@ -67,7 +67,7 @@ class FirebaseAuthService {
           _verificationId = verificationId;
         },
       );
-      
+
       return await completer.future;
     } catch (e) {
       debugPrint('Phone verification error: $e');
@@ -75,7 +75,7 @@ class FirebaseAuthService {
       rethrow;
     }
   }
-  
+
   Future<String> verifyOtpCode({
     required String verificationId,
     required String smsCode,
@@ -85,14 +85,14 @@ class FirebaseAuthService {
         verificationId: verificationId,
         smsCode: smsCode,
       );
-      
+
       final userCredential = await _auth.signInWithCredential(credential);
-      
+
       final idToken = await userCredential.user?.getIdToken();
       if (idToken == null) {
         throw Exception('Failed to get ID token');
       }
-      
+
       return idToken;
     } on FirebaseAuthException catch (e) {
       if (e.code == 'invalid-verification-code') {
@@ -103,12 +103,12 @@ class FirebaseAuthService {
       throw Exception('Verification failed: ${e.message}');
     }
   }
-  
+
   Future<void> signOut() async {
     await _auth.signOut();
   }
-  
+
   User? get currentUser => _auth.currentUser;
-  
+
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 }

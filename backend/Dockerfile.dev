@@ -1,5 +1,11 @@
 FROM golang:1.24-alpine AS development
 
+# h3-go/v4 wraps the H3 C library and requires CGO.
+# gcc + musl-dev provide the C toolchain on Alpine.
+RUN apk add --no-cache gcc musl-dev
+
+ENV CGO_ENABLED=1
+
 RUN go install github.com/air-verse/air@v1.52.3
 
 WORKDIR /app
@@ -11,4 +17,11 @@ COPY . .
 
 EXPOSE 8080
 
-CMD ["air", "-c", ".air.toml"]
+# entrypoint.dev.sh runs migrations then starts air
+# It is copied outside /app so the source-code volume mount doesn't shadow it.
+COPY entrypoint.dev.sh /entrypoint.dev.sh
+COPY entrypoint.worker.dev.sh /entrypoint.worker.dev.sh
+RUN sed -i 's/\r$//' /entrypoint.dev.sh /entrypoint.worker.dev.sh
+RUN chmod +x /entrypoint.dev.sh /entrypoint.worker.dev.sh
+
+CMD ["/entrypoint.dev.sh"]

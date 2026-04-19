@@ -39,8 +39,9 @@ Future<void> _initializeTalker() async {
         printRequestHeaders: true,
         printResponseHeaders: true,
         printResponseMessage: true,
-        printRequestData: true,
-        printResponseData: true,
+        // Media uploads can be very large; avoid dumping request/response bodies.
+        printRequestData: false,
+        printResponseData: false,
       ),
     ),
   );
@@ -50,8 +51,9 @@ Future<void> _initializeTalker() async {
     talker: talker,
     settings: const TalkerBlocLoggerSettings(
       enabled: true,
-      printEventFullData: true,
-      printStateFullData: true,
+      // Prevent huge state dumps (especially lists/media) from bloating memory.
+      printEventFullData: false,
+      printStateFullData: false,
     ),
   );
 }

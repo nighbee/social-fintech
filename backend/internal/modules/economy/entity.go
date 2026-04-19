@@ -40,18 +40,23 @@ type TransactionCategory string
 const (
 	CategoryDailyAccrual     TransactionCategory = "DAILY_ACCRUAL"
 	CategoryReferralBonus    TransactionCategory = "REFERRAL_BONUS"
+	CategorySignupBonus      TransactionCategory = "SIGNUP_BONUS"
 	CategoryP2PTransfer      TransactionCategory = "P2P_TRANSFER"
 	CategoryTaskCreation     TransactionCategory = "TASK_CREATION"
 	CategoryIAPDeposit       TransactionCategory = "IAP_DEPOSIT"
 	CategorySystemCorrection TransactionCategory = "SYSTEM_CORRECTION"
 	CategoryTaskReward       TransactionCategory = "TASK_REWARD"
+	CategoryTaskRefund       TransactionCategory = "TASK_REFUND"
 	CategoryPostSeal         TransactionCategory = "POST_SEAL"
+	CategoryTransfer         TransactionCategory = "transfer"
 )
 
 func (t TransactionCategory) IsValid() bool {
 	switch t {
-	case CategoryDailyAccrual, CategoryReferralBonus, CategoryP2PTransfer,
-		CategoryTaskCreation, CategoryIAPDeposit, CategorySystemCorrection, CategoryTaskReward, CategoryPostSeal:
+	case CategoryDailyAccrual, CategoryReferralBonus, CategorySignupBonus, CategoryP2PTransfer,
+		CategoryTaskCreation, CategoryTaskRefund, CategoryIAPDeposit,
+		CategorySystemCorrection, CategoryTaskReward, CategoryPostSeal,
+		CategoryTransfer:
 		return true
 	}
 	return false
@@ -62,16 +67,18 @@ func (t TransactionCategory) String() string {
 }
 
 type Wallet struct {
-	ID                 string       `db:"id" json:"id"`
-	UserID             string       `db:"user_id" json:"user_id"`
-	Currency           CurrencyCode `db:"currency" json:"currency"`
-	Balance            int64        `db:"balance" json:"balance"`
-	FreeBalance        int64        `db:"free_balance" json:"free_balance"`
-	LastDailyAccrualAt *time.Time   `db:"last_daily_accrual_at" json:"last_daily_accrual_at,omitempty"`
-	LastTransferAt     *time.Time   `db:"last_transfer_at" json:"last_transfer_at,omitempty"`
-	Version            int64        `db:"version" json:"version"`
-	CreatedAt          time.Time    `db:"created_at" json:"created_at"`
-	UpdatedAt          time.Time    `db:"updated_at" json:"updated_at"`
+	ID                  string       `db:"id" json:"id"`
+	UserID              string       `db:"user_id" json:"user_id"`
+	Currency            CurrencyCode `db:"currency" json:"currency"`
+	Balance             int64        `db:"balance" json:"balance"`
+	FreeBalance         int64        `db:"free_balance" json:"free_balance"`
+	TotalSentAmount     int64        `db:"total_sent_amount" json:"total_sent_amount"`
+	TotalReceivedAmount int64        `db:"total_received_amount" json:"total_received_amount"`
+	LastDailyAccrualAt  *time.Time   `db:"last_daily_accrual_at" json:"last_daily_accrual_at,omitempty"`
+	LastTransferAt      *time.Time   `db:"last_transfer_at" json:"last_transfer_at,omitempty"`
+	Version             int64        `db:"version" json:"version"`
+	CreatedAt           time.Time    `db:"created_at" json:"created_at"`
+	UpdatedAt           time.Time    `db:"updated_at" json:"updated_at"`
 }
 
 func (w *Wallet) HasSufficientBalance(amount int64) bool {
@@ -209,12 +216,14 @@ type TransferResponse struct {
 	LedgerEntryID   string    `json:"ledger_entry_id" example:"123e4567-e89b-12d3-a456-426614174000"`
 	SenderBalance   float64   `json:"sender_balance" example:"3.50"`
 	ReceiverBalance float64   `json:"receiver_balance" example:"6.50"`
+	CreatedNew      bool      `json:"created_new"`
 	Timestamp       time.Time `json:"timestamp"`
 }
 
 type GiveSealToPostRequest struct {
 	ReceiverUserID string `json:"receiver_user_id" validate:"required,uuid"`
 	Amount         int64  `json:"amount" validate:"required,min=1,max=10"`
+	Comment        string `json:"comment,omitempty" validate:"omitempty,max=500"`
 	Currency       string `json:"currency" validate:"required,oneof=SILVER_SEAL GOLD_SEAL"`
 	IdempotencyKey string `json:"idempotency_key,omitempty" validate:"omitempty,uuid"`
 }

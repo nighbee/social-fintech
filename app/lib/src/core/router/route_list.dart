@@ -43,13 +43,24 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
           GoRoute(
             path: RoutePaths.publicProfile,
             name: RouteNames.publicProfile,
-            redirect: AuthGuard,
             builder: (context, state) {
               final userId = state.pathParameters['userId'] ?? '';
               return PublicProfilePage(userId: userId);
             },
           ),
         ],
+      ),
+
+      GoRoute(
+        path: RoutePaths.feedPreview,
+        name: RouteNames.feedPreview,
+        builder: (context, state) => const FeedPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.notifications,
+        name: RouteNames.notifications,
+        redirect: AuthGuard,
+        builder: (context, state) => const NotificationsPage(),
       ),
 
       // Main app routes wrapped in StatefulShellRoute for LogPushButton
@@ -93,17 +104,40 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
               GoRoute(
                 path: RoutePaths.info,
                 name: RouteNames.info,
-                builder: (context, state) => const InfoPage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return InfoPage(
+                    email: extra?['email'] as String?,
+                    password: extra?['password'] as String?,
+                    phoneNumber: extra?['phoneNumber'] as String?,
+                    firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                  );
+                },
               ),
               GoRoute(
                 path: RoutePaths.referal,
                 name: RouteNames.referal,
-                builder: (context, state) => const ReferalPage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  return ReferalPage(
+                    email: extra?['email'] as String?,
+                    password: extra?['password'] as String?,
+                    phoneNumber: extra?['phoneNumber'] as String?,
+                    firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                    firstName: extra?['firstName'] as String?,
+                    lastName: extra?['lastName'] as String?,
+                    dateOfBirth: extra?['dateOfBirth'] as String?,
+                  );
+                },
               ),
               GoRoute(
                 path: RoutePaths.createPassword,
                 name: RouteNames.createPassword,
-                builder: (context, state) => const CreatePasswordPage(),
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final email = extra?['email'] as String? ?? '';
+                  return CreatePasswordPage(email: email);
+                },
               ),
               // Auth routes - Login
               GoRoute(
@@ -156,8 +190,26 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 name: RouteNames.home,
                 redirect: AuthGuard,
                 pageBuilder: (context, state) {
-                  return const NoTransitionPage(child: HomePage());
+                  final extra = state.extra;
+                  final map = extra is Map<String, dynamic>
+                      ? extra
+                      : <String, dynamic>{};
+                  final showReferralInviteActivated =
+                      map['showReferralInviteActivated'] as bool? ?? false;
+
+                  return NoTransitionPage(
+                    child: HomePage(
+                      showReferralInviteActivatedOnOpen:
+                          showReferralInviteActivated,
+                    ),
+                  );
                 },
+              ),
+              GoRoute(
+                path: RoutePaths.createPost,
+                name: RouteNames.createPost,
+                redirect: AuthGuard,
+                builder: (context, state) => const CreatePostPage(),
               ),
 
               // Map route (protected by auth guard)
@@ -168,6 +220,46 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: MapPage());
                 },
+              ),
+              GoRoute(
+                path: RoutePaths.mapCreateRequest,
+                name: RouteNames.mapCreateRequest,
+                redirect: AuthGuard,
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>?;
+                  final latitude =
+                      (extra?['latitude'] as num?)?.toDouble() ?? 50.4501;
+                  final longitude =
+                      (extra?['longitude'] as num?)?.toDouble() ?? 30.5234;
+                  return CreateRequestPage(
+                    latitude: latitude,
+                    longitude: longitude,
+                  );
+                },
+              ),
+              GoRoute(
+                path: RoutePaths.mapCreateRequestPublished,
+                name: RouteNames.mapCreateRequestPublished,
+                redirect: AuthGuard,
+                builder: (context, state) => const CreateRequestPublishedPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.mapRequestCanceled,
+                name: RouteNames.mapRequestCanceled,
+                redirect: AuthGuard,
+                builder: (context, state) => const MapRequestCanceledPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.mapRequestClosed,
+                name: RouteNames.mapRequestClosed,
+                redirect: AuthGuard,
+                builder: (context, state) => const MapRequestClosedPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.mapRequestCompleted,
+                name: RouteNames.mapRequestCompleted,
+                redirect: AuthGuard,
+                builder: (context, state) => const MapRequestCompletedPage(),
               ),
 
               // Rating route (protected by auth guard)
@@ -202,18 +294,276 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                   GoRoute(
                     path: 'settings',
                     name: RouteNames.settings,
+                    parentNavigatorKey: rootNavigatorKey,
                     redirect: AuthGuard,
                     builder: (context, state) {
-                      return Scaffold(
-                        appBar: AppBar(title: const Text('Settings')),
-                        body: const Center(child: Text('Settings Page')),
-                      );
+                      final extra = state.extra;
+                      final map = extra is Map<String, dynamic>
+                          ? extra
+                          : <String, dynamic>{};
+                      final userId = map['userId'] as String?;
+                      return SettingsPage(currentUserId: userId);
                     },
+                    routes: [
+                      GoRoute(
+                        path: 'feed-time-limit',
+                        name: RouteNames.profileFeedTimeLimit,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) {
+                          final extra = state.extra;
+                          final map = extra is Map<String, dynamic>
+                              ? extra
+                              : <String, dynamic>{};
+                          final initial =
+                              map['initialSelectionLabel'] as String? ??
+                                  'No limit';
+                          return FeedTimeLimitPage(
+                            initialSelectionLabel: initial,
+                          );
+                        },
+                      ),
+                      GoRoute(
+                        path: 'location-access',
+                        name: RouteNames.profileLocationAccess,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) {
+                          final extra = state.extra;
+                          final map = extra is Map<String, dynamic>
+                              ? extra
+                              : <String, dynamic>{};
+                          final initialLabel =
+                              map['initialSelectionLabel'] as String? ?? 'Never';
+                          final initialPrecise =
+                              map['initialPreciseLocationEnabled'] as bool? ??
+                                  false;
+                          return LocationAccessPage(
+                            initialSelectionLabel: initialLabel,
+                            initialPreciseLocationEnabled: initialPrecise,
+                          );
+                        },
+                      ),
+                      GoRoute(
+                        path: 'invite-golden-honor',
+                        name: RouteNames.profileInviteGoldenHonor,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) {
+                          final extra = state.extra;
+                          final map = extra is Map<String, dynamic>
+                              ? extra
+                              : <String, dynamic>{};
+                          final userId = map['userId'] as String?;
+                          return InviteGoldenHonorPage(currentUserId: userId);
+                        },
+                      ),
+                      GoRoute(
+                        path: 'enter-invite-code',
+                        name: RouteNames.profileEnterInviteCode,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) =>
+                            const EnterInviteCodePage(),
+                      ),
+                      GoRoute(
+                        path: 'contact-us',
+                        name: RouteNames.profileContactUs,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => const ContactUsPage(),
+                      ),
+                      GoRoute(
+                        path: 'report-bug',
+                        name: RouteNames.profileReportBug,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => const ReportBugPage(),
+                      ),
+                      GoRoute(
+                        path: 'terms-conditions',
+                        name: RouteNames.profileTermsConditions,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) =>
+                            const TermsConditionsPage(),
+                      ),
+                      GoRoute(
+                        path: 'security',
+                        name: RouteNames.profileSecurity,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => const SecurityPage(),
+                        routes: [
+                          GoRoute(
+                            path: 'change-password',
+                            name: RouteNames.profileSecurityChangePassword,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) =>
+                                const ProfileChangePasswordPage(),
+                          ),
+                          GoRoute(
+                            path: 'two-factor',
+                            name: RouteNames.profileSecurityTwoFactor,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) {
+                              final extra = state.extra;
+                              final map = extra is Map<String, dynamic>
+                                  ? extra
+                                  : <String, dynamic>{};
+                              final ids = (map['selectedMethodIds']
+                                          as List<dynamic>?)
+                                      ?.whereType<String>()
+                                      .toList() ??
+                                  <String>[];
+                              return TwoFactorAuthenticationPage(
+                                initialSelectedMethodIds: ids,
+                              );
+                            },
+                          ),
+                          GoRoute(
+                            path: 'active-sessions',
+                            name: RouteNames.profileSecurityActiveSessions,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) {
+                              final extra = state.extra;
+                              final map = extra is Map<String, dynamic>
+                                  ? extra
+                                  : <String, dynamic>{};
+                              final raw = map['sessions'];
+                              final sessions = raw is List
+                                  ? raw
+                                      .map(
+                                        (e) => Map<String, dynamic>.from(
+                                          e as Map<dynamic, dynamic>,
+                                        ),
+                                      )
+                                      .toList()
+                                  : <Map<String, dynamic>>[];
+                              return ActiveSessionsPage(sessions: sessions);
+                            },
+                          ),
+                          GoRoute(
+                            path: 'delete-account',
+                            name: RouteNames.profileSecurityDeleteAccount,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) =>
+                                DeleteAccountReasonPage(
+                                  flowData: DeleteAccountFlowData.fromExtra(
+                                    state.extra,
+                                  ),
+                                ),
+                            routes: [
+                              GoRoute(
+                                path: 'verify-password',
+                                name: RouteNames
+                                    .profileSecurityDeleteAccountPassword,
+                                parentNavigatorKey: rootNavigatorKey,
+                                builder: (context, state) =>
+                                    DeleteAccountPasswordPage(
+                                      flowData: DeleteAccountFlowData.fromExtra(
+                                        state.extra,
+                                      ),
+                                    ),
+                              ),
+                              GoRoute(
+                                path: 'verify-otp',
+                                name:
+                                    RouteNames.profileSecurityDeleteAccountOtp,
+                                parentNavigatorKey: rootNavigatorKey,
+                                builder: (context, state) => DeleteAccountOtpPage(
+                                  flowData: DeleteAccountFlowData.fromExtra(
+                                    state.extra,
+                                  ),
+                                ),
+                              ),
+                              GoRoute(
+                                path: 'confirm',
+                                name: RouteNames
+                                    .profileSecurityDeleteAccountConfirm,
+                                parentNavigatorKey: rootNavigatorKey,
+                                builder: (context, state) =>
+                                    DeleteAccountConfirmationPage(
+                                      flowData: DeleteAccountFlowData.fromExtra(
+                                        state.extra,
+                                      ),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      GoRoute(
+                        path: 'interactions',
+                        name: RouteNames.profileInteractions,
+                        parentNavigatorKey: rootNavigatorKey,
+                        builder: (context, state) => const InteractionsPage(),
+                        routes: [
+                          GoRoute(
+                            path: 'messages',
+                            name: RouteNames.profileInteractionMessages,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) =>
+                                const MessagesInteractionPage(),
+                            routes: [
+                              GoRoute(
+                                path: 'keywords',
+                                name: RouteNames.profileMessageFilteredKeywords,
+                                parentNavigatorKey: rootNavigatorKey,
+                                builder: (context, state) =>
+                                    const FilteredKeywordsPage(),
+                              ),
+                            ],
+                          ),
+                          GoRoute(
+                            path: 'comments',
+                            name: RouteNames.profileInteractionComments,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) =>
+                                const CommentsInteractionPage(),
+                          ),
+                          GoRoute(
+                            path: 'mentions',
+                            name: RouteNames.profileInteractionMentions,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) =>
+                                const MentionsInteractionPage(),
+                          ),
+                          GoRoute(
+                            path: 'blocked',
+                            name: RouteNames.profileBlockedAccounts,
+                            parentNavigatorKey: rootNavigatorKey,
+                            builder: (context, state) =>
+                                const BlockedAccountsPage(),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: RoutePaths.editProfile,
                     name: RouteNames.editProfile,
                     builder: (context, state) => const EditProfilePage(),
+                  ),
+                  GoRoute(
+                    path: RoutePaths.editProfileNickname,
+                    name: RouteNames.editProfileNickname,
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      final map = extra is Map<String, dynamic>
+                          ? extra
+                          : <String, dynamic>{};
+                      final displayName = map['displayName'] as String? ?? '';
+                      final userId = map['userId'] as String? ?? '';
+                      return EditProfileNicknamePage(
+                        initialDisplayName: displayName,
+                        currentUserId: userId,
+                      );
+                    },
+                  ),
+                  GoRoute(
+                    path: RoutePaths.editProfileBio,
+                    name: RouteNames.editProfileBio,
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      final map = extra is Map<String, dynamic>
+                          ? extra
+                          : <String, dynamic>{};
+                      final bio = map['bio'] as String? ?? '';
+                      return EditProfileBioPage(initialBio: bio);
+                    },
                   ),
                   GoRoute(
                     path: 'allies',

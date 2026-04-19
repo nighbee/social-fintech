@@ -1,0 +1,48 @@
+name: Deploy to VM
+
+on:
+  push:
+    branches: [ main, develop, feed ]
+    paths-ignore:
+      - 'app/**'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build All Components
+        run: |
+          cd backend
+          go build -v ./cmd/api
+          go build -v ./cmd/worker
+          go build -v ./cmd/migrate
+
+      - name: Run Unit Tests
+        run: |
+          cd backend
+          go test -v ./...
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/feed')
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: 35.209.210.231
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd brightbund
+            git pull origin ${{ github.ref_name }}
+            docker compose up -d --build

@@ -8,6 +8,7 @@ class ActionBottomSheet extends StatelessWidget {
     this.appBar,
     required this.child,
     this.backgroundColor = Colors.white,
+    this.backgroundOpacity,
     this.isExpanded = false,
     this.enableGlassEffect = true,
     this.enableDropShadow = true,
@@ -17,6 +18,7 @@ class ActionBottomSheet extends StatelessWidget {
   final PreferredSizeWidget? appBar;
   final Widget child;
   final Color backgroundColor;
+  final double? backgroundOpacity;
   final bool isExpanded;
   final bool enableGlassEffect;
   final bool enableDropShadow;
@@ -42,11 +44,14 @@ class ActionBottomSheet extends StatelessWidget {
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: backgroundColor.withOpacity(enableGlassEffect ? 0.4 : 0.3),
+            color: backgroundColor.withValues(
+              alpha: backgroundOpacity ?? (enableGlassEffect ? 0.4 : 0.3),
+            ),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             border: Border(
               top: BorderSide(
-                color: Colors.white.withOpacity(enableGlassEffect ? 0.25 : 0.1),
+                color: Colors.white
+                    .withValues(alpha: enableGlassEffect ? 0.25 : 0.1),
                 width: enableGlassEffect ? 1.5 : 1,
               ),
             ),
@@ -54,14 +59,14 @@ class ActionBottomSheet extends StatelessWidget {
                 ? [
                     // Верхняя белая тень (glass glow effect)
                     BoxShadow(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       blurRadius: 12,
                       offset: const Offset(0, -3),
                       spreadRadius: 0,
                     ),
                     // Основная drop shadow
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withValues(alpha: 0.4),
                       blurRadius: 25,
                       offset: const Offset(0, -8),
                       spreadRadius: 0,

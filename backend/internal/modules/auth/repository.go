@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -26,6 +27,16 @@ type Repository interface {
 	TouchUser(ctx context.Context, id string, lastActive time.Time) error
 	RevokeSession(ctx context.Context, id string, revokedAt time.Time) error
 	DeleteSession(ctx context.Context, id string) error
+	CountActiveSessionsByUser(ctx context.Context, userID string) (int, error)
+	ListActiveSessionsByUser(ctx context.Context, userID string) ([]Session, error)
+	RevokeSessionForUser(ctx context.Context, userID, sessionID string, revokedAt time.Time) error
+	RevokeAllSessionsExceptForUser(ctx context.Context, userID, currentSessionID string, revokedAt time.Time) error
+	RevokeAllSessionsForUser(ctx context.Context, userID string, revokedAt time.Time) error
+	GetUserPasswordHashByID(ctx context.Context, userID string) (string, error)
+	UpdateUserPasswordHashByID(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error
+	GetUserPhoneByID(ctx context.Context, userID string) (string, string, error)
+	RecordRegistrationSignal(ctx context.Context, deviceID, ip string, now time.Time) (int, int, error)
+	RecordActivationLogin(ctx context.Context, userID string, now time.Time) (string, bool, error)
 
 	CreatePhoneVerification(ctx context.Context, v *PhoneVerification) error
 	GetPhoneVerificationByID(ctx context.Context, id string) (*PhoneVerification, error)
@@ -51,7 +62,7 @@ func (r *PostgresRepository) GetUserByIdentity(ctx context.Context, provider, su
 	SELECT u.*
 	FROM users u
 	JOIN user_identities ui ON ui.user_id = u.id
-	WHERE ui.provider = $1 AND ui.subject = $2
+	WHERE ui.provider = $1 AND ui.subject = $2 AND u.deleted_at IS NULL
 	`
 	if err := r.db.GetContext(ctx, &user, query, provider, subject); err != nil {
 		return nil, err
@@ -70,7 +81,7 @@ func (r *PostgresRepository) GetUserByID(ctx context.Context, id string) (*User,
 
 func (r *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	var user User
-	query := `SELECT * FROM users WHERE email = $1`
+	query := `SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL`
 	if err := r.db.GetContext(ctx, &user, query, email); err != nil {
 		return nil, err
 	}
@@ -79,7 +90,7 @@ func (r *PostgresRepository) GetUserByEmail(ctx context.Context, email string) (
 
 func (r *PostgresRepository) GetUserByPhone(ctx context.Context, countryCode, phoneNumber string) (*User, error) {
 	var user User
-	query := `SELECT * FROM users WHERE phone_country_code = $1 AND phone_number = $2`
+	query := `SELECT * FROM users WHERE phone_country_code = $1 AND phone_number = $2 AND deleted_at IS NULL`
 	if err := r.db.GetContext(ctx, &user, query, countryCode, phoneNumber); err != nil {
 		return nil, err
 	}
@@ -100,9 +111,9 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 	  INSERT INTO users (
 			id, email, username, password_hash, first_name, last_name, date_of_birth, referral_code,
 			phone_country_code, phone_number,
-			avatar_url, is_shadow_banned, created_at, updated_at, last_active_at
+			avatar_url, is_shadow_banned, activation_status, restrictions_until, created_at, updated_at, last_active_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), $11, $12, $13, $14, $15)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), NULLIF($10, ''), $11, $12, COALESCE(NULLIF($13, ''), 'restricted'), $14, $15, $16, $17)
 	`
 	// Convert empty strings to NULL for phone fields to avoid unique constraint violations
 	var phoneCountry, phoneNumber interface{}
@@ -125,7 +136,7 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 	_, err := r.db.ExecContext(ctx, query,
 		user.ID, user.Email, user.Username, user.PasswordHash, user.FirstName, user.LastName,
 		user.DateOfBirth, user.ReferralCode, phoneCountry, phoneNumber,
-		user.AvatarURL, user.IsShadowBanned, user.CreatedAt, user.UpdatedAt, user.LastActiveAt,
+		user.AvatarURL, user.IsShadowBanned, user.ActivationStatus, user.RestrictionsUntil, user.CreatedAt, user.UpdatedAt, user.LastActiveAt,
 	)
 	return err
 }
@@ -207,6 +218,186 @@ func (r *PostgresRepository) RevokeSession(ctx context.Context, id string, revok
 	query := `UPDATE sessions SET revoked_at = $1 WHERE id = $2`
 	_, err := r.db.ExecContext(ctx, query, revokedAt, id)
 	return err
+}
+
+func (r *PostgresRepository) CountActiveSessionsByUser(ctx context.Context, userID string) (int, error) {
+	var count int
+	query := `SELECT COUNT(1) FROM sessions WHERE user_id = $1 AND revoked_at IS NULL`
+	if err := r.db.GetContext(ctx, &count, query, userID); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+func (r *PostgresRepository) ListActiveSessionsByUser(ctx context.Context, userID string) ([]Session, error) {
+	items := make([]Session, 0)
+	query := `
+		SELECT id, user_id, device_id, ip, user_agent, app_version, last_active_at, created_at, refresh_token_hash, revoked_at
+		FROM sessions
+		WHERE user_id = $1 AND revoked_at IS NULL
+		ORDER BY last_active_at DESC
+	`
+	if err := r.db.SelectContext(ctx, &items, query, userID); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+func (r *PostgresRepository) RevokeSessionForUser(ctx context.Context, userID, sessionID string, revokedAt time.Time) error {
+	query := `UPDATE sessions SET revoked_at = $3 WHERE user_id = $1 AND id = $2 AND revoked_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, userID, sessionID, revokedAt)
+	return err
+}
+
+func (r *PostgresRepository) RevokeAllSessionsExceptForUser(ctx context.Context, userID, currentSessionID string, revokedAt time.Time) error {
+	query := `UPDATE sessions SET revoked_at = $3 WHERE user_id = $1 AND id <> $2 AND revoked_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, userID, currentSessionID, revokedAt)
+	return err
+}
+
+func (r *PostgresRepository) RevokeAllSessionsForUser(ctx context.Context, userID string, revokedAt time.Time) error {
+	query := `UPDATE sessions SET revoked_at = $2 WHERE user_id = $1 AND revoked_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, userID, revokedAt)
+	return err
+}
+
+func (r *PostgresRepository) GetUserPasswordHashByID(ctx context.Context, userID string) (string, error) {
+	var hash string
+	query := `SELECT password_hash FROM users WHERE id = $1`
+	if err := r.db.GetContext(ctx, &hash, query, userID); err != nil {
+		return "", err
+	}
+	return hash, nil
+}
+
+func (r *PostgresRepository) UpdateUserPasswordHashByID(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error {
+	query := `UPDATE users SET password_hash = $2, updated_at = $3 WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, userID, passwordHash, updatedAt)
+	return err
+}
+
+func (r *PostgresRepository) GetUserPhoneByID(ctx context.Context, userID string) (string, string, error) {
+	var countryCode string
+	var phoneNumber string
+	query := `SELECT COALESCE(phone_country_code, ''), COALESCE(phone_number, '') FROM users WHERE id = $1`
+	if err := r.db.QueryRowContext(ctx, query, userID).Scan(&countryCode, &phoneNumber); err != nil {
+		return "", "", err
+	}
+	return countryCode, phoneNumber, nil
+}
+
+func (r *PostgresRepository) RecordRegistrationSignal(ctx context.Context, deviceID, ip string, now time.Time) (int, int, error) {
+	statDate := now.UTC().Format("2006-01-02")
+
+	deviceCount := 0
+	if strings.TrimSpace(deviceID) != "" {
+		if err := r.db.QueryRowContext(ctx, `
+			INSERT INTO device_registration_stats (device_id, stat_date, registrations_count)
+			VALUES ($1, $2, 1)
+			ON CONFLICT (device_id, stat_date)
+			DO UPDATE SET registrations_count = device_registration_stats.registrations_count + 1
+			RETURNING registrations_count
+		`, deviceID, statDate).Scan(&deviceCount); err != nil {
+			return 0, 0, err
+		}
+	}
+
+	ipCount := 0
+	if strings.TrimSpace(ip) != "" {
+		if err := r.db.QueryRowContext(ctx, `
+			INSERT INTO ip_registration_stats (ip_address, stat_date, registrations_count)
+			VALUES ($1, $2, 1)
+			ON CONFLICT (ip_address, stat_date)
+			DO UPDATE SET registrations_count = ip_registration_stats.registrations_count + 1
+			RETURNING registrations_count
+		`, ip, statDate).Scan(&ipCount); err != nil {
+			return 0, 0, err
+		}
+	}
+
+	return deviceCount, ipCount, nil
+}
+
+func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID string, now time.Time) (string, bool, error) {
+	loginDate := now.UTC().Format("2006-01-02")
+
+	if _, err := r.db.ExecContext(ctx, `
+		INSERT INTO user_activation_activity (user_id, distinct_login_days, login_events_count, meaningful_actions_count, last_login_date, updated_at)
+		VALUES ($1, 1, 1, 0, $2, NOW())
+		ON CONFLICT (user_id) DO UPDATE
+		SET login_events_count = user_activation_activity.login_events_count + 1,
+		    distinct_login_days = CASE
+		        WHEN user_activation_activity.last_login_date IS DISTINCT FROM $2::date THEN user_activation_activity.distinct_login_days + 1
+		        ELSE user_activation_activity.distinct_login_days
+		    END,
+		    last_login_date = $2,
+		    updated_at = NOW()
+	`, userID, loginDate); err != nil {
+		return "", false, err
+	}
+
+	var status string
+	var restrictionsUntil sql.NullTime
+	var createdAt time.Time
+	var phoneNumber sql.NullString
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT activation_status, restrictions_until, created_at, phone_number
+		FROM users
+		WHERE id = $1
+	`, userID).Scan(&status, &restrictionsUntil, &createdAt, &phoneNumber); err != nil {
+		return "", false, err
+	}
+
+	if status == "active" {
+		return status, false, nil
+	}
+	if restrictionsUntil.Valid && restrictionsUntil.Time.After(now) {
+		return status, false, nil
+	}
+
+	var distinctDays int
+	var loginEvents int
+	var meaningfulActions int
+	if err := r.db.QueryRowContext(ctx, `
+		SELECT distinct_login_days, login_events_count, meaningful_actions_count
+		FROM user_activation_activity
+		WHERE user_id = $1
+	`, userID).Scan(&distinctDays, &loginEvents, &meaningfulActions); err != nil {
+		return "", false, err
+	}
+
+	ageHours := now.Sub(createdAt).Hours()
+
+	requiredDays := 3
+	requiredLogins := 3
+	requiredMeaningful := 5
+	requiredAgeHours := 72.0
+	if status == "suspicious" {
+		requiredDays = 5
+		requiredLogins = 5
+		requiredMeaningful = 8
+		requiredAgeHours = 120.0
+	}
+
+	if distinctDays >= requiredDays &&
+		loginEvents >= requiredLogins &&
+		ageHours >= requiredAgeHours &&
+		phoneNumber.Valid && phoneNumber.String != "" &&
+		meaningfulActions >= requiredMeaningful {
+		if _, err := r.db.ExecContext(ctx, `
+			UPDATE users
+			SET activation_status = 'active',
+			    activation_unlocked_at = COALESCE(activation_unlocked_at, NOW()),
+			    restrictions_until = NULL,
+			    updated_at = NOW()
+			WHERE id = $1
+		`, userID); err != nil {
+			return "", false, err
+		}
+		return "active", true, nil
+	}
+
+	return status, false, nil
 }
 
 func (r *PostgresRepository) CreatePhoneVerification(ctx context.Context, v *PhoneVerification) error {

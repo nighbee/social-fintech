@@ -1,7 +1,7 @@
 class EndPoints {
   //* Base URL
-  static const String baseUrl = 'http://localhost:8081/api/v1';
-  static const String baseUrlDev = 'http://10.0.2.2:8081/api/v1';
+  static const String baseUrl = 'http://68.183.186.224/api/v1';
+  static const String baseUrlDev = 'http://68.183.186.224/api/v1';
 
   //* Auth
   static const String authLogin = '/auth/login';
@@ -22,9 +22,23 @@ class EndPoints {
   static const String economyWallet = '/economy/wallet';
   static const String economyTransfer = '/economy/transfer';
   static const String economyLedger = '/economy/ledger';
+  static const String economyBalance = '/economy/balance';
+  static const String economyLimits = '/economy/limits';
+  static const String economyAccrualClaim = '/economy/accrual/claim';
 
   //* Feed
   static const String feed = '/feed';
+  static const String feedMediaUpload = '/feed/media/upload';
+  static const String feedState = '/feed/state';
+  static const String feedStateSync = '/feed/state/sync';
+  static const String posts = '/posts';
+  static String postById(String postId) => '/posts/$postId';
+  static String postComments(String postId) => '/posts/$postId/comments';
+  static String postReport(String postId) => '/posts/$postId/report';
+  static String postLikes(String postId) => '/posts/$postId/likes';
+  static String postSeals(String postId) => '/posts/$postId/seals';
+  static String commentLikes(String commentId) =>
+      '/feed/comments/$commentId/likes';
 
   //* Gamification
   static const String gamificationRank = '/gamification/rank';
@@ -37,15 +51,47 @@ class EndPoints {
   static const String leaderboardMe = '/leaderboards/me';
 
   //* Map
-  static const String mapTasks = '/map/tasks';
-  static const String mapTasksNearby = '/map/tasks/nearby';
+  static const String mapTasks = '/tasks';
+  static const String mapTasksNearby = '/tasks/nearby';
+  static const String mapTasksApplied = '/tasks/applied';
+  static const String mapTasksMy = '/tasks/my';
+  static String mapTaskById(String taskId) => '/tasks/$taskId';
+  static String mapApplyToTask(String taskId) => '/tasks/$taskId/apply';
+  static String mapTaskApplications(String taskId) =>
+      '/tasks/$taskId/applications';
+  static String mapWithdrawTaskApplication(
+          String taskId, String applicationId) =>
+      '/tasks/$taskId/applications/$applicationId';
+  static String mapAcceptTaskApplication(String taskId, String applicationId) =>
+      '/tasks/$taskId/applications/$applicationId/accept';
+  static String mapRejectTaskApplication(String taskId, String applicationId) =>
+      '/tasks/$taskId/applications/$applicationId/reject';
+  static String mapConfirmTaskApplication(
+          String taskId, String applicationId) =>
+      '/tasks/$taskId/applications/$applicationId/confirm';
+  static String mapVerifyTaskApplicationCode(
+    String taskId,
+    String applicationId,
+  ) =>
+      '/tasks/$taskId/applications/$applicationId/verify-code';
+  static const String mapRegion = '/map/region';
+  static const String mapChampions = '/map/champions';
 
   //* Payment
   static const String paymentWebhookRevenuecat = '/payment/webhook/revenuecat';
 
+  //* Users
+  static const String usersSearch = '/users/search';
+
   //* Profile
   static const String profiles = '/profiles';
   static const String profileMe = '/profiles/me';
+  static const String profileSearch = '/profiles/search';
+  static const String profileMePosts = '/profiles/me/posts';
+  static const String profileMePostsList = '/profiles/me/posts/list';
+  static String profilePostsById(String userId) => '/profiles/$userId/posts';
+  static String profilePostsListById(String userId) =>
+      '/profiles/$userId/posts/list';
   static const String profileUpdate = '/profiles/me';
   static String profileById(String userId) => '/profiles/$userId';
   static const String profileMeStats = '/profiles/me/stats';
@@ -62,4 +108,38 @@ class EndPoints {
   static String profileReport(String userId) => '/profiles/$userId/report';
   static String profileRelationship(String userId) =>
       '/profiles/$userId/relationship';
+
+  //* Settings — feed (see backend /settings/feed)
+  static const String settingsFeed = '/settings/feed';
+
+  //* Settings — security (see backend /settings/security/*)
+  static const String settingsSecurity = '/settings/security';
+  static const String settingsSecurityPassword = '/settings/security/password';
+  static const String settingsSecuritySessions = '/settings/security/sessions';
+  static const String settingsSecurityDeleteAccountReason =
+      '/settings/security/delete-account/reason';
+  static const String settingsSecurityDeleteAccountVerify =
+      '/settings/security/delete-account/verify';
+  static const String settingsSecurityDeleteAccount =
+      '/settings/security/delete-account';
+
+  //* Settings — interactions (see backend /settings/interactions/*)
+  static const String settingsInteractions = '/settings/interactions';
+  static const String settingsInteractionsMessages =
+      '/settings/interactions/messages';
+  static const String settingsInteractionsComments =
+      '/settings/interactions/comments';
+  static const String settingsInteractionsMentions =
+      '/settings/interactions/mentions';
+  static const String settingsInteractionsBlocked =
+      '/settings/interactions/blocked';
+  static String settingsInteractionsBlockedUser(String userId) =>
+      '/settings/interactions/blocked/$userId';
+  static String settingsInteractionsMessageKeyword(String id) =>
+      '/settings/interactions/messages/keywords/$id';
+  static const String settingsInteractionsMessageKeywords =
+      '/settings/interactions/messages/keywords';
+
+  //* Support — bug reports (see backend POST /settings/support/bugs)
+  static const String settingsSupportBugs = '/settings/support/bugs';
 }

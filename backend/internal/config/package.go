@@ -11,22 +11,49 @@ import (
 )
 
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Redis    RedisConfig    `yaml:"redis"`
-	Cache    CacheConfig    `yaml:"cache"`
-	Logging  LoggingConfig  `yaml:"logging"`
-	JWT      JWTConfig      `yaml:"jwt"`
-	CORS     CORSConfig     `yaml:"cors"`
-	OAuth    OAuthConfig    `yaml:"oauth"`
-	Firebase FirebaseConfig `yaml:"firebase"`
-	Storage  StorageConfig  `yaml:"storage"`
-	Economy  EconomyConfig  `yaml:"economy"`
-	Admin    AdminConfig    `yaml:"admin"`
+	Server     ServerConfig     `yaml:"server"`
+	Database   DatabaseConfig   `yaml:"database"`
+	Redis      RedisConfig      `yaml:"redis"`
+	Cache      CacheConfig      `yaml:"cache"`
+	Feed       FeedConfig       `yaml:"feed"`
+	Logging    LoggingConfig    `yaml:"logging"`
+	JWT        JWTConfig        `yaml:"jwt"`
+	CORS       CORSConfig       `yaml:"cors"`
+	OAuth      OAuthConfig      `yaml:"oauth"`
+	Firebase   FirebaseConfig   `yaml:"firebase"`
+	Storage    StorageConfig    `yaml:"storage"`
+	Economy    EconomyConfig    `yaml:"economy"`
+	Admin      AdminConfig      `yaml:"admin"`
+	Moderation ModerationConfig `yaml:"moderation"`
+	Activation ActivationConfig `yaml:"activation"`
 }
 
 type AdminConfig struct {
 	Emails []string `yaml:"emails"`
+}
+
+type ModerationConfig struct {
+	Enabled            bool    `yaml:"enabled"`
+	ShadowMode         bool    `yaml:"shadow_mode"`
+	MinActivationViews int     `yaml:"min_activation_views"`
+	DailyReportLimit   int     `yaml:"daily_report_limit"`
+	Level1Threshold    float64 `yaml:"level1_threshold"`
+	Level2Threshold    float64 `yaml:"level2_threshold"`
+	Level3Threshold    float64 `yaml:"level3_threshold"`
+	Level4Threshold    float64 `yaml:"level4_threshold"`
+	Level1Ratio        float64 `yaml:"level1_ratio"`
+	Level2Ratio        float64 `yaml:"level2_ratio"`
+	Level3Ratio        float64 `yaml:"level3_ratio"`
+	Level4Ratio        float64 `yaml:"level4_ratio"`
+}
+
+type ActivationConfig struct {
+	Enabled                      bool `yaml:"enabled"`
+	MinRestrictedHours           int  `yaml:"min_restricted_hours"`
+	ExtendedRestrictedHours      int  `yaml:"extended_restricted_hours"`
+	RequiredDistinctLoginDays    int  `yaml:"required_distinct_login_days"`
+	RequiredMeaningfulActions    int  `yaml:"required_meaningful_actions"`
+	MaxRegistrationsPerDeviceDay int  `yaml:"max_registrations_per_device_day"`
 }
 
 type EconomyConfig struct {
@@ -46,6 +73,21 @@ type EconomyConfig struct {
 	SealDecayThreshold2Days int     `yaml:"seal_decay_threshold2_days"`
 }
 
+type FeedConfig struct {
+	AdaptiveGeoEnabled bool    `yaml:"adaptive_geo_enabled"`
+	MaxKRing           int     `yaml:"max_k_ring"`
+	Ring1RadiusKm      float64 `yaml:"ring1_radius_km"`
+	Ring2RadiusKm      float64 `yaml:"ring2_radius_km"`
+	Ring3RadiusKm      float64 `yaml:"ring3_radius_km"`
+	MinLocalPosts24h   int     `yaml:"min_local_posts_24h"`
+	MinLocalAuthors24h int     `yaml:"min_local_authors_24h"`
+	MedLocalPosts24h   int     `yaml:"med_local_posts_24h"`
+	MedLocalAuthors24h int     `yaml:"med_local_authors_24h"`
+	LocalShareLow      float64 `yaml:"local_share_low"`
+	LocalShareMedium   float64 `yaml:"local_share_medium"`
+	LocalShareHigh     float64 `yaml:"local_share_high"`
+}
+
 type OAuthConfig struct {
 	Apple  OAuthProviderConfig `yaml:"apple"`
 	Google OAuthProviderConfig `yaml:"google"`
@@ -63,19 +105,23 @@ type FirebaseConfig struct {
 }
 
 type StorageConfig struct {
-	Endpoint  string `yaml:"endpoint"`
-	AccessKey string `yaml:"access_key"`
-	SecretKey string `yaml:"secret_key"`
-	Bucket    string `yaml:"bucket"`
-	UseSSL    bool   `yaml:"use_ssl"`
-	PublicURL string `yaml:"public_url"`
+	Endpoint   string `yaml:"endpoint"`
+	AccessKey  string `yaml:"access_key"`
+	SecretKey  string `yaml:"secret_key"`
+	Bucket     string `yaml:"bucket"`
+	TempBucket string `yaml:"temp_bucket"`
+	FFmpegPath string `yaml:"ffmpeg_path"`
+	UseSSL     bool   `yaml:"use_ssl"`
+	PublicURL  string `yaml:"public_url"`
 }
 
 type ServerConfig struct {
 	Port         int           `yaml:"port"`
 	Environment  string        `yaml:"environment"`
+	AutoMigrate  bool          `yaml:"auto_migrate"`
 	ReadTimeout  time.Duration `yaml:"read_timeout"`
 	WriteTimeout time.Duration `yaml:"write_timeout"`
+	IdleTimeout  time.Duration `yaml:"idle_timeout"`
 }
 
 type DatabaseConfig struct {
@@ -157,6 +203,9 @@ func overrideFromEnv(cfg *Config) {
 	if v := os.Getenv("SERVER_ENV"); v != "" {
 		cfg.Server.Environment = v
 	}
+	if v := os.Getenv("AUTO_MIGRATE"); v != "" {
+		cfg.Server.AutoMigrate = strings.EqualFold(v, "true") || v == "1" || strings.EqualFold(v, "yes")
+	}
 
 	// Database
 	if v := os.Getenv("DB_HOST"); v != "" {
@@ -202,6 +251,32 @@ func overrideFromEnv(cfg *Config) {
 		cfg.JWT.Secret = v
 	}
 
+	// Storage
+	if v := os.Getenv("MINIO_ENDPOINT"); v != "" {
+		cfg.Storage.Endpoint = v
+	}
+	if v := os.Getenv("MINIO_ACCESS_KEY"); v != "" {
+		cfg.Storage.AccessKey = v
+	}
+	if v := os.Getenv("MINIO_SECRET_KEY"); v != "" {
+		cfg.Storage.SecretKey = v
+	}
+	if v := os.Getenv("MINIO_BUCKET"); v != "" {
+		cfg.Storage.Bucket = v
+	}
+	if v := os.Getenv("MINIO_USE_SSL"); v != "" {
+		cfg.Storage.UseSSL = strings.EqualFold(v, "true") || v == "1"
+	}
+	if v := os.Getenv("MINIO_PUBLIC_URL"); v != "" {
+		cfg.Storage.PublicURL = v
+	}
+	if v := os.Getenv("MINIO_TEMP_BUCKET"); v != "" {
+		cfg.Storage.TempBucket = v
+	}
+	if v := os.Getenv("FFMPEG_PATH"); v != "" {
+		cfg.Storage.FFmpegPath = v
+	}
+
 	// oauth
 	if v := os.Getenv("OAUTH_APPLE_CLIENT_ID"); v != "" {
 		cfg.OAuth.Apple.ClientID = v
@@ -225,6 +300,22 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if v := os.Getenv("FIREBASE_PROJECT_ID"); v != "" {
 		cfg.Firebase.ProjectID = v
+	}
+
+	// Server Defaults
+	if cfg.Server.IdleTimeout == 0 {
+		cfg.Server.IdleTimeout = 120 * time.Second
+	}
+
+	// Database Defaults
+	if cfg.Database.MaxOpenConns == 0 {
+		cfg.Database.MaxOpenConns = 25
+	}
+	if cfg.Database.MaxIdleConns == 0 {
+		cfg.Database.MaxIdleConns = 25
+	}
+	if cfg.Database.ConnMaxLifetime == 0 {
+		cfg.Database.ConnMaxLifetime = 5 * time.Minute
 	}
 
 	// Economy Defaults and Overrides
@@ -336,6 +427,91 @@ func overrideFromEnv(cfg *Config) {
 	if cfg.Cache.ProfileStatsTTL == 0 {
 		cfg.Cache.ProfileStatsTTL = 5 * time.Minute
 	}
+
+	if !cfg.Feed.AdaptiveGeoEnabled {
+		cfg.Feed.AdaptiveGeoEnabled = true
+	}
+	if cfg.Feed.MaxKRing == 0 {
+		cfg.Feed.MaxKRing = 3
+	}
+	if cfg.Feed.Ring1RadiusKm == 0 {
+		cfg.Feed.Ring1RadiusKm = 5.0
+	}
+	if cfg.Feed.Ring2RadiusKm == 0 {
+		cfg.Feed.Ring2RadiusKm = 10.0
+	}
+	if cfg.Feed.Ring3RadiusKm == 0 {
+		cfg.Feed.Ring3RadiusKm = 18.0
+	}
+	if cfg.Feed.MinLocalPosts24h == 0 {
+		cfg.Feed.MinLocalPosts24h = 30
+	}
+	if cfg.Feed.MinLocalAuthors24h == 0 {
+		cfg.Feed.MinLocalAuthors24h = 15
+	}
+	if cfg.Feed.MedLocalPosts24h == 0 {
+		cfg.Feed.MedLocalPosts24h = 15
+	}
+	if cfg.Feed.MedLocalAuthors24h == 0 {
+		cfg.Feed.MedLocalAuthors24h = 8
+	}
+	if cfg.Feed.LocalShareLow == 0 {
+		cfg.Feed.LocalShareLow = 0.30
+	}
+	if cfg.Feed.LocalShareMedium == 0 {
+		cfg.Feed.LocalShareMedium = 0.50
+	}
+	if cfg.Feed.LocalShareHigh == 0 {
+		cfg.Feed.LocalShareHigh = 0.70
+	}
+
+	if cfg.Moderation.MinActivationViews == 0 {
+		cfg.Moderation.MinActivationViews = 50
+	}
+	if cfg.Moderation.DailyReportLimit == 0 {
+		cfg.Moderation.DailyReportLimit = 10
+	}
+	if cfg.Moderation.Level1Threshold == 0 {
+		cfg.Moderation.Level1Threshold = 3
+	}
+	if cfg.Moderation.Level2Threshold == 0 {
+		cfg.Moderation.Level2Threshold = 5
+	}
+	if cfg.Moderation.Level3Threshold == 0 {
+		cfg.Moderation.Level3Threshold = 10
+	}
+	if cfg.Moderation.Level4Threshold == 0 {
+		cfg.Moderation.Level4Threshold = 20
+	}
+	if cfg.Moderation.Level1Ratio == 0 {
+		cfg.Moderation.Level1Ratio = 0.02
+	}
+	if cfg.Moderation.Level2Ratio == 0 {
+		cfg.Moderation.Level2Ratio = 0.05
+	}
+	if cfg.Moderation.Level3Ratio == 0 {
+		cfg.Moderation.Level3Ratio = 0.08
+	}
+	if cfg.Moderation.Level4Ratio == 0 {
+		cfg.Moderation.Level4Ratio = 0.12
+	}
+
+	if cfg.Activation.MinRestrictedHours == 0 {
+		cfg.Activation.MinRestrictedHours = 72
+	}
+	if cfg.Activation.ExtendedRestrictedHours == 0 {
+		cfg.Activation.ExtendedRestrictedHours = 120
+	}
+	if cfg.Activation.RequiredDistinctLoginDays == 0 {
+		cfg.Activation.RequiredDistinctLoginDays = 3
+	}
+	if cfg.Activation.RequiredMeaningfulActions == 0 {
+		cfg.Activation.RequiredMeaningfulActions = 5
+	}
+	if cfg.Activation.MaxRegistrationsPerDeviceDay == 0 {
+		cfg.Activation.MaxRegistrationsPerDeviceDay = 3
+	}
+
 	// Cache enabled by default (true by default if not specified)
 	if v := os.Getenv("CACHE_ENABLED"); v != "" {
 		cfg.Cache.Enabled = v == "true"

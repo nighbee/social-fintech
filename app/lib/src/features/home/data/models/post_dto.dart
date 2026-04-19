@@ -17,6 +17,7 @@ class PostDto extends BaseDto with _$PostDto {
     @JsonKey(name: 'image_urls') @Default([]) List<String> imageUrls,
     @JsonKey(name: 'likes_count') @Default(0) int likesCount,
     @JsonKey(name: 'comments_count') @Default(0) int commentsCount,
+    @JsonKey(name: 'is_liked') @Default(false) bool isLiked,
     @JsonKey(name: 'created_at') required String createdAt,
   }) = _PostDto;
 
@@ -32,6 +33,7 @@ class PostDto extends BaseDto with _$PostDto {
     imageUrls: imageUrls,
     likesCount: likesCount,
     commentsCount: commentsCount,
+    isLiked: isLiked,
     createdAt: DateTime.tryParse(createdAt) ?? DateTime.now(),
   );
 }

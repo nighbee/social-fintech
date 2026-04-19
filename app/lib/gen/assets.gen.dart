@@ -37,6 +37,10 @@ class $AssetsIconsGen {
   /// File path: assets/icons/atsign.svg
   SvgGenImage get atsign => const SvgGenImage('assets/icons/atsign.svg');
 
+  /// File path: assets/icons/basil_user-block-solid.svg
+  SvgGenImage get basilUserBlockSolid =>
+      const SvgGenImage('assets/icons/basil_user-block-solid.svg');
+
   /// File path: assets/icons/bell.svg
   SvgGenImage get bell => const SvgGenImage('assets/icons/bell.svg');
 
@@ -52,6 +56,10 @@ class $AssetsIconsGen {
   /// File path: assets/icons/chats_icon.svg
   SvgGenImage get chatsIcon => const SvgGenImage('assets/icons/chats_icon.svg');
 
+  /// File path: assets/icons/checked_circle.svg
+  SvgGenImage get checkedCircle =>
+      const SvgGenImage('assets/icons/checked_circle.svg');
+
   /// File path: assets/icons/close.svg
   SvgGenImage get close => const SvgGenImage('assets/icons/close.svg');
 
@@ -64,6 +72,17 @@ class $AssetsIconsGen {
   /// File path: assets/icons/feed_icon.svg
   SvgGenImage get feedIcon => const SvgGenImage('assets/icons/feed_icon.svg');
 
+  /// File path: assets/icons/flowbite_file-shield-outline.svg
+  SvgGenImage get flowbiteFileShieldOutline =>
+      const SvgGenImage('assets/icons/flowbite_file-shield-outline.svg');
+
+  /// File path: assets/icons/fluent_eye-hide-24-filled.svg
+  SvgGenImage get fluentEyeHide24Filled =>
+      const SvgGenImage('assets/icons/fluent_eye-hide-24-filled.svg');
+
+  /// File path: assets/icons/global.svg
+  SvgGenImage get global => const SvgGenImage('assets/icons/global.svg');
+
   /// File path: assets/icons/google_logo.svg
   SvgGenImage get googleLogo =>
       const SvgGenImage('assets/icons/google_logo.svg');
@@ -74,6 +93,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/like.svg
   SvgGenImage get like => const SvgGenImage('assets/icons/like.svg');
 
+  /// File path: assets/icons/location.svg
+  SvgGenImage get location => const SvgGenImage('assets/icons/location.svg');
+
   /// File path: assets/icons/map_icon.svg
   SvgGenImage get mapIcon => const SvgGenImage('assets/icons/map_icon.svg');
 
@@ -83,9 +105,16 @@ class $AssetsIconsGen {
   /// File path: assets/icons/more.svg
   SvgGenImage get more => const SvgGenImage('assets/icons/more.svg');
 
+  /// File path: assets/icons/no_people.svg
+  SvgGenImage get noPeople => const SvgGenImage('assets/icons/no_people.svg');
+
   /// File path: assets/icons/person_favourites.svg
   SvgGenImage get personFavourites =>
       const SvgGenImage('assets/icons/person_favourites.svg');
+
+  /// File path: assets/icons/person_search.svg
+  SvgGenImage get personSearch =>
+      const SvgGenImage('assets/icons/person_search.svg');
 
   /// File path: assets/icons/plus_icon.svg
   SvgGenImage get plusIcon => const SvgGenImage('assets/icons/plus_icon.svg');
@@ -98,8 +127,27 @@ class $AssetsIconsGen {
   SvgGenImage get ratingIcon =>
       const SvgGenImage('assets/icons/rating_icon.svg');
 
+  /// File path: assets/icons/request_cancel.svg
+  SvgGenImage get requestCancel =>
+      const SvgGenImage('assets/icons/request_cancel.svg');
+
+  /// File path: assets/icons/request_closed.svg
+  SvgGenImage get requestClosed =>
+      const SvgGenImage('assets/icons/request_closed.svg');
+
+  /// File path: assets/icons/request_done.svg
+  SvgGenImage get requestDone =>
+      const SvgGenImage('assets/icons/request_done.svg');
+
+  /// File path: assets/icons/reward_indicator.svg
+  SvgGenImage get rewardIndicator =>
+      const SvgGenImage('assets/icons/reward_indicator.svg');
+
   /// File path: assets/icons/search.svg
   SvgGenImage get search => const SvgGenImage('assets/icons/search.svg');
+
+  /// File path: assets/icons/send_icon.svg
+  SvgGenImage get sendIcon => const SvgGenImage('assets/icons/send_icon.svg');
 
   /// File path: assets/icons/settings_icon.svg
   SvgGenImage get settingsIcon =>
@@ -115,48 +163,81 @@ class $AssetsIconsGen {
   /// File path: assets/icons/stats_icon.svg
   SvgGenImage get statsIcon => const SvgGenImage('assets/icons/stats_icon.svg');
 
+  /// File path: assets/icons/task_done.svg
+  SvgGenImage get taskDone => const SvgGenImage('assets/icons/task_done.svg');
+
   /// File path: assets/icons/timer.svg
   SvgGenImage get timer => const SvgGenImage('assets/icons/timer.svg');
 
+  /// File path: assets/icons/tuiIconChevronRightLarge.svg
+  SvgGenImage get tuiIconChevronRightLarge =>
+      const SvgGenImage('assets/icons/tuiIconChevronRightLarge.svg');
+
   /// List of all assets
   List<SvgGenImage> get values => [
-    appleLogo,
-    arrowBack,
-    atsign,
-    bell,
-    blocked,
-    bronze,
-    calendar,
-    chatsIcon,
-    close,
-    eyeClosed,
-    eyeOpened,
-    feedIcon,
-    googleLogo,
-    images,
-    like,
-    mapIcon,
-    message,
-    more,
-    personFavourites,
-    plusIcon,
-    profileIcon,
-    ratingIcon,
-    search,
-    settingsIcon,
-    share,
-    silverCoin,
-    statsIcon,
-    timer,
-  ];
+        appleLogo,
+        arrowBack,
+        atsign,
+        basilUserBlockSolid,
+        bell,
+        blocked,
+        bronze,
+        calendar,
+        chatsIcon,
+        checkedCircle,
+        close,
+        eyeClosed,
+        eyeOpened,
+        feedIcon,
+        flowbiteFileShieldOutline,
+        fluentEyeHide24Filled,
+        global,
+        googleLogo,
+        images,
+        like,
+        location,
+        mapIcon,
+        message,
+        more,
+        noPeople,
+        personFavourites,
+        personSearch,
+        plusIcon,
+        profileIcon,
+        ratingIcon,
+        requestCancel,
+        requestClosed,
+        requestDone,
+        rewardIndicator,
+        search,
+        sendIcon,
+        settingsIcon,
+        share,
+        silverCoin,
+        statsIcon,
+        taskDone,
+        timer,
+        tuiIconChevronRightLarge
+      ];
 }
 
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
+  /// File path: assets/images/Big_golden_coin.png
+  AssetGenImage get bigGoldenCoin =>
+      const AssetGenImage('assets/images/Big_golden_coin.png');
+
   /// File path: assets/images/ammolite.png
   AssetGenImage get ammolite =>
       const AssetGenImage('assets/images/ammolite.png');
+
+  /// File path: assets/images/golden_honor.png
+  AssetGenImage get goldenHonor =>
+      const AssetGenImage('assets/images/golden_honor.png');
+
+  /// File path: assets/images/image.png
+  AssetGenImage get image => const AssetGenImage('assets/images/image.png');
 
   /// File path: assets/images/jade.png
   AssetGenImage get jade => const AssetGenImage('assets/images/jade.png');
@@ -165,9 +246,16 @@ class $AssetsImagesGen {
   AssetGenImage get lapislazuli =>
       const AssetGenImage('assets/images/lapislazuli.png');
 
+  /// File path: assets/images/map_triangle_marker.png
+  AssetGenImage get mapTriangleMarker =>
+      const AssetGenImage('assets/images/map_triangle_marker.png');
+
   /// File path: assets/images/moonstone.png
   AssetGenImage get moonstone =>
       const AssetGenImage('assets/images/moonstone.png');
+
+  /// File path: assets/images/myTask.png
+  AssetGenImage get myTask => const AssetGenImage('assets/images/myTask.png');
 
   /// File path: assets/images/onyx.png
   AssetGenImage get onyx => const AssetGenImage('assets/images/onyx.png');
@@ -181,14 +269,19 @@ class $AssetsImagesGen {
 
   /// List of all assets
   List<AssetGenImage> get values => [
-    ammolite,
-    jade,
-    lapislazuli,
-    moonstone,
-    onyx,
-    pearl,
-    supernova,
-  ];
+        bigGoldenCoin,
+        ammolite,
+        goldenHonor,
+        image,
+        jade,
+        lapislazuli,
+        mapTriangleMarker,
+        moonstone,
+        myTask,
+        onyx,
+        pearl,
+        supernova
+      ];
 }
 
 class $AssetsFontsCanelaDeckTrialGen {
@@ -244,19 +337,19 @@ class $AssetsFontsCanelaDeckTrialGen {
 
   /// List of all assets
   List<String> get values => [
-    canelaDeckBlackTrial,
-    canelaDeckBlackItalicTrial,
-    canelaDeckBoldTrial,
-    canelaDeckBoldItalicTrial,
-    canelaDeckLightTrial,
-    canelaDeckLightItalicTrial,
-    canelaDeckMediumTrial,
-    canelaDeckMediumItalicTrial,
-    canelaDeckRegularTrial,
-    canelaDeckRegularItalicTrial,
-    canelaDeckThinTrial,
-    canelaDeckThinItalicTrial,
-  ];
+        canelaDeckBlackTrial,
+        canelaDeckBlackItalicTrial,
+        canelaDeckBoldTrial,
+        canelaDeckBoldItalicTrial,
+        canelaDeckLightTrial,
+        canelaDeckLightItalicTrial,
+        canelaDeckMediumTrial,
+        canelaDeckMediumItalicTrial,
+        canelaDeckRegularTrial,
+        canelaDeckRegularItalicTrial,
+        canelaDeckThinTrial,
+        canelaDeckThinItalicTrial
+      ];
 }
 
 class $AssetsFontsLoraGen {
@@ -288,15 +381,15 @@ class $AssetsFontsLoraGen {
 
   /// List of all assets
   List<String> get values => [
-    loraBold,
-    loraBoldItalic,
-    loraItalic,
-    loraMedium,
-    loraMediumItalic,
-    loraRegular,
-    loraSemiBold,
-    loraSemiBoldItalic,
-  ];
+        loraBold,
+        loraBoldItalic,
+        loraItalic,
+        loraMedium,
+        loraMediumItalic,
+        loraRegular,
+        loraSemiBold,
+        loraSemiBoldItalic
+      ];
 }
 
 class Assets {
@@ -374,8 +467,15 @@ class AssetGenImage {
     );
   }
 
-  ImageProvider provider({AssetBundle? bundle, String? package}) {
-    return AssetImage(_assetName, bundle: bundle, package: package);
+  ImageProvider provider({
+    AssetBundle? bundle,
+    String? package,
+  }) {
+    return AssetImage(
+      _assetName,
+      bundle: bundle,
+      package: package,
+    );
   }
 
   String get path => _assetName;
@@ -396,11 +496,17 @@ class AssetGenImageAnimation {
 }
 
 class SvgGenImage {
-  const SvgGenImage(this._assetName, {this.size, this.flavors = const {}})
-    : _isVecFormat = false;
+  const SvgGenImage(
+    this._assetName, {
+    this.size,
+    this.flavors = const {},
+  }) : _isVecFormat = false;
 
-  const SvgGenImage.vec(this._assetName, {this.size, this.flavors = const {}})
-    : _isVecFormat = true;
+  const SvgGenImage.vec(
+    this._assetName, {
+    this.size,
+    this.flavors = const {},
+  }) : _isVecFormat = true;
 
   final String _assetName;
   final Size? size;
@@ -456,8 +562,7 @@ class SvgGenImage {
       placeholderBuilder: placeholderBuilder,
       semanticsLabel: semanticsLabel,
       excludeFromSemantics: excludeFromSemantics,
-      colorFilter:
-          colorFilter ??
+      colorFilter: colorFilter ??
           (color == null ? null : ColorFilter.mode(color, colorBlendMode)),
       clipBehavior: clipBehavior,
       cacheColorFilter: cacheColorFilter,

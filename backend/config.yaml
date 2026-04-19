@@ -1,6 +1,7 @@
-﻿server:
+server:
   port: 8080
   environment: development
+  auto_migrate: true
   read_timeout: 30s
   write_timeout: 30s
 
@@ -26,6 +27,20 @@ cache:
   profile_stats_ttl: 5m  # How long to cache profile statistics
   enabled: true          # Feature flag to enable/disable caching
 
+feed:
+  adaptive_geo_enabled: true
+  max_k_ring: 3
+  ring1_radius_km: 5.0
+  ring2_radius_km: 10.0
+  ring3_radius_km: 18.0
+  min_local_posts_24h: 30
+  min_local_authors_24h: 15
+  med_local_posts_24h: 15
+  med_local_authors_24h: 8
+  local_share_low: 0.30
+  local_share_medium: 0.50
+  local_share_high: 0.70
+
 logging:
   level: debug
   encoding: json
@@ -41,9 +56,7 @@ jwt:
 
 cors:
   allowed_origins:
-    - http://localhost:3000
-    - http://localhost:8081
-    - http://localhost:8082
+    - "*"
   allowed_methods:
     - GET
     - POST
@@ -58,7 +71,7 @@ cors:
     - Idempotency-Key
   expose_headers:
     - Content-Length
-  allow_credentials: true
+  allow_credentials: false
   max_age: 12h
 
 oauth:
@@ -71,13 +84,38 @@ oauth:
 
 firebase:
   enabled: true  # Set to true to enable Firebase SMS
-  credentials_path: ./firebase-service-account.json  # Path to Firebase service account JSON
+  credentials_path: /root/google/smsbb-6e583-firebase-adminsdk-fbsvc-a728ee686e.json  # Path to Firebase service account JSON
   project_id: smsbb-6e583
 
 storage:
   endpoint: minio:9000
   access_key: minioadmin
   secret_key: minioadmin
-  bucket: avatars
+  bucket: brightbund
+  temp_bucket: temp-uploads
+  ffmpeg_path: ffmpeg
   use_ssl: false
-  public_url: http://localhost:9000
+  public_url: http://68.183.186.224/minio
+
+moderation:
+  enabled: true
+  shadow_mode: true
+  min_activation_views: 50
+  daily_report_limit: 10
+  level1_threshold: 3
+  level2_threshold: 5
+  level3_threshold: 10
+  level4_threshold: 20
+  level1_ratio: 0.02
+  level2_ratio: 0.05
+  level3_ratio: 0.08
+  level4_ratio: 0.12
+
+activation:
+  enabled: true
+  min_restricted_hours: 72
+  extended_restricted_hours: 120
+  required_distinct_login_days: 3
+  required_meaningful_actions: 5
+  max_registrations_per_device_day: 3
+

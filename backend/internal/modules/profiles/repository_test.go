@@ -59,28 +59,34 @@ func TestSearchUsersByName(t *testing.T) {
 
 	users := []struct {
 		id        string
+		username  string
 		firstName string
 		lastName  string
 		shadow    bool
 	}{
-		{id: uuid.NewString(), firstName: "Alice", lastName: "Wonderland", shadow: false},
-		{id: uuid.NewString(), firstName: "Alice", lastName: "Smith", shadow: false},
-		{id: uuid.NewString(), firstName: "Bob", lastName: "Wonderland", shadow: false},
-		{id: uuid.NewString(), firstName: "Alice", lastName: "Shadow", shadow: true},
+		{id: uuid.NewString(), username: "captainbright", firstName: "Alice", lastName: "Wonderland", shadow: false},
+		{id: uuid.NewString(), username: "alice_smith", firstName: "Alice", lastName: "Smith", shadow: false},
+		{id: uuid.NewString(), username: "bob_wonder", firstName: "Bob", lastName: "Wonderland", shadow: false},
+		{id: uuid.NewString(), username: "alice_shadow", firstName: "Alice", lastName: "Shadow", shadow: true},
 	}
 
 	// Insert users + profiles
-	for _, u := range users {
+	for idx, u := range users {
 		_, err := testDB.ExecContext(ctx, `
 			INSERT INTO users (
 				id, email, username, first_name, last_name, is_shadow_banned,
 				created_at, updated_at, last_active_at
 			) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW(), NOW())
 		`, u.id, fmt.Sprintf("%s.%s@example.com", strings.ToLower(u.firstName), strings.ToLower(u.lastName)),
-			"u_"+strings.ReplaceAll(strings.ToLower(u.id), "-", "")[:12],
+			u.username,
 			u.firstName, u.lastName, u.shadow)
 		if err != nil {
 			t.Fatalf("insert user failed: %v", err)
+		}
+
+		displayName := u.firstName + " " + u.lastName
+		if idx == 0 {
+			displayName = "captainbright"
 		}
 
 		_, err = testDB.ExecContext(ctx, `
@@ -88,7 +94,7 @@ func TestSearchUsersByName(t *testing.T) {
 				user_id, display_name, avatar_url, is_profile_public, created_at, updated_at
 			) VALUES ($1, $2, $3, true, NOW(), NOW())
 			ON CONFLICT (user_id) DO NOTHING
-		`, u.id, u.firstName+" "+u.lastName, "https://example.com/avatars/"+u.id+".jpg")
+		`, u.id, displayName, "https://example.com/avatars/"+u.id+".jpg")
 		if err != nil {
 			t.Fatalf("insert profile failed: %v", err)
 		}
@@ -121,6 +127,17 @@ func TestSearchUsersByName(t *testing.T) {
 	}
 	if len(res) != 2 {
 		t.Fatalf("expected 2 results (shadow user excluded), got %d", len(res))
+	}
+
+	res, err = repo.SearchUsersByName(ctx, "captain", "", 20)
+	if err != nil {
+		t.Fatalf("nickname search failed: %v", err)
+	}
+	if len(res) != 1 {
+		t.Fatalf("expected 1 result for nickname search, got %d", len(res))
+	}
+	if res[0].Username != "captainbright" {
+		t.Fatalf("unexpected nickname result: %+v", res[0])
 	}
 }
 

@@ -1,9 +1,11 @@
+import 'package:app/src/core/constants/regex_constants.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,7 +29,7 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
   }
 
   bool _isValidEmail(String email) {
-    return RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email);
+    return RegexConstants.email.hasMatch(email);
   }
 
   @override
@@ -36,84 +38,109 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
       create: (context) => getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
-        appBar: const CustomAppBar(title: 'Email'),
-        body: BlocConsumer<AuthBloc, AuthState>(
-          listener: (context, state) {
-            state.when(
-              initial: () {},
-              loading: () {},
-              loadingFailure: (message) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(message), backgroundColor: Colors.red),
-                );
-              },
-              goRegister: () {},
-              loaded: (viewModel) {},
-              authenticated: (loginEntity) {},
-              phoneVerificationStarted: (verificationId, phoneNumber) {},
-              emailChecked: (exists, email) {
-                context.pushNamed(
-                  RouteNames.emailPassword,
-                  extra: {'email': email, 'isNewUser': !exists},
-                );
-              },
-            );
-          },
-          builder: (context, state) {
-            final isLoading = state.maybeWhen(
-              loading: () => true,
-              loaded: (viewModel) => viewModel.isLoading,
-              orElse: () => false,
-            );
-
-            return SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 18,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.1),
-                    Text("Enter your email", style: TextStyles.titleXBig),
-                    Gap(16),
-                    Text(
-                      "We'll check if you have an account",
-                      style: TextStyles.bodyLarge,
-                    ),
-                    Gap(40),
-                    CustomTextField(
-                      controller: _emailController,
-                      labelText: "Email",
-                      hintText: "your@email.com",
-                      keyboardType: TextInputType.emailAddress,
-                      onChanged: (value) => setState(() {}),
-                    ),
-                    Gap(40),
-                    CustomButton(
-                      text: isLoading ? "Checking..." : "Continue",
-                      isDisabled:
-                          isLoading || !_isValidEmail(_emailController.text),
-                      onTap: () {
-                        if (_isValidEmail(_emailController.text)) {
-                          context.read<AuthBloc>().add(
-                            AuthEvent.checkEmail(
-                              email: _emailController.text.trim(),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    Gap(20),
-                    SizedBox(
-                      height: MediaQuery.of(context).viewInsets.bottom + 20,
-                    ),
+        appBar: const CustomAppBar(title: 'Email', backgroundColor: Colors.transparent),
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ParticleAnimation(
+                  particleCount: 25,
+                  particleColors: const [
+                    Color(0xFFFFFFFF),
                   ],
+                  minSize: 4.0,
+                  maxSize: 8.0,
+                  minDistanceBetweenParticles: 70.0,
                 ),
               ),
-            );
-          },
+            ),
+            BlocListener<AuthBloc, AuthState>(
+              listener: (context, state) {
+                state.when(
+                  initial: () {},
+                  loading: () {},
+                  loadingFailure: (message) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(message),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  },
+                  goRegister: () {},
+                  loaded: (viewModel) {},
+                  authenticated: (loginEntity) {},
+                  phoneVerificationStarted:
+                      (verificationId, phoneNumber) {},
+                  emailChecked: (exists, email) {
+                    context.pushNamed(
+                      RouteNames.emailPassword,
+                      extra: {'email': email, 'isNewUser': !exists},
+                    );
+                  },
+                );
+              },
+              child: SafeArea(
+                child: BlocBuilder<AuthBloc, AuthState>(
+                  builder: (context, state) {
+                    final isLoading = state.maybeWhen(
+                      loading: () => true,
+                      loaded: (viewModel) => viewModel.isLoading,
+                      orElse: () => false,
+                    );
+
+                    return SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                              height:
+                                  MediaQuery.of(context).size.height * 0.1),
+                          Text("Enter your email", style: TextStyles.titleXBig),
+                          Gap(16),
+                          Text(
+                            "We'll check if you have an account",
+                            style: TextStyles.bodyLarge,
+                          ),
+                          Gap(40),
+                          CustomTextField(
+                            controller: _emailController,
+                            labelText: "Email",
+                            hintText: "your@email.com",
+                            keyboardType: TextInputType.emailAddress,
+                            onChanged: (value) => setState(() {}),
+                          ),
+                          Gap(40),
+                          CustomButton(
+                            text: isLoading ? "Checking..." : "Continue",
+                            isDisabled:
+                                isLoading || !_isValidEmail(_emailController.text),
+                            onTap: () {
+                              if (_isValidEmail(_emailController.text)) {
+                                context.read<AuthBloc>().add(
+                                  AuthEvent.checkEmail(
+                                    email: _emailController.text.trim(),
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                          Gap(20),
+                          SizedBox(
+                            height: MediaQuery.of(context).viewInsets.bottom + 20,
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

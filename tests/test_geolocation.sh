@@ -79,7 +79,7 @@ PROFILE_RESPONSE=$(curl -s -X GET "$API_URL/api/v1/profiles/me" \
     -H "Authorization: Bearer $TOKEN")
 
 echo -e "${GREEN}✓ Current profile:${NC}"
-# Pretty print JSON if jq is available, otherwise just print raw
+# Pretty log JSON if jq is available, otherwise just log raw
 if command -v jq &> /dev/null; then
     echo "$PROFILE_RESPONSE" | jq .
 else

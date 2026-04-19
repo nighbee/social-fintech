@@ -5,17 +5,28 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/feed"
+	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/ranks"
+	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
+	"github.com/brightbund-backend/internal/platform/database/migrate"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/storage"
 	"github.com/brightbund-backend/internal/server"
+	"github.com/hibiken/asynq"
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 )
@@ -31,7 +42,6 @@ import (
 // @license.name Proprietary
 // @license.url https://brightbund.com/license
 
-// @host localhost:8081
 // @BasePath /api/v1
 
 // @securityDefinitions.apikey Bearer
@@ -86,6 +96,13 @@ func main() {
 		zap.String("database", cfg.Database.Name),
 	)
 
+	if cfg.Server.AutoMigrate {
+		if err := runStartupMigrations(db.DB); err != nil {
+			logger.Fatal("auto migrations failed", zap.Error(err))
+		}
+		logger.Info("auto migrations applied successfully")
+	}
+
 	redisCache, err := cache.New(cache.Config{
 		Address:      cfg.Redis.Address,
 		Password:     cfg.Redis.Password,
@@ -99,6 +116,15 @@ func main() {
 	defer redisCache.Close()
 
 	logger.Info("redis connection established", zap.String("address", cfg.Redis.Address))
+	
+	// Create Asynq client for background tasks (Video Processing)
+	asynqClient := asynq.NewClient(asynq.RedisClientOpt{
+		Addr:     cfg.Redis.Address,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+	defer asynqClient.Close()
+	logger.Info("asynq client initialized")
 
 	if err := db.HealthCheck(context.Background()); err != nil {
 		logger.Fatal("db health check failed", zap.Error(err))
@@ -182,7 +208,11 @@ func main() {
 	}
 
 	profilesRepo := profiles.NewRepository(db.DB)
-	profilesService := profiles.NewService(profilesRepo, storageClient, profilesCache)
+
+	mapRepo := mapmodule.NewRepository(db.DB)
+	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
+
+	profilesService := profiles.NewService(profilesRepo, storageClient, profilesCache, mapService)
 
 	ranksRepo := ranks.NewRepository(db.DB)
 	ranksService := ranks.NewService(ranksRepo)
@@ -190,18 +220,91 @@ func main() {
 
 	profilesHandler := profiles.NewHandler(profilesService, ranksService)
 	logger.Info("profiles module initialized")
+	mapHandler := mapmodule.NewHandler(mapService)
+	logger.Info("map module initialized")
 
-	economyWorker := economy.NewWorker(economyService, economyRepo, cfg.Economy)
-	economyWorker.Start()
-	defer economyWorker.Stop()
-	logger.Info("economy worker started")
+	// Feed Module Initialization
+	feedRepo := feed.NewRepositoryWithAdaptiveGeo(db.DB, cfg.Storage.PublicURL, feed.AdaptiveGeoConfig{
+		Enabled:            cfg.Feed.AdaptiveGeoEnabled,
+		MaxKRing:           cfg.Feed.MaxKRing,
+		Ring1RadiusKm:      cfg.Feed.Ring1RadiusKm,
+		Ring2RadiusKm:      cfg.Feed.Ring2RadiusKm,
+		Ring3RadiusKm:      cfg.Feed.Ring3RadiusKm,
+		MinLocalPosts24h:   cfg.Feed.MinLocalPosts24h,
+		MinLocalAuthors24h: cfg.Feed.MinLocalAuthors24h,
+		MedLocalPosts24h:   cfg.Feed.MedLocalPosts24h,
+		MedLocalAuthors24h: cfg.Feed.MedLocalAuthors24h,
+		LocalShareLow:      cfg.Feed.LocalShareLow,
+		LocalShareMedium:   cfg.Feed.LocalShareMedium,
+		LocalShareHigh:     cfg.Feed.LocalShareHigh,
+	})
+	feedCache := feed.NewCacheRepository(redisCache)
+	feedService := feed.NewService(feedRepo, feedCache, profilesRepo, asynqClient)
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, jwtManager, authRepo, logger.Get())
+	// Workers have been moved to cmd/worker to unblock API event loop
+	// Handlers that depended on workers directly are injected appropriately OR refactored
+	// (Note: To keep this compiling safely right away, we will stub the feedWorker temporarily or pass nil if the handler supports it.
+	// Feed handler needs to use Redis directly or a dedicated queue interface instead of the worker instance,
+	// but for now we'll rely on the existing worker initialization for interface compliance if needed, just without .Start())
+
+	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
+	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, cfg.Storage.PublicURL, cfg.Storage.TempBucket)
+	logger.Info("feed module initialized")
+
+	settingsRepo := settings.NewRepository(db.DB)
+	settingsAuthAdapter := settings.NewAuthAdapter(authRepo)
+	settingsService := settings.NewService(settingsRepo, smsSender, settingsAuthAdapter)
+	settingsHandler := settings.NewHandler(settingsService)
+	settingsWorker := settings.NewWorker(settingsService)
+	settingsWorker.Start()
+	logger.Info("settings module initialized")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
 
-	if err := app.Listen(addr); err != nil {
-		logger.Fatal("server stopped", zap.Error(err))
+	// Listen for OS signals for graceful shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		if err := app.Listen(addr); err != nil {
+			logger.Fatal("server stopped", zap.Error(err))
+		}
+	}()
+
+	<-sigCh
+	logger.Info("shutting down server...")
+	settingsWorker.Stop()
+
+	if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
+		logger.Error("server shutdown error", zap.Error(err))
 	}
+
+	logger.Info("shutdown complete")
+}
+
+func runStartupMigrations(db *sqlx.DB) error {
+	paths := []string{
+		"migrations",
+		filepath.Join("backend", "migrations"),
+		filepath.Join("..", "migrations"),
+	}
+
+	var errors []string
+	for _, path := range paths {
+		abs, _ := filepath.Abs(path)
+		if _, err := os.Stat(path); err != nil {
+			errors = append(errors, fmt.Sprintf("path %s (abs: %s): %v", path, abs, err))
+			continue
+		}
+		if err := migrate.Run(db, path); err != nil {
+			errors = append(errors, fmt.Sprintf("path %s: migration error: %v", path, err))
+			continue
+		}
+		return nil
+	}
+
+	return fmt.Errorf("failed to run migrations from known paths: \n- %s", strings.Join(errors, "\n- "))
 }

@@ -6,6 +6,11 @@ import 'package:flutter/foundation.dart';
 import 'src/app/application.dart';
 import 'src/app/runner.dart';
 
+void main(List<String> args) {
+  final flavor = kReleaseMode ? AppFlavor.production : AppFlavor.development;
+  mainWithFlavor(flavor, args);
+}
+
 Future<void> mainWithFlavor(AppFlavor flavor, List<String> args) async {
   // Log startup information
   debugPrint('=== BrightBund App Starting ===');

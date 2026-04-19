@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/services.dart';
 import 'package:get_it/get_it.dart';
@@ -46,13 +47,13 @@ extension ServiceRegisterProxy on GetIt {
   /// The callback method allows you to reset a registered Object,
   /// releasing any resources it holds and allowing it to be recreated.
   void resetBloc<T extends BaseBloc<dynamic, dynamic>>(T instance) {
-    print('Resetting bloc: ${instance.runtimeType}');
+    log('Resetting bloc: ${instance.runtimeType}');
     final int key = instance.hashCode;
     if (_resetTer.containsKey(key)) {
       _resetTer[key]!();
       _resetTer.remove(key);
     } else {
-      print('Bloc not found in reset map: ${instance.runtimeType}');
+      log('Bloc not found in reset map: ${instance.runtimeType}');
     }
   }
 }

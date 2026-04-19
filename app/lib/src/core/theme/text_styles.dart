@@ -5,14 +5,14 @@ abstract class TextStyles {
     fontSize: 30,
     fontFamily: FontFamily.canelaDeckTrial,
     fontWeight: FontWeight.w500,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 36 / 30,
   );
   static const titleBig = TextStyle(
     fontSize: 24,
     fontFamily: FontFamily.canelaDeckTrial,
     fontWeight: FontWeight.w500,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 26 / 24,
   );
 
@@ -20,7 +20,7 @@ abstract class TextStyles {
     fontSize: 20,
     fontFamily: FontFamily.canelaDeckTrial,
     fontWeight: FontWeight.w500,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 22 / 20,
   );
 
@@ -28,7 +28,7 @@ abstract class TextStyles {
     fontSize: 18,
     fontFamily: FontFamily.canelaDeckTrial,
     fontWeight: FontWeight.w500,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 20 / 18,
   );
 
@@ -36,7 +36,7 @@ abstract class TextStyles {
     fontSize: 16,
     fontFamily: FontFamily.canelaDeckTrial,
     fontWeight: FontWeight.w400,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 18 / 16,
   );
 
@@ -44,7 +44,7 @@ abstract class TextStyles {
     fontSize: 16,
     fontFamily: FontFamily.lora,
     fontWeight: FontWeight.w400,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 18 / 16,
   );
 
@@ -52,7 +52,7 @@ abstract class TextStyles {
     fontSize: 13,
     fontFamily: FontFamily.lora,
     fontWeight: FontWeight.w400,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 15 / 13,
   );
 
@@ -60,7 +60,7 @@ abstract class TextStyles {
     fontSize: 12,
     fontFamily: FontFamily.canelaDeckTrial,
     fontWeight: FontWeight.w400,
-    color: AppColors.textGray3,
+    color: AppColors.colorff87898f,
     height: 14 / 12,
   );
 }

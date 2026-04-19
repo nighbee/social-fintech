@@ -1,6 +1,8 @@
 package profiles
 
 import (
+	"strings"
+
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -602,24 +604,39 @@ func (h *Handler) ReportUser(c *fiber.Ctx) error {
 }
 
 // SearchUsers godoc
-// @Summary Search users by first/last name
-// @Description Public search for referrer user selection
+// @Summary Search users by nickname or name
+// @Description Public search for referrer user selection. Supports nickname (username), display name, or first/last name.
 // @Tags Users
 // @Accept json
 // @Produce json
-// @Param first_name query string true "First name"
-// @Param last_name query string true "Last name"
+// @Param query query string false "Unified query (nickname/username, display name, or name)"
+// @Param first_name query string false "First name or generic query token"
+// @Param last_name query string false "Last name (optional)"
 // @Param limit query int false "Limit (max 50)"
 // @Success 200 {array} UserSearchResult
 // @Router /users/search [get]
 func (h *Handler) SearchUsers(c *fiber.Ctx) error {
+	query := c.Query("query")
 	firstName := c.Query("first_name")
 	lastName := c.Query("last_name")
+	if query != "" {
+		query = strings.TrimSpace(query)
+		query = strings.TrimPrefix(query, "@")
+		parts := strings.Fields(query)
+		if len(parts) >= 2 {
+			firstName = parts[0]
+			lastName = strings.Join(parts[1:], " ")
+		} else {
+			firstName = query
+			lastName = ""
+		}
+	}
 	limit := c.QueryInt("limit", 20)
 
 	results, err := h.service.SearchUsers(c.Context(), firstName, lastName, limit)
 	if err != nil {
 		logger.Error("failed to search users",
+			zap.String("query", query),
 			zap.String("first_name", firstName),
 			zap.String("last_name", lastName),
 			zap.Error(err),
@@ -630,42 +647,7 @@ func (h *Handler) SearchUsers(c *fiber.Ctx) error {
 	return c.JSON(results)
 }
 
-// SearchProfilesForFeed godoc
-// @Summary Search user profiles for home/feed page
-// @Description Search profiles by name with privacy and block filters. Returns profiles with avatar, reputation, and rank.
-// @Tags Profiles
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param query query string true "Search query (matches first name, last name, or display name)" example:"john"
-// @Param limit query int false "Results limit (max 50)" default(20)
-// @Param offset query int false "Pagination offset" default(0)
-// @Success 200 {array} ProfileSearchResult "List of matching profiles"
-// @Failure 401 {object} map[string]string "Unauthorized"
-// @Failure 500 {object} map[string]string "Internal server error"
-// @Router /profiles/search [get]
-func (h *Handler) SearchProfilesForFeed(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
-	}
-
-	query := c.Query("query")
-	limit := c.QueryInt("limit", 20)
-	offset := c.QueryInt("offset", 0)
-
-	results, err := h.service.SearchProfilesForFeed(c.Context(), userID, query, limit, offset)
-	if err != nil {
-		logger.Error("failed to search profiles for feed",
-			zap.String("user_id", userID),
-			zap.String("query", query),
-			zap.Error(err),
-		)
-		return c.Status(500).JSON(fiber.Map{"error": "search_failed"})
-	}
-
-	return c.JSON(results)
-}
+// SearchProfilesForFeed handler removed: global profile search is not part of product scope.
 
 // GetMyRank godoc
 // @Summary Get my rank
