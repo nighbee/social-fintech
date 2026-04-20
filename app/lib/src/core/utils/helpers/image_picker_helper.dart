@@ -151,28 +151,16 @@ class ImagePickerHelper {
                 ),
                 ListTile(
                   leading: const Icon(Icons.photo_library),
-                  title: const Text('Choose photo from gallery'),
+                  title: const Text('Choose photos/videos from gallery'),
                   onTap: () async {
                     Navigator.pop(context);
-                    await _pickImage(
-                      picker,
-                      ImageSource.gallery,
-                      onMediaSelected,
-                      imageQuality,
-                      maxWidth,
-                      maxHeight,
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.video_library),
-                  title: const Text('Choose video from gallery'),
-                  onTap: () async {
-                    Navigator.pop(context);
-                    await _pickVideo(
+                    await _pickMultipleMedia(
                       picker,
                       onMediaSelected,
-                      compressQuality: videoQuality,
+                      imageQuality: imageQuality,
+                      maxWidth: maxWidth,
+                      maxHeight: maxHeight,
+                      videoQuality: videoQuality,
                       onError: onError,
                     );
                   },
@@ -317,39 +305,58 @@ class ImagePickerHelper {
     }
   }
 
-  static Future<void> _pickVideo(
+  static Future<void> _pickMultipleMedia(
     ImagePicker picker,
     Function(Uint8List bytes, String fileName) onMediaSelected, {
-    required VideoQuality compressQuality,
+    required int imageQuality,
+    required double? maxWidth,
+    required double? maxHeight,
+    required VideoQuality videoQuality,
     Function(String message)? onError,
   }) async {
     try {
-      final XFile? video = await picker.pickVideo(
-        source: ImageSource.gallery,
-        maxDuration: const Duration(minutes: 2),
+      final List<XFile> medias = await picker.pickMultipleMedia(
+        imageQuality: imageQuality,
+        maxWidth: maxWidth,
+        maxHeight: maxHeight,
       );
-      if (video != null) {
-        // Сжатие под выбранное качество (см. VideoQuality в video_compress)
-        final info = await VideoCompress.compressVideo(
-          video.path,
-          quality: compressQuality,
-          deleteOrigin: false,
-          includeAudio: true,
-        );
-        if (info != null && info.file != null) {
-          final compressedFile = info.file!;
-          final bytes = await compressedFile.readAsBytes();
-          onMediaSelected(bytes, compressedFile.path);
+      if (medias.isEmpty) {
+        onError?.call('No media selected.');
+        return;
+      }
+
+      for (final media in medias) {
+        if (_isVideoFileName(media.path)) {
+          final info = await VideoCompress.compressVideo(
+            media.path,
+            quality: videoQuality,
+            deleteOrigin: false,
+            includeAudio: true,
+          );
+          if (info != null && info.file != null) {
+            final compressedFile = info.file!;
+            final bytes = await compressedFile.readAsBytes();
+            onMediaSelected(bytes, compressedFile.path);
+          } else {
+            onError?.call('Failed to compress one of selected videos.');
+          }
         } else {
-          onError?.call('Failed to compress video.');
+          final bytes = await media.readAsBytes();
+          onMediaSelected(bytes, media.path);
         }
-      } else {
-        onError?.call('Video was not selected. Max duration is 2 minutes.');
       }
     } catch (e) {
-      debugPrint('Error picking/compressing video: $e');
-      onError?.call('Failed to pick or compress video. Please try again.');
+      debugPrint('Error picking multiple media: $e');
+      onError?.call('Failed to select media. Please try again.');
     }
+  }
+
+  static bool _isVideoFileName(String fileName) {
+    final name = fileName.toLowerCase();
+    return name.endsWith('.mp4') ||
+        name.endsWith('.mov') ||
+        name.endsWith('.m4v') ||
+        name.endsWith('.webm');
   }
 }
 

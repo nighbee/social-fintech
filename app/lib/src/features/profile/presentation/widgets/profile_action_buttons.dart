@@ -8,9 +8,9 @@ import 'package:go_router/go_router.dart';
 class ProfileActionButtons extends StatelessWidget {
   const ProfileActionButtons({super.key});
 
-  static const Color _primaryBtnFill = Color(0xFF6D6D6D);
-  static const Color _primaryBtnBorder = Color(0xFF656565);
-  static const Color _iconBtnFill = Color(0xFF404040);
+  static const Color _primaryBtnFill = Color.fromRGBO(109, 109, 109, 0.35);
+  static const Color _primaryBtnBorder = Color.fromRGBO(101, 101, 101, 0.25);
+  static const Color _iconBtnFill = Color.fromRGBO(64, 64, 64, 0.24);
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +24,7 @@ class ProfileActionButtons extends StatelessWidget {
             onTap: () => context.pushNamed(RouteNames.editProfile),
           ),
         ),
-        const Gap(4),
+        const Gap(6),
         Expanded(
           flex: 152,
           child: _PrimaryActionPill(
@@ -32,7 +32,7 @@ class ProfileActionButtons extends StatelessWidget {
             onTap: () {},
           ),
         ),
-        const Gap(4),
+        const Gap(6),
         _IconActionPill(
           onTap: () => context.push('/profile/allies'),
         ),
@@ -57,14 +57,12 @@ class _PrimaryActionPill extends StatelessWidget {
       child: Container(
         height: 30,
         alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
         decoration: BoxDecoration(
-          color: ProfileActionButtons._primaryBtnFill.withValues(alpha: 0.35),
+          color: ProfileActionButtons._primaryBtnFill,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: ProfileActionButtons._primaryBtnBorder.withValues(
-              alpha: 0.25,
-            ),
+            color: ProfileActionButtons._primaryBtnBorder,
             width: 0.8,
           ),
         ),
@@ -76,7 +74,8 @@ class _PrimaryActionPill extends StatelessWidget {
           style: TextStyles.titleTag.copyWith(
             color: const Color(0xFFCACACA),
             fontSize: 12,
-            height: 1,
+            fontWeight: FontWeight.w400,
+            height: 14 / 12,
           ),
         ),
       ),
@@ -99,10 +98,10 @@ class _IconActionPill extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.fromLTRB(10, 2, 9, 2),
         decoration: BoxDecoration(
-          color: ProfileActionButtons._iconBtnFill.withValues(alpha: 0.24),
+          color: ProfileActionButtons._iconBtnFill,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.12),
+            color: const Color.fromRGBO(160, 160, 160, 0.2),
             width: 1,
           ),
         ),

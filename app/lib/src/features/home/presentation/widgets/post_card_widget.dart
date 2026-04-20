@@ -495,10 +495,36 @@ class _PostAvatar extends StatelessWidget {
   }
 }
 
-class PostImageGrid extends StatelessWidget {
+class PostImageGrid extends StatefulWidget {
   final List<MediaAttachmentEntity> attachments;
 
   const PostImageGrid({super.key, required this.attachments});
+
+  @override
+  State<PostImageGrid> createState() => _PostImageGridState();
+}
+
+class _PostImageGridState extends State<PostImageGrid> {
+  final PageController _pageController = PageController();
+  int _pageIndex = 0;
+
+  @override
+  void didUpdateWidget(covariant PostImageGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.attachments.length != oldWidget.attachments.length &&
+        _pageIndex >= widget.attachments.length) {
+      _pageIndex = 0;
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(0);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   bool _isVideo(MediaAttachmentEntity item) {
     return item.type.toLowerCase() == 'video';
@@ -528,60 +554,60 @@ class PostImageGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final attachments = widget.attachments;
     if (attachments.length == 1) {
       return _mediaTile(
         attachments[0],
-        height: 200,
+        height: 240,
         width: double.infinity,
       );
-    } else if (attachments.length == 2) {
-      return Row(
-        children: [
-          Expanded(
-            child: _mediaTile(
-              attachments[0],
-              height: 150,
-            ),
-          ),
-          const Gap(8),
-          Expanded(
-            child: _mediaTile(
-              attachments[1],
-              height: 150,
-            ),
-          ),
-        ],
-      );
-    } else {
-      // 3 or more images
-      return Column(
-        children: [
-          _mediaTile(
-            attachments[0],
-            height: 200,
-            width: double.infinity,
-          ),
-          const Gap(8),
-          Row(
-            children: [
-              Expanded(
-                child: _mediaTile(
-                  attachments[1],
-                  height: 100,
-                ),
-              ),
-              const Gap(8),
-              Expanded(
-                child: _mediaTile(
-                  attachments[2],
-                  height: 100,
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
     }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Stack(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 240,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: attachments.length,
+              onPageChanged: (index) {
+                if (_pageIndex != index) {
+                  setState(() => _pageIndex = index);
+                }
+              },
+              itemBuilder: (context, index) {
+                return _mediaTile(
+                  attachments[index],
+                  height: 240,
+                  width: double.infinity,
+                );
+              },
+            ),
+          ),
+          Positioned(
+            right: 10,
+            bottom: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                '${_pageIndex + 1}/${attachments.length}',
+                style: TextStyles.bodyMain.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -9,7 +9,8 @@ class MapPersistenceService {
     return '${baseKey}_${userId.trim()}';
   }
 
-  Future<DateTime?> readLastCreatorTaskCreatedAt({required String userId}) async {
+  Future<DateTime?> readLastCreatorTaskCreatedAt(
+      {required String userId}) async {
     if (userId.trim().isEmpty) {
       return null;
     }
@@ -80,11 +81,9 @@ class MapPersistenceService {
   }
 
   Future<void> writeActiveExecutorApplication(
-    ActiveExecutorApplication target,
-    {
+    ActiveExecutorApplication target, {
     required String userId,
-  }
-  ) async {
+  }) async {
     if (userId.trim().isEmpty) {
       return;
     }
@@ -116,5 +115,27 @@ class MapPersistenceService {
     await prefsInstance.initialize();
     await prefsInstance.remove(KeyStore.mapActiveExecutorTaskId);
     await prefsInstance.remove(KeyStore.mapActiveExecutorApplicationId);
+  }
+
+  Future<bool> isLocationOnboardingShown({required String userId}) async {
+    if (userId.trim().isEmpty) {
+      return true;
+    }
+    await prefsInstance.initialize();
+    return prefsInstance.get<bool>(
+          _scopedKey(KeyStore.mapLocationOnboardingShown, userId),
+        ) ??
+        false;
+  }
+
+  Future<void> markLocationOnboardingShown({required String userId}) async {
+    if (userId.trim().isEmpty) {
+      return;
+    }
+    await prefsInstance.initialize();
+    await prefsInstance.set<bool>(
+      _scopedKey(KeyStore.mapLocationOnboardingShown, userId),
+      true,
+    );
   }
 }

@@ -12,6 +12,8 @@ class CustomNetworkImage extends StatelessWidget {
     this.borderRadius,
     this.cacheWidth,
     this.cacheHeight,
+    this.errorIcon = Icons.broken_image,
+    this.errorIconSize = 32,
   });
 
   final String imageUrl;
@@ -21,6 +23,8 @@ class CustomNetworkImage extends StatelessWidget {
   final BorderRadius? borderRadius;
   final int? cacheWidth;
   final int? cacheHeight;
+  final IconData errorIcon;
+  final double errorIconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +48,7 @@ class CustomNetworkImage extends StatelessWidget {
               child: CircularProgressIndicator(
                 value: loadingProgress.expectedTotalBytes != null
                     ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
+                        loadingProgress.expectedTotalBytes!
                     : null,
                 strokeWidth: 2,
                 color: AppColors.colorff9CA3AF,
@@ -58,9 +62,9 @@ class CustomNetworkImage extends StatelessWidget {
             height: height,
             color: AppColors.colorff2A2A2B,
             child: Icon(
-              Icons.broken_image,
+              errorIcon,
               color: AppColors.colorff9CA3AF,
-              size: 32,
+              size: errorIconSize,
             ),
           );
         },

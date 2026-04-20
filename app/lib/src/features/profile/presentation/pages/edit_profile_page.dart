@@ -243,6 +243,8 @@ class _EditProfilePhotoButton extends StatelessWidget {
                       width: 146,
                       height: 146,
                       borderRadius: BorderRadius.circular(8),
+                      errorIcon: Icons.person_outline,
+                      errorIconSize: 36,
                     )
                   : Container(
                       width: 146,

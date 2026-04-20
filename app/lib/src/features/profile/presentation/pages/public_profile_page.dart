@@ -103,6 +103,8 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                         child: ProfileHeaderCard(
                           displayName: profile.displayName,
                           userId: profile.userId,
+                          firstName: profile.firstName,
+                          lastName: profile.lastName,
                           avatarUrl: profile.avatarUrl,
                           bio: profile.bio,
                           city: profile.city,

@@ -24,6 +24,7 @@ import 'package:app/src/features/map/presentation/services/map_location_settings
 import 'package:app/src/features/map/presentation/services/map_self_marker_service.dart';
 import 'package:app/src/features/map/presentation/utils/map_flow_evaluator.dart';
 import 'package:app/src/features/map/presentation/utils/map_marker_zoom_scale.dart';
+import 'package:app/src/features/profile/data/local/location_access_prefs.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
@@ -108,6 +109,7 @@ class MapPageController {
   int? _stickyChampionResolution;
   int? _fallbackChampionResolution;
   bool? _lastLocationOptInSent;
+  bool _didCheckInitialLocationOnboarding = false;
 
   static const double _regionReassignDistanceMeters = 450;
   static const Duration _cameraGeoRefreshDebounceDuration =
@@ -223,6 +225,7 @@ class MapPageController {
     required bool mounted,
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
+    unawaited(_tryShowInitialLocationOnboarding(context));
     _rememberLatestCreatorTaskCreatedAt(viewModel);
 
     if (MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks) == null &&
@@ -323,6 +326,61 @@ class MapPageController {
     }
   }
 
+  Future<void> _tryShowInitialLocationOnboarding(BuildContext context) async {
+    if (_didCheckInitialLocationOnboarding) {
+      return;
+    }
+    final userId = _resolveCurrentUserId();
+    if (userId == null) {
+      return;
+    }
+    _didCheckInitialLocationOnboarding = true;
+    final isShown =
+        await _persistence.isLocationOnboardingShown(userId: userId);
+    if (isShown || !context.mounted) {
+      return;
+    }
+
+    await _persistence.markLocationOnboardingShown(userId: userId);
+    if (!context.mounted) {
+      return;
+    }
+    final shouldRequestPermission =
+        await _dialogs.showInitialLocationOnboardingDialog(context);
+    if (!context.mounted) {
+      return;
+    }
+
+    await prefsInstance.initialize();
+    if (shouldRequestPermission) {
+      await writeLocationAccessPrefs(
+        label: 'While using the app',
+        precise: true,
+      );
+      var permission = await geo.Geolocator.checkPermission();
+      if (permission == geo.LocationPermission.denied) {
+        permission = await geo.Geolocator.requestPermission();
+      }
+      if (permission == geo.LocationPermission.deniedForever &&
+          context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Location access was denied permanently. You can enable it in Settings.',
+            ),
+          ),
+        );
+      }
+      if (!context.mounted) {
+        return;
+      }
+      await moveToCurrentLocation(context);
+    } else {
+      await writeLocationAccessPrefs(label: 'Never', precise: false);
+      _maybeAssignRegionForCurrentGeoContext(force: true);
+    }
+  }
+
   Future<void> _restoreLastCreatorTaskCreatedAt() async {
     final userId = _resolveCurrentUserId();
     if (userId == null) {
@@ -396,8 +454,7 @@ class MapPageController {
     }
     final byId = {for (final t in my) t.id: t};
     return [
-      for (final t in nearby)
-        _applyMyTaskStatusIfSameId(t, byId[t.id]),
+      for (final t in nearby) _applyMyTaskStatusIfSameId(t, byId[t.id]),
     ];
   }
 
@@ -413,23 +470,23 @@ class MapPageController {
 
   String? _resolveProfileAvatarUrl() {
     return getIt<ProfileBloc>().state.maybeWhen(
-          loaded: (vm) {
-            final u = vm.profile.avatarUrl;
-            return u.isEmpty ? null : u;
-          },
-          loading: (vm) {
-            final u = vm.profile.avatarUrl;
-            return u.isEmpty ? null : u;
-          },
-          orElse: () => null,
-        ) ??
+              loaded: (vm) {
+                final u = vm.profile.avatarUrl;
+                return u.isEmpty ? null : u;
+              },
+              loading: (vm) {
+                final u = vm.profile.avatarUrl;
+                return u.isEmpty ? null : u;
+              },
+              orElse: () => null,
+            ) ??
         getIt<AuthBloc>().state.maybeWhen(
-          authenticated: (login) {
-            final u = login.user.avatarUrl;
-            return u.isEmpty ? null : u;
-          },
-          orElse: () => null,
-        );
+              authenticated: (login) {
+                final u = login.user.avatarUrl;
+                return u.isEmpty ? null : u;
+              },
+              orElse: () => null,
+            );
   }
 
   void onMapCreated(MapboxMap map) {
@@ -645,10 +702,10 @@ class MapPageController {
     }
   }
 
-    // Geo-context should follow visible map area (camera center), not only
-    // device GPS, otherwise nearby/champions can look "stuck" in another zone.
-    double get _latitudeForGeoContext => currentLatitude;
-    double get _longitudeForGeoContext => currentLongitude;
+  // Geo-context should follow visible map area (camera center), not only
+  // device GPS, otherwise nearby/champions can look "stuck" in another zone.
+  double get _latitudeForGeoContext => currentLatitude;
+  double get _longitudeForGeoContext => currentLongitude;
 
   void onCameraChanged(CameraChangedEventData eventData) {
     currentLatitude = eventData.cameraState.center.coordinates.lat.toDouble();
@@ -776,8 +833,7 @@ class MapPageController {
 
   void _scheduleCameraGeoRefresh() {
     _cameraGeoRefreshDebounce?.cancel();
-    _cameraGeoRefreshDebounce =
-        Timer(_cameraGeoRefreshDebounceDuration, () {
+    _cameraGeoRefreshDebounce = Timer(_cameraGeoRefreshDebounceDuration, () {
       _refreshNearbyTasks();
       _maybeAssignRegionForCurrentGeoContext();
     });
@@ -807,7 +863,9 @@ class MapPageController {
       return;
     }
 
-    if (!force && _lastRegionAssignLat != null && _lastRegionAssignLon != null) {
+    if (!force &&
+        _lastRegionAssignLat != null &&
+        _lastRegionAssignLon != null) {
       final distanceMeters = geo.Geolocator.distanceBetween(
         _lastRegionAssignLat!,
         _lastRegionAssignLon!,
@@ -1052,12 +1110,14 @@ class MapPageController {
       return;
     }
 
-    final appliedStatus = viewModel.applyToTaskResult.status.trim().toLowerCase();
+    final appliedStatus =
+        viewModel.applyToTaskResult.status.trim().toLowerCase();
     final verifyStatus = viewModel.verifyCodeResult.status.trim().toLowerCase();
-    final isCodeVerified = (viewModel.verifyCodeResult.applicationId == applicationId &&
-            verifyStatus == 'code_verified') ||
-        appliedStatus == 'code_verified' ||
-        executorTaskStatus.trim().toLowerCase() == 'code_verified';
+    final isCodeVerified =
+        (viewModel.verifyCodeResult.applicationId == applicationId &&
+                verifyStatus == 'code_verified') ||
+            appliedStatus == 'code_verified' ||
+            executorTaskStatus.trim().toLowerCase() == 'code_verified';
 
     // Backend blocks withdraw after code verification; do not hide UI silently.
     if (isCodeVerified) {
@@ -1523,13 +1583,11 @@ class MapPageController {
     required String action,
   }) {
     final isAccepted = action == 'accepted';
-    final accent = isAccepted
-        ? const Color(0xFF34D399)
-        : const Color(0xFFF59E0B);
+    final accent =
+        isAccepted ? const Color(0xFF34D399) : const Color(0xFFF59E0B);
     final icon = isAccepted ? Icons.check_circle_outline : Icons.info_outline;
-    final message = isAccepted
-        ? 'Application accepted'
-        : 'Application rejected';
+    final message =
+        isAccepted ? 'Application accepted' : 'Application rejected';
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.hideCurrentSnackBar();

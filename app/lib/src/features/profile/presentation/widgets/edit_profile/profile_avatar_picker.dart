@@ -23,6 +23,8 @@ class ProfileAvatarPicker extends StatelessWidget {
                   width: 100,
                   height: 100,
                   borderRadius: BorderRadius.circular(50),
+                  errorIcon: Icons.person_outline,
+                  errorIconSize: 36,
                 )
               : Container(
                   width: 100,

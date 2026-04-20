@@ -255,72 +255,73 @@ class _MapContent extends StatelessWidget {
               child: SizedBox(
                 width: 400,
                 height: 107,
-                child: ClipRect(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  clipBehavior: Clip.antiAlias,
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.18),
-                          gradient: RadialGradient(
-                            center: const Alignment(-0.2, -1.2),
-                            radius: 1.6,
-                            colors: [
-                              Colors.white.withValues(alpha: 0.12),
-                              Colors.transparent,
-                            ],
-                          ),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.public,
-                                  size: 16,
-                                  color: MapUiPalette.subtleText,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'GLOBAL RANKING CYCLE',
-                                  style: TextStyles.bodySecondary.copyWith(
-                                    color: MapUiPalette.subtleText,
-                                    letterSpacing: 0.45,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: RankingCountdownWidget(
-                                textStyle: TextStyles.titleXBig.copyWith(
-                                  color: Colors.white,
-                                  fontSize: 31,
-                                  height: 1,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              'Regional champions update worldwide...',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyles.bodySecondary.copyWith(
-                                color: MapUiPalette.mutedText,
-                                fontSize: 13,
-                              ),
-                            ),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(6),
+                        color: Colors.black.withValues(alpha: 0.18),
+                        gradient: RadialGradient(
+                          center: const Alignment(-0.2, -1.2),
+                          radius: 1.6,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.12),
+                            Colors.transparent,
                           ],
                         ),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.22),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.public,
+                                size: 16,
+                                color: MapUiPalette.subtleText,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'GLOBAL RANKING CYCLE',
+                                style: TextStyles.bodySecondary.copyWith(
+                                  color: MapUiPalette.subtleText,
+                                  letterSpacing: 0.45,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: RankingCountdownWidget(
+                              textStyle: TextStyles.titleXBig.copyWith(
+                                color: Colors.white,
+                                fontSize: 31,
+                                height: 1,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'Regional champions update worldwide...',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyles.bodySecondary.copyWith(
+                              color: MapUiPalette.mutedText,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

@@ -14,6 +14,8 @@ class ProfileHeaderCard extends StatelessWidget {
   const ProfileHeaderCard({
     required this.displayName,
     required this.userId,
+    required this.firstName,
+    required this.lastName,
     required this.avatarUrl,
     required this.bio,
     required this.city,
@@ -33,6 +35,8 @@ class ProfileHeaderCard extends StatelessWidget {
 
   final String displayName;
   final String userId;
+  final String firstName;
+  final String lastName;
   final String avatarUrl;
   final String bio;
   final String city;
@@ -50,17 +54,25 @@ class ProfileHeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final locationParts = <String>[
-      if (city.trim().isNotEmpty) city.trim(),
-      if (region.trim().isNotEmpty) region.trim(),
-      if (country.trim().isNotEmpty) country.trim(),
-    ];
-    final locationLine =
-        locationParts.isNotEmpty ? locationParts.join(' | ') : null;
+    final normalizedDisplayName = displayName.trim();
+    final normalizedFirstName = firstName.trim();
+    final normalizedLastName = lastName.trim();
+    final normalizedUserId = userId.trim();
+    final fullName = [normalizedFirstName, normalizedLastName]
+        .where((item) => item.isNotEmpty)
+        .join(' ');
+    final bestName = normalizedDisplayName.isNotEmpty
+        ? normalizedDisplayName
+        : (fullName.isNotEmpty ? fullName : normalizedUserId);
+    final title = bestName.isEmpty
+        ? '@unknown'
+        : (bestName.startsWith('@') ? bestName : '@$bestName');
+    final rankText =
+        rankTier.trim().isNotEmpty ? rankTier : 'Moonstone · Intention · A';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
       decoration: BoxDecoration(
         color: AppColors.feedMoonstoneBase,
         gradient: const RadialGradient(
@@ -71,13 +83,13 @@ class ProfileHeaderCard extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: AppColors.feedMoonstoneBorder,
+          color: Colors.white.withValues(alpha: 0.16),
           width: 1,
         ),
-        boxShadow: const <BoxShadow>[
+        boxShadow: <BoxShadow>[
           BoxShadow(
-            color: Color(0x29000000),
-            blurRadius: 10,
+            color: Colors.black.withValues(alpha: 0.28),
+            blurRadius: 12,
             offset: Offset(0, 4),
           ),
         ],
@@ -85,63 +97,73 @@ class ProfileHeaderCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              avatarUrl.trim().isNotEmpty
-                  ? CustomNetworkImage(
-                      imageUrl: avatarUrl,
-                      width: 126,
-                      height: 126,
-                      borderRadius: BorderRadius.circular(12),
-                    )
-                  : Container(
-                      width: 126,
-                      height: 126,
-                      decoration: BoxDecoration(
-                        color: AppColors.colorff2A2A2B,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.person_outline,
-                        size: 36,
-                        color: AppColors.colorff9CA3AF,
-                      ),
-                    ),
-              const Gap(16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName.isNotEmpty ? displayName : '@$userId',
-                      style: TextStyles.titleHeadline.copyWith(
-                        color: Colors.white,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (rankTier.trim().isNotEmpty) ...[
-                      const Gap(8),
-                      ProfileRankMetaLine(rankTier: rankTier),
-                    ],
-                    if (locationLine != null) ...[
-                      const Gap(8),
-                      Text(
-                        locationLine,
-                        style: TextStyles.bodyMain.copyWith(
-                          color: Colors.grey,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 320;
+              final avatarSize = isCompact ? 108.0 : 125.0;
+              final horizontalGap = isCompact ? 10.0 : 16.0;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  avatarUrl.trim().isNotEmpty
+                      ? CustomNetworkImage(
+                          imageUrl: avatarUrl,
+                          width: avatarSize,
+                          height: avatarSize,
+                          borderRadius: BorderRadius.circular(8),
+                          errorIcon: Icons.person_outline,
+                          errorIconSize: 36,
+                        )
+                      : Container(
+                          width: avatarSize,
+                          height: avatarSize,
+                          decoration: BoxDecoration(
+                            color: AppColors.colorff2A2A2B,
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: <BoxShadow>[
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.28),
+                                blurRadius: 4,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          alignment: const Alignment(0.12, 0.2),
+                          child: const Icon(
+                            Icons.person_outline,
+                            size: 36,
+                            color: AppColors.colorff9CA3AF,
+                          ),
                         ),
-                      ),
-                    ],
-                    const Gap(8),
-                    ProfileExpandableBio(text: bio),
-                    const Gap(8),
-                    ProfileStatsRow(goldenSeals: reputationScore),
-                  ],
-                ),
-              ),
-            ],
+                  Gap(horizontalGap),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyles.titleHeadline.copyWith(
+                            fontFamily: 'CanelaDeckTrial',
+                            fontWeight: FontWeight.w400,
+                            color: const Color(0xFFCACACA),
+                            fontSize: 18,
+                            height: 16 / 18,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const Gap(6),
+                        ProfileRankMetaLine(rankTier: rankText),
+                        const Gap(4),
+                        ProfileExpandableBio(text: bio),
+                        const Gap(8),
+                        ProfileStatsRow(goldenSeals: reputationScore),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           const Gap(12),
           isPublicProfile

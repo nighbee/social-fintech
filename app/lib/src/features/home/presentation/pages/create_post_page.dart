@@ -25,6 +25,9 @@ class CreatePostPage extends StatefulWidget {
 
 class _CreatePostPageState extends State<CreatePostPage>
     with ShowPostVisibilityBottomSheet {
+  static const int _maxMediaPerPost = 10;
+  static const int _maxVideosPerPost = 4;
+
   late final HomeBloc _bloc;
   late final TextEditingController _controller;
   late final FocusNode _focusNode;
@@ -72,7 +75,7 @@ class _CreatePostPageState extends State<CreatePostPage>
       maxHeight: 1280,
       videoQuality: VideoQuality.Res1280x720Quality,
       onMediaSelected: (bytes, fileName) {
-        _bloc.add(HomeEvent.addPostPhoto(bytes, fileName));
+        _tryAddMediaToComposer(bytes, fileName);
       },
       onError: (message) {
         if (!mounted) return;
@@ -89,6 +92,38 @@ class _CreatePostPageState extends State<CreatePostPage>
         name.endsWith('.mov') ||
         name.endsWith('.m4v') ||
         name.endsWith('.webm');
+  }
+
+  void _tryAddMediaToComposer(Uint8List bytes, String fileName) {
+    final viewModel = _bloc.state.maybeWhen(
+      loading: (viewModel) => viewModel,
+      loaded: (viewModel) => viewModel,
+      orElse: HomeViewModel.new,
+    );
+    final existing = viewModel.postComposerPhotos;
+    final isVideo = _isVideoFileName(fileName);
+    final videosCount = existing.where((p) => _isVideoFileName(p.fileName)).length;
+
+    if (existing.length >= _maxMediaPerPost) {
+      _showComposerLimitMessage(
+        'You can attach up to $_maxMediaPerPost media files per post.',
+      );
+      return;
+    }
+    if (isVideo && videosCount >= _maxVideosPerPost) {
+      _showComposerLimitMessage(
+        'You can attach up to $_maxVideosPerPost videos per post.',
+      );
+      return;
+    }
+    _bloc.add(HomeEvent.addPostPhoto(bytes, fileName));
+  }
+
+  void _showComposerLimitMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<Uint8List?> _getVideoThumb(String localPath) async {
