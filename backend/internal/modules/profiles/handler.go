@@ -93,6 +93,9 @@ func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 
 	p, err := h.service.UpdateMyProfile(c.Context(), userID.(string), &req)
 	if err != nil {
+		if err == ErrDisplayNameTooLong || err == ErrFirstNameTooLong || err == ErrLastNameTooLong || err == ErrBioTooLong {
+			return c.Status(400).JSON(fiber.Map{"error": "validation_error", "message": err.Error()})
+		}
 		logger.Error("failed to update profile",
 			zap.String("user_id", userID.(string)),
 			zap.String("request_id", c.Get("X-Request-Id")),

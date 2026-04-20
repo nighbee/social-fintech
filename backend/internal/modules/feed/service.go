@@ -2,6 +2,8 @@ package feed
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"math"
 	"net/url"
@@ -11,6 +13,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/logger"
+	"github.com/brightbund-backend/internal/platform/observability"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"go.uber.org/zap"
@@ -32,6 +35,8 @@ const (
 	CommentLevel2Threshold   = 5
 	CommentLevel3Threshold   = 10
 	CommentLevel4Threshold   = 20
+	maxPostPhotoAttachments  = 10
+	maxPostVideoAttachments  = 4
 )
 
 var severeReportReasons = map[string]struct{}{
@@ -326,9 +331,46 @@ func (s *Service) calcBreakSecondsRemaining(state *FeedFatigueState, now time.Ti
 // ---------------- Content System ----------------
 
 func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreatePostRequest) (*PostResponse, error) {
+	startedAt := time.Now()
+	observability.IncPostPublishAttempt()
+	req.IdempotencyKey = strings.TrimSpace(req.IdempotencyKey)
+	if req.IdempotencyKey != "" && !isValidPostIdempotencyKey(req.IdempotencyKey) {
+		observability.ObservePostPublishLatency(time.Since(startedAt), false)
+		return nil, ErrInvalidIdempotencyKey
+	}
+	fingerprint := postRequestFingerprint(req)
+	if req.IdempotencyKey != "" {
+		existingPostID, existingFingerprint, err := s.repo.GetPostByIdempotencyKey(ctx, userID, req.IdempotencyKey)
+		if err != nil {
+			observability.ObservePostPublishLatency(time.Since(startedAt), false)
+			return nil, err
+		}
+		if existingPostID != nil {
+			if existingFingerprint != "" && existingFingerprint != fingerprint {
+				observability.ObservePostPublishLatency(time.Since(startedAt), false)
+				return nil, ErrPostIdempotencyConflict
+			}
+			resp, err := s.repo.GetPost(ctx, *existingPostID, userID)
+			if err != nil {
+				observability.ObservePostPublishLatency(time.Since(startedAt), false)
+				return nil, err
+			}
+			observability.ObservePostPublishLatency(time.Since(startedAt), true)
+			return resp, nil
+		}
+	}
+
 	if req.Caption == "" && len(req.MediaAttachments) == 0 {
+		observability.ObservePostPublishLatency(time.Since(startedAt), false)
 		return nil, ErrPostRequiresMedia
 	}
+	if len(req.MediaAttachments) > maxPostPhotoAttachments {
+		observability.ObservePostPublishLatency(time.Since(startedAt), false)
+		return nil, ErrTooManyMediaAttachments
+	}
+
+	photoCount := 0
+	videoCount := 0
 
 	// Normalize media type and set initial processing state
 	for i := range req.MediaAttachments {
@@ -342,18 +384,39 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 			m.URL_1080p = m.URL
 		}
 
-		if m.Type == "video" {
+		if m.URL_1080p == "" {
+			observability.ObservePostPublishLatency(time.Since(startedAt), false)
+			return nil, ErrMediaURLRequired
+		}
+
+		switch m.Type {
+		case "video":
+			videoCount++
 			if m.DurationSeconds <= 0 {
+				observability.ObservePostPublishLatency(time.Since(startedAt), false)
 				return nil, ErrVideoDurationRequired
 			}
 			if m.DurationSeconds > MaxVideoDurationSeconds {
+				observability.ObservePostPublishLatency(time.Since(startedAt), false)
 				return nil, ErrVideoTooLong
 			}
 			m.ProcessingStatus = ProcessingStatusProcessing
 			m.OriginalPath = extractObjectPath(m.URL_1080p)
-		} else {
+		case "image":
+			photoCount++
 			m.ProcessingStatus = ProcessingStatusReady
+		default:
+			observability.ObservePostPublishLatency(time.Since(startedAt), false)
+			return nil, ErrUnsupportedMediaType
 		}
+	}
+	if photoCount > maxPostPhotoAttachments {
+		observability.ObservePostPublishLatency(time.Since(startedAt), false)
+		return nil, ErrTooManyPhotoAttachments
+	}
+	if videoCount > maxPostVideoAttachments {
+		observability.ObservePostPublishLatency(time.Since(startedAt), false)
+		return nil, ErrTooManyVideoAttachments
 	}
 
 	post := &Post{
@@ -370,8 +433,20 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 		LocationLon:       req.LocationLon,
 	}
 
-	err := s.repo.CreatePost(ctx, post, req.MediaAttachments)
+	err := s.repo.CreatePost(ctx, post, req.MediaAttachments, req.IdempotencyKey, fingerprint)
 	if err != nil {
+		observability.IncMediaPersistFailure("create_post_repo")
+		observability.ObservePostPublishLatency(time.Since(startedAt), false)
+		if err == ErrPostIdempotencyInProgress && req.IdempotencyKey != "" {
+			existingPostID, _, lookupErr := s.repo.GetPostByIdempotencyKey(ctx, userID, req.IdempotencyKey)
+			if lookupErr == nil && existingPostID != nil {
+				resp, getErr := s.repo.GetPost(ctx, *existingPostID, userID)
+				if getErr == nil {
+					observability.ObservePostPublishLatency(time.Since(startedAt), true)
+					return resp, nil
+				}
+			}
+		}
 		return nil, err
 	}
 
@@ -397,7 +472,79 @@ func (s *Service) CreatePost(ctx context.Context, userID uuid.UUID, req *CreateP
 		}
 	}
 
-	return s.repo.GetPost(ctx, post.ID, userID)
+	resp, err := s.repo.GetPost(ctx, post.ID, userID)
+	if err != nil {
+		observability.IncMediaPersistFailure("fetch_post_after_create")
+		observability.ObservePostPublishLatency(time.Since(startedAt), false)
+		return nil, err
+	}
+
+	observability.ObservePostPublishLatency(time.Since(startedAt), true)
+	return resp, nil
+}
+
+func isValidPostIdempotencyKey(key string) bool {
+	if len(key) < 8 || len(key) > 128 {
+		return false
+	}
+	for i := 0; i < len(key); i++ {
+		ch := key[i]
+		isAlphaNum := (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
+		if isAlphaNum || ch == '-' || ch == '_' || ch == ':' || ch == '.' {
+			continue
+		}
+		return false
+	}
+	return true
+}
+
+func postRequestFingerprint(req *CreatePostRequest) string {
+	type mediaFingerprint struct {
+		Type     string `json:"type"`
+		URL1080  string `json:"url_1080"`
+		Duration int    `json:"duration_seconds"`
+	}
+	type payload struct {
+		Caption           string             `json:"caption"`
+		Visibility        string             `json:"visibility"`
+		CommentPermission string             `json:"comment_permission"`
+		HideLikesCount    bool               `json:"hide_likes_count"`
+		LocationCity      string             `json:"location_city,omitempty"`
+		LocationCountry   string             `json:"location_country,omitempty"`
+		LocationLat       float64            `json:"location_lat,omitempty"`
+		LocationLon       float64            `json:"location_lon,omitempty"`
+		Media             []mediaFingerprint `json:"media"`
+	}
+
+	fp := payload{
+		Caption:           strings.TrimSpace(req.Caption),
+		Visibility:        strings.TrimSpace(req.Visibility),
+		CommentPermission: strings.TrimSpace(req.CommentPermission),
+		HideLikesCount:    req.HideLikesCount,
+		Media:             make([]mediaFingerprint, 0, len(req.MediaAttachments)),
+	}
+	if req.LocationCity != nil {
+		fp.LocationCity = strings.TrimSpace(*req.LocationCity)
+	}
+	if req.LocationCountry != nil {
+		fp.LocationCountry = strings.TrimSpace(*req.LocationCountry)
+	}
+	if req.LocationLat != nil {
+		fp.LocationLat = *req.LocationLat
+	}
+	if req.LocationLon != nil {
+		fp.LocationLon = *req.LocationLon
+	}
+	for _, m := range req.MediaAttachments {
+		fp.Media = append(fp.Media, mediaFingerprint{
+			Type:     strings.TrimSpace(strings.ToLower(m.Type)),
+			URL1080:  strings.TrimSpace(m.URL_1080p),
+			Duration: m.DurationSeconds,
+		})
+	}
+	b, _ := json.Marshal(fp)
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *Service) UpdatePost(ctx context.Context, userID, postID uuid.UUID, req *UpdatePostRequest) (*PostResponse, error) {

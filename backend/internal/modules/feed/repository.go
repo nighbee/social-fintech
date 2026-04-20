@@ -14,7 +14,8 @@ type Repository interface {
 	UpsertFatigueState(ctx context.Context, state *FeedFatigueState) error
 
 	// Posts
-	CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error
+	CreatePost(ctx context.Context, post *Post, media []MediaAttachment, idempotencyKey, requestFingerprint string) error
+	GetPostByIdempotencyKey(ctx context.Context, userID uuid.UUID, idempotencyKey string) (*uuid.UUID, string, error)
 	UpdatePost(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
 	DeletePost(ctx context.Context, postID, userID uuid.UUID) error
 	GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error)

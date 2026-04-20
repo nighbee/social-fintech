@@ -175,6 +175,11 @@ func TestRequireAuth(t *testing.T) {
 			UserID:    userID.String(),
 			RevokedAt: nil,
 		}, nil)
+		repo.On("GetUserByID", mock.Anything, userID.String()).Return(&auth.User{
+			ID:               userID.String(),
+			ActivationStatus: "active",
+			IsShadowBanned:   false,
+		}, nil)
 
 		req := httptest.NewRequest("GET", "/protected", nil)
 		req.Header.Set("Authorization", "Bearer "+token)

@@ -32,6 +32,21 @@ func (r *repository) buildURL(u string) string {
 	return u
 }
 
+func (r *repository) buildAvatarURL(u string, updatedAt sql.NullTime) string {
+	if strings.TrimSpace(u) == "" {
+		return ""
+	}
+	avatarURL := r.buildURL(u)
+	version := fmt.Sprintf("v=%d", updatedAt.Time.Unix())
+	if updatedAt.Valid {
+		if strings.Contains(avatarURL, "?") {
+			return avatarURL + "&" + version
+		}
+		return avatarURL + "?" + version
+	}
+	return avatarURL
+}
+
 type repository struct {
 	db          *sqlx.DB
 	publicURL   string
@@ -97,7 +112,31 @@ func (r *repository) UpsertFatigueState(ctx context.Context, state *FeedFatigueS
 	return err
 }
 
-func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error {
+func (r *repository) GetPostByIdempotencyKey(ctx context.Context, userID uuid.UUID, idempotencyKey string) (*uuid.UUID, string, error) {
+	var postID sql.NullString
+	var fingerprint sql.NullString
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(post_id::text, ''), COALESCE(request_fingerprint, '')
+		FROM post_idempotency_keys
+		WHERE user_id = $1 AND idempotency_key = $2
+	`, userID, idempotencyKey).Scan(&postID, &fingerprint)
+	if err == sql.ErrNoRows {
+		return nil, "", nil
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	if !postID.Valid || strings.TrimSpace(postID.String) == "" {
+		return nil, strings.TrimSpace(fingerprint.String), nil
+	}
+	parsed, err := uuid.Parse(postID.String)
+	if err != nil {
+		return nil, "", err
+	}
+	return &parsed, strings.TrimSpace(fingerprint.String), nil
+}
+
+func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAttachment, idempotencyKey, requestFingerprint string) error {
 	if err := r.enforceAuthorPublishingPolicy(ctx, post.UserID); err != nil {
 		return err
 	}
@@ -107,6 +146,43 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 		return err
 	}
 	defer tx.Rollback()
+	idempotencyKey = strings.TrimSpace(idempotencyKey)
+	requestFingerprint = strings.TrimSpace(requestFingerprint)
+	if idempotencyKey != "" {
+		res, err := tx.ExecContext(ctx, `
+			INSERT INTO post_idempotency_keys (user_id, idempotency_key, request_fingerprint, created_at)
+			VALUES ($1, $2, $3, NOW())
+			ON CONFLICT (user_id, idempotency_key) DO NOTHING
+		`, post.UserID, idempotencyKey, requestFingerprint)
+		if err != nil {
+			return err
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return err
+		}
+		if rows == 0 {
+			var existingPostID sql.NullString
+			var existingFingerprint sql.NullString
+			err := tx.QueryRowContext(ctx, `
+				SELECT COALESCE(post_id::text, ''), COALESCE(request_fingerprint, '')
+				FROM post_idempotency_keys
+				WHERE user_id = $1 AND idempotency_key = $2
+				FOR UPDATE
+			`, post.UserID, idempotencyKey).Scan(&existingPostID, &existingFingerprint)
+			if err != nil {
+				return err
+			}
+			if existingFingerprint.Valid && strings.TrimSpace(existingFingerprint.String) != "" && requestFingerprint != "" &&
+				strings.TrimSpace(existingFingerprint.String) != requestFingerprint {
+				return ErrPostIdempotencyConflict
+			}
+			if existingPostID.Valid && strings.TrimSpace(existingPostID.String) != "" {
+				return ErrPostIdempotencyInProgress
+			}
+			return ErrPostIdempotencyInProgress
+		}
+	}
 
 	queryPost := `
 		INSERT INTO posts (
@@ -154,6 +230,16 @@ func (r *repository) CreatePost(ctx context.Context, post *Post, media []MediaAt
 			m.ThumbnailURL, m.ProcessingStatus, m.OriginalPath,
 			i,
 		)
+		if err != nil {
+			return err
+		}
+	}
+	if idempotencyKey != "" {
+		_, err = tx.ExecContext(ctx, `
+			UPDATE post_idempotency_keys
+			SET post_id = $3
+			WHERE user_id = $1 AND idempotency_key = $2
+		`, post.UserID, idempotencyKey, post.ID)
 		if err != nil {
 			return err
 		}
@@ -317,7 +403,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
-		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
 				       'type', media_type, 
@@ -344,11 +430,12 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	var mediaJSON []byte
 	var createdAt sql.NullTime
 	var avatarURL sql.NullString
+	var avatarUpdatedAt sql.NullTime
 
 	err := r.db.QueryRowContext(ctx, query, postID, viewerID).Scan(
 		&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.CommentPermission, &resp.Permissions.CanComment,
 		&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
-		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
+		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
 		&mediaJSON, &resp.ViewerHasLiked,
 	)
 	if err != nil {
@@ -359,7 +446,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	}
 
 	if avatarURL.Valid {
-		resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
+		resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
 	}
 
 	_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
@@ -387,8 +474,8 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
 				       'type', media_type, 
-				       'url', video_1080p_url, 
-				       'image_url', video_1080p_url, 
+				       'url', video_1080p_url,
+				       'image_url', video_1080p_url,
 				       'video_1080p_url', video_1080p_url, 
 				       'video_480p_url', video_480p_url, 
 				       'thumbnail_url', thumbnail_url,
@@ -485,7 +572,7 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 			       ), '[]'::jsonb) as media_json,
 		       c.created_at,
 		       c.likes_count,
-		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 		       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 		FROM post_comments c
@@ -500,11 +587,12 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 	var mediaJSON []byte
 	var createdAt sql.NullTime
 	var avatarURL sql.NullString
+	var avatarUpdatedAt sql.NullTime
 
 	err := r.db.QueryRowContext(ctx, query, commentID, viewerID).Scan(
 		&resp.CommentID, &resp.ParentCommentID, &resp.RootCommentID, &resp.ContentText, &mediaJSON, &createdAt,
 		&resp.LikesCount,
-		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
+		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
 		&resp.ReplyCount,
 		&resp.ViewerHasLiked,
 	)
@@ -516,7 +604,7 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 	}
 
 	if avatarURL.Valid {
-		resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
+		resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
 	}
 
 	if createdAt.Valid {
@@ -529,6 +617,7 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		for i := range list {
 			list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
 			list[i].URL = list[i].URL_1080p
+			list[i].ImageURL = list[i].URL_1080p
 			list[i].URL_480p = r.buildURL(list[i].URL_480p)
 			list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
 		}
@@ -581,7 +670,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       ), '[]'::jsonb) as media_json,
 			       c.created_at,
 			       c.likes_count,
-			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
+			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
@@ -629,7 +718,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       ), '[]'::jsonb) as media_json,
 				       c.created_at,
 				       c.likes_count,
-				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
+				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
@@ -682,7 +771,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       ), '[]'::jsonb) as media_json,
 			       c.created_at,
 			       c.likes_count,
-			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
+			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
@@ -713,7 +802,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       ), '[]'::jsonb) as media_json,
 				       c.created_at,
 				       c.likes_count,
-				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
+				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
@@ -744,11 +833,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		var mediaJSON []byte
 		var createdAt sql.NullTime
 		var avatarURL sql.NullString
+		var avatarUpdatedAt sql.NullTime
 
 		err := rows.Scan(
 			&resp.CommentID, &resp.ParentCommentID, &resp.RootCommentID, &resp.ContentText, &mediaJSON, &createdAt,
 			&resp.LikesCount,
-			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
+			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
 			&resp.ReplyCount,
 			&resp.ViewerHasLiked,
 		)
@@ -757,7 +847,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		}
 
 		if avatarURL.Valid {
-			resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
+			resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
 		}
 
 		if createdAt.Valid {
@@ -770,6 +860,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			for i := range list {
 				list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
 				list[i].URL = list[i].URL_1080p
+				list[i].ImageURL = list[i].URL_1080p
 				list[i].URL_480p = r.buildURL(list[i].URL_480p)
 				list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
 			}

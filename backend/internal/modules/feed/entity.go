@@ -127,6 +127,7 @@ type PostComment struct {
 type CreatePostRequest struct {
 	Caption           string            `json:"caption"`
 	MediaAttachments  []MediaAttachment `json:"media_attachments"`
+	IdempotencyKey    string            `json:"idempotency_key,omitempty"`
 	Visibility        string            `json:"visibility"`
 	CommentPermission string            `json:"comment_permission"`
 	HideLikesCount    bool              `json:"hide_likes_count"`
@@ -172,10 +173,10 @@ type SyncFeedStateRequest struct {
 }
 
 type FeedStateResponse struct {
-	AccumulatedActiveSeconds int  `json:"accumulated_active_seconds"`
-	IsInCooldown             bool `json:"is_in_cooldown"`
-	BreakSecondsRemaining    int  `json:"break_seconds_remaining"` // 0-300; 0 = not in break
-	BreakMode                string `json:"break_mode"`            // "paused" | "counting"
+	AccumulatedActiveSeconds int    `json:"accumulated_active_seconds"`
+	IsInCooldown             bool   `json:"is_in_cooldown"`
+	BreakSecondsRemaining    int    `json:"break_seconds_remaining"` // 0-300; 0 = not in break
+	BreakMode                string `json:"break_mode"`              // "paused" | "counting"
 	// AccumulatedBreakSeconds exposes how many off-feed seconds have been served so far.
 	// Client can use this to animate the break countdown even between sync calls.
 	AccumulatedBreakSeconds int       `json:"accumulated_break_seconds"`

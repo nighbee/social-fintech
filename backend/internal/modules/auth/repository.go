@@ -107,6 +107,12 @@ func (r *PostgresRepository) UsernameExists(ctx context.Context, username string
 }
 
 func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
+	tx, err := r.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
 	query := `
 	  INSERT INTO users (
 			id, email, username, password_hash, first_name, last_name, date_of_birth, referral_code,
@@ -133,12 +139,25 @@ func (r *PostgresRepository) CreateUser(ctx context.Context, user *User) error {
 		}
 	}
 
-	_, err := r.db.ExecContext(ctx, query,
+	_, err = tx.ExecContext(ctx, query,
 		user.ID, user.Email, user.Username, user.PasswordHash, user.FirstName, user.LastName,
 		user.DateOfBirth, user.ReferralCode, phoneCountry, phoneNumber,
 		user.AvatarURL, user.IsShadowBanned, user.ActivationStatus, user.RestrictionsUntil, user.CreatedAt, user.UpdatedAt, user.LastActiveAt,
 	)
-	return err
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		INSERT INTO profiles (user_id, display_name, avatar_url, is_profile_public, created_at, updated_at)
+		VALUES ($1, NULLIF($2, ''), $3, true, $4, $5)
+		ON CONFLICT (user_id) DO NOTHING
+	`, user.ID, strings.TrimSpace(user.FirstName+" "+user.LastName), user.AvatarURL, user.CreatedAt, user.UpdatedAt)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (r *PostgresRepository) CreateIdentity(ctx context.Context, identity *Identity) error {

@@ -418,6 +418,9 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
 	}
+	if strings.TrimSpace(req.IdempotencyKey) == "" {
+		req.IdempotencyKey = strings.TrimSpace(c.Get("Idempotency-Key"))
+	}
 
 	// Basic validation
 	if req.Visibility != VisibilityAnyone && req.Visibility != VisibilityAlliesOnly {
@@ -432,8 +435,23 @@ func (h *Handler) CreatePost(c *fiber.Ctx) error {
 		if err == ErrPostRequiresMedia {
 			return validationErr(c, err.Error())
 		}
+		if err == ErrInvalidIdempotencyKey {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err == ErrPostIdempotencyConflict {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err == ErrPostIdempotencyInProgress {
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+		}
 		if err == ErrVideoTooLong || err == ErrVideoDurationRequired {
-			return validationErr(c, err.Error())
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err == ErrTooManyMediaAttachments || err == ErrTooManyPhotoAttachments || err == ErrTooManyVideoAttachments {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
+		}
+		if err == ErrUnsupportedMediaType || err == ErrMediaURLRequired {
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": err.Error()})
 		}
 		if err == ErrPublishingRestricted {
 			return c.Status(429).JSON(fiber.Map{"error": err.Error()})

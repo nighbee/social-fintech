@@ -53,7 +53,7 @@ func TestIsTrustedRegistrationIP(t *testing.T) {
 		want bool
 	}{
 		{name: "loopback", ip: "127.0.0.1", want: true},
-		{name: "private range", ip: "10.0.0.2", want: true},
+		{name: "private range", ip: "10.0.0.2", want: false},
 		{name: "public ip", ip: "8.8.8.8", want: false},
 		{name: "invalid", ip: "nope", want: false},
 	}
@@ -64,5 +64,45 @@ func TestIsTrustedRegistrationIP(t *testing.T) {
 				t.Fatalf("isTrustedRegistrationIP(%q) = %v, want %v", tt.ip, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestValidateDateOfBirth(t *testing.T) {
+	now := time.Date(2026, time.April, 20, 0, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name    string
+		dob     string
+		wantErr error
+	}{
+		{name: "valid", dob: "2000-01-01", wantErr: nil},
+		{name: "too old", dob: "1949-12-31", wantErr: ErrDateOfBirthTooOld},
+		{name: "too young", dob: "2022-06-01", wantErr: ErrDateOfBirthTooYoung},
+		{name: "bad format", dob: "01-01-2000", wantErr: ErrInvalidDateOfBirth},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateDateOfBirth(tt.dob, now)
+			if tt.wantErr == nil && err != nil {
+				t.Fatalf("expected nil error, got %v", err)
+			}
+			if tt.wantErr != nil && err != tt.wantErr {
+				t.Fatalf("expected %v, got %v", tt.wantErr, err)
+			}
+		})
+	}
+}
+
+func TestTrimUsername(t *testing.T) {
+	long := "abcdefghijklmnopqrstuvwxyz_very_long_tail"
+	got := trimUsername(long)
+	if len(got) != maxUsernameLength {
+		t.Fatalf("expected trimmed username length %d, got %d", maxUsernameLength, len(got))
+	}
+
+	empty := trimUsername("   ")
+	if empty == "" {
+		t.Fatal("expected fallback username for empty input")
 	}
 }

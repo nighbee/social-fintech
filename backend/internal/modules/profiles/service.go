@@ -41,6 +41,12 @@ type LocationInput struct {
 }
 
 const maxAvatarSizeBytes = 5 * 1024 * 1024 // 5MB
+const (
+	maxDisplayNameLen = 100
+	maxFirstNameLen   = 50
+	maxLastNameLen    = 50
+	maxBioLen         = 500
+)
 
 func NewService(repo *Repository, storage ObjectStorage, cache StatsCache, mapService MapService) *Service {
 	return &Service{
@@ -65,6 +71,19 @@ func (s *Service) GetMyProfile(ctx context.Context, userID string) (*Profile, er
 }
 
 func (s *Service) UpdateMyProfile(ctx context.Context, userID string, req *UpdateProfileRequest) (*Profile, error) {
+	if req.DisplayName != nil && len(*req.DisplayName) > maxDisplayNameLen {
+		return nil, ErrDisplayNameTooLong
+	}
+	if req.FirstName != nil && len(*req.FirstName) > maxFirstNameLen {
+		return nil, ErrFirstNameTooLong
+	}
+	if req.LastName != nil && len(*req.LastName) > maxLastNameLen {
+		return nil, ErrLastNameTooLong
+	}
+	if req.Bio != nil && len(*req.Bio) > maxBioLen {
+		return nil, ErrBioTooLong
+	}
+
 	_, err := s.repo.GetProfile(ctx, userID)
 	if err == ErrProfileNotFound {
 		if _, err := s.repo.CreateDefaultProfile(ctx, userID); err != nil {

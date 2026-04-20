@@ -86,6 +86,7 @@ type EmailRegisterRequest struct {
 	FirstName      string `json:"first_name" example:"John"`
 	LastName       string `json:"last_name" example:"Doe"`
 	DateOfBirth    string `json:"date_of_birth" example:"2000-01-01"` // YYYY-MM-DD
+	CaptchaToken   string `json:"captcha_token,omitempty"`
 	ReferrerUserID string `json:"referrer_user_id" example:"FRIEND123"`
 	DeviceID       string `json:"device_id" example:"device-uuid-12345"`
 	UserAgent      string `json:"user_agent" example:"BrightBund-iOS/1.0"`
@@ -146,6 +147,7 @@ type PhoneRegisterRequest struct {
 	FirstName      string `json:"first_name"`
 	LastName       string `json:"last_name"`
 	DateOfBirth    string `json:"date_of_birth"` // YYYY-MM-DD
+	CaptchaToken   string `json:"captcha_token,omitempty"`
 	ReferrerUserID string `json:"referrer_user_id"`
 	DeviceID       string `json:"device_id"`
 	UserAgent      string `json:"user_agent"`
@@ -180,6 +182,7 @@ type FirebasePhoneRegisterRequest struct {
 	FirstName       string `json:"first_name"`
 	LastName        string `json:"last_name"`
 	DateOfBirth     string `json:"date_of_birth"` // YYYY-MM-DD
+	CaptchaToken    string `json:"captcha_token,omitempty"`
 	ReferrerUserID  string `json:"referrer_user_id"`
 	DeviceID        string `json:"device_id"`
 	UserAgent       string `json:"user_agent"`

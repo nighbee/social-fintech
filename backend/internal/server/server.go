@@ -11,6 +11,7 @@ import (
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/settings"
+	"github.com/brightbund-backend/internal/platform/observability"
 	"github.com/brightbund-backend/internal/server/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -70,22 +71,29 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 		// For now we add the property placeholder if we needed it:
 		// Storage: redisStorage,
 	})
+	registerLim := limiter.New(limiter.Config{
+		Max:        3,
+		Expiration: 10 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return "register-ip:" + c.IP()
+		},
+	})
 
 	api.Get("/users/search", profilesHandler.SearchUsers)
 
 	authGroup.Post("/login", authLim, authHandler.Login)
-	authGroup.Post("/register-email", authLim, authHandler.RegisterEmail)
+	authGroup.Post("/register-email", registerLim, authHandler.RegisterEmail)
 	authGroup.Post("/login-email", authLim, authHandler.LoginEmail)
 	authGroup.Post("/check-email", authLim, authHandler.CheckEmail)
 
 	// Legacy phone auth endpoints (custom OTP)
 	authGroup.Post("/phone/request", authLim, authHandler.RequestPhoneCode)
 	authGroup.Post("/phone/verify", authLim, authHandler.VerifyPhoneCode)
-	authGroup.Post("/register-phone", authLim, authHandler.RegisterPhone)
+	authGroup.Post("/register-phone", registerLim, authHandler.RegisterPhone)
 
 	// Firebase phone auth endpoints (recommended)
 	authGroup.Post("/firebase-phone-login", authLim, authHandler.FirebasePhoneAuth)
-	authGroup.Post("/firebase-phone-register", authLim, authHandler.FirebasePhoneRegister)
+	authGroup.Post("/firebase-phone-register", registerLim, authHandler.FirebasePhoneRegister)
 
 	authGroup.Post("/refresh", authLim, authHandler.Refresh)
 	authGroup.Post("/logout", middleware.RequireAuth(jwt, authRepo), middleware.TouchSession(authRepo), authHandler.Logout)
@@ -185,6 +193,13 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	feedAdminGroup.Use(middleware.TouchSession(authRepo))
 	feedAdminGroup.Use(middleware.RequireAdmin(authRepo))
 	feedAdminGroup.Get("/reports", feedHandler.GetAdminReports)
+	feedAdminGroup.Get("/ops/metrics", func(c *fiber.Ctx) error {
+		return c.JSON(observability.Snapshot())
+	})
+	feedAdminGroup.Get("/ops/metrics/prometheus", func(c *fiber.Ctx) error {
+		c.Set("Content-Type", "text/plain; version=0.0.4")
+		return c.SendString(observability.PrometheusText())
+	})
 
 	settingsGroup := api.Group("/settings")
 	settingsGroup.Use(middleware.RequireAuth(jwt, authRepo))

@@ -55,6 +55,8 @@ func (h *Handler) Login(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "email_required"})
 		case ErrAccountBlocked:
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "account_blocked"})
+		case ErrRegistrationRateLimited:
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "registration_rate_limited"})
 		default:
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
 		}
@@ -97,6 +99,16 @@ func (h *Handler) RegisterEmail(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "weak_password"})
 		case ErrInvalidDateOfBirth:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrDateOfBirthTooOld:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_old"})
+		case ErrDateOfBirthTooYoung:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_young"})
+		case ErrRegistrationRateLimited:
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "registration_rate_limited"})
+		case ErrCaptchaRequired:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "captcha_required"})
+		case ErrCaptchaInvalid:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "captcha_invalid"})
 		case ErrInvalidCredentials:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_credentials", "message": "missing required fields"})
 		default:
@@ -282,6 +294,16 @@ func (h *Handler) RegisterPhone(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "phone_exists"})
 		case ErrInvalidDateOfBirth:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrDateOfBirthTooOld:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_old"})
+		case ErrDateOfBirthTooYoung:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_young"})
+		case ErrRegistrationRateLimited:
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "registration_rate_limited"})
+		case ErrCaptchaRequired:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "captcha_required"})
+		case ErrCaptchaInvalid:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "captcha_invalid"})
 		case ErrInvalidCredentials:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
 		case ErrInvalidCode, ErrVerificationExpired, ErrVerificationConsumed:
@@ -428,6 +450,16 @@ func (h *Handler) FirebasePhoneRegister(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "phone_exists", "message": "User already exists, please login"})
 		case ErrInvalidDateOfBirth:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrDateOfBirthTooOld:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_old"})
+		case ErrDateOfBirthTooYoung:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_young"})
+		case ErrRegistrationRateLimited:
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "registration_rate_limited"})
+		case ErrCaptchaRequired:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "captcha_required"})
+		case ErrCaptchaInvalid:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "captcha_invalid"})
 		case ErrInvalidCredentials:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
 		default:

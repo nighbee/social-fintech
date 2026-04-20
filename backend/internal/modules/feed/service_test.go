@@ -6,17 +6,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/brightbund-backend/internal/platform/observability"
 	"github.com/google/uuid"
 )
 
 type testRepo struct {
-	createPostFn       func(ctx context.Context, post *Post, media []MediaAttachment) error
-	updatePostFn       func(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
-	deletePostFn       func(ctx context.Context, postID, userID uuid.UUID) error
-	getPostFn          func(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
-	getUserPostsGridFn func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error)
-	getUserPostsListFn func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error)
-	getPostCreatedAtFn func(ctx context.Context, postID uuid.UUID) (time.Time, error)
+	createPostFn              func(ctx context.Context, post *Post, media []MediaAttachment, idempotencyKey, requestFingerprint string) error
+	getPostByIdempotencyKeyFn func(ctx context.Context, userID uuid.UUID, idempotencyKey string) (*uuid.UUID, string, error)
+	updatePostFn              func(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
+	deletePostFn              func(ctx context.Context, postID, userID uuid.UUID) error
+	getPostFn                 func(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
+	getUserPostsGridFn        func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error)
+	getUserPostsListFn        func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error)
+	getPostCreatedAtFn        func(ctx context.Context, postID uuid.UUID) (time.Time, error)
 
 	createReportFn          func(ctx context.Context, reporterID uuid.UUID, targetType string, targetID uuid.UUID, reason, description string) error
 	countRecentReportsByFn  func(ctx context.Context, reporterID uuid.UUID, since time.Time) (int, error)
@@ -52,12 +54,19 @@ func (r *testRepo) UpsertFatigueState(ctx context.Context, state *FeedFatigueSta
 	return nil
 }
 
-func (r *testRepo) CreatePost(ctx context.Context, post *Post, media []MediaAttachment) error {
+func (r *testRepo) CreatePost(ctx context.Context, post *Post, media []MediaAttachment, idempotencyKey, requestFingerprint string) error {
 	r.lastCreatedPost = post
 	if r.createPostFn != nil {
-		return r.createPostFn(ctx, post, media)
+		return r.createPostFn(ctx, post, media, idempotencyKey, requestFingerprint)
 	}
 	return nil
+}
+
+func (r *testRepo) GetPostByIdempotencyKey(ctx context.Context, userID uuid.UUID, idempotencyKey string) (*uuid.UUID, string, error) {
+	if r.getPostByIdempotencyKeyFn != nil {
+		return r.getPostByIdempotencyKeyFn(ctx, userID, idempotencyKey)
+	}
+	return nil, "", nil
 }
 
 func (r *testRepo) UpdatePost(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error {
@@ -784,6 +793,161 @@ func TestCreatePost_PassesHideLikesCountToRepository(t *testing.T) {
 	}
 	if !resp.HideLikesCount {
 		t.Fatal("expected response hide_likes_count=true")
+	}
+}
+
+func TestCreatePost_RejectsTooManyVideos(t *testing.T) {
+	userID := uuid.New()
+	media := make([]MediaAttachment, 0, 5)
+	for i := 0; i < 5; i++ {
+		media = append(media, MediaAttachment{
+			Type:            "video",
+			URL_1080p:       "https://cdn.example.com/v.mp4",
+			DurationSeconds: 10,
+		})
+	}
+
+	svc := &Service{repo: &testRepo{}, cache: &testCacheRepo{}}
+	_, err := svc.CreatePost(context.Background(), userID, &CreatePostRequest{
+		Caption:           "hello",
+		Visibility:        VisibilityAnyone,
+		CommentPermission: CommentPermAnyone,
+		MediaAttachments:  media,
+	})
+	if !errors.Is(err, ErrTooManyVideoAttachments) {
+		t.Fatalf("expected ErrTooManyVideoAttachments, got %v", err)
+	}
+}
+
+func TestCreatePost_RejectsUnsupportedMediaType(t *testing.T) {
+	userID := uuid.New()
+	svc := &Service{repo: &testRepo{}, cache: &testCacheRepo{}}
+
+	_, err := svc.CreatePost(context.Background(), userID, &CreatePostRequest{
+		Caption:           "hello",
+		Visibility:        VisibilityAnyone,
+		CommentPermission: CommentPermAnyone,
+		MediaAttachments: []MediaAttachment{
+			{Type: "gif", URL_1080p: "https://cdn.example.com/a.gif"},
+		},
+	})
+	if !errors.Is(err, ErrUnsupportedMediaType) {
+		t.Fatalf("expected ErrUnsupportedMediaType, got %v", err)
+	}
+}
+
+func TestCreatePost_RejectsMissingMediaURL(t *testing.T) {
+	userID := uuid.New()
+	svc := &Service{repo: &testRepo{}, cache: &testCacheRepo{}}
+
+	_, err := svc.CreatePost(context.Background(), userID, &CreatePostRequest{
+		Caption:           "hello",
+		Visibility:        VisibilityAnyone,
+		CommentPermission: CommentPermAnyone,
+		MediaAttachments: []MediaAttachment{
+			{Type: "image"},
+		},
+	})
+	if !errors.Is(err, ErrMediaURLRequired) {
+		t.Fatalf("expected ErrMediaURLRequired, got %v", err)
+	}
+}
+
+func TestCreatePost_TracksObservabilityOnRepositoryFailure(t *testing.T) {
+	observability.ResetForTests()
+	userID := uuid.New()
+	repo := &testRepo{
+		createPostFn: func(ctx context.Context, post *Post, media []MediaAttachment, idempotencyKey, requestFingerprint string) error {
+			return errors.New("db down")
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	_, err := svc.CreatePost(context.Background(), userID, &CreatePostRequest{
+		Caption:           "hello",
+		Visibility:        VisibilityAnyone,
+		CommentPermission: CommentPermAnyone,
+		MediaAttachments: []MediaAttachment{
+			{Type: "image", URL_1080p: "https://cdn.example.com/i.jpg"},
+		},
+	})
+	if err == nil {
+		t.Fatal("expected repository failure")
+	}
+
+	snap := observability.Snapshot()
+	if snap.PostPublishAttempts != 1 || snap.PostPublishFailures != 1 {
+		t.Fatalf("unexpected post publish metrics: attempts=%d failures=%d", snap.PostPublishAttempts, snap.PostPublishFailures)
+	}
+	found := false
+	for _, rec := range snap.MediaPersistFailures {
+		if rec.Key == "create_post_repo" && rec.Count == 1 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected create_post_repo media persist failure metric, got %+v", snap.MediaPersistFailures)
+	}
+}
+
+func TestCreatePost_InvalidIdempotencyKey(t *testing.T) {
+	userID := uuid.New()
+	svc := &Service{repo: &testRepo{}, cache: &testCacheRepo{}}
+
+	_, err := svc.CreatePost(context.Background(), userID, &CreatePostRequest{
+		Caption:           "hello",
+		IdempotencyKey:    "bad key with spaces",
+		Visibility:        VisibilityAnyone,
+		CommentPermission: CommentPermAnyone,
+		MediaAttachments: []MediaAttachment{
+			{Type: "image", URL_1080p: "https://cdn.example.com/img.jpg"},
+		},
+	})
+	if !errors.Is(err, ErrInvalidIdempotencyKey) {
+		t.Fatalf("expected ErrInvalidIdempotencyKey, got %v", err)
+	}
+}
+
+func TestCreatePost_IdempotencyReplayReturnsExistingPost(t *testing.T) {
+	userID := uuid.New()
+	postID := uuid.New()
+	repo := &testRepo{
+		getPostByIdempotencyKeyFn: func(ctx context.Context, gotUserID uuid.UUID, key string) (*uuid.UUID, string, error) {
+			if gotUserID != userID || key != "idem-key-1234" {
+				t.Fatalf("unexpected idempotency lookup args: %s %s", gotUserID, key)
+			}
+			return &postID, postRequestFingerprint(&CreatePostRequest{
+				Caption:           "hello",
+				Visibility:        VisibilityAnyone,
+				CommentPermission: CommentPermAnyone,
+				MediaAttachments: []MediaAttachment{
+					{Type: "image", URL_1080p: "https://cdn.example.com/img.jpg"},
+				},
+			}), nil
+		},
+		getPostFn: func(ctx context.Context, gotPostID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error) {
+			if gotPostID != postID || viewerID != userID {
+				t.Fatalf("unexpected GetPost args: %s %s", gotPostID, viewerID)
+			}
+			return &PostResponse{PostID: postID}, nil
+		},
+	}
+	svc := &Service{repo: repo, cache: &testCacheRepo{}}
+
+	resp, err := svc.CreatePost(context.Background(), userID, &CreatePostRequest{
+		Caption:           "hello",
+		IdempotencyKey:    "idem-key-1234",
+		Visibility:        VisibilityAnyone,
+		CommentPermission: CommentPermAnyone,
+		MediaAttachments: []MediaAttachment{
+			{Type: "image", URL_1080p: "https://cdn.example.com/img.jpg"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.PostID != postID {
+		t.Fatalf("expected replayed post id %s, got %s", postID, resp.PostID)
 	}
 }
 

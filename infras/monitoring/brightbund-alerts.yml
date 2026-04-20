@@ -1,0 +1,39 @@
+groups:
+  - name: brightbund-backend
+    rules:
+      - alert: HighRegistrationFailureRate
+        expr: sum(rate(brightbund_registration_failures_total[10m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High registration failures"
+          description: "Registration failures are elevated for 10m."
+
+      - alert: PostPublishFailuresSpike
+        expr: rate(brightbund_post_publish_failures_total[5m]) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Post publish failures spike"
+          description: "Post publishing errors are above threshold."
+
+      - alert: MediaPersistenceFailures
+        expr: sum(rate(brightbund_media_persist_failures_total[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Media persistence failures detected"
+          description: "Media persistence failures are non-zero over 10m."
+
+      - alert: HighPostPublishLatency
+        expr: brightbund_post_publish_latency_avg_ms > 2500
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Post publish latency is high"
+          description: "Average post publish latency exceeds 2.5s."
+

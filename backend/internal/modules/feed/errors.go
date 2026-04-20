@@ -56,6 +56,12 @@ var (
 	// ErrPublishingRestricted is returned when author publication is temporarily blocked
 	// by policy escalation (e.g. repeated actioned post removals).
 	ErrPublishingRestricted = errors.New("publishing_restricted")
+	// ErrInvalidIdempotencyKey is returned when provided idempotency key format is invalid.
+	ErrInvalidIdempotencyKey = errors.New("invalid_idempotency_key")
+	// ErrPostIdempotencyConflict is returned when key is reused with different payload.
+	ErrPostIdempotencyConflict = errors.New("post_idempotency_conflict")
+	// ErrPostIdempotencyInProgress is returned when same key is currently being processed.
+	ErrPostIdempotencyInProgress = errors.New("post_idempotency_in_progress")
 
 	// ── Comments ─────────────────────────────────────────────────────────
 	// ErrCommentNotFound is returned when a specified comment does not exist.
@@ -114,6 +120,14 @@ var (
 	// ErrTooManyMediaAttachments is returned when a post or comment exceeds
 	// the maximum number of allowed media items (e.g. > 10 for a post).
 	ErrTooManyMediaAttachments = errors.New("too_many_media_attachments: maximum is 10 items per post")
+	// ErrTooManyPhotoAttachments is returned when a post contains more photos
+	// than product policy allows.
+	ErrTooManyPhotoAttachments = errors.New("photo_limit_exceeded: maximum is 10 photos per post")
+	// ErrTooManyVideoAttachments is returned when a post contains more videos
+	// than product policy allows.
+	ErrTooManyVideoAttachments = errors.New("video_limit_exceeded: maximum is 4 videos per post")
+	// ErrMediaURLRequired is returned when a media attachment misses its source URL.
+	ErrMediaURLRequired = errors.New("media_url_required")
 
 	// ErrVideoTooLong is returned when a video media attachment exceeds the
 	// 2-minute cap enforced for feed posts (phase-2 basic enforcement).

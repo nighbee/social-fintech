@@ -63,3 +63,20 @@ func TestExtFromContentType(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateMyProfile_ValidationBounds(t *testing.T) {
+	svc := &Service{}
+	uid := "user-1"
+
+	tooLongBio := string(make([]byte, maxBioLen+1))
+	req := &UpdateProfileRequest{Bio: &tooLongBio}
+	if _, err := svc.UpdateMyProfile(nil, uid, req); err != ErrBioTooLong {
+		t.Fatalf("expected ErrBioTooLong, got %v", err)
+	}
+
+	tooLongDisplay := string(make([]byte, maxDisplayNameLen+1))
+	req = &UpdateProfileRequest{DisplayName: &tooLongDisplay}
+	if _, err := svc.UpdateMyProfile(nil, uid, req); err != ErrDisplayNameTooLong {
+		t.Fatalf("expected ErrDisplayNameTooLong, got %v", err)
+	}
+}
