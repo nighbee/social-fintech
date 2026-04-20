@@ -95,7 +95,7 @@ storage:
   temp_bucket: temp-uploads
   ffmpeg_path: ffmpeg
   use_ssl: false
-  public_url: http://68.183.186.224/minio
+  public_url: http://35.209.210.231/minio
 
 moderation:
   enabled: true
