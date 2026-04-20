@@ -617,11 +617,12 @@ func (r *repository) GetRegionChampions(ctx context.Context, h3Indexes []string,
 		  AND c.year = $2
 		  AND c.week = $3
 		  AND c.h3_index = ANY($4)
-		  AND u.deleted_at IS NULL
-		  AND COALESCE(u.is_shadow_banned, false) = false
-		  AND COALESCE(u.activation_status, 'active') = 'active'
-		  AND COALESCE(u.location_opt_in, false) = true
-		  AND ($1 != 5 OR COALESCE(u.participate_district, false) = true)
+		  AND (u.id IS NULL OR (
+		        u.deleted_at IS NULL
+		    AND COALESCE(u.is_shadow_banned, false) = false
+		    AND COALESCE(u.activation_status, 'active') = 'active'
+		    AND ($1 != 5 OR COALESCE(u.participate_district, false) = true)
+		  ))
 	`
 
 	var champs []RegionChampion
