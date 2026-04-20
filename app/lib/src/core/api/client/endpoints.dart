@@ -1,7 +1,7 @@
 class EndPoints {
   //* Base URL
-  static const String baseUrl = 'http://68.183.186.224/api/v1';
-  static const String baseUrlDev = 'http://68.183.186.224/api/v1';
+  static const String baseUrl = 'http://35.209.210.231/api/v1';
+  static const String baseUrlDev = 'http://35.209.210.231/api/v1';
 
   //* Auth
   static const String authLogin = '/auth/login';
