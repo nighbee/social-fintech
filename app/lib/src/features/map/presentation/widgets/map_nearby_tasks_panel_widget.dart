@@ -22,28 +22,19 @@ class _MyRequestPanel extends StatelessWidget {
     final avatar = avatarUrl?.trim() ?? '';
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(6),
       child: ClipRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.16),
-              gradient: const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x1FFFFFFF),
-                  Color(0x08FFFFFF),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+              color: const Color.fromRGBO(32, 32, 32, 0.50),
+              borderRadius: BorderRadius.circular(6),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.22),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+                  color: const Color.fromRGBO(74, 74, 74, 0.50),
+                  blurRadius: 4,
+                  offset: const Offset(0, 0),
                 ),
               ],
             ),
@@ -52,160 +43,269 @@ class _MyRequestPanel extends StatelessWidget {
               children: [
                 InkWell(
                   onTap: onToggleExpanded,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(6),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF303237),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: ClipOval(
-                            child: avatar.isNotEmpty
-                                ? Image.network(
-                                    avatar,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(
-                                      Icons.person,
-                                      color: Colors.white70,
-                                      size: 16,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.person,
-                                    color: Colors.white70,
-                                    size: 16,
-                                  ),
-                          ),
-                        ),
-                        const Gap(10),
-                        Expanded(
-                          child: Column(
+                    padding: isExpanded
+                        ? const EdgeInsets.fromLTRB(12, 16, 12, 0)
+                        : const EdgeInsets.all(16),
+                    child: isExpanded
+                        ? Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyles.bodyLarge.copyWith(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
+                              Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF303237),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: avatar.isNotEmpty
+                                      ? Image.network(
+                                          avatar,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) =>
+                                              const Icon(
+                                            Icons.person,
+                                            color: Colors.white70,
+                                            size: 20,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.person,
+                                          color: Colors.white70,
+                                          size: 20,
+                                        ),
                                 ),
                               ),
-                              Text(
-                                'Code:$code',
-                                style: TextStyles.bodyMain.copyWith(
-                                  color: Colors.white54,
+                              const Gap(12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyles.bodyLarge.copyWith(
+                                        color: const Color(0xFFCACACA),
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                    const Gap(10),
+                                    _ExpandablePanelDescription(
+                                      text: task.description.isEmpty
+                                          ? 'No description provided.'
+                                          : task.description,
+                                      textStyle: TextStyles.bodyMain.copyWith(
+                                        fontFamily: FontFamily.lora,
+                                        color: const Color(0xFFCACACA),
+                                        fontSize: 16,
+                                        height: 20 / 16,
+                                      ),
+                                      linkStyle: TextStyles.bodyMain.copyWith(
+                                        fontFamily: FontFamily.lora,
+                                        color: const Color(0xFFDDDDDD),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        height: 16 / 12,
+                                      ),
+                                      inlineOverflowAction: true,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Gap(8),
+                              SizedBox(
+                                width: 58,
+                                height: 20,
+                                child: Align(
+                                  alignment: Alignment.topRight,
+                                  child: Text(
+                                    'Code:$code',
+                                    style: TextStyles.bodyMain.copyWith(
+                                      fontFamily: FontFamily.lora,
+                                      color: const Color(0xFF9A9A9A),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      height: 20 / 12,
+                                      letterSpacing: -0.24,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyles.bodyLarge.copyWith(
+                                        color: const Color(0xFFCACACA),
+                                        fontWeight: FontWeight.w600,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                    const Gap(2),
+                                    Text(
+                                      'Code:$code',
+                                      style: TextStyles.bodyMain.copyWith(
+                                        color: const Color(0xFF9B9B9B),
+                                        fontSize: 16,
+                                        height: 1.0,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Gap(8),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(top: 8, right: 14),
+                                child: SizedBox(
+                                  width: 94,
+                                  height: 16,
+                                  child: Align(
+                                    alignment: Alignment.centerRight,
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerRight,
+                                      child: Text(
+                                        'view my request',
+                                        maxLines: 1,
+                                        style: TextStyles.bodyMain.copyWith(
+                                          fontFamily: FontFamily.lora,
+                                          color: const Color(0xFFDDDDDD),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          height: 16 / 12,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Text(
-                          'view my request',
-                          style: TextStyles.bodyMain.copyWith(
-                            color: Colors.white.withValues(alpha: 0.74),
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 if (isExpanded)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 2, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    padding: EdgeInsets.fromLTRB(
+                      avatar.isNotEmpty ? 70 : 12,
+                      10,
+                      avatar.isNotEmpty ? 58 : 12,
+                      0,
+                    ),
+                    child: Row(
                       children: [
-                        _ExpandablePanelDescription(
-                          text: task.description.isEmpty
-                              ? 'No description provided.'
-                              : task.description,
+                        Text(
+                          'Required:',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFFCACACA),
+                            fontFamily: FontFamily.lora,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 20 / 14,
+                            letterSpacing: -0.24,
+                          ),
                         ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Text(
-                              'Required:',
-                              style: TextStyles.bodyMain.copyWith(
-                                color: const Color(0xFF9B9B9B),
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${task.workersNeeded} heroes',
-                              style: TextStyles.bodyMain.copyWith(
-                                color: const Color(0xFFCACACA),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Image.asset(
-                              'assets/images/Heroes.png',
-                              width: 14,
-                              height: 14,
-                              fit: BoxFit.contain,
-                            ),
-                            const Spacer(),
-                            Text(
-                              'Reward:',
-                              style: TextStyles.bodyMain.copyWith(
-                                color: const Color(0xFF9B9B9B),
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              task.reward.toStringAsFixed(0),
-                              style: TextStyles.bodyMain.copyWith(
-                                color: const Color(0xFFCACACA),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Assets.icons.silverCoin.svg(width: 20, height: 20),
-                          ],
+                        const SizedBox(width: 4),
+                        Text(
+                          '${task.workersNeeded} heroes',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFFCACACA),
+                            fontFamily: FontFamily.lora,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 20 / 14,
+                            letterSpacing: -0.24,
+                          ),
                         ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          child: InkWell(
-                            onTap: onCancel,
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(vertical: 9),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.black.withValues(alpha: 0.14),
-                                border: Border.all(
-                                  color: const Color(0x99E14D4D),
-                                ),
-                              ),
-                              child: Text(
-                                'Cancel my request',
-                                style: TextStyles.bodyMain.copyWith(
-                                  color: const Color(0xFFF06D6D),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                        const SizedBox(width: 6),
+                        Image.asset(
+                          'assets/images/Heroes.png',
+                          width: 14,
+                          height: 14,
+                          fit: BoxFit.contain,
+                        ),
+                        const Spacer(),
+                        Text(
+                          'Reward:',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFFCACACA),
+                            fontFamily: FontFamily.lora,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 20 / 14,
+                            letterSpacing: -0.24,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          task.reward.toStringAsFixed(0),
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFFCACACA),
+                            fontFamily: FontFamily.lora,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 20 / 14,
+                            letterSpacing: -0.24,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Assets.icons.silverCoin.svg(width: 20, height: 20),
+                      ],
+                    ),
+                  ),
+                if (isExpanded) const SizedBox(height: 10),
+                if (isExpanded)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 32,
+                      child: InkWell(
+                        onTap: onCancel,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          alignment: Alignment.center,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(6),
+                            color: Colors.transparent,
+                            border: Border.all(
+                              color: const Color(0xFFD93337),
+                              width: 0.5,
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel my request',
+                            style: TextStyles.bodyMain.copyWith(
+                              fontFamily: FontFamily.lora,
+                              fontSize: 12,
+                              height: 16 / 12,
+                              color: const Color(0xFFD93337),
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
               ],
@@ -266,6 +366,18 @@ class _NearbyTasksPanel extends StatelessWidget {
         ? task.description
         : 'No description provided for this request.';
 
+    const cardHPadding = 16.0;
+    const avatarGap = 12.0;
+
+    final metricsTextStyle = TextStyles.bodyMain.copyWith(
+      color: const Color(0xFFCACACA),
+      fontFamily: FontFamily.lora,
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      height: 20 / 14,
+      letterSpacing: -0.24,
+    );
+
     return Align(
       alignment: Alignment.bottomCenter,
       child: ConstrainedBox(
@@ -274,38 +386,32 @@ class _NearbyTasksPanel extends StatelessWidget {
           borderRadius: BorderRadius.circular(6),
           child: ClipRect(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0x40202020),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0x12FFFFFF),
-                      Color(0x00FFFFFF),
-                    ],
-                  ),
+                  color: const Color.fromRGBO(32, 32, 32, 0.50),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: const Color(0x992B2B2C),
-                    width: 0.5,
-                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.12),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      color: const Color.fromRGBO(74, 74, 74, 0.50),
+                      blurRadius: 4,
+                      offset: const Offset(0, 0),
                     ),
                   ],
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 16, 12, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        cardHPadding,
+                        16,
+                        cardHPadding,
+                        0,
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _TaskAvatar(
                             seedText: task.creatorUsername.trim().isNotEmpty
@@ -313,84 +419,118 @@ class _NearbyTasksPanel extends StatelessWidget {
                                 : normalizedTitle,
                             username: task.creatorUsername,
                             avatarUrl: task.creatorAvatarUrl,
+                            size: 46,
+                            borderColor: Colors.white,
+                            borderWidth: 1,
                           ),
-                          const Gap(10),
+                          const Gap(avatarGap),
                           Expanded(
-                            child: Text(
-                              normalizedTitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyles.titleMain.copyWith(
-                                color: const Color(0xFFF2F2F2),
-                                fontSize: 18,
-                                height: 1.05,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  normalizedTitle,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyles.bodyMain.copyWith(
+                                    fontFamily: FontFamily.lora,
+                                    color: const Color(0xFFF2F2F2),
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    height: 20 / 16,
+                                    letterSpacing: -0.25,
+                                  ),
+                                ),
+                                const Gap(10),
+                                _ExpandablePanelDescription(
+                                  text: description,
+                                  collapsedMaxLines: 6,
+                                  textStyle: TextStyles.bodyMain.copyWith(
+                                    fontFamily: FontFamily.lora,
+                                    color: const Color(0xFFCACACA),
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w400,
+                                    height: 20 / 14,
+                                    letterSpacing: -0.25,
+                                  ),
+                                  linkStyle: TextStyles.bodyMain.copyWith(
+                                    fontFamily: FontFamily.lora,
+                                    color: const Color(0xFFDDDDDD),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    height: 16 / 12,
+                                  ),
+                                  inlineOverflowAction: true,
+                                ),
+                                const Gap(10),
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Required:',
+                                          style: metricsTextStyle,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${task.workersNeeded} heroes',
+                                          style: metricsTextStyle,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Image.asset(
+                                          'assets/images/Heroes.png',
+                                          width: 14,
+                                          height: 14,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: 20),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          'Reward:',
+                                          style: metricsTextStyle,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          task.reward.toStringAsFixed(0),
+                                          style: metricsTextStyle,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Assets.icons.silverCoin
+                                            .svg(width: 20, height: 20),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
-                      _ExpandablePanelDescription(
-                        text: description,
-                        collapsedMaxLines: 6,
+                    ),
+                    const SizedBox(height: 10),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        cardHPadding,
+                        0,
+                        cardHPadding,
+                        20,
                       ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Text(
-                            'Required:',
-                            style: TextStyles.bodyMain.copyWith(
-                              color: const Color(0xFF9B9B9B),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${task.workersNeeded} heroes',
-                            style: TextStyles.bodyMain.copyWith(
-                              color: const Color(0xFFCACACA),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Image.asset(
-                            'assets/images/Heroes.png',
-                            width: 14,
-                            height: 14,
-                            fit: BoxFit.contain,
-                          ),
-                          const Spacer(),
-                          Text(
-                            'Reward:',
-                            style: TextStyles.bodyMain.copyWith(
-                              color: const Color(0xFF9B9B9B),
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            task.reward.toStringAsFixed(0),
-                            style: TextStyles.bodyMain.copyWith(
-                              color: const Color(0xFFCACACA),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Assets.icons.silverCoin.svg(width: 20, height: 20),
-                        ],
-                      ),
-                      const SizedBox(height: 25),
-                      SizedBox(
+                      child: SizedBox(
                         width: double.infinity,
+                        height: 32,
                         child: InkWell(
                           onTap: () => onApply(task.id),
                           borderRadius: BorderRadius.circular(6),
                           child: Container(
                             alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
                               color: const Color(0xFFE5E5E5),
                               borderRadius: BorderRadius.circular(6),
@@ -398,6 +538,8 @@ class _NearbyTasksPanel extends StatelessWidget {
                             child: Text(
                               'I can help',
                               style: TextStyles.bodyMain.copyWith(
+                                fontSize: 12,
+                                height: 16 / 12,
                                 color: Colors.black87,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -405,8 +547,8 @@ class _NearbyTasksPanel extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -421,10 +563,16 @@ class _ExpandablePanelDescription extends StatefulWidget {
   const _ExpandablePanelDescription({
     required this.text,
     this.collapsedMaxLines = 4,
+    this.textStyle,
+    this.linkStyle,
+    this.inlineOverflowAction = false,
   });
 
   final String text;
   final int collapsedMaxLines;
+  final TextStyle? textStyle;
+  final TextStyle? linkStyle;
+  final bool inlineOverflowAction;
 
   @override
   State<_ExpandablePanelDescription> createState() =>
@@ -437,10 +585,17 @@ class _ExpandablePanelDescriptionState
 
   @override
   Widget build(BuildContext context) {
-    final style = TextStyles.bodyMain.copyWith(
-      color: Colors.white70,
-      height: 1.35,
-    );
+    final style = widget.textStyle ??
+        TextStyles.bodyMain.copyWith(
+          color: Colors.white70,
+          height: 1.35,
+        );
+    final linkStyle = widget.linkStyle ??
+        TextStyles.bodyMain.copyWith(
+          color: const Color(0xFFC9D7F2),
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -452,17 +607,70 @@ class _ExpandablePanelDescriptionState
         )..layout(maxWidth: constraints.maxWidth);
         final isOverflowing = painter.didExceedMaxLines;
 
+        final showInlineMore =
+            widget.inlineOverflowAction && !_expanded && isOverflowing;
+
+        String buildInlineCollapsedText() {
+          final suffix = ' More';
+          var low = 0;
+          var high = widget.text.length;
+          var best = '';
+          while (low <= high) {
+            final mid = (low + high) ~/ 2;
+            final candidateText =
+                '${widget.text.substring(0, mid).trimRight()}...$suffix';
+            final candidatePainter = TextPainter(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                      text: '${widget.text.substring(0, mid).trimRight()}...'),
+                  TextSpan(text: suffix, style: linkStyle),
+                ],
+                style: style,
+              ),
+              textDirection: Directionality.of(context),
+              maxLines: widget.collapsedMaxLines,
+            )..layout(maxWidth: constraints.maxWidth);
+            if (!candidatePainter.didExceedMaxLines) {
+              best = candidateText;
+              low = mid + 1;
+            } else {
+              high = mid - 1;
+            }
+          }
+          return best.isEmpty ? widget.text : best;
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              widget.text,
-              maxLines: _expanded ? null : widget.collapsedMaxLines,
-              overflow:
-                  _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
-              style: style,
-            ),
-            if (isOverflowing)
+            if (showInlineMore)
+              GestureDetector(
+                onTap: () => setState(() => _expanded = true),
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: buildInlineCollapsedText()
+                            .replaceFirst(RegExp(r'\sMore$'), ''),
+                        style: style,
+                      ),
+                      TextSpan(text: ' More', style: linkStyle),
+                    ],
+                  ),
+                  maxLines: widget.collapsedMaxLines,
+                  overflow: TextOverflow.clip,
+                ),
+              )
+            else
+              Text(
+                widget.text,
+                maxLines: _expanded ? null : widget.collapsedMaxLines,
+                overflow:
+                    _expanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                style: style,
+              ),
+            if (isOverflowing && !showInlineMore)
               Align(
                 alignment: Alignment.centerRight,
                 child: GestureDetector(
@@ -471,11 +679,7 @@ class _ExpandablePanelDescriptionState
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       _expanded ? 'Hide' : 'More',
-                      style: TextStyles.bodyMain.copyWith(
-                        color: const Color(0xFFC9D7F2),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: linkStyle,
                     ),
                   ),
                 ),
@@ -492,11 +696,17 @@ class _TaskAvatar extends StatelessWidget {
     required this.seedText,
     this.username = '',
     this.avatarUrl = '',
+    this.size = 40,
+    this.borderColor,
+    this.borderWidth,
   });
 
   final String seedText;
   final String username;
   final String avatarUrl;
+  final double size;
+  final Color? borderColor;
+  final double? borderWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -512,9 +722,13 @@ class _TaskAvatar extends StatelessWidget {
         final normalizedAvatarUrl = snapshot.data?.trim() ?? '';
         final hasAvatar = normalizedAvatarUrl.isNotEmpty;
 
+        final resolvedBorderColor =
+            borderColor ?? Colors.white.withValues(alpha: 0.28);
+        final resolvedBorderWidth = borderWidth ?? 0.5;
+
         return Container(
-          width: 40,
-          height: 40,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: const LinearGradient(
@@ -523,7 +737,8 @@ class _TaskAvatar extends StatelessWidget {
               colors: [Color(0xFF5A5D64), Color(0xFF35383E)],
             ),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.28),
+              color: resolvedBorderColor,
+              width: resolvedBorderWidth,
             ),
           ),
           child: ClipOval(
@@ -540,10 +755,10 @@ class _TaskAvatar extends StatelessWidget {
                                 fontWeight: FontWeight.w700,
                               ),
                             )
-                          : const Icon(
+                          : Icon(
                               Icons.person,
                               color: Colors.white,
-                              size: 20,
+                              size: size * 0.45,
                             ),
                     ),
                   )
@@ -556,10 +771,10 @@ class _TaskAvatar extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                             ),
                           )
-                        : const Icon(
+                        : Icon(
                             Icons.person,
                             color: Colors.white,
-                            size: 20,
+                            size: size * 0.45,
                           ),
                   ),
           ),

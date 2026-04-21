@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'dart:ui' as ui;
 
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/gen/fonts.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -170,9 +171,8 @@ class _MapPageState extends State<MapPage>
                 onTapMapBackground: () =>
                     setState(_controller.clearNearbyTaskSelection),
                 myRequestPanelOffset: _controller.myRequestPanelOffset,
-                onMyRequestPanelDragUpdate: (details) =>
-                  setState(() =>
-                    _controller.updateMyRequestPanelOffset(details)),
+                onMyRequestPanelDragUpdate: (details) => setState(
+                    () => _controller.updateMyRequestPanelOffset(details)),
                 selectedApplicationId: _controller.selectedApplicationId,
                 locallyRejectedApplicationIds:
                     _controller.locallyRejectedApplicationIds,
@@ -182,12 +182,11 @@ class _MapPageState extends State<MapPage>
                 onRejectApplication: (application) =>
                     _controller.handleRejectApplication(application,
                         runSetState: setState),
-                onExecutorCancel: () =>
-                  _controller.handleExecutorCancel(
-                    context,
-                    vm,
-                    runSetState: setState,
-                  ),
+                onExecutorCancel: () => _controller.handleExecutorCancel(
+                  context,
+                  vm,
+                  runSetState: setState,
+                ),
                 executorCompletionShown: _controller.executorCompletionShown,
                 executorFlowDismissed: _controller.executorFlowDismissed,
                 executorTaskStatus: _controller.executorTaskStatus,
@@ -196,9 +195,9 @@ class _MapPageState extends State<MapPage>
                     _controller.locallyCanceledExecutorApplicationIds,
                 selectedNearbyTaskId: _controller.selectedNearbyTaskId,
                 onSelectNearbyTask: (taskId) =>
-                  setState(() => _controller.selectNearbyTask(taskId)),
+                    setState(() => _controller.selectNearbyTask(taskId)),
                 lastCreatorTaskCreatedAtUtc:
-                  _controller.lastCreatorTaskCreatedAtUtc,
+                    _controller.lastCreatorTaskCreatedAtUtc,
                 currentUserAvatarUrl: _controller.currentUserAvatarUrl,
               ),
               loadingError: (_) =>
@@ -234,9 +233,8 @@ class _MapPageState extends State<MapPage>
                 onTapMapBackground: () =>
                     setState(_controller.clearNearbyTaskSelection),
                 myRequestPanelOffset: _controller.myRequestPanelOffset,
-                onMyRequestPanelDragUpdate: (details) =>
-                  setState(() =>
-                    _controller.updateMyRequestPanelOffset(details)),
+                onMyRequestPanelDragUpdate: (details) => setState(
+                    () => _controller.updateMyRequestPanelOffset(details)),
                 selectedApplicationId: _controller.selectedApplicationId,
                 locallyRejectedApplicationIds:
                     _controller.locallyRejectedApplicationIds,
@@ -246,12 +244,11 @@ class _MapPageState extends State<MapPage>
                 onRejectApplication: (application) =>
                     _controller.handleRejectApplication(application,
                         runSetState: setState),
-                onExecutorCancel: () =>
-                  _controller.handleExecutorCancel(
-                    context,
-                    vm,
-                    runSetState: setState,
-                  ),
+                onExecutorCancel: () => _controller.handleExecutorCancel(
+                  context,
+                  vm,
+                  runSetState: setState,
+                ),
                 executorCompletionShown: _controller.executorCompletionShown,
                 executorFlowDismissed: _controller.executorFlowDismissed,
                 executorTaskStatus: _controller.executorTaskStatus,
@@ -260,9 +257,9 @@ class _MapPageState extends State<MapPage>
                     _controller.locallyCanceledExecutorApplicationIds,
                 selectedNearbyTaskId: _controller.selectedNearbyTaskId,
                 onSelectNearbyTask: (taskId) =>
-                  setState(() => _controller.selectNearbyTask(taskId)),
+                    setState(() => _controller.selectNearbyTask(taskId)),
                 lastCreatorTaskCreatedAtUtc:
-                  _controller.lastCreatorTaskCreatedAtUtc,
+                    _controller.lastCreatorTaskCreatedAtUtc,
                 currentUserAvatarUrl: _controller.currentUserAvatarUrl,
               ),
             );

@@ -205,6 +205,9 @@ class MapPageController {
       return;
     }
     selectedNearbyTaskId = null;
+    if (isRequestExpanded) {
+      isRequestExpanded = false;
+    }
     unawaited(_requestMarkerService.clearSelection());
   }
 

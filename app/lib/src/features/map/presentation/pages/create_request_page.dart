@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/gen/fonts.gen.dart';
 import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/router/router.dart';
@@ -91,82 +93,103 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.45),
       builder: (dialogContext) {
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 384),
-            child: Material(
-              color: Colors.transparent,
-              child: Container(
-                width: 384,
-                constraints: const BoxConstraints(minHeight: 184),
-                padding: const EdgeInsets.fromLTRB(12, 20, 12, 20),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2A2A2B),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Not enough Honors. Top up your balance to continue.',
-                      textAlign: TextAlign.center,
-                      style: TextStyles.bodyLarge.copyWith(
-                        color: Colors.white,
-                        height: 1.35,
-                      ),
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 384),
+                child: Container(
+                  width: 384,
+                  constraints: const BoxConstraints(minHeight: 184),
+                  padding: const EdgeInsets.fromLTRB(12, 20, 12, 20),
+                  decoration: BoxDecoration(
+                    color: const Color.fromRGBO(32, 32, 32, 0.20),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.14),
+                      width: 0.5,
                     ),
-                    const Gap(20),
-                    SizedBox(
-                      height: 44,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(dialogContext).pop();
-                          if (context.mounted) {
-                            context.push(RoutePaths.store);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          elevation: 0,
-                          backgroundColor: MapUiPalette.createRequestDialogBuyBackground,
-                          foregroundColor: MapUiPalette.createRequestPrimaryOnEnabled,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 15),
+                        child: Text(
+                          'Not enough Honors. Top up your balance to continue.',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontFamily: FontFamily.lora,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            height: 20 / 16,
+                            color: Color(0xFFCACACA),
                           ),
                         ),
-                        child: Text(
-                          'Buy',
-                          style: TextStyles.bodyLarge.copyWith(
-                            fontWeight: FontWeight.w600,
+                      ),
+                      const Gap(20),
+                      SizedBox(
+                        height: 40,
+                        child: CustomButton(
+                          text: 'Buy',
+                          onTap: () {
+                            Navigator.of(dialogContext).pop();
+                            if (context.mounted) {
+                              context.push(RoutePaths.store);
+                            }
+                          },
+                          borderRadius: 6,
+                          backgroundColor:
+                              MapUiPalette.createRequestDialogBuyBackground,
+                          textStyle: const TextStyle(
+                            fontFamily: FontFamily.lora,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            height: 20 / 16,
                             color: MapUiPalette.createRequestPrimaryOnEnabled,
                           ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                         ),
                       ),
-                    ),
-                    const Gap(20),
-                    SizedBox(
-                      height: 44,
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(dialogContext).pop(),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(
-                            color: MapUiPalette.createRequestDialogCancelBorder,
-                            width: 1.5,
+                      const Gap(20),
+                      SizedBox(
+                        height: 40,
+                        child: CustomButton(
+                          text: 'Cancel',
+                          onTap: () => Navigator.of(dialogContext).pop(),
+                          borderRadius: 6,
+                          backgroundColor: Colors.transparent,
+                          border: const Border.fromBorderSide(
+                            BorderSide(
+                              color:
+                                  MapUiPalette.createRequestDialogCancelBorder,
+                              width: 1.5,
+                            ),
                           ),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyles.bodyLarge.copyWith(
+                          textStyle: const TextStyle(
+                            fontFamily: FontFamily.lora,
+                            fontSize: 16,
                             fontWeight: FontWeight.w500,
+                            height: 20 / 16,
+                            color: Color(0xFFCACACA),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -284,7 +307,8 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                                 textAlign: TextAlign.center,
                                 decoration: InputDecoration(
                                   filled: true,
-                                  fillColor: MapUiPalette.createRequestFieldFill,
+                                  fillColor:
+                                      MapUiPalette.createRequestFieldFill,
                                   contentPadding:
                                       const EdgeInsets.symmetric(vertical: 8),
                                   isDense: true,
