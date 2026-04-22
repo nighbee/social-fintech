@@ -202,60 +202,83 @@ class MapDialogService {
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 25),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(18),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Container(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                decoration: _popupDecoration(10),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Are you sure you want to cancel this request?',
-                      textAlign: TextAlign.center,
-                      style:
-                          TextStyles.bodyMain.copyWith(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: CustomButton(
-                            text: 'Confirm',
-                            onTap: () {
-                              Navigator.of(dialogContext).pop();
-                              onConfirm();
-                            },
-                            borderRadius: 6,
-                            backgroundColor: const Color(0xFFE5E5E5),
-                            textStyle: TextStyles.bodyMain.copyWith(
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
+                width: 390,
+                height: 140,
+                padding: const EdgeInsets.all(16),
+                decoration: _executorCancelPopupDecoration(18),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 100,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Are you sure you want to cancel this request?',
+                        textAlign: TextAlign.center,
+                        style: TextStyles.bodyMain.copyWith(
+                          fontFamily: FontFamily.lora,
+                          color: const Color(0xFFCACACA),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          height: 18 / 16,
+                          letterSpacing: -0.15,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: CustomButton(
-                            text: 'Cancel',
-                            onTap: () => Navigator.of(dialogContext).pop(),
-                            borderRadius: 6,
-                            backgroundColor: Colors.transparent,
-                            border: Border.all(color: Colors.white38),
-                            textStyle: TextStyles.bodyMain.copyWith(
-                              color: Colors.white70,
-                              fontWeight: FontWeight.w500,
+                      ),
+                      SizedBox(
+                        height: 32,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: CustomButton(
+                                text: 'Confirm',
+                                onTap: () {
+                                  Navigator.of(dialogContext).pop();
+                                  onConfirm();
+                                },
+                                borderRadius: 6,
+                                backgroundColor: const Color(0xFFE5E5E5),
+                                textStyle: TextStyles.bodyMain.copyWith(
+                                  fontFamily: FontFamily.lora,
+                                  color: Colors.black87,
+                                  fontSize: 12,
+                                  height: 16 / 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: CustomButton(
+                                text: 'Cancel',
+                                onTap: () => Navigator.of(dialogContext).pop(),
+                                borderRadius: 6,
+                                backgroundColor: Colors.transparent,
+                                border:
+                                    Border.all(color: const Color(0xFFCACACA)),
+                                textStyle: TextStyles.bodyMain.copyWith(
+                                  fontFamily: FontFamily.lora,
+                                  color: const Color(0xFFCACACA),
+                                  fontSize: 12,
+                                  height: 16 / 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 8),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -272,40 +295,68 @@ class MapDialogService {
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 25),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(18),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
               child: Container(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                decoration: _popupDecoration(10),
+                constraints: const BoxConstraints(
+                  maxWidth: 390,
+                  minHeight: 140,
+                ),
+                padding: const EdgeInsets.all(16),
+                decoration: _executorCancelPopupDecoration(18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Request canceled',
+                      'Request cancelled',
                       textAlign: TextAlign.center,
-                      style: TextStyles.bodyLarge.copyWith(color: Colors.white),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Your request has been canceled.',
-                      textAlign: TextAlign.center,
-                      style:
-                          TextStyles.bodyMain.copyWith(color: Colors.white70),
-                    ),
-                    const SizedBox(height: 10),
-                    CustomButton(
-                      text: 'Ok',
-                      onTap: () => Navigator.of(dialogContext).pop(),
-                      borderRadius: 6,
-                      backgroundColor: const Color(0xFFE5E5E5),
-                      textStyle: TextStyles.bodyMain.copyWith(
-                        color: Colors.black87,
+                      style: TextStyles.bodyMain.copyWith(
+                        fontFamily: FontFamily.lora,
+                        color: const Color(0xFFF2F2F2),
+                        fontSize: 16,
                         fontWeight: FontWeight.w600,
+                        height: 20 / 16,
+                        letterSpacing: -0.25,
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'You canceled your offer to help.',
+                      textAlign: TextAlign.center,
+                      style: TextStyles.bodyMain.copyWith(
+                        fontFamily: FontFamily.lora,
+                        color: const Color(0xFFCACACA),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        height: 20 / 14,
+                        letterSpacing: -0.25,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      height: 44,
+                      child: CustomButton(
+                        text: 'Ok',
+                        onTap: () => Navigator.of(dialogContext).pop(),
+                        borderRadius: 6,
+                        backgroundColor: Colors.white.withValues(alpha: 0.03),
+                        border: Border.all(
+                          color: const Color(0xFFCACACA),
+                          width: 1.5,
+                        ),
+                        textStyle: TextStyles.bodyMain.copyWith(
+                          fontFamily: FontFamily.lora,
+                          color: const Color(0xFFCACACA),
+                          fontSize: 16,
+                          height: 18 / 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.15,
+                        ),
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+                      ),
                     ),
                   ],
                 ),
@@ -476,21 +527,22 @@ class MapDialogService {
     _isConfirmDialogOpen = false;
   }
 
-  Future<void> tryShowExecutorRejectedDialog({
+  Future<bool> tryShowExecutorRejectedDialog({
     required BuildContext context,
     required String applicationId,
     required bool executorCompletionShown,
     required String executorTaskStatus,
     required String executorCreatorName,
+    required String executorCreatorAvatarUrl,
   }) async {
     if (_isRejectedDialogOpen || executorCompletionShown) {
-      return;
+      return false;
     }
     if (applicationId.isEmpty || executorTaskStatus != 'rejected') {
-      return;
+      return false;
     }
     if (_lastHandledRejectedApplicationId == applicationId) {
-      return;
+      return false;
     }
 
     _lastHandledRejectedApplicationId = applicationId;
@@ -499,6 +551,7 @@ class MapDialogService {
     final creatorName = executorCreatorName.trim().isEmpty
         ? 'Creator'
         : executorCreatorName.trim();
+    final creatorAvatarUrl = executorCreatorAvatarUrl.trim();
 
     await showDialog<void>(
       context: context,
@@ -512,28 +565,72 @@ class MapDialogService {
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
               child: Container(
-                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
-                decoration: _popupDecoration(10),
+                width: 390,
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                decoration: _executorRejectedPopupDecoration(10),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF303237),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 1),
+                      ),
+                      child: ClipOval(
+                        child: creatorAvatarUrl.isNotEmpty
+                            ? Image.network(
+                                creatorAvatarUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Center(
+                                  child: _buildRejectedAvatarFallback(
+                                    creatorName,
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: _buildRejectedAvatarFallback(
+                                  creatorName,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       '$creatorName rejected your request.',
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyles.bodyMain.copyWith(color: Colors.white70),
+                      style: TextStyles.bodyMain.copyWith(
+                        fontFamily: FontFamily.lora,
+                        color: const Color(0xFFCACACA),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        height: 20 / 16,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    CustomButton(
-                      text: 'Ok',
-                      onTap: () => Navigator.of(dialogContext).pop(),
-                      borderRadius: 6,
-                      backgroundColor: const Color(0xFFE5E5E5),
-                      textStyle: TextStyles.bodyMain.copyWith(
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w600,
+                    SizedBox(
+                      height: 36,
+                      child: CustomButton(
+                        text: 'Ok',
+                        onTap: () => Navigator.of(dialogContext).pop(),
+                        borderRadius: 6,
+                        backgroundColor: Colors.white.withValues(alpha: 0.03),
+                        border: Border.all(
+                          color: const Color(0xFFCACACA),
+                          width: 1.5,
+                        ),
+                        textStyle: TextStyles.bodyMain.copyWith(
+                          fontFamily: FontFamily.lora,
+                          fontSize: 16,
+                          height: 18 / 16,
+                          color: const Color(0xFFCACACA),
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.15,
+                        ),
+                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
                     ),
                   ],
                 ),
@@ -545,6 +642,21 @@ class MapDialogService {
     );
 
     _isRejectedDialogOpen = false;
+    return true;
+  }
+
+  Widget _buildRejectedAvatarFallback(String creatorName) {
+    final trimmed = creatorName.trim();
+    final first = trimmed.isEmpty ? '' : trimmed.substring(0, 1).toUpperCase();
+    return first.isEmpty
+        ? const Icon(Icons.person, color: Colors.white70, size: 20)
+        : Text(
+            first,
+            style: TextStyles.bodyMain.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          );
   }
 
   String _compactApplicant(String applicantId) {
@@ -560,19 +672,65 @@ class MapDialogService {
 
   BoxDecoration _popupDecoration(double radius) {
     return BoxDecoration(
-      color: const Color(0xFF565A63).withValues(alpha: 0.42),
+      color: const Color(0xFF202020).withValues(alpha: 0.20),
       borderRadius: BorderRadius.circular(radius),
-      border:
-          Border.all(color: const Color(0xFF8B9099).withValues(alpha: 0.62)),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 0.5),
       boxShadow: [
         BoxShadow(
-          color: Colors.white.withValues(alpha: 0.08),
-          blurRadius: 8,
-          offset: const Offset(0, -2),
+          color: Colors.black.withValues(alpha: 0.24),
+          blurRadius: 12,
+          offset: const Offset(0, 6),
         ),
+      ],
+    );
+  }
+
+  BoxDecoration _executorCancelPopupDecoration(double radius) {
+    return BoxDecoration(
+      color: const Color(0xFF5A616C).withValues(alpha: 0.38),
+      gradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0x52FFFFFF),
+          Color(0x1EFFFFFF),
+        ],
+      ),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.32),
+        width: 0.5,
+      ),
+      boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.34),
-          blurRadius: 18,
+          color: Colors.black.withValues(alpha: 0.18),
+          blurRadius: 14,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
+  }
+
+  BoxDecoration _executorRejectedPopupDecoration(double radius) {
+    return BoxDecoration(
+      color: const Color(0xFF5A616C).withValues(alpha: 0.38),
+      gradient: const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0x52FFFFFF),
+          Color(0x1EFFFFFF),
+        ],
+      ),
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(
+        color: Colors.white.withValues(alpha: 0.32),
+        width: 0.5,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.18),
+          blurRadius: 14,
           offset: const Offset(0, 8),
         ),
       ],

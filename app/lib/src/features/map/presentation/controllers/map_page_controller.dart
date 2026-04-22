@@ -77,6 +77,9 @@ class MapPageController {
   bool executorFlowDismissed = false;
   String executorTaskStatus = '';
   String executorCreatorName = '';
+  String executorCreatorAvatarUrl = '';
+  DateTime? _lastExecutorApplyAt;
+  bool _executorRejectedDialogShownThisSession = false;
   String? handledTaskApplicationActionResult;
   final Set<String> locallyCanceledExecutorApplicationIds = <String>{};
   int consecutiveMissingAppliedTaskChecks = 0;
@@ -96,6 +99,7 @@ class MapPageController {
   String? _lastSelfPinAvatarUrl;
   DateTime? _lastCreatorTaskCreatedAtUtc;
   String? selectedNearbyTaskId;
+  final Set<String> _locallyBlockedNearbyTaskIds = <String>{};
   DateTime? _lastMarkerSelectionAt;
   Future<void>? _teardownFuture;
   int? _lastMarkerZoomStep;
@@ -197,6 +201,73 @@ class MapPageController {
     unawaited(_requestMarkerService.setSelectedTask(selectedNearbyTaskId));
   }
 
+  void applyToNearbyTask(MapTaskEntity task) {
+    bool containsAny(String value, List<String> tokens) {
+      for (final token in tokens) {
+        if (value.contains(token)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    final normalizedTaskStatus = task.status.trim().toLowerCase();
+    final normalizedApplicationStatus = task.applicationStatus.trim().toLowerCase();
+    final isTaskClosed = containsAny(
+      normalizedTaskStatus,
+      <String>['cancelled', 'canceled', 'completed', 'closed'],
+    );
+    final isTaskAlreadyAssigned = containsAny(
+      normalizedTaskStatus,
+      <String>[
+        'accepted',
+        'assigned',
+        'arrived',
+        'in_progress',
+        'code_required',
+        'code_verified',
+        'confirmed',
+      ],
+    );
+    final isAlreadyRejected = containsAny(
+      normalizedApplicationStatus,
+      <String>['rejected', 'declined', 'withdrawn'],
+    );
+    final isApplicationAlreadyAssigned = containsAny(
+      normalizedApplicationStatus,
+      <String>[
+        'accepted',
+        'assigned',
+        'arrived',
+        'in_progress',
+        'code_required',
+        'code_verified',
+        'confirmed',
+      ],
+    );
+    final isTaskFull =
+        task.workersNeeded > 0 && task.workersFilled >= task.workersNeeded;
+    final isLocallyBlocked = _locallyBlockedNearbyTaskIds.contains(task.id);
+    if (isTaskClosed ||
+        isTaskAlreadyAssigned ||
+        isAlreadyRejected ||
+        isApplicationAlreadyAssigned ||
+        isTaskFull ||
+        isLocallyBlocked) {
+      return;
+    }
+
+    final creatorName = task.creatorUsername.trim();
+    final creatorAvatarUrl = task.creatorAvatarUrl.trim();
+    if (creatorName.isNotEmpty) {
+      executorCreatorName = creatorName;
+    }
+    if (creatorAvatarUrl.isNotEmpty) {
+      executorCreatorAvatarUrl = creatorAvatarUrl;
+    }
+    _mapBloc.add(MapEvent.applyToTask(MapTaskIdRequest(taskId: task.id)));
+  }
+
   void clearNearbyTaskSelection() {
     final lastMarkerTap = _lastMarkerSelectionAt;
     if (lastMarkerTap != null &&
@@ -287,15 +358,33 @@ class MapPageController {
       handledApplyApplicationId = viewModel.applyToTaskResult.applicationId;
       executorTaskStatus = viewModel.applyToTaskResult.status;
       executorFlowDismissed = false;
-      executorCreatorName = '';
+      final taskId = viewModel.applyToTaskResult.taskId.trim();
+      final selectedTaskId = selectedNearbyTaskId?.trim() ?? '';
+      final lookupTaskId = taskId.isNotEmpty ? taskId : selectedTaskId;
+      final nearbyTask = viewModel.nearbyTasks.cast<MapTaskEntity?>().firstWhere(
+            (task) => task?.id == lookupTaskId,
+            orElse: () => null,
+          );
+      final creatorName = nearbyTask?.creatorUsername.trim() ?? '';
+      final creatorAvatarUrl = nearbyTask?.creatorAvatarUrl.trim() ?? '';
+      if (creatorName.isNotEmpty) {
+        executorCreatorName = creatorName;
+      }
+      if (creatorAvatarUrl.isNotEmpty) {
+        executorCreatorAvatarUrl = creatorAvatarUrl;
+      }
+      _lastExecutorApplyAt = DateTime.now();
       consecutiveMissingAppliedTaskChecks = 0;
       _dialogs.resetRejectedHandledId();
-      unawaited(
-        _persistActiveExecutorApplication(
-          viewModel.applyToTaskResult.taskId,
-          viewModel.applyToTaskResult.applicationId,
-        ),
-      );
+      final persistTaskId = taskId.isNotEmpty ? taskId : selectedTaskId;
+      if (persistTaskId.isNotEmpty) {
+        unawaited(
+          _persistActiveExecutorApplication(
+            persistTaskId,
+            viewModel.applyToTaskResult.applicationId,
+          ),
+        );
+      }
     }
 
     if (viewModel.taskApplicationActionResult.isEmpty) {
@@ -1207,8 +1296,11 @@ class MapPageController {
         ),
       ),
     );
-    executorFlowDismissed = false;
-    executorTaskStatus = 'pending';
+    // Do not immediately show "awaiting approval" from stale local state.
+    // We wait for the next appliedTasks sync to confirm that this application
+    // is still active on backend.
+    executorFlowDismissed = true;
+    executorTaskStatus = '';
   }
 
   Future<void> _persistActiveExecutorApplication(
@@ -1342,13 +1434,33 @@ class MapPageController {
     BuildContext context,
     MapViewModel viewModel,
   ) async {
-    await _dialogs.tryShowExecutorRejectedDialog(
+    if (_executorRejectedDialogShownThisSession) {
+      return;
+    }
+    final rejectedTaskId = viewModel.applyToTaskResult.taskId.trim();
+    final shown = await _dialogs.tryShowExecutorRejectedDialog(
       context: context,
       applicationId: viewModel.applyToTaskResult.applicationId,
       executorCompletionShown: executorCompletionShown,
       executorTaskStatus: executorTaskStatus,
       executorCreatorName: executorCreatorName,
+      executorCreatorAvatarUrl: executorCreatorAvatarUrl,
     );
+    if (shown) {
+      _executorRejectedDialogShownThisSession = true;
+      if (rejectedTaskId.isNotEmpty) {
+        _locallyBlockedNearbyTaskIds.add(rejectedTaskId);
+      }
+      _lastExecutorApplyAt = null;
+      unawaited(_clearActiveExecutorApplication());
+      executorFlowDismissed = true;
+      _mapBloc.add(
+        const MapEvent.hydrateExecutorApplication(
+          MapTaskApplicationIdRequest(taskId: '', applicationId: ''),
+        ),
+      );
+      _refreshNearbyTasks();
+    }
   }
 
   void _tryCheckExecutorCompletion(
@@ -1366,29 +1478,33 @@ class MapPageController {
     final applicationId = viewModel.applyToTaskResult.applicationId;
     if (taskId.isEmpty || applicationId.isEmpty) {
       consecutiveMissingAppliedTaskChecks = 0;
+      _lastExecutorApplyAt = null;
       if (executorTaskStatus.isNotEmpty && mounted) {
         runSetState(() {
           executorFlowDismissed = false;
           executorTaskStatus = '';
           executorCreatorName = '';
+          executorCreatorAvatarUrl = '';
         });
       } else if (executorTaskStatus.isNotEmpty) {
         executorFlowDismissed = false;
         executorTaskStatus = '';
         executorCreatorName = '';
+        executorCreatorAvatarUrl = '';
       }
       return;
     }
 
     if (locallyCanceledExecutorApplicationIds.contains(applicationId)) {
       consecutiveMissingAppliedTaskChecks = 0;
+      _lastExecutorApplyAt = null;
       return;
     }
 
     final now = DateTime.now();
     if (lastExecutorCompletionCheckAt != null &&
         now.difference(lastExecutorCompletionCheckAt!) <
-            const Duration(seconds: 8)) {
+            const Duration(seconds: 3)) {
       return;
     }
     lastExecutorCompletionCheckAt = now;
@@ -1397,12 +1513,14 @@ class MapPageController {
 
     String? matchedTaskStatus;
     String? matchedCreatorName;
+    String? matchedCreatorAvatarUrl;
     for (final task in viewModel.appliedTasks) {
       if (task.id == taskId) {
         matchedTaskStatus = task.applicationStatus.trim().isNotEmpty
             ? task.applicationStatus
             : task.status;
         matchedCreatorName = task.creatorUsername;
+        matchedCreatorAvatarUrl = task.creatorAvatarUrl;
         break;
       }
     }
@@ -1411,7 +1529,21 @@ class MapPageController {
       consecutiveMissingAppliedTaskChecks = 0;
     }
 
+    bool isApprovedLikeStatus(String rawStatus) {
+      final normalized = rawStatus.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        return false;
+      }
+      return normalized.contains('accepted') ||
+          normalized.contains('assigned') ||
+          normalized.contains('arrived') ||
+          normalized.contains('in_progress') ||
+          normalized.contains('code_required') ||
+          normalized.contains('code_verified');
+    }
+
     if (matchedTaskStatus == 'completed') {
+      _lastExecutorApplyAt = null;
       unawaited(_clearActiveExecutorApplication());
       if (mounted) {
         runSetState(() {
@@ -1419,12 +1551,14 @@ class MapPageController {
           executorFlowDismissed = false;
           executorTaskStatus = matchedTaskStatus!;
           executorCreatorName = (matchedCreatorName ?? '').trim();
+          executorCreatorAvatarUrl = (matchedCreatorAvatarUrl ?? '').trim();
         });
       } else {
         executorCompletionShown = true;
         executorFlowDismissed = false;
         executorTaskStatus = matchedTaskStatus!;
         executorCreatorName = (matchedCreatorName ?? '').trim();
+        executorCreatorAvatarUrl = (matchedCreatorAvatarUrl ?? '').trim();
       }
       unawaited(onNavigateExecutorCompleted());
       return;
@@ -1435,23 +1569,57 @@ class MapPageController {
         mounted &&
         !executorCompletionShown) {
       runSetState(() {
+        executorFlowDismissed = false;
         executorTaskStatus = matchedTaskStatus!;
         executorCreatorName = (matchedCreatorName ?? '').trim();
+        executorCreatorAvatarUrl = (matchedCreatorAvatarUrl ?? '').trim();
       });
       return;
+    }
+
+    final nearbyTask = viewModel.nearbyTasks.cast<MapTaskEntity?>().firstWhere(
+          (task) => task?.id == taskId,
+          orElse: () => null,
+        );
+    final isTaskFilledBySomeone = nearbyTask != null &&
+        nearbyTask.workersNeeded > 0 &&
+        nearbyTask.workersFilled >= nearbyTask.workersNeeded;
+    final hasApprovedLike =
+        isApprovedLikeStatus(matchedTaskStatus ?? executorTaskStatus);
+    if (isTaskFilledBySomeone &&
+        !hasApprovedLike &&
+        !executorCompletionShown &&
+        mounted) {
+      final applyAt = _lastExecutorApplyAt;
+      if (applyAt != null &&
+          now.difference(applyAt) >= const Duration(seconds: 6)) {
+        _lastExecutorApplyAt = null;
+        unawaited(_clearActiveExecutorApplication());
+        _locallyBlockedNearbyTaskIds.add(taskId);
+        runSetState(() {
+          executorTaskStatus = 'rejected';
+        });
+        return;
+      }
     }
 
     if (matchedTaskStatus == null &&
         viewModel.hasAppliedTasksLoaded &&
         mounted &&
         !executorCompletionShown) {
-      // Avoid false "rejected" when current state is stale right after apply.
+      final applyAt = _lastExecutorApplyAt;
+      if (applyAt != null &&
+          now.difference(applyAt) < const Duration(seconds: 10)) {
+        return;
+      }
+      // After a short grace window, treat missing applied task as rejected.
       consecutiveMissingAppliedTaskChecks += 1;
-      if (consecutiveMissingAppliedTaskChecks >= 2) {
+      if (consecutiveMissingAppliedTaskChecks >= 1) {
+        _lastExecutorApplyAt = null;
         unawaited(_clearActiveExecutorApplication());
+        _locallyBlockedNearbyTaskIds.add(taskId);
         runSetState(() {
           executorTaskStatus = 'rejected';
-          executorCreatorName = '';
         });
       }
     }
@@ -1528,11 +1696,13 @@ class MapPageController {
     final action = viewModel.taskApplicationActionResult;
     if (action == 'withdrawn') {
       final applicationId = viewModel.applyToTaskResult.applicationId;
+      _lastExecutorApplyAt = null;
       unawaited(_clearActiveExecutorApplication());
       runSetState(() {
         executorFlowDismissed = false;
         executorTaskStatus = 'rejected';
         executorCreatorName = '';
+        executorCreatorAvatarUrl = '';
         if (applicationId.isNotEmpty) {
           locallyCanceledExecutorApplicationIds.add(applicationId);
         }
@@ -1544,6 +1714,7 @@ class MapPageController {
     if (action == 'accepted' || action == 'rejected') {
       final applicationId = viewModel.applyToTaskResult.applicationId;
       if (action == 'rejected') {
+        _lastExecutorApplyAt = null;
         unawaited(_clearActiveExecutorApplication());
       }
       runSetState(() {

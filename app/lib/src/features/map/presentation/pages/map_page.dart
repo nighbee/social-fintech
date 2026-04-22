@@ -196,12 +196,74 @@ class _MapPageState extends State<MapPage>
                 selectedNearbyTaskId: _controller.selectedNearbyTaskId,
                 onSelectNearbyTask: (taskId) =>
                     setState(() => _controller.selectNearbyTask(taskId)),
+                onApplyToNearbyTask: (task) =>
+                    _controller.applyToNearbyTask(task),
                 lastCreatorTaskCreatedAtUtc:
                     _controller.lastCreatorTaskCreatedAtUtc,
                 currentUserAvatarUrl: _controller.currentUserAvatarUrl,
               ),
-              loadingError: (_) =>
-                  const SizedBox.shrink(), // Handled by listener
+              loadingError: (_) => _MapContent(
+                viewModel: _controller.mapBloc.viewModel,
+                mapboxMap: _controller.mapboxMap,
+                isRequestExpanded: _controller.isRequestExpanded,
+                isLoading: false,
+                onToggleExpanded: () =>
+                    setState(_controller.toggleRequestExpanded),
+                onMapCreated: _controller.onMapCreated,
+                onStyleLoaded: _controller.onStyleLoaded,
+                onStyleImageMissing: _controller.onStyleImageMissing,
+                onCameraChanged: (eventData) =>
+                    setState(() => _controller.onCameraChanged(eventData)),
+                onOpenCreateRequest: () =>
+                    _controller.openCreateRequest(context),
+                onOpenVerifyCode: (taskId, applicationId) =>
+                    Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => _VerifyCodePage(
+                      mapBloc: _controller.mapBloc,
+                      taskId: taskId,
+                      applicationId: applicationId,
+                    ),
+                  ),
+                ),
+                onZoomIn: () => _controller.zoomBy(1),
+                onZoomOut: () => _controller.zoomBy(-1),
+                onCurrentLocation: () =>
+                    _controller.moveToCurrentLocation(context),
+                onTapMapBackground: () =>
+                    setState(_controller.clearNearbyTaskSelection),
+                myRequestPanelOffset: _controller.myRequestPanelOffset,
+                onMyRequestPanelDragUpdate: (details) => setState(
+                    () => _controller.updateMyRequestPanelOffset(details)),
+                selectedApplicationId: _controller.selectedApplicationId,
+                locallyRejectedApplicationIds:
+                    _controller.locallyRejectedApplicationIds,
+                onAcceptApplication: (application) =>
+                    _controller.handleAcceptApplication(application,
+                        runSetState: setState),
+                onRejectApplication: (application) =>
+                    _controller.handleRejectApplication(application,
+                        runSetState: setState),
+                onExecutorCancel: () => _controller.handleExecutorCancel(
+                  context,
+                  _controller.mapBloc.viewModel,
+                  runSetState: setState,
+                ),
+                executorCompletionShown: _controller.executorCompletionShown,
+                executorFlowDismissed: _controller.executorFlowDismissed,
+                executorTaskStatus: _controller.executorTaskStatus,
+                executorCreatorName: _controller.executorCreatorName,
+                locallyCanceledExecutorApplicationIds:
+                    _controller.locallyCanceledExecutorApplicationIds,
+                selectedNearbyTaskId: _controller.selectedNearbyTaskId,
+                onSelectNearbyTask: (taskId) =>
+                    setState(() => _controller.selectNearbyTask(taskId)),
+                onApplyToNearbyTask: (task) =>
+                    _controller.applyToNearbyTask(task),
+                lastCreatorTaskCreatedAtUtc:
+                    _controller.lastCreatorTaskCreatedAtUtc,
+                currentUserAvatarUrl: _controller.currentUserAvatarUrl,
+              ),
               loaded: (vm) => _MapContent(
                 viewModel: vm,
                 mapboxMap: _controller.mapboxMap,
@@ -258,6 +320,8 @@ class _MapPageState extends State<MapPage>
                 selectedNearbyTaskId: _controller.selectedNearbyTaskId,
                 onSelectNearbyTask: (taskId) =>
                     setState(() => _controller.selectNearbyTask(taskId)),
+                onApplyToNearbyTask: (task) =>
+                    _controller.applyToNearbyTask(task),
                 lastCreatorTaskCreatedAtUtc:
                     _controller.lastCreatorTaskCreatedAtUtc,
                 currentUserAvatarUrl: _controller.currentUserAvatarUrl,

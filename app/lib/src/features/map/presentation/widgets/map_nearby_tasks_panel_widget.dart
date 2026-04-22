@@ -366,6 +366,57 @@ class _NearbyTasksPanel extends StatelessWidget {
         ? task.description
         : 'No description provided for this request.';
 
+    bool containsAny(String value, List<String> tokens) {
+      for (final token in tokens) {
+        if (value.contains(token)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    final normalizedTaskStatus = task.status.trim().toLowerCase();
+    final normalizedApplicationStatus = task.applicationStatus.trim().toLowerCase();
+    final isTaskClosed = containsAny(
+      normalizedTaskStatus,
+      <String>['cancelled', 'canceled', 'completed', 'closed'],
+    );
+    final isTaskAlreadyAssigned = containsAny(
+      normalizedTaskStatus,
+      <String>[
+        'accepted',
+        'assigned',
+        'arrived',
+        'in_progress',
+        'code_required',
+        'code_verified',
+        'confirmed',
+      ],
+    );
+    final isAlreadyRejected = containsAny(
+      normalizedApplicationStatus,
+      <String>['rejected', 'declined', 'withdrawn'],
+    );
+    final isApplicationAlreadyAssigned = containsAny(
+      normalizedApplicationStatus,
+      <String>[
+        'accepted',
+        'assigned',
+        'arrived',
+        'in_progress',
+        'code_required',
+        'code_verified',
+        'confirmed',
+      ],
+    );
+    final isTaskFull =
+        task.workersNeeded > 0 && task.workersFilled >= task.workersNeeded;
+    final canApply = !(isTaskClosed ||
+        isTaskAlreadyAssigned ||
+        isAlreadyRejected ||
+        isApplicationAlreadyAssigned ||
+        isTaskFull);
+
     const cardHPadding = 16.0;
     const avatarGap = 12.0;
 
@@ -526,21 +577,23 @@ class _NearbyTasksPanel extends StatelessWidget {
                         width: double.infinity,
                         height: 32,
                         child: InkWell(
-                          onTap: () => onApply(task.id),
+                          onTap: canApply ? () => onApply(task.id) : null,
                           borderRadius: BorderRadius.circular(6),
                           child: Container(
                             alignment: Alignment.center,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE5E5E5),
+                              color: canApply
+                                  ? const Color(0xFFE5E5E5)
+                                  : const Color(0xFF7A7A7A),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              'I can help',
+                              canApply ? 'I can help' : 'Unavailable',
                               style: TextStyles.bodyMain.copyWith(
                                 fontSize: 12,
                                 height: 16 / 12,
-                                color: Colors.black87,
+                                color: canApply ? Colors.black87 : Colors.white70,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

@@ -31,6 +31,7 @@ class _MapContent extends StatelessWidget {
     required this.locallyCanceledExecutorApplicationIds,
     required this.selectedNearbyTaskId,
     required this.onSelectNearbyTask,
+    required this.onApplyToNearbyTask,
     required this.lastCreatorTaskCreatedAtUtc,
     required this.currentUserAvatarUrl,
   });
@@ -64,6 +65,7 @@ class _MapContent extends StatelessWidget {
   final Set<String> locallyCanceledExecutorApplicationIds;
   final String? selectedNearbyTaskId;
   final ValueChanged<String> onSelectNearbyTask;
+  final ValueChanged<MapTaskEntity> onApplyToNearbyTask;
   final DateTime? lastCreatorTaskCreatedAtUtc;
   final String? currentUserAvatarUrl;
 
@@ -454,8 +456,7 @@ class _MapContent extends StatelessWidget {
                     })()
                   : _NearbyTasksPanel(
                       tasks: <MapTaskEntity>[selectedNearbyTask!],
-                      onApply: (taskId) => mapBloc.add(MapEvent.applyToTask(
-                          MapTaskIdRequest(taskId: taskId))),
+                      onApply: (_) => onApplyToNearbyTask(selectedNearbyTask),
                     ),
             ),
           ),
