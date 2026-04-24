@@ -6,6 +6,7 @@ import (
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
+	"github.com/brightbund-backend/internal/modules/chat"
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
@@ -17,13 +18,14 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
+	"github.com/gofiber/websocket/v2"
 	"go.uber.org/zap"
 
 	_ "github.com/brightbund-backend/docs"
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:     cfg.Server.ReadTimeout,
 		WriteTimeout:    cfg.Server.WriteTimeout,
@@ -246,6 +248,29 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	settingsGroup.Delete("/interactions/blocked/:userId", settingsHandler.UnblockUser)
 
 	settingsGroup.Post("/support/bugs", settingsHandler.ReportBug)
+
+	chatSendLimiter := limiter.New(limiter.Config{
+		Max:        25,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			if userID, ok := c.Locals("user_id").(string); ok && userID != "" {
+				return "chat-send:" + userID
+			}
+			return "chat-send-ip:" + c.IP()
+		},
+	})
+
+	api.Get("/chats/ws", chatHandler.WebSocketUpgrade, websocket.New(chatHandler.ServeWebSocket))
+
+	chatGroup := api.Group("/chats")
+	chatGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	chatGroup.Use(middleware.TouchSession(authRepo))
+
+	chatGroup.Get("/conversations", chatHandler.ListConversations)
+	chatGroup.Post("/conversations/direct", chatHandler.OpenDirectConversation)
+	chatGroup.Get("/conversations/:conversation_id/messages", chatHandler.ListMessages)
+	chatGroup.Post("/conversations/:conversation_id/messages", chatSendLimiter, chatHandler.SendMessage)
+	chatGroup.Post("/conversations/:conversation_id/read", chatHandler.MarkConversationRead)
 
 	// Map & Tasks routes
 	mapGroup := api.Group("/")

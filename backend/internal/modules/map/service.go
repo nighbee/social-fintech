@@ -9,8 +9,10 @@ import (
 
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/cache"
+	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/google/uuid"
 	"github.com/uber/h3-go/v4"
+	"go.uber.org/zap"
 )
 
 func init() {
@@ -36,6 +38,11 @@ type Service struct {
 	repo        Repository
 	economyRepo economy.Repository
 	cache       *cache.Cache
+	chat        ChatIntegrator
+}
+
+type ChatIntegrator interface {
+	OnTaskApplicationAccepted(ctx context.Context, taskID, creatorID, helperID string) error
 }
 
 func NewService(repo Repository, economyRepo economy.Repository, cacheClient *cache.Cache) *Service {
@@ -44,6 +51,10 @@ func NewService(repo Repository, economyRepo economy.Repository, cacheClient *ca
 		economyRepo: economyRepo,
 		cache:       cacheClient,
 	}
+}
+
+func (s *Service) SetChatIntegrator(chat ChatIntegrator) {
+	s.chat = chat
 }
 
 func (s *Service) ensureCreatorActivated(ctx context.Context, userID string) error {
@@ -482,6 +493,17 @@ func (s *Service) AcceptApplication(ctx context.Context, userID, taskID, applica
 	}
 	if !updated {
 		return fmt.Errorf("application is not pending")
+	}
+
+	if s.chat != nil {
+		if err := s.chat.OnTaskApplicationAccepted(ctx, taskID, userID, app.ApplicantID); err != nil {
+			logger.Error("failed to initialize task chat on application acceptance",
+				zap.String("task_id", taskID),
+				zap.String("creator_id", userID),
+				zap.String("helper_id", app.ApplicantID),
+				zap.Error(err),
+			)
+		}
 	}
 	return nil
 }

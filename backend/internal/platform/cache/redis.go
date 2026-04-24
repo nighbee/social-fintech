@@ -113,6 +113,14 @@ func (c *Cache) Expire(ctx context.Context, key string, ttl time.Duration) error
 	return c.Client.Expire(ctx, key, ttl).Err()
 }
 
+func (c *Cache) Publish(ctx context.Context, channel string, payload interface{}) error {
+	return c.Client.Publish(ctx, channel, payload).Err()
+}
+
+func (c *Cache) Subscribe(ctx context.Context, channels ...string) *redis.PubSub {
+	return c.Client.Subscribe(ctx, channels...)
+}
+
 func (c *Cache) ScanKeys(ctx context.Context, pattern string, count int64) ([]string, error) {
 	iter := c.Client.Scan(ctx, 0, pattern, count).Iterator()
 	var keys []string

@@ -13,6 +13,7 @@ import (
 
 	"github.com/brightbund-backend/internal/config"
 	"github.com/brightbund-backend/internal/modules/auth"
+	"github.com/brightbund-backend/internal/modules/chat"
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
@@ -116,7 +117,7 @@ func main() {
 	defer redisCache.Close()
 
 	logger.Info("redis connection established", zap.String("address", cfg.Redis.Address))
-	
+
 	// Create Asynq client for background tasks (Video Processing)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{
 		Addr:     cfg.Redis.Address,
@@ -259,7 +260,15 @@ func main() {
 	settingsWorker.Start()
 	logger.Info("settings module initialized")
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, jwtManager, authRepo, logger.Get())
+	chatRepo := chat.NewRepository(db.DB)
+	chatHub := chat.NewHub(redisCache)
+	chatHub.Start(context.Background())
+	chatService := chat.NewService(chatRepo, settingsService, chatHub, nil)
+	chatHandler := chat.NewHandler(chatService, chatHub, jwtManager, authRepo)
+	mapService.SetChatIntegrator(chatService)
+	logger.Info("chat module initialized")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
