@@ -195,7 +195,8 @@ func (r *repository) GetTasksNearby(ctx context.Context, userID string, lat, lon
 		WHERE t.status = 'open'
 		  AND COALESCE(u.is_shadow_banned, false) = false
 		  AND u.deleted_at IS NULL
-		  AND COALESCE(u.activation_status, 'active') = 'active'
+		  -- Visibility policy: task discovery must not hide tasks from newly registered
+		  -- creators solely due to non-active activation state.
 		  AND (t.auto_shutdown_at IS NULL OR t.auto_shutdown_at > NOW())
 		  AND t.id NOT IN (
 			  SELECT task_id FROM task_applications WHERE applicant_id = $1 AND status != 'rejected'
