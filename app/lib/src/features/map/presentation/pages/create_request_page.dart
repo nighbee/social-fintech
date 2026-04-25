@@ -14,6 +14,7 @@ import 'package:app/src/core/widgets/silver_balance_chip.dart';
 import 'package:app/src/features/map/domain/requests/map_create_task_request.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
 import 'package:app/src/features/map/presentation/constants/map_ui_palette.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
@@ -69,7 +70,19 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
 
   Future<void> _refreshSilverBalance() async {
     final client = getIt<RestClient>(instanceName: 'DioClient');
-    final response = await client.get(EndPoints.economyBalance);
+    final response = await client.get(
+      EndPoints.economyBalance,
+      queryParameters: <String, dynamic>{
+        '_ts': DateTime.now().millisecondsSinceEpoch,
+      },
+      options: Options(
+        headers: const <String, String>{
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      ),
+    );
     response.fold((_) {}, (result) {
       final raw = result.data;
       if (raw is! Map) {

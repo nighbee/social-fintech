@@ -3,6 +3,7 @@ import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
@@ -117,7 +118,19 @@ class _SilverBalanceChipState extends State<SilverBalanceChip> {
       }
       return;
     }
-    final response = await client.get(EndPoints.economyBalance);
+    final response = await client.get(
+      EndPoints.economyBalance,
+      queryParameters: <String, dynamic>{
+        '_ts': DateTime.now().millisecondsSinceEpoch,
+      },
+      options: Options(
+        headers: const <String, String>{
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      ),
+    );
     response.fold(
       (_) {
         if (!mounted) {

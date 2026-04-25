@@ -116,10 +116,11 @@ class MapDialogService {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: 34,
-                          color: Colors.white,
+                        Image.asset(
+                          'assets/images/MapOpen.png',
+                          width: 46,
+                          height: 46,
+                          fit: BoxFit.contain,
                         ),
                         const SizedBox(height: 10),
                         Text(
@@ -134,18 +135,15 @@ class MapDialogService {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 17.5),
-                          child: Text(
-                            descriptionText,
-                            textAlign: TextAlign.left,
-                            style: TextStyle(
-                              fontFamily: FontFamily.lora,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              height: 20 / 14,
-                              color: Color(0xFF9D9D9D),
-                            ),
+                        const Text(
+                          descriptionText,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: FontFamily.lora,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            height: 20 / 14,
+                            color: Color(0xFF9D9D9D),
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -381,9 +379,9 @@ class MapDialogService {
     MapTaskApplicationEntity? selectedApplication;
     if (selectedApplicationId != null) {
       for (final app in applications) {
-        final normalizedStatus = app.status.trim().toLowerCase();
+        final normalizedStatus = _normalizeStatus(app.status);
         if (app.id == selectedApplicationId &&
-            normalizedStatus == 'code_verified') {
+            _isCreatorConfirmationReadyStatus(normalizedStatus)) {
           selectedApplication = app;
           break;
         }
@@ -394,7 +392,8 @@ class MapDialogService {
         .cast<MapTaskApplicationEntity?>()
         .firstWhere(
           (app) =>
-              app != null && app.status.trim().toLowerCase() == 'code_verified',
+              app != null &&
+              _isCreatorConfirmationReadyStatus(_normalizeStatus(app.status)),
           orElse: () => null,
         );
 
@@ -668,6 +667,33 @@ class MapDialogService {
       return trimmed;
     }
     return trimmed.substring(0, 18);
+  }
+
+  String _normalizeStatus(String status) {
+    return status
+        .trim()
+        .toLowerCase()
+        .replaceAll('-', '_')
+        .replaceAll(' ', '_');
+  }
+
+  bool _isCreatorConfirmationReadyStatus(String normalizedStatus) {
+    if (normalizedStatus.isEmpty) {
+      return false;
+    }
+    const exact = <String>{
+      'code_verified',
+      'awaiting_confirmation',
+      'awaiting_creator_confirmation',
+      'ready_for_confirmation',
+    };
+    if (exact.contains(normalizedStatus)) {
+      return true;
+    }
+    return normalizedStatus.contains('code_verified') ||
+        normalizedStatus.contains('awaiting_confirmation') ||
+        normalizedStatus.contains('awaiting_creator_confirmation') ||
+        normalizedStatus.contains('ready_for_confirmation');
   }
 
   BoxDecoration _popupDecoration(double radius) {

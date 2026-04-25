@@ -78,7 +78,6 @@ class MapPageController {
   String executorTaskStatus = '';
   String executorCreatorName = '';
   String executorCreatorAvatarUrl = '';
-  DateTime? _lastExecutorApplyAt;
   bool _executorRejectedDialogShownThisSession = false;
   String? handledTaskApplicationActionResult;
   final Set<String> locallyCanceledExecutorApplicationIds = <String>{};
@@ -373,7 +372,6 @@ class MapPageController {
       if (creatorAvatarUrl.isNotEmpty) {
         executorCreatorAvatarUrl = creatorAvatarUrl;
       }
-      _lastExecutorApplyAt = DateTime.now();
       consecutiveMissingAppliedTaskChecks = 0;
       _dialogs.resetRejectedHandledId();
       final persistTaskId = taskId.isNotEmpty ? taskId : selectedTaskId;
@@ -545,9 +543,22 @@ class MapPageController {
       return nearby;
     }
     final byId = {for (final t in my) t.id: t};
-    return [
+    final merged = <MapTaskEntity>[
       for (final t in nearby) _applyMyTaskStatusIfSameId(t, byId[t.id]),
     ];
+
+    // Keep creator task marker visible even when backend temporarily omits it
+    // from /tasks/nearby (while /tasks/my already has it).
+    for (final mine in my) {
+      final status = mine.status.trim().toLowerCase();
+      final isClosed = status == 'completed' || status == 'cancelled';
+      final existsInNearby = merged.any((task) => task.id == mine.id);
+      if (!isClosed && !existsInNearby) {
+        merged.add(mine);
+      }
+    }
+
+    return merged;
   }
 
   MapTaskEntity _applyMyTaskStatusIfSameId(
@@ -1451,7 +1462,6 @@ class MapPageController {
       if (rejectedTaskId.isNotEmpty) {
         _locallyBlockedNearbyTaskIds.add(rejectedTaskId);
       }
-      _lastExecutorApplyAt = null;
       unawaited(_clearActiveExecutorApplication());
       executorFlowDismissed = true;
       _mapBloc.add(
@@ -1478,7 +1488,6 @@ class MapPageController {
     final applicationId = viewModel.applyToTaskResult.applicationId;
     if (taskId.isEmpty || applicationId.isEmpty) {
       consecutiveMissingAppliedTaskChecks = 0;
-      _lastExecutorApplyAt = null;
       if (executorTaskStatus.isNotEmpty && mounted) {
         runSetState(() {
           executorFlowDismissed = false;
@@ -1497,7 +1506,6 @@ class MapPageController {
 
     if (locallyCanceledExecutorApplicationIds.contains(applicationId)) {
       consecutiveMissingAppliedTaskChecks = 0;
-      _lastExecutorApplyAt = null;
       return;
     }
 
@@ -1529,21 +1537,17 @@ class MapPageController {
       consecutiveMissingAppliedTaskChecks = 0;
     }
 
-    bool isApprovedLikeStatus(String rawStatus) {
+    bool isRejectedLikeStatus(String rawStatus) {
       final normalized = rawStatus.trim().toLowerCase();
       if (normalized.isEmpty) {
         return false;
       }
-      return normalized.contains('accepted') ||
-          normalized.contains('assigned') ||
-          normalized.contains('arrived') ||
-          normalized.contains('in_progress') ||
-          normalized.contains('code_required') ||
-          normalized.contains('code_verified');
+      return normalized.contains('rejected') ||
+          normalized.contains('declined') ||
+          normalized.contains('withdrawn');
     }
 
     if (matchedTaskStatus == 'completed') {
-      _lastExecutorApplyAt = null;
       unawaited(_clearActiveExecutorApplication());
       if (mounted) {
         runSetState(() {
@@ -1568,6 +1572,10 @@ class MapPageController {
         matchedTaskStatus != executorTaskStatus &&
         mounted &&
         !executorCompletionShown) {
+      final isRejected = isRejectedLikeStatus(matchedTaskStatus);
+      if (isRejected) {
+        unawaited(_clearActiveExecutorApplication());
+      }
       runSetState(() {
         executorFlowDismissed = false;
         executorTaskStatus = matchedTaskStatus!;
@@ -1577,51 +1585,13 @@ class MapPageController {
       return;
     }
 
-    final nearbyTask = viewModel.nearbyTasks.cast<MapTaskEntity?>().firstWhere(
-          (task) => task?.id == taskId,
-          orElse: () => null,
-        );
-    final isTaskFilledBySomeone = nearbyTask != null &&
-        nearbyTask.workersNeeded > 0 &&
-        nearbyTask.workersFilled >= nearbyTask.workersNeeded;
-    final hasApprovedLike =
-        isApprovedLikeStatus(matchedTaskStatus ?? executorTaskStatus);
-    if (isTaskFilledBySomeone &&
-        !hasApprovedLike &&
-        !executorCompletionShown &&
-        mounted) {
-      final applyAt = _lastExecutorApplyAt;
-      if (applyAt != null &&
-          now.difference(applyAt) >= const Duration(seconds: 6)) {
-        _lastExecutorApplyAt = null;
-        unawaited(_clearActiveExecutorApplication());
-        _locallyBlockedNearbyTaskIds.add(taskId);
-        runSetState(() {
-          executorTaskStatus = 'rejected';
-        });
-        return;
-      }
-    }
-
     if (matchedTaskStatus == null &&
         viewModel.hasAppliedTasksLoaded &&
         mounted &&
         !executorCompletionShown) {
-      final applyAt = _lastExecutorApplyAt;
-      if (applyAt != null &&
-          now.difference(applyAt) < const Duration(seconds: 10)) {
-        return;
-      }
-      // After a short grace window, treat missing applied task as rejected.
-      consecutiveMissingAppliedTaskChecks += 1;
-      if (consecutiveMissingAppliedTaskChecks >= 1) {
-        _lastExecutorApplyAt = null;
-        unawaited(_clearActiveExecutorApplication());
-        _locallyBlockedNearbyTaskIds.add(taskId);
-        runSetState(() {
-          executorTaskStatus = 'rejected';
-        });
-      }
+      // Do not infer "rejected" from temporary missing data.
+      // Wait for explicit backend status to avoid false rejections.
+      return;
     }
   }
 
@@ -1696,7 +1666,6 @@ class MapPageController {
     final action = viewModel.taskApplicationActionResult;
     if (action == 'withdrawn') {
       final applicationId = viewModel.applyToTaskResult.applicationId;
-      _lastExecutorApplyAt = null;
       unawaited(_clearActiveExecutorApplication());
       runSetState(() {
         executorFlowDismissed = false;
@@ -1714,7 +1683,6 @@ class MapPageController {
     if (action == 'accepted' || action == 'rejected') {
       final applicationId = viewModel.applyToTaskResult.applicationId;
       if (action == 'rejected') {
-        _lastExecutorApplyAt = null;
         unawaited(_clearActiveExecutorApplication());
       }
       runSetState(() {

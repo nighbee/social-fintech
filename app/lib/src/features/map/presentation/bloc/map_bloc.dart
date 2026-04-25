@@ -33,6 +33,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       : super(const _Initial());
 
   final IMapRepository _repository;
+  final Set<String> _sessionLocalCreatorTaskIds = <String>{};
+  final Set<String> _sessionFinalizedCreatorTaskIds = <String>{};
   MapViewModel _viewModel = const MapViewModel();
   MapViewModel get viewModel => _viewModel;
 
@@ -73,6 +75,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
   }
 
   Future<void> _loadMap(Emitter emit) async {
+    _sessionLocalCreatorTaskIds.clear();
+    _sessionFinalizedCreatorTaskIds.clear();
     _viewModel = _viewModel.copyWith(
       centerLatitude: _defaultMapCenterLatitude,
       centerLongitude: _defaultMapCenterLongitude,
@@ -201,6 +205,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       },
       (createdTask) async {
         final myTask = createdTask;
+        _sessionLocalCreatorTaskIds.add(myTask.id);
         _viewModel = _viewModel.copyWith(
           isCreatingTask: false,
           myTasks: [
@@ -251,6 +256,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         emit(MapState.loadingError(error.message));
       },
       (taskId) {
+        _sessionLocalCreatorTaskIds.remove(event.request.taskId);
         final filteredTasks = _viewModel.nearbyTasks
             .where((task) => task.id != event.request.taskId)
             .toList();
@@ -297,9 +303,12 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
         emit(MapState.loadingError(error.message));
       },
       (items) {
+        final visibleItems = items
+            .where((task) => !_sessionFinalizedCreatorTaskIds.contains(task.id))
+            .toList(growable: false);
         _viewModel = _viewModel.copyWith(
           isBusy: false,
-          nearbyTasks: items,
+          nearbyTasks: visibleItems,
         );
         emit(MapState.loaded(viewModel: _viewModel));
       },
@@ -344,15 +353,25 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       },
       (items) {
         // Backend can lag for a short time and miss freshly created local mine| task.
-        // Keep local active mine tasks until backend catches up.
+        // Keep only session-local active mine tasks until backend catches up.
+        final backendIds = items.map((task) => task.id).toSet();
+        _sessionLocalCreatorTaskIds.removeWhere(backendIds.contains);
+
+        final activeItems = items
+            .where((task) => !_sessionFinalizedCreatorTaskIds.contains(task.id))
+            .toList(growable: false);
         final mergedById = <String, MapTaskEntity>{
-          for (final t in items) t.id: t,
+          for (final t in activeItems) t.id: t,
         };
         for (final local in _viewModel.myTasks) {
           final status = local.status.trim().toLowerCase();
           final isLocalMine = status.startsWith('mine|');
           final isClosed = status == 'completed' || status == 'cancelled';
-          if (isLocalMine && !isClosed && !mergedById.containsKey(local.id)) {
+          final isSessionLocal = _sessionLocalCreatorTaskIds.contains(local.id);
+          if (isLocalMine &&
+              isSessionLocal &&
+              !isClosed &&
+              !mergedById.containsKey(local.id)) {
             mergedById[local.id] = local;
           }
         }
@@ -388,6 +407,15 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
     _GetTaskApplications event,
     Emitter emit,
   ) async {
+    if (_sessionFinalizedCreatorTaskIds.contains(event.request.taskId)) {
+      _viewModel = _viewModel.copyWith(
+        isBusy: false,
+        taskApplications: const <MapTaskApplicationEntity>[],
+      );
+      emit(MapState.loaded(viewModel: _viewModel));
+      return;
+    }
+
     _setBusy(emit);
     final result = await _repository.getTaskApplications(event.request);
     result.fold(
@@ -506,6 +534,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       },
       (entity) {
         final taskIdToRemove = event.request.taskId;
+        _sessionLocalCreatorTaskIds.remove(taskIdToRemove);
+        _sessionFinalizedCreatorTaskIds.add(taskIdToRemove);
         final filteredTasks = _viewModel.nearbyTasks
             .where((task) => task.id != taskIdToRemove)
             .toList();

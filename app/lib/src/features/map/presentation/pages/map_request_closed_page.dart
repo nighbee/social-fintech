@@ -1,4 +1,5 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/gen/fonts.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
@@ -85,7 +86,7 @@ class MapRequestClosedPage extends StatelessWidget {
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+              padding: const EdgeInsets.fromLTRB(18, 24, 18, 6),
               child: Column(
                 children: [
                   const Spacer(),
@@ -97,31 +98,50 @@ class MapRequestClosedPage extends StatelessWidget {
                   const Gap(16),
                   Text(
                     'Your request has been closed!',
-                    style: TextStyles.titleTag.copyWith(
-                      color: Colors.white,
+                    style: TextStyles.titleMain.copyWith(
+                      fontFamily: FontFamily.lora,
+                      color: const Color(0xFFE8E8E8),
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
+                      height: 1.1,
                     ),
                   ),
                   const Gap(8),
                   Text(
                     'The request period has expired.',
                     textAlign: TextAlign.center,
-                    style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                    style: TextStyles.bodyMain.copyWith(
+                      fontFamily: FontFamily.lora,
+                      color: const Color(0xFFA3A3A3),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                      height: 1.4,
+                    ),
                   ),
                   const Spacer(),
-                  CustomButton(
-                    text: 'Ok',
-                    onTap: () => context.go(RoutePaths.map),
-                    borderRadius: 8,
-                    backgroundColor: Colors.transparent,
-                    border:
-                        Border.all(color: Colors.white.withValues(alpha: 0.28)),
-                    textStyle: TextStyles.bodyMain.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                  SizedBox(
+                    height: 46,
+                    child: CustomButton(
+                      text: 'Ok',
+                      onTap: () => context.go(RoutePaths.map),
+                      borderRadius: 12,
+                      backgroundColor: Colors.transparent,
+                      border: Border.all(
+                        color: const Color(0xFFE8E8E8),
+                        width: 0.5,
+                      ),
+                      textStyle: TextStyles.bodyMain.copyWith(
+                        fontFamily: FontFamily.lora,
+                        color: const Color(0xFFE8E8E8),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 20,
+                        height: 1.1,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
                   ),
                 ],
               ),

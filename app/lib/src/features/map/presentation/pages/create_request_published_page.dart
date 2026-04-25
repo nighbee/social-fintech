@@ -1,7 +1,7 @@
-import 'package:app/gen/assets.gen.dart';
+import 'package:app/gen/fonts.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/core/widgets/custom_outlined_button.dart';
+import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -85,39 +85,71 @@ class CreateRequestPublishedPage extends StatelessWidget {
           ),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+              padding: const EdgeInsets.fromLTRB(18, 24, 18, 6),
               child: Column(
                 children: [
-                  const Spacer(),
-                  Assets.icons.requestDone.svg(width: 104, height: 104),
-                  const Gap(16),
-                  Text(
-                    'Congratulations!',
-                    style: TextStyles.titleMain.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Image.asset(
+                            'assets/images/Task_create.png',
+                            width: 104,
+                            height: 104,
+                            fit: BoxFit.contain,
+                          ),
+                          const Gap(16),
+                          Text(
+                            'Congratulations!',
+                            style: TextStyles.titleMain.copyWith(
+                              fontFamily: FontFamily.lora,
+                              color: const Color(0xFFE8E8E8),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 40 / 2,
+                              height: 1.1,
+                            ),
+                          ),
+                          const Gap(8),
+                          Text(
+                            'Your request has been successfully\npublished! We\'ll be there soon.',
+                            textAlign: TextAlign.center,
+                            style: TextStyles.bodyMain.copyWith(
+                              fontFamily: FontFamily.lora,
+                              color: const Color(0xFFA3A3A3),
+                              fontSize: 16,
+                              fontWeight: FontWeight.w400,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const Gap(8),
-                  Text(
-                    'Your request has been successfully\npublished! We\'ll be there soon.',
-                    textAlign: TextAlign.center,
-                    style: TextStyles.bodyMain.copyWith(
-                      color: Colors.white70,
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: CustomButton(
+                      text: 'Ok',
+                      onTap: () => context.go(RoutePaths.map),
+                      borderRadius: 12,
+                      backgroundColor: Colors.transparent,
+                      border: Border.all(
+                        color: const Color(0xFFE8E8E8),
+                        width: 0.5,
+                      ),
+                      textStyle: TextStyles.bodyMain.copyWith(
+                        fontFamily: FontFamily.lora,
+                        color: const Color(0xFFE8E8E8),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 40 / 2,
+                        height: 1.1,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                     ),
-                  ),
-                  const Spacer(),
-                  CustomOutlinedButton(
-                    text: 'Ok',
-                    onTap: () => context.go(RoutePaths.map),
-                    borderRadius: 8,
-                    backgroundColor: Colors.transparent,
-                    borderColor: Colors.white.withValues(alpha: 0.28),
-                    textStyle: TextStyles.bodyMain.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 13),
                   ),
                 ],
               ),
