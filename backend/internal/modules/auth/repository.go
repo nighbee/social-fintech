@@ -359,11 +359,12 @@ func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID s
 	var restrictionsUntil sql.NullTime
 	var createdAt time.Time
 	var phoneNumber sql.NullString
+	var email string
 	if err := r.db.QueryRowContext(ctx, `
-		SELECT activation_status, restrictions_until, created_at, phone_number
+		SELECT activation_status, restrictions_until, created_at, phone_number, email
 		FROM users
 		WHERE id = $1
-	`, userID).Scan(&status, &restrictionsUntil, &createdAt, &phoneNumber); err != nil {
+	`, userID).Scan(&status, &restrictionsUntil, &createdAt, &phoneNumber, &email); err != nil {
 		return "", false, err
 	}
 
@@ -390,7 +391,7 @@ func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID s
 	requiredDays := 3
 	requiredLogins := 3
 	requiredMeaningful := 5
-	requiredAgeHours := 72.0
+	requiredAgeHours := 24.0
 	if status == "suspicious" {
 		requiredDays = 5
 		requiredLogins = 5
@@ -402,6 +403,7 @@ func (r *PostgresRepository) RecordActivationLogin(ctx context.Context, userID s
 		loginEvents >= requiredLogins &&
 		ageHours >= requiredAgeHours &&
 		phoneNumber.Valid && phoneNumber.String != "" &&
+		email != "" &&
 		meaningfulActions >= requiredMeaningful {
 		if _, err := r.db.ExecContext(ctx, `
 			UPDATE users

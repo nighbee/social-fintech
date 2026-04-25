@@ -1,6 +1,7 @@
 package mapmodule
 
 import (
+	"fmt"
 	"strconv"
 	"time"
 
@@ -63,6 +64,15 @@ func (h *Handler) CreateTask(c *fiber.Ctx) error {
 			return validationErr(c, err.Error())
 		case ErrCooldownActive:
 			return c.Status(429).JSON(fiber.Map{"error": "cooldown_active", "message": err.Error()})
+		case ErrNotActivated:
+			return c.Status(403).JSON(fiber.Map{"error": "not_activated", "message": err.Error()})
+		}
+
+		if re, ok := err.(*RestrictedError); ok {
+			return c.Status(403).JSON(fiber.Map{
+				"error":   "account_restricted",
+				"message": fmt.Sprintf("Your account is under trust-building verification. It will be fully unlocked at %s.", re.Until.Format("2006-01-02 15:04")),
+			})
 		}
 		if economy.IsInsufficientFunds(err) {
 			return c.Status(402).JSON(fiber.Map{"error": "insufficient_funds"})

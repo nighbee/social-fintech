@@ -66,16 +66,12 @@ func (s *Service) ensureCreatorActivated(ctx context.Context, userID string) err
 		return nil
 	}
 	if restrictionsUntil != nil && restrictionsUntil.Valid && restrictionsUntil.Time.After(time.Now()) {
-		return ErrCooldownActive
+		return &RestrictedError{Until: restrictionsUntil.Time}
 	}
-	return ErrCooldownActive
+	return ErrNotActivated
 }
 
 func (s *Service) CreateTask(ctx context.Context, userID string, req *CreateTaskRequest) (*CreateTaskResponse, error) {
-	if err := s.ensureCreatorActivated(ctx, userID); err != nil {
-		return nil, err
-	}
-
 	if req == nil || req.Title == "" || len(req.Title) > 100 {
 		return nil, ErrInvalidTitle
 	}
@@ -94,7 +90,16 @@ func (s *Service) CreateTask(ctx context.Context, userID string, req *CreateTask
 	if err != nil {
 		return nil, fmt.Errorf("failed to check task cooldown: %w", err)
 	}
-	if lastCreatedAt != nil {
+
+	// First Task Grace: If user has never created a task, we allow them to proceed
+	// even if they are not fully activated yet. This allows legit new users to experience the app.
+	isFirstTask := lastCreatedAt == nil
+
+	if !isFirstTask {
+		if err := s.ensureCreatorActivated(ctx, userID); err != nil {
+			return nil, err
+		}
+
 		cooldownEnd := lastCreatedAt.Add(taskCooldownDays * 24 * time.Hour)
 		if time.Now().Before(cooldownEnd) {
 			return nil, ErrCooldownActive

@@ -1,6 +1,10 @@
 package mapmodule
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"time"
+)
 
 var (
 	// Task validation
@@ -16,6 +20,7 @@ var (
 	ErrTaskFull       = errors.New("task already has enough helpers")
 	ErrSelfComplete   = errors.New("cannot complete your own task")
 	ErrCooldownActive = errors.New("you must wait 7 days between creating tasks")
+	ErrNotActivated   = errors.New("your account is not yet activated for task creation. please complete more activities or wait for the initial trust period")
 
 	// Application lifecycle
 	ErrApplicationNotFound = errors.New("application not found")
@@ -26,3 +31,11 @@ var (
 	ErrNotConfirmable      = errors.New("application must be code_verified before confirmation")
 	ErrNotTaskOwner        = errors.New("only the task creator can perform this action")
 )
+
+type RestrictedError struct {
+	Until time.Time
+}
+
+func (e *RestrictedError) Error() string {
+	return fmt.Sprintf("account restricted until %s", e.Until.Format(time.RFC3339))
+}
