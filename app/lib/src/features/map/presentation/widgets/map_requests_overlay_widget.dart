@@ -19,6 +19,27 @@ class _RequestsOverlay extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    bool isAcceptedLikeStatus(String rawStatus) {
+      final normalized = rawStatus.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        return false;
+      }
+      return normalized == 'accepted' ||
+          normalized == 'assigned' ||
+          normalized == 'arrived' ||
+          normalized == 'in_progress' ||
+          normalized == 'code_required' ||
+          normalized == 'code_verified' ||
+          normalized == 'confirmed' ||
+          normalized.contains('accepted') ||
+          normalized.contains('assigned') ||
+          normalized.contains('arrived') ||
+          normalized.contains('in_progress') ||
+          normalized.contains('code_required') ||
+          normalized.contains('code_verified') ||
+          normalized.contains('confirmed');
+    }
+
     MapTaskApplicationEntity? selected;
     if (selectedApplicationId != null) {
       for (final app in applications) {
@@ -28,6 +49,10 @@ class _RequestsOverlay extends StatelessWidget {
         }
       }
     }
+    selected ??= applications.cast<MapTaskApplicationEntity?>().firstWhere(
+          (app) => app != null && isAcceptedLikeStatus(app.status),
+          orElse: () => null,
+        );
     final visibleApps =
         selected == null ? applications : <MapTaskApplicationEntity>[selected];
 
@@ -48,13 +73,8 @@ class _RequestsOverlay extends StatelessWidget {
             child: Column(
               children: visibleApps.map(
                 (application) {
-                  final normalizedStatus =
-                      application.status.trim().toLowerCase();
-                  final isAcceptedLike =
-                      selectedApplicationId == application.id ||
-                          normalizedStatus == 'accepted' ||
-                          normalizedStatus == 'code_verified' ||
-                          normalizedStatus == 'confirmed';
+                  final isAcceptedLike = selectedApplicationId == application.id ||
+                      isAcceptedLikeStatus(application.status);
 
                   return Container(
                     constraints: const BoxConstraints(minHeight: 54),
@@ -107,7 +127,7 @@ class _RequestsOverlay extends StatelessWidget {
                           ),
                           const Gap(10),
                           InkWell(
-                            onTap: () => onReject(application),
+                            onTap: null,
                             borderRadius: BorderRadius.circular(6),
                             child: const Padding(
                               padding: EdgeInsets.all(2),

@@ -113,6 +113,10 @@ class MapPageController {
   int? _fallbackChampionResolution;
   bool? _lastLocationOptInSent;
   bool _didCheckInitialLocationOnboarding = false;
+  DateTime? _lastExecutorRestoreAttemptAt;
+  String? _lastExecutorRestoreAttemptUserId;
+  String? _lastKnownExecutorTaskId;
+  String? _lastKnownExecutorApplicationId;
 
   static const double _regionReassignDistanceMeters = 450;
   static const Duration _cameraGeoRefreshDebounceDuration =
@@ -123,6 +127,17 @@ class MapPageController {
   String? get currentUserAvatarUrl => _resolveProfileAvatarUrl();
 
   String? _resolveCurrentUserId() {
+    // Auth state is the source of truth for current session identity.
+    // Profile bloc can be briefly stale during account switch.
+    final fromAuth = getIt<AuthBloc>().state.maybeWhen(
+          authenticated: (login) => login.user.id,
+          orElse: () => null,
+        );
+    final authId = fromAuth?.trim();
+    if (authId != null && authId.isNotEmpty) {
+      return authId;
+    }
+
     final fromProfile = getIt<ProfileBloc>().state.maybeWhen(
           loaded: (vm) => vm.profile.userId,
           loading: (vm) => vm.profile.userId,
@@ -131,15 +146,6 @@ class MapPageController {
     final profileId = fromProfile?.trim();
     if (profileId != null && profileId.isNotEmpty) {
       return profileId;
-    }
-
-    final fromAuth = getIt<AuthBloc>().state.maybeWhen(
-          authenticated: (login) => login.user.id,
-          orElse: () => null,
-        );
-    final authId = fromAuth?.trim();
-    if (authId != null && authId.isNotEmpty) {
-      return authId;
     }
     return null;
   }
@@ -247,12 +253,21 @@ class MapPageController {
     final isTaskFull =
         task.workersNeeded > 0 && task.workersFilled >= task.workersNeeded;
     final isLocallyBlocked = _locallyBlockedNearbyTaskIds.contains(task.id);
+    final activeApply = _mapBloc.viewModel.applyToTaskResult;
+    final hasActiveSameTaskApplication =
+        activeApply.taskId == task.id &&
+            activeApply.applicationId.trim().isNotEmpty &&
+            !containsAny(
+              activeApply.status.trim().toLowerCase(),
+              <String>['rejected', 'declined', 'withdrawn', 'completed'],
+            );
     if (isTaskClosed ||
         isTaskAlreadyAssigned ||
         isAlreadyRejected ||
         isApplicationAlreadyAssigned ||
         isTaskFull ||
-        isLocallyBlocked) {
+        isLocallyBlocked ||
+        hasActiveSameTaskApplication) {
       return;
     }
 
@@ -299,6 +314,9 @@ class MapPageController {
     required Future<void> Function() onNavigateExecutorCompleted,
   }) async {
     unawaited(_tryShowInitialLocationOnboarding(context));
+    _tryRestoreActiveExecutorApplicationIfNeeded(viewModel);
+    _rememberExecutorApplication(viewModel);
+    _tryRehydrateExecutorFromLastKnown(viewModel);
     _rememberLatestCreatorTaskCreatedAt(viewModel);
 
     if (MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks) == null &&
@@ -315,7 +333,7 @@ class MapPageController {
     _refreshTaskApplications(viewModel);
     await _tryHandleCreatorAutoClosedTask(context, viewModel);
     await _tryShowCreatorConfirmDialog(context, viewModel);
-    _tryCheckExecutorCompletion(
+    await _tryCheckExecutorCompletion(
       context,
       viewModel,
       runSetState: runSetState,
@@ -1161,6 +1179,15 @@ class MapPageController {
     runSetState(() {
       selectedApplicationId = application.id;
       locallyRejectedApplicationIds.remove(application.id);
+      for (final app in _mapBloc.viewModel.taskApplications) {
+        if (app.id == application.id) {
+          continue;
+        }
+        final status = app.status.trim().toLowerCase();
+        if (status == 'pending' || status.contains('await')) {
+          locallyRejectedApplicationIds.add(app.id);
+        }
+      }
     });
 
     _mapBloc.add(
@@ -1307,11 +1334,90 @@ class MapPageController {
         ),
       ),
     );
+    _lastKnownExecutorTaskId = target.taskId;
+    _lastKnownExecutorApplicationId = target.applicationId;
     // Do not immediately show "awaiting approval" from stale local state.
     // We wait for the next appliedTasks sync to confirm that this application
     // is still active on backend.
     executorFlowDismissed = true;
     executorTaskStatus = '';
+  }
+
+  void _tryRestoreActiveExecutorApplicationIfNeeded(MapViewModel viewModel) {
+    if (viewModel.applyToTaskResult.applicationId.trim().isNotEmpty) {
+      return;
+    }
+    final userId = _resolveCurrentUserId();
+    if (userId == null || userId.isEmpty) {
+      return;
+    }
+    final now = DateTime.now();
+    final sameUser = _lastExecutorRestoreAttemptUserId == userId;
+    if (sameUser &&
+        _lastExecutorRestoreAttemptAt != null &&
+        now.difference(_lastExecutorRestoreAttemptAt!) <
+            const Duration(seconds: 3)) {
+      return;
+    }
+    _lastExecutorRestoreAttemptUserId = userId;
+    _lastExecutorRestoreAttemptAt = now;
+    unawaited(_restoreActiveExecutorApplication());
+  }
+
+  void _rememberExecutorApplication(MapViewModel viewModel) {
+    final taskId = viewModel.applyToTaskResult.taskId.trim();
+    final applicationId = viewModel.applyToTaskResult.applicationId.trim();
+    if (taskId.isEmpty || applicationId.isEmpty) {
+      return;
+    }
+    _lastKnownExecutorTaskId = taskId;
+    _lastKnownExecutorApplicationId = applicationId;
+  }
+
+  void _tryRehydrateExecutorFromLastKnown(MapViewModel viewModel) {
+    if (viewModel.applyToTaskResult.applicationId.trim().isNotEmpty) {
+      return;
+    }
+
+    final taskId = _lastKnownExecutorTaskId?.trim() ?? '';
+    final applicationId = _lastKnownExecutorApplicationId?.trim() ?? '';
+    if (taskId.isEmpty || applicationId.isEmpty) {
+      return;
+    }
+
+    bool isTerminalStatus(String rawStatus) {
+      final normalized = rawStatus.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        return false;
+      }
+      return normalized.contains('rejected') ||
+          normalized.contains('declined') ||
+          normalized.contains('withdrawn') ||
+          normalized.contains('cancelled') ||
+          normalized.contains('completed') ||
+          normalized.contains('confirmed');
+    }
+
+    final applied = viewModel.appliedTasks.cast<MapTaskEntity?>().firstWhere(
+          (task) => task?.id == taskId,
+          orElse: () => null,
+        );
+    if (applied == null) {
+      return;
+    }
+    if (isTerminalStatus(applied.applicationStatus) ||
+        isTerminalStatus(applied.status)) {
+      return;
+    }
+
+    _mapBloc.add(
+      MapEvent.hydrateExecutorApplication(
+        MapTaskApplicationIdRequest(
+          taskId: taskId,
+          applicationId: applicationId,
+        ),
+      ),
+    );
   }
 
   Future<void> _persistActiveExecutorApplication(
@@ -1473,13 +1579,13 @@ class MapPageController {
     }
   }
 
-  void _tryCheckExecutorCompletion(
+  Future<void> _tryCheckExecutorCompletion(
     BuildContext context,
     MapViewModel viewModel, {
     required void Function(VoidCallback fn) runSetState,
     required bool mounted,
     required Future<void> Function() onNavigateExecutorCompleted,
-  }) {
+  }) async {
     if (executorCompletionShown) {
       return;
     }
@@ -1533,6 +1639,49 @@ class MapPageController {
       }
     }
 
+    bool isTerminalExecutorStatus(String rawStatus) {
+      final normalized = rawStatus.trim().toLowerCase();
+      if (normalized.isEmpty) {
+        return false;
+      }
+      return normalized.contains('rejected') ||
+          normalized.contains('declined') ||
+          normalized.contains('withdrawn') ||
+          normalized.contains('completed') ||
+          normalized.contains('cancelled') ||
+          normalized.contains('confirmed');
+    }
+
+    // Fallback for stale local taskId after account switch/recovery:
+    // if we track an active application but cannot find it by taskId,
+    // and backend has exactly one active applied task, bind flow to it.
+    if (matchedTaskStatus == null && viewModel.appliedTasks.isNotEmpty) {
+      final activeApplied = viewModel.appliedTasks.where((task) {
+        final appStatus = task.applicationStatus.trim().isNotEmpty
+            ? task.applicationStatus
+            : task.status;
+        return !isTerminalExecutorStatus(appStatus);
+      }).toList(growable: false);
+      if (activeApplied.length == 1) {
+        final fallbackTask = activeApplied.first;
+        matchedTaskStatus = fallbackTask.applicationStatus.trim().isNotEmpty
+            ? fallbackTask.applicationStatus
+            : fallbackTask.status;
+        matchedCreatorName = fallbackTask.creatorUsername;
+        matchedCreatorAvatarUrl = fallbackTask.creatorAvatarUrl;
+        if (applicationId.trim().isNotEmpty && fallbackTask.id != taskId) {
+          _mapBloc.add(
+            MapEvent.hydrateExecutorApplication(
+              MapTaskApplicationIdRequest(
+                taskId: fallbackTask.id,
+                applicationId: applicationId,
+              ),
+            ),
+          );
+        }
+      }
+    }
+
     if (matchedTaskStatus != null) {
       consecutiveMissingAppliedTaskChecks = 0;
     }
@@ -1549,6 +1698,8 @@ class MapPageController {
 
     if (matchedTaskStatus == 'completed') {
       unawaited(_clearActiveExecutorApplication());
+      _lastKnownExecutorTaskId = null;
+      _lastKnownExecutorApplicationId = null;
       if (mounted) {
         runSetState(() {
           executorCompletionShown = true;
@@ -1575,6 +1726,8 @@ class MapPageController {
       final isRejected = isRejectedLikeStatus(matchedTaskStatus);
       if (isRejected) {
         unawaited(_clearActiveExecutorApplication());
+        _lastKnownExecutorTaskId = null;
+        _lastKnownExecutorApplicationId = null;
       }
       runSetState(() {
         executorFlowDismissed = false;
@@ -1589,8 +1742,9 @@ class MapPageController {
         viewModel.hasAppliedTasksLoaded &&
         mounted &&
         !executorCompletionShown) {
-      // Do not infer "rejected" from temporary missing data.
-      // Wait for explicit backend status to avoid false rejections.
+      // Do not infer rejection from temporary/missing applied data.
+      // Wait for explicit backend status to avoid false "rejected" for
+      // already accepted executors.
       return;
     }
   }
@@ -1664,9 +1818,13 @@ class MapPageController {
     required void Function(VoidCallback fn) runSetState,
   }) {
     final action = viewModel.taskApplicationActionResult;
+    final hasCreatorActiveTask =
+        MapFlowEvaluator.findCreatorActiveTask(viewModel.myTasks) != null;
     if (action == 'withdrawn') {
       final applicationId = viewModel.applyToTaskResult.applicationId;
       unawaited(_clearActiveExecutorApplication());
+      _lastKnownExecutorTaskId = null;
+      _lastKnownExecutorApplicationId = null;
       runSetState(() {
         executorFlowDismissed = false;
         executorTaskStatus = 'rejected';
@@ -1681,21 +1839,12 @@ class MapPageController {
     }
 
     if (action == 'accepted' || action == 'rejected') {
-      final applicationId = viewModel.applyToTaskResult.applicationId;
-      if (action == 'rejected') {
-        unawaited(_clearActiveExecutorApplication());
+      // accepted/rejected is creator-side moderation action for applications.
+      // Never mutate executor local flow from this branch unless this account
+      // is currently acting as creator for an active request.
+      if (!hasCreatorActiveTask) {
+        return;
       }
-      runSetState(() {
-        if (action == 'rejected') {
-          executorFlowDismissed = false;
-          if (applicationId.isNotEmpty) {
-            locallyCanceledExecutorApplicationIds.add(applicationId);
-          }
-        }
-        executorTaskStatus = action;
-        debugPrint(
-            '[MapController] Task application $action - executorTaskStatus updated to: $action');
-      });
       final taskId = _polling.lastApplicationsTaskId;
       final canRefreshApplications = taskId != null &&
           taskId.isNotEmpty &&
@@ -1709,14 +1858,9 @@ class MapPageController {
         _showApplicationActionToast(context, action: action);
       }
 
-      // Refresh applied tasks to get the latest status and trigger UI update
-      debugPrint('[MapController] Refreshing applied tasks after $action');
+      // Keep applied tasks in sync for mixed-role accounts.
       _mapBloc.add(const MapEvent.getAppliedTasks());
-
-      // Force an extra setState to ensure UI updates
-      runSetState(() {
-        debugPrint('[MapController] Forced setState for UI update');
-      });
+      runSetState(() {});
     }
   }
 
