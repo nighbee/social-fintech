@@ -20,7 +20,7 @@ const docTemplate = `{
         },
         "version": "{{.Version}}"
     },
-    "host": "",
+    "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
         "/admin/reports": {
@@ -77,6 +77,66 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/feed.ReportsListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/reports/review": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Admin endpoint to apply moderation decision for a target.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Moderation"
+                ],
+                "summary": "Review moderation reports",
+                "parameters": [
+                    {
+                        "description": "Target and decision",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/feed.ReviewReportsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "401": {
@@ -655,6 +715,386 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a paginated list of conversations for the authenticated user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List user conversations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chat.ListConversationsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/direct": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates a new direct conversation with the specified recipient or returns the existing one.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Open or get a direct conversation",
+                "parameters": [
+                    {
+                        "description": "Recipient ID",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.CreateDirectConversationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chat.Conversation"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Recipient not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}/messages": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a paginated list of messages for the specified conversation.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List messages in a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/chat.ListMessagesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden — not a participant",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Sends a new message to the specified conversation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Send a message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Message body and optional media",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.SendMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/chat.Message"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden — not a participant",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}/read": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Updates the last read message for the user in the specified conversation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Mark conversation as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional last read message ID",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/chat.MarkReadRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Status OK and read_at timestamp",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden — not a participant",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/ws": {
+            "get": {
+                "description": "Upgrades the connection to a WebSocket for real-time message delivery and status updates.\nRequires a Bearer token in the ` + "`" + `Authorization` + "`" + ` header OR as a ` + "`" + `token` + "`" + ` query parameter.",
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Real-time chat WebSocket",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Auth token if header is not present",
+                        "name": "token",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Account blocked",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -1344,7 +1784,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Uploads an image or video and returns its URL",
+                "description": "Uploads an image or video and returns its URL with size/MIME validation",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1358,7 +1798,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Media file",
+                        "description": "Media file (JPEG/PNG/WebP/MP4/WebM/MOV) - Max 500MB for video, 10MB for image",
                         "name": "file",
                         "in": "formData",
                         "required": true
@@ -1371,8 +1811,35 @@ const docTemplate = `{
                             "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
+                    "400": {
+                        "description": "Invalid file (size/type/format)",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "413": {
+                        "description": "File too large",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "507": {
+                        "description": "Insufficient storage",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1499,7 +1966,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns the current champion for each of the supplied H3 cell indices\nat the given resolution and ISO week. Used by the Flutter map to render\nchampion pins on the visible viewport.",
+                "description": "Returns the current champion for each of the supplied H3 cell indices\nat the given resolution and ISO week. Used by the Flutter map to render\nchampion pins on the visible viewport.\nPrivacy: exact user GPS is never exposed; pins use the H3 region center only.",
                 "produces": [
                     "application/json"
                 ],
@@ -1575,6 +2042,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/map/h3/{h3_index}/admin": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the city, region, and country for a given H3 cell index.\nThis endpoint performs a spatial lookup against the administrative_boundaries table\nusing the H3 cell's center point. Result is cached in h3_geo_metadata for repeated lookups.\nPrivacy: only region-level metadata is returned; no exact user location is ever exposed.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Resolve H3 cell to administrative regions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "H3 cell index (any resolution)",
+                        "name": "h3_index",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.H3AdminLookupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid H3 index",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/map/region": {
             "post": {
                 "security": [
@@ -1582,7 +2110,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Assigns H3 cells (res 2/4/5) based on current location and privacy settings",
+                "description": "Assigns H3 cells (res 2/4/5) based on current location and privacy settings.\nExact user coordinates are never exposed via this API or champion pins; map data uses H3 region centers only.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2855,78 +3383,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/profiles/search": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Search profiles by name with privacy and block filters. Returns profiles with avatar, reputation, and rank.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Profiles"
-                ],
-                "summary": "Search user profiles for home/feed page",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Search query (matches first name, last name, or display name)",
-                        "name": "query",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "Results limit (max 50)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Pagination offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "List of matching profiles",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/profiles.ProfileSearchResult"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/profiles/{user_id}": {
             "get": {
                 "security": [
@@ -4070,6 +4526,81 @@ const docTemplate = `{
             }
         },
         "/tasks/{task_id}/applications/{application_id}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns a single application. Accessible by the task creator or the applicant.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tasks"
+                ],
+                "summary": "Get a single application by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Task ID",
+                        "name": "task_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.ApplicationResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -4628,7 +5159,7 @@ const docTemplate = `{
         },
         "/users/search": {
             "get": {
-                "description": "Public search for referrer user selection",
+                "description": "Public search for referrer user selection. Supports nickname (username), display name, or first/last name.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4638,21 +5169,25 @@ const docTemplate = `{
                 "tags": [
                     "Users"
                 ],
-                "summary": "Search users by first/last name",
+                "summary": "Search users by nickname or name",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "First name",
-                        "name": "first_name",
-                        "in": "query",
-                        "required": true
+                        "description": "Unified query (nickname/username, display name, or name)",
+                        "name": "query",
+                        "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Last name",
+                        "description": "First name or generic query token",
+                        "name": "first_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Last name (optional)",
                         "name": "last_name",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -4726,6 +5261,9 @@ const docTemplate = `{
                     "type": "string",
                     "example": "1.0.0"
                 },
+                "captcha_token": {
+                    "type": "string"
+                },
                 "date_of_birth": {
                     "description": "YYYY-MM-DD",
                     "type": "string",
@@ -4795,6 +5333,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "app_version": {
+                    "type": "string"
+                },
+                "captcha_token": {
                     "type": "string"
                 },
                 "date_of_birth": {
@@ -4888,6 +5429,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "app_version": {
+                    "type": "string"
+                },
+                "captcha_token": {
                     "type": "string"
                 },
                 "date_of_birth": {
@@ -5036,6 +5580,169 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "chat.Conversation": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "last_message_at": {
+                    "type": "string"
+                },
+                "last_message_id": {
+                    "type": "string"
+                },
+                "last_message_preview": {
+                    "type": "string"
+                },
+                "last_message_sender_id": {
+                    "type": "string"
+                },
+                "last_message_type": {
+                    "type": "string"
+                },
+                "last_read_at": {
+                    "type": "string"
+                },
+                "other_avatar_url": {
+                    "type": "string"
+                },
+                "other_display_name": {
+                    "type": "string"
+                },
+                "other_participant_read_at": {
+                    "type": "string"
+                },
+                "other_user_id": {
+                    "type": "string"
+                },
+                "other_username": {
+                    "type": "string"
+                },
+                "task_id": {
+                    "type": "string"
+                },
+                "unread_count": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.CreateDirectConversationRequest": {
+            "type": "object",
+            "properties": {
+                "recipient_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.ListConversationsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.Conversation"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.ListMessagesResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.Message"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.MarkReadRequest": {
+            "type": "object",
+            "properties": {
+                "last_read_message_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.Message": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "conversation_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.MessageMedia"
+                    }
+                },
+                "message_type": {
+                    "type": "string"
+                },
+                "sender_id": {
+                    "type": "string"
+                },
+                "viewer_message_read": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.MessageMedia": {
+            "type": "object",
+            "properties": {
+                "thumbnail_url": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.SendMessageRequest": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "idempotency_key": {
+                    "type": "string"
+                },
+                "media": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.MessageMedia"
+                    }
                 }
             }
         },
@@ -5265,24 +5972,28 @@ const docTemplate = `{
             "enum": [
                 "DAILY_ACCRUAL",
                 "REFERRAL_BONUS",
+                "SIGNUP_BONUS",
                 "P2P_TRANSFER",
                 "TASK_CREATION",
                 "IAP_DEPOSIT",
                 "SYSTEM_CORRECTION",
                 "TASK_REWARD",
                 "TASK_REFUND",
-                "POST_SEAL"
+                "POST_SEAL",
+                "transfer"
             ],
             "x-enum-varnames": [
                 "CategoryDailyAccrual",
                 "CategoryReferralBonus",
+                "CategorySignupBonus",
                 "CategoryP2PTransfer",
                 "CategoryTaskCreation",
                 "CategoryIAPDeposit",
                 "CategorySystemCorrection",
                 "CategoryTaskReward",
                 "CategoryTaskRefund",
-                "CategoryPostSeal"
+                "CategoryPostSeal",
+                "CategoryTransfer"
             ]
         },
         "economy.TransactionHistoryResponse": {
@@ -5568,6 +6279,9 @@ const docTemplate = `{
                 "hide_likes_count": {
                     "type": "boolean"
                 },
+                "idempotency_key": {
+                    "type": "string"
+                },
                 "location_city": {
                     "type": "string"
                 },
@@ -5622,6 +6336,10 @@ const docTemplate = `{
                     "description": "\"trigger_friction\", \"enforce_cooldown\", or omitted",
                     "type": "string"
                 },
+                "break_mode": {
+                    "description": "\"paused\" | \"counting\"",
+                    "type": "string"
+                },
                 "break_seconds_remaining": {
                     "description": "0-300; 0 = not in break",
                     "type": "integer"
@@ -5665,6 +6383,20 @@ const docTemplate = `{
         "feed.MediaAttachment": {
             "type": "object",
             "properties": {
+                "duration_seconds": {
+                    "description": "DurationSeconds is required for video attachments. Feed rejects videos longer than MaxVideoDurationSeconds.",
+                    "type": "integer"
+                },
+                "id": {
+                    "description": "Internal ID for tracking",
+                    "type": "string"
+                },
+                "image_url": {
+                    "type": "string"
+                },
+                "processing_status": {
+                    "type": "string"
+                },
                 "thumbnail_url": {
                     "type": "string"
                 },
@@ -5673,6 +6405,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "url": {
+                    "type": "string"
+                },
+                "video_1080p_url": {
+                    "type": "string"
+                },
+                "video_480p_url": {
                     "type": "string"
                 }
             }
@@ -5728,6 +6466,9 @@ const docTemplate = `{
             "properties": {
                 "author": {
                     "$ref": "#/definitions/feed.AuthorInfo"
+                },
+                "comment_permission": {
+                    "type": "string"
                 },
                 "content_text": {
                     "type": "string"
@@ -5835,6 +6576,20 @@ const docTemplate = `{
                 }
             }
         },
+        "feed.ReviewReportsRequest": {
+            "type": "object",
+            "properties": {
+                "decision": {
+                    "type": "string"
+                },
+                "target_id": {
+                    "type": "string"
+                },
+                "target_type": {
+                    "type": "string"
+                }
+            }
+        },
         "feed.SealListResponse": {
             "type": "object",
             "properties": {
@@ -5883,11 +6638,18 @@ const docTemplate = `{
         "feed.SyncFeedStateRequest": {
             "type": "object",
             "properties": {
+                "app_section": {
+                    "type": "string"
+                },
                 "delta_seconds": {
                     "type": "integer"
                 },
                 "device_id": {
                     "type": "string"
+                },
+                "is_feed_active": {
+                    "description": "Context: either is_feed_active or app_section must be provided.",
+                    "type": "boolean"
                 }
             }
         },
@@ -5933,7 +6695,13 @@ const docTemplate = `{
         "mapmodule.ApplicationResponse": {
             "type": "object",
             "properties": {
+                "applicant_avatar_url": {
+                    "type": "string"
+                },
                 "applicant_id": {
+                    "type": "string"
+                },
+                "applicant_username": {
                     "type": "string"
                 },
                 "created_at": {
@@ -5990,8 +6758,23 @@ const docTemplate = `{
         "mapmodule.ChampionPin": {
             "type": "object",
             "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "city_name": {
+                    "type": "string"
+                },
+                "country_name": {
+                    "type": "string"
+                },
                 "h3_index": {
                     "type": "string"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
                 },
                 "resolution": {
                     "type": "integer"
@@ -6000,6 +6783,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "user_id": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }
@@ -6058,10 +6844,20 @@ const docTemplate = `{
         "mapmodule.CreateTaskResponse": {
             "type": "object",
             "properties": {
+                "application_status": {
+                    "description": "ApplicationStatus is the caller's own application status for this task (applied-tasks only).",
+                    "type": "string"
+                },
                 "auto_shutdown_at": {
                     "type": "string"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "creator_avatar_url": {
+                    "type": "string"
+                },
+                "creator_username": {
                     "type": "string"
                 },
                 "description": {
@@ -6094,6 +6890,35 @@ const docTemplate = `{
                 },
                 "workers_needed": {
                     "type": "integer"
+                }
+            }
+        },
+        "mapmodule.H3AdminLookupResponse": {
+            "type": "object",
+            "properties": {
+                "city_name": {
+                    "type": "string",
+                    "example": "Almaty"
+                },
+                "country_code": {
+                    "type": "string",
+                    "example": "KZ"
+                },
+                "country_name": {
+                    "type": "string",
+                    "example": "Kazakhstan"
+                },
+                "h3_index": {
+                    "type": "string",
+                    "example": "8a2830707fc1fff"
+                },
+                "region_name": {
+                    "type": "string",
+                    "example": "Almaty Region"
+                },
+                "resolved_at": {
+                    "type": "string",
+                    "example": "2026-03-21T12:00:00Z"
                 }
             }
         },
@@ -6164,10 +6989,20 @@ const docTemplate = `{
         "mapmodule.TaskResponse": {
             "type": "object",
             "properties": {
+                "application_status": {
+                    "description": "ApplicationStatus is the caller's own application status for this task (applied-tasks only).",
+                    "type": "string"
+                },
                 "auto_shutdown_at": {
                     "type": "string"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "creator_avatar_url": {
+                    "type": "string"
+                },
+                "creator_username": {
                     "type": "string"
                 },
                 "description": {
@@ -6265,7 +7100,7 @@ const docTemplate = `{
                     "example": "Alice Wonderland"
                 },
                 "feed_time_limit_mins": {
-                    "description": "FeedTimeLimitMins controls the Anti-Doomscroll ceiling.\n0 = No limit; 20/30/40 = limit in minutes. Defaults to 20.",
+                    "description": "FeedTimeLimitMins controls the Anti-Doomscroll ceiling.\n0 = No limit; 20/40/60 = limit in minutes. Defaults to 20.",
                     "type": "integer",
                     "example": 20
                 },
@@ -6292,31 +7127,6 @@ const docTemplate = `{
                 "updated_at": {
                     "type": "string",
                     "example": "2024-01-20T14:45:00Z"
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "profiles.ProfileSearchResult": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string",
-                    "example": "https://storage.example.com/avatars/u1.jpg"
-                },
-                "display_name": {
-                    "type": "string",
-                    "example": "John Doe"
-                },
-                "rank_tier": {
-                    "type": "string",
-                    "example": "Quartz"
-                },
-                "reputation_score": {
-                    "type": "integer",
-                    "example": 100
                 },
                 "user_id": {
                     "type": "string",
@@ -6475,9 +7285,9 @@ const docTemplate = `{
                     "example": "Alice Wonderland"
                 },
                 "feed_time_limit_mins": {
-                    "description": "FeedTimeLimitMins: 0 = no limit, 20 / 30 / 40 = limit in minutes",
+                    "description": "FeedTimeLimitMins: 0 = no limit, 20 / 40 / 60 = limit in minutes",
                     "type": "integer",
-                    "example": 30
+                    "example": 60
                 },
                 "first_name": {
                     "type": "string",
@@ -6519,6 +7329,10 @@ const docTemplate = `{
                 "user_id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "john_doe"
                 }
             }
         },

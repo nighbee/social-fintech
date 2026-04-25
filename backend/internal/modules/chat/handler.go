@@ -27,6 +27,19 @@ func NewHandler(service *Service, hub *Hub, jwt *auth.JWTManager, authRepo auth.
 	}
 }
 
+// OpenDirectConversation godoc
+// @Summary Open or get a direct conversation
+// @Description Creates a new direct conversation with the specified recipient or returns the existing one.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body CreateDirectConversationRequest true "Recipient ID"
+// @Success 200 {object} Conversation
+// @Failure 400 {object} map[string]string "Invalid body"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Recipient not found"
+// @Router /chats/conversations/direct [post]
 func (h *Handler) OpenDirectConversation(c *fiber.Ctx) error {
 	userID, ok := userIDFromContext(c)
 	if !ok {
@@ -46,6 +59,17 @@ func (h *Handler) OpenDirectConversation(c *fiber.Ctx) error {
 	return c.JSON(conversation)
 }
 
+// ListConversations godoc
+// @Summary List user conversations
+// @Description Returns a paginated list of conversations for the authenticated user.
+// @Tags Chat
+// @Produce json
+// @Security Bearer
+// @Param cursor query string false "Pagination cursor"
+// @Param limit query int false "Items per page (default 20)"
+// @Success 200 {object} ListConversationsResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /chats/conversations [get]
 func (h *Handler) ListConversations(c *fiber.Ctx) error {
 	userID, ok := userIDFromContext(c)
 	if !ok {
@@ -60,6 +84,20 @@ func (h *Handler) ListConversations(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// ListMessages godoc
+// @Summary List messages in a conversation
+// @Description Returns a paginated list of messages for the specified conversation.
+// @Tags Chat
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param cursor query string false "Pagination cursor"
+// @Param limit query int false "Items per page (default 50)"
+// @Success 200 {object} ListMessagesResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden — not a participant"
+// @Failure 404 {object} map[string]string "Conversation not found"
+// @Router /chats/conversations/{conversation_id}/messages [get]
 func (h *Handler) ListMessages(c *fiber.Ctx) error {
 	userID, ok := userIDFromContext(c)
 	if !ok {
@@ -75,6 +113,21 @@ func (h *Handler) ListMessages(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// SendMessage godoc
+// @Summary Send a message
+// @Description Sends a new message to the specified conversation.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param request body SendMessageRequest true "Message body and optional media"
+// @Success 201 {object} Message
+// @Failure 400 {object} map[string]string "Invalid body"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden — not a participant"
+// @Failure 404 {object} map[string]string "Conversation not found"
+// @Router /chats/conversations/{conversation_id}/messages [post]
 func (h *Handler) SendMessage(c *fiber.Ctx) error {
 	userID, ok := userIDFromContext(c)
 	if !ok {
@@ -98,6 +151,20 @@ func (h *Handler) SendMessage(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(message)
 }
 
+// MarkConversationRead godoc
+// @Summary Mark conversation as read
+// @Description Updates the last read message for the user in the specified conversation.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param request body MarkReadRequest false "Optional last read message ID"
+// @Success 200 {object} map[string]interface{} "Status OK and read_at timestamp"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden — not a participant"
+// @Failure 404 {object} map[string]string "Conversation not found"
+// @Router /chats/conversations/{conversation_id}/read [post]
 func (h *Handler) MarkConversationRead(c *fiber.Ctx) error {
 	userID, ok := userIDFromContext(c)
 	if !ok {
@@ -120,6 +187,16 @@ func (h *Handler) MarkConversationRead(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "ok", "read_at": readAt})
 }
 
+// WebSocketUpgrade godoc
+// @Summary Real-time chat WebSocket
+// @Description Upgrades the connection to a WebSocket for real-time message delivery and status updates.
+// @Description Requires a Bearer token in the `Authorization` header OR as a `token` query parameter.
+// @Tags Chat
+// @Param token query string false "Auth token if header is not present"
+// @Success 101 "Switching Protocols"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Account blocked"
+// @Router /chats/ws [get]
 func (h *Handler) WebSocketUpgrade(c *fiber.Ctx) error {
 	if !websocket.IsWebSocketUpgrade(c) {
 		return c.Status(fiber.StatusUpgradeRequired).JSON(fiber.Map{"error": "upgrade_required"})
