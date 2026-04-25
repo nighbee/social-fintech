@@ -233,7 +233,10 @@ func (r *repository) GetAppliedTasks(ctx context.Context, applicantID string) ([
 		WHERE ta.applicant_id = $1 AND ta.status != 'rejected'
 		  AND COALESCE(u.is_shadow_banned, false) = false
 		  AND u.deleted_at IS NULL
-		  AND COALESCE(u.activation_status, 'active') = 'active'
+		  AND (
+		        ta.status IN ('accepted', 'code_verified', 'confirmed') 
+		        OR COALESCE(u.activation_status, 'active') = 'active'
+		      )
 		ORDER BY ta.created_at DESC
 	`
 	var tasks []appliedTaskRow
