@@ -195,6 +195,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	feedAdminGroup.Use(middleware.TouchSession(authRepo))
 	feedAdminGroup.Use(middleware.RequireAdmin(authRepo))
 	feedAdminGroup.Get("/reports", feedHandler.GetAdminReports)
+	feedAdminGroup.Post("/ban", authHandler.AdminBanUser)
+	feedAdminGroup.Delete("/posts/:post_id", feedHandler.AdminDeletePost)
+	feedAdminGroup.Delete("/comments/:comment_id", feedHandler.AdminDeleteComment)
 	feedAdminGroup.Get("/ops/metrics", func(c *fiber.Ctx) error {
 		return c.JSON(observability.Snapshot())
 	})

@@ -59,7 +59,7 @@ func newUploadTestApp(storage ObjectStorage) *fiber.App {
 	app := fiber.New(fiber.Config{
 		BodyLimit: int(maxVideoSizeBytes) + 1024,
 	})
-	h := NewHandler(nil, nil, nil, storage, "", "temp-uploads")
+	h := NewHandler(nil, nil, nil, storage, nil, "", "temp-uploads")
 
 	app.Post("/upload", func(c *fiber.Ctx) error {
 		c.Locals("user_id", "11111111-1111-1111-1111-111111111111")

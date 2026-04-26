@@ -101,7 +101,7 @@ func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStat
 
 	now := time.Now()
 	// calledFromSync=false: gap since LastSyncTimestamp is off-feed time; counts toward break.
-	state = s.applyStateTransitions(ctx, state, now, false, true)
+	state = s.applyStateTransitions(state, now, false, true)
 	state.LastSyncTimestamp = now
 	_ = s.cache.SetFatigueState(ctx, state)
 	_ = s.cache.MarkUserDirty(ctx, userID) // Ensure transition (e.g. reset) is flushed to Postgres
@@ -146,7 +146,7 @@ func (s *Service) SyncFeedState(ctx context.Context, userID uuid.UUID, req *Sync
 	// 1. Apply state transitions.
 	// calledFromSync=true: user IS on the feed — off-feed gap must NOT count toward break.
 	// calledFromSync=false: user is NOT on the feed — off-feed gap counts toward break.
-	state = s.applyStateTransitions(ctx, state, now, isInFeed, !isInFeed)
+	state = s.applyStateTransitions(state, now, isInFeed, !isInFeed)
 	breakMode := "paused"
 	if state.IsInCooldown && !isInFeed {
 		breakMode = "counting"
@@ -259,7 +259,7 @@ func (s *Service) getOrInitState(ctx context.Context, userID uuid.UUID) (*FeedFa
 // calledFromSync=false → caller is GetFeedState (user just opened / re-entered the feed).
 //   - Active phase: gap since LastSyncTimestamp is off-feed time; if ≥ AwayResetThreshold, reset.
 //   - Break phase:  cooldown remains anchored to break_start_at (wall-clock).
-func (s *Service) applyStateTransitions(ctx context.Context, state *FeedFatigueState, now time.Time, calledFromSync bool, countBreak bool) *FeedFatigueState {
+func (s *Service) applyStateTransitions(state *FeedFatigueState, now time.Time, calledFromSync bool, countBreak bool) *FeedFatigueState {
 	if state.IsInCooldown {
 		if state.BreakStartedAt == nil {
 			inferredStart := now.Add(-time.Duration(state.AccumulatedBreakSeconds) * time.Second)
@@ -572,7 +572,11 @@ func (s *Service) UpdatePost(ctx context.Context, userID, postID uuid.UUID, req 
 }
 
 func (s *Service) DeletePost(ctx context.Context, userID, postID uuid.UUID) error {
-	return s.repo.DeletePost(ctx, postID, userID)
+	isAdmin, err := s.repo.IsUserAdmin(ctx, userID)
+	if err != nil {
+		return err
+	}
+	return s.repo.DeletePost(ctx, postID, userID, isAdmin)
 }
 
 func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int, lat, lon float64, hasLocation bool) (*FeedResponse, error) {
@@ -580,7 +584,7 @@ func (s *Service) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string
 	if state, err := s.getOrInitState(ctx, viewerID); err == nil && state != nil {
 		now := time.Now()
 		// User is actively viewing the feed here, so pause break progression.
-		state = s.applyStateTransitions(ctx, state, now, true, false)
+		state = s.applyStateTransitions(state, now, true, false)
 		state.LastSyncTimestamp = now
 		_ = s.cache.SetFatigueState(ctx, state)
 		_ = s.cache.MarkUserDirty(ctx, viewerID)
@@ -741,6 +745,33 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 		return ErrInvalidReportReason
 	}
 
+	// 1. Resolve Target User ID to enforce "per target user" cooldown
+	var targetUserID uuid.UUID
+	var err error
+	switch targetType {
+	case ReportTargetPost:
+		targetUserID, err = s.repo.GetPostAuthorID(ctx, targetID)
+	case ReportTargetComment:
+		targetUserID, err = s.repo.GetCommentAuthorID(ctx, targetID)
+	}
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return ErrPostNotFound // Or appropriate error
+		}
+		return err
+	}
+
+	// 2. Check Target-Specific Cooldown
+	cooldown, err := s.repo.GetOrCreateReportCooldown(ctx, reporterID, targetUserID)
+	if err != nil {
+		return err
+	}
+
+	if time.Now().Before(cooldown.CooldownUntil) {
+		return ErrReportCooldownActive
+	}
+
+	// 3. Check General Global Rate Limit
 	recentCount, err := s.repo.CountRecentReportsByUser(ctx, reporterID, time.Now().Add(-ReportRateLimitWindow))
 	if err != nil {
 		return err
@@ -749,6 +780,7 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 		return ErrReportRateLimited
 	}
 
+	// 4. Create the Report record
 	if err := s.repo.CreateReport(ctx, reporterID, targetType, targetID, reason, description); err != nil {
 		if strings.Contains(err.Error(), "duplicate key") || strings.Contains(err.Error(), "uq_reports_reporter_target") {
 			if targetType == ReportTargetPost {
@@ -761,6 +793,32 @@ func (s *Service) reportTarget(ctx context.Context, reporterID uuid.UUID, target
 		return err
 	}
 
+	// 5. Update Cooldown State
+	newCooldownHours := 24
+	if !cooldown.LastReportAt.IsZero() {
+		timeSinceLast := time.Since(cooldown.LastReportAt)
+		// If reporting again within 48h (but after 24h as per check above), double it
+		if timeSinceLast < 48*time.Hour {
+			newCooldownHours = cooldown.CurrentCooldownHours * 2
+			// Cap at 30 days (720h) to prevent overflow/unreasonable limits
+			if newCooldownHours > 720 {
+				newCooldownHours = 720
+			}
+		} else {
+			// If they waited >48h, reset to baseline 24h
+			newCooldownHours = 24
+		}
+	}
+
+	cooldown.CooldownUntil = time.Now().Add(time.Duration(newCooldownHours) * time.Hour)
+	cooldown.CurrentCooldownHours = newCooldownHours
+	cooldown.LastReportAt = time.Now()
+
+	if err := s.repo.UpdateReportCooldown(ctx, cooldown); err != nil {
+		logger.Error("failed to update report cooldown", zap.Error(err), zap.String("reporter", reporterID.String()), zap.String("target_user", targetUserID.String()))
+	}
+
+	// 6. Post-report processing (Hiding, Auto-moderation)
 	if targetType == ReportTargetPost {
 		if err := s.repo.HidePostForReporter(ctx, reporterID, targetID); err != nil {
 			return err
@@ -1086,4 +1144,8 @@ func extractObjectPath(publicURL string) string {
 	}
 	// Fallback: just return the path after the first segment if it looks relative
 	return p
+}
+
+func (s *Service) LogMediaAbuse(ctx context.Context, userID uuid.UUID, violationType, detectionDetails string, metadata interface{}) error {
+	return s.repo.LogMediaAbuse(ctx, userID, violationType, detectionDetails, metadata)
 }

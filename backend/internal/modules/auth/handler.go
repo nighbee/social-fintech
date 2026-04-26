@@ -469,3 +469,30 @@ func (h *Handler) FirebasePhoneRegister(c *fiber.Ctx) error {
 	}
 	return c.JSON(resp)
 }
+
+// AdminBanUser godoc
+// @Summary Admin: Ban user
+// @Description Ban a user temporarily or permanently (admin only)
+// @Tags Auth Admin
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body AdminBanRequest true "Ban details"
+// @Success 204
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 403 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/admin/ban [post]
+func (h *Handler) AdminBanUser(c *fiber.Ctx) error {
+	var req AdminBanRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if err := h.service.AdminBanUser(c.Context(), req); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "ban_failed", "message": err.Error()})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}

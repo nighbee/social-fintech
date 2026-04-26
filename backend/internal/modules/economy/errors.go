@@ -23,6 +23,7 @@ var (
 	ErrLedgerEntryNotFound   = errors.New("ledger entry not found")
 	ErrInvalidIdempotencyKey = errors.New("invalid idempotency key")
 	ErrIdempotencyConflict   = errors.New("idempotency key already used for different transaction")
+	ErrConsecutiveDuplicate  = errors.New("you cannot send the exact same reason twice in a row to this user")
 
 	ErrMonthlyLimitExceeded = errors.New("monthly transfer limit exceeded")
 	ErrDailyLimitExceeded   = errors.New("daily transfer limit exceeded")
@@ -78,6 +79,7 @@ const (
 	CodeOptimisticLock       = "OPTIMISTIC_LOCK_FAILURE"
 	CodeCooldownActive       = "COOLDOWN_ACTIVE"
 	CodeDailyAccrualClaimed  = "DAILY_ACCRUAL_CLAIMED"
+	CodeConsecutiveDuplicate = "CONSECUTIVE_DUPLICATE"
 )
 
 type InsufficientFundsErr struct {

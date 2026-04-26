@@ -208,7 +208,7 @@ type TransferRequest struct {
 	RecipientUserID string  `json:"recipient_user_id" validate:"required,uuid" example:"550e8400-e29b-41d4-a716-446655440000"`
 	Amount          float64 `json:"amount" validate:"required,gt=0" example:"1.50"`
 	Currency        string  `json:"currency" validate:"required,oneof=SILVER_SEAL GOLD_SEAL" example:"SILVER_SEAL"`
-	Reason          string  `json:"reason,omitempty" validate:"max=255" example:"Payment for task"`
+	Reason          string  `json:"reason,omitempty" validate:"required,min=10,max=200" example:"Payment for task"`
 	IdempotencyKey  string  `json:"idempotency_key,omitempty" validate:"omitempty,uuid"`
 }
 
@@ -231,7 +231,7 @@ type GiveSealToPostRequest struct {
 type GiveSealToUserRequest struct {
 	Amount         float64 `json:"amount" validate:"required,gt=0"`
 	Currency       string  `json:"currency" validate:"required,oneof=SILVER_SEAL GOLD_SEAL"`
-	Message        *string `json:"message,omitempty" validate:"omitempty,max=200"`
+	Message        *string `json:"message,omitempty" validate:"required,min=10,max=200"`
 	IdempotencyKey string  `json:"idempotency_key,omitempty" validate:"omitempty,uuid"`
 }
 

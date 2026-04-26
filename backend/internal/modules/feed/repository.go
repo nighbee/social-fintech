@@ -17,7 +17,7 @@ type Repository interface {
 	CreatePost(ctx context.Context, post *Post, media []MediaAttachment, idempotencyKey, requestFingerprint string) error
 	GetPostByIdempotencyKey(ctx context.Context, userID uuid.UUID, idempotencyKey string) (*uuid.UUID, string, error)
 	UpdatePost(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
-	DeletePost(ctx context.Context, postID, userID uuid.UUID) error
+	DeletePost(ctx context.Context, postID, userID uuid.UUID, isModerator bool) error
 	GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error)
 	GetPost(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
 
@@ -61,6 +61,17 @@ type Repository interface {
 
 	// Video Processing
 	UpdateMediaProcessingResult(ctx context.Context, mediaID uuid.UUID, url1080p, url480p, thumbURL, status string) error
+
+	// Author resolution
+	GetPostAuthorID(ctx context.Context, postID uuid.UUID) (uuid.UUID, error)
+	GetCommentAuthorID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error)
+
+	// Report Cooldowns
+	GetOrCreateReportCooldown(ctx context.Context, reporterID, targetUserID uuid.UUID) (*ReportCooldown, error)
+	UpdateReportCooldown(ctx context.Context, cooldown *ReportCooldown) error
+
+	// Moderation
+	LogMediaAbuse(ctx context.Context, userID uuid.UUID, violationType, detectionDetails string, metadata interface{}) error
 }
 
 // CacheRepository interface for Redis high-frequency syncs (Write-behind).

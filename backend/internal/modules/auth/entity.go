@@ -194,3 +194,17 @@ type ErrorResponse struct {
 	Error   string `json:"error" example:"invalid_credentials"`
 	Message string `json:"message,omitempty" example:"Invalid email or password"`
 }
+
+type BanType string
+
+const (
+	BanTypeTemporary BanType = "temporary"
+	BanTypePermanent BanType = "permanent"
+)
+
+type AdminBanRequest struct {
+	UserID   string  `json:"user_id" validate:"required"`
+	BanType  BanType `json:"ban_type" validate:"required,oneof=temporary permanent"`
+	Duration string  `json:"duration,omitempty"` // e.g. "24h", "7d". Required if BanType is temporary
+	Reason   string  `json:"reason" validate:"required"`
+}

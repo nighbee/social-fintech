@@ -25,6 +25,7 @@ import (
 	"github.com/brightbund-backend/internal/platform/database/migrate"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/storage"
+	"github.com/brightbund-backend/internal/platform/vision"
 	"github.com/brightbund-backend/internal/server"
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
@@ -242,6 +243,16 @@ func main() {
 	feedCache := feed.NewCacheRepository(redisCache)
 	feedService := feed.NewService(feedRepo, feedCache, profilesRepo, asynqClient)
 
+	// Initialize Vision Client
+	var visionClient vision.Client
+	vClient, err := vision.NewClient(context.Background())
+	if err != nil {
+		logger.Error("failed to initialize vision client (ADC not configured)", zap.Error(err))
+	} else {
+		visionClient = vClient
+		logger.Info("Google Vision API client initialized via ADC")
+	}
+
 	// Workers have been moved to cmd/worker to unblock API event loop
 	// Handlers that depended on workers directly are injected appropriately OR refactored
 	// (Note: To keep this compiling safely right away, we will stub the feedWorker temporarily or pass nil if the handler supports it.
@@ -249,7 +260,7 @@ func main() {
 	// but for now we'll rely on the existing worker initialization for interface compliance if needed, just without .Start())
 
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
-	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, cfg.Storage.PublicURL, cfg.Storage.TempBucket)
+	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, visionClient, cfg.Storage.PublicURL, cfg.Storage.TempBucket)
 	logger.Info("feed module initialized")
 
 	settingsRepo := settings.NewRepository(db.DB)

@@ -1295,3 +1295,42 @@ func (s *Service) EnsureAdmins(ctx context.Context, emails []string) error {
 	}
 	return nil
 }
+
+// AdminBanUser applies a temporary or permanent ban to a user and revokes all active sessions.
+func (s *Service) AdminBanUser(ctx context.Context, req AdminBanRequest) error {
+	s.logger.Info("admin_ban_user_attempt",
+		zap.String("user_id", req.UserID),
+		zap.String("type", string(req.BanType)),
+		zap.String("duration", req.Duration),
+	)
+
+	var restrictionsUntil *time.Time
+	if req.BanType == BanTypeTemporary {
+		if req.Duration == "" {
+			return fmt.Errorf("duration is required for temporary bans")
+		}
+		duration, err := time.ParseDuration(req.Duration)
+		if err != nil {
+			return fmt.Errorf("invalid duration format: %v", err)
+		}
+		until := time.Now().Add(duration)
+		restrictionsUntil = &until
+	} else {
+		// Permanent ban: set 100 years or 365 days? Let's use 100 years for "Permanent".
+		until := time.Now().Add(100 * 365 * 24 * time.Hour)
+		restrictionsUntil = &until
+	}
+
+	if err := s.repo.BanUser(ctx, req.UserID, restrictionsUntil, req.Reason); err != nil {
+		s.logger.Error("failed_to_ban_user", zap.String("user_id", req.UserID), zap.Error(err))
+		return err
+	}
+
+	// Revoke all sessions to force logout
+	if err := s.repo.RevokeAllSessionsForUser(ctx, req.UserID, time.Now()); err != nil {
+		s.logger.Warn("failed_to_revoke_sessions_after_ban", zap.String("user_id", req.UserID), zap.Error(err))
+	}
+
+	s.logger.Info("user_banned_successfully", zap.String("user_id", req.UserID))
+	return nil
+}

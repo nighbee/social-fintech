@@ -3,6 +3,7 @@ module github.com/brightbund-backend
 go 1.24.0
 
 require (
+	cloud.google.com/go/vision v1.2.0
 	firebase.google.com/go/v4 v4.15.0
 	github.com/alicebob/miniredis/v2 v2.37.0
 	github.com/coreos/go-oidc/v3 v3.17.0
@@ -23,6 +24,7 @@ require (
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
 	google.golang.org/api v0.214.0
+	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -35,6 +37,7 @@ require (
 	cloud.google.com/go/iam v1.1.7 // indirect
 	cloud.google.com/go/longrunning v0.5.6 // indirect
 	cloud.google.com/go/storage v1.40.0 // indirect
+	cloud.google.com/go/vision/v2 v2.8.0 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/MicahParks/keyfunc v1.9.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
@@ -103,7 +106,6 @@ require (
 	golang.org/x/time v0.14.0 // indirect
 	golang.org/x/tools v0.40.0 // indirect
 	google.golang.org/appengine/v2 v2.0.2 // indirect
-	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/grpc v1.67.1 // indirect

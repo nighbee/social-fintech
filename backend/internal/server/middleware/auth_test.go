@@ -132,6 +132,11 @@ func (m *MockAuthRepository) RecordActivationLogin(ctx context.Context, userID s
 	return "active", false, nil
 }
 
+func (m *MockAuthRepository) BanUser(ctx context.Context, userID string, restrictionsUntil *time.Time, reason string) error {
+	return nil
+}
+
+
 func TestRequireAuth(t *testing.T) {
 	// Setup
 	app := fiber.New()

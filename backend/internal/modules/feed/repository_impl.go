@@ -357,15 +357,15 @@ func (r *repository) UpdatePost(ctx context.Context, postID, userID uuid.UUID, r
 	return ErrPostNotFound
 }
 
-func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID) error {
+func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID, isModerator bool) error {
 	res, err := r.db.ExecContext(ctx, `
 		UPDATE posts
 		SET is_deleted = true,
 		    updated_at = NOW()
 		WHERE id = $1
-		  AND user_id = $2
+		  AND (user_id = $2 OR $3 = true)
 		  AND is_archived = false AND is_deleted = false
-	`, postID, userID)
+	`, postID, userID, isModerator)
 	if err != nil {
 		return err
 	}
@@ -388,7 +388,7 @@ func (r *repository) DeletePost(ctx context.Context, postID, userID uuid.UUID) e
 	if err != nil {
 		return err
 	}
-	if authorID != userID {
+	if authorID != userID && !isModerator {
 		return ErrNotPostAuthor
 	}
 	if isArchived || isDeleted {
@@ -1618,5 +1618,55 @@ func (r *repository) UpdateMediaProcessingResult(ctx context.Context, mediaID uu
 		WHERE id = $1
 	`
 	_, err := r.db.ExecContext(ctx, query, mediaID, url1080p, url480p, thumbURL, status)
+	return err
+}
+
+func (r *repository) LogMediaAbuse(ctx context.Context, userID uuid.UUID, violationType, detectionDetails string, metadata interface{}) error {
+	query := `
+		INSERT INTO media_abuse_logs (id, user_id, violation_type, media_metadata, detection_details)
+		VALUES ($1, $2, $3, $4, $5)
+	`
+	metaJSON, _ := json.Marshal(metadata)
+	_, err := r.db.ExecContext(ctx, query, uuid.New(), userID, violationType, metaJSON, detectionDetails)
+	return err
+}
+
+func (r *repository) GetPostAuthorID(ctx context.Context, postID uuid.UUID) (uuid.UUID, error) {
+	var authorID uuid.UUID
+	err := r.db.GetContext(ctx, &authorID, "SELECT user_id FROM posts WHERE id = $1", postID)
+	return authorID, err
+}
+
+func (r *repository) GetCommentAuthorID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error) {
+	var authorID uuid.UUID
+	err := r.db.GetContext(ctx, &authorID, "SELECT user_id FROM post_comments WHERE id = $1", commentID)
+	return authorID, err
+}
+
+func (r *repository) GetOrCreateReportCooldown(ctx context.Context, reporterID, targetUserID uuid.UUID) (*ReportCooldown, error) {
+	var cooldown ReportCooldown
+	err := r.db.GetContext(ctx, &cooldown, "SELECT * FROM report_cooldowns WHERE reporter_id = $1 AND target_user_id = $2", reporterID, targetUserID)
+	if err == sql.ErrNoRows {
+		return &ReportCooldown{
+			ReporterID:           reporterID,
+			TargetUserID:         targetUserID,
+			CooldownUntil:        time.Now().Add(-1 * time.Hour), // Already expired
+			CurrentCooldownHours: 24,
+			LastReportAt:         time.Time{},
+		}, nil
+	}
+	return &cooldown, err
+}
+
+func (r *repository) UpdateReportCooldown(ctx context.Context, cooldown *ReportCooldown) error {
+	query := `
+		INSERT INTO report_cooldowns (reporter_id, target_user_id, cooldown_until, current_cooldown_hours, last_report_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (reporter_id, target_user_id) DO UPDATE SET
+			cooldown_until = EXCLUDED.cooldown_until,
+			current_cooldown_hours = EXCLUDED.current_cooldown_hours,
+			last_report_at = EXCLUDED.last_report_at
+	`
+	_, err := r.db.ExecContext(ctx, query, cooldown.ReporterID, cooldown.TargetUserID, cooldown.CooldownUntil, cooldown.CurrentCooldownHours, cooldown.LastReportAt)
 	return err
 }

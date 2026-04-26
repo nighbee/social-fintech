@@ -318,45 +318,29 @@ func (h *Handler) ClaimDailyAccrual(c *fiber.Ctx) error {
 // @Failure 500 {object} ErrorResponse
 // @Router /economy/admin/adjust [post]
 func (h *Handler) AdminAdjustBalance(c *fiber.Ctx) error {
-	var reqRaw map[string]interface{}
-	if err := c.BodyParser(&reqRaw); err != nil {
+	var req AdjustBalanceRequest
+	if err := c.BodyParser(&req); err != nil {
 		return sendError(c, 400, "INVALID_REQUEST", "Invalid request body")
 	}
 
-	userID, ok := reqRaw["user_id"].(string)
-	if !ok || userID == "" {
+	if req.UserID == "" {
 		return sendError(c, 400, "INVALID_USER_ID", "User ID is required")
 	}
 
-	currencyStr, ok := reqRaw["currency"].(string)
-	if !ok || currencyStr == "" {
-		return sendError(c, 400, "INVALID_CURRENCY", "Currency is required")
+	if !req.Currency.IsValid() {
+		return sendError(c, 400, "INVALID_CURRENCY", "Valid currency is required (SILVER_SEAL or GOLD_SEAL)")
 	}
-	currency := CurrencyCode(currencyStr)
 
-	reason, ok := reqRaw["reason"].(string)
-	if !ok || reason == "" {
+	if req.Reason == "" {
 		return sendError(c, 400, "INVALID_REASON", "Reason is required")
 	}
 
-	var amountCents int64
-	switch v := reqRaw["amount"].(type) {
-	case float64:
-		amountCents = SealsToCentinels(v)
-	case int64:
-		amountCents = v
-	case int:
-		amountCents = int64(v)
-	default:
-		return sendError(c, 400, "INVALID_AMOUNT", "Amount must be a number")
-	}
-
-	err := h.service.AdminAdjustBalance(c.Context(), userID, amountCents, currency, reason)
+	err := h.service.AdminAdjustBalance(c.Context(), req.UserID, req.Amount, req.Currency, req.Reason)
 	if err != nil {
 		return handleServiceError(c, err)
 	}
 
-	balance, err := h.service.GetUserBalance(c.Context(), userID)
+	balance, err := h.service.GetUserBalance(c.Context(), req.UserID)
 	if err != nil {
 		return handleServiceError(c, err)
 	}

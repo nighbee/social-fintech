@@ -14,7 +14,7 @@ type testRepo struct {
 	createPostFn              func(ctx context.Context, post *Post, media []MediaAttachment, idempotencyKey, requestFingerprint string) error
 	getPostByIdempotencyKeyFn func(ctx context.Context, userID uuid.UUID, idempotencyKey string) (*uuid.UUID, string, error)
 	updatePostFn              func(ctx context.Context, postID, userID uuid.UUID, req *UpdatePostRequest) error
-	deletePostFn              func(ctx context.Context, postID, userID uuid.UUID) error
+	deletePostFn              func(ctx context.Context, postID, userID uuid.UUID, isModerator bool) error
 	getPostFn                 func(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID) (*PostResponse, error)
 	getUserPostsGridFn        func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error)
 	getUserPostsListFn        func(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error)
@@ -34,6 +34,8 @@ type testRepo struct {
 	markReputationAppliedFn func(ctx context.Context, targetType string, targetID uuid.UUID) error
 	createPolicyStrikeFn    func(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error
 	hardBlockAuthorFn       func(ctx context.Context, targetType string, targetID uuid.UUID) error
+	isUserAdminFn           func(ctx context.Context, userID uuid.UUID) (bool, error)
+	deleteCommentFn         func(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error
 
 	batchFlushLikesFn             func(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 	batchFlushSealsFn             func(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
@@ -76,9 +78,9 @@ func (r *testRepo) UpdatePost(ctx context.Context, postID, userID uuid.UUID, req
 	return nil
 }
 
-func (r *testRepo) DeletePost(ctx context.Context, postID, userID uuid.UUID) error {
+func (r *testRepo) DeletePost(ctx context.Context, postID, userID uuid.UUID, isModerator bool) error {
 	if r.deletePostFn != nil {
-		return r.deletePostFn(ctx, postID, userID)
+		return r.deletePostFn(ctx, postID, userID, isModerator)
 	}
 	return nil
 }
@@ -138,6 +140,9 @@ func (r *testRepo) ToggleCommentLike(ctx context.Context, commentID uuid.UUID, u
 }
 
 func (r *testRepo) DeleteComment(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error {
+	if r.deleteCommentFn != nil {
+		return r.deleteCommentFn(ctx, commentID, actorID, isModerator)
+	}
 	return nil
 }
 
@@ -239,10 +244,34 @@ func (r *testRepo) HardBlockAuthorByTarget(ctx context.Context, targetType strin
 	return nil
 }
 
-func (r *testRepo) UpdateMediaProcessingResult(ctx context.Context, mediaID uuid.UUID, url1080p, url480p, thumbURL, status string) error {
-	if r.updateMediaProcessingResultFn != nil {
-		return r.updateMediaProcessingResultFn(ctx, mediaID, url1080p, url480p, thumbURL, status)
+func (r *testRepo) ToggleLike(ctx context.Context, postID uuid.UUID, userID uuid.UUID) error {
+	return nil
+}
+
+func (r *testRepo) IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
+	if r.isUserAdminFn != nil {
+		return r.isUserAdminFn(ctx, userID)
 	}
+	return false, nil
+}
+
+func (r *testRepo) GetPostAuthorID(ctx context.Context, postID uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+
+func (r *testRepo) GetCommentAuthorID(ctx context.Context, commentID uuid.UUID) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+
+func (r *testRepo) GetOrCreateReportCooldown(ctx context.Context, reporterID, targetUserID uuid.UUID) (*ReportCooldown, error) {
+	return &ReportCooldown{ReporterID: reporterID, TargetUserID: targetUserID, CooldownUntil: time.Now()}, nil
+}
+
+func (r *testRepo) UpdateReportCooldown(ctx context.Context, cooldown *ReportCooldown) error {
+	return nil
+}
+
+func (r *testRepo) LogMediaAbuse(ctx context.Context, userID uuid.UUID, violationType, detectionDetails string, metadata interface{}) error {
 	return nil
 }
 
@@ -254,10 +283,6 @@ func (r *testRepo) IsAlly(ctx context.Context, userID, targetUserID uuid.UUID) (
 	return false, nil
 }
 
-func (r *testRepo) IsUserAdmin(ctx context.Context, userID uuid.UUID) (bool, error) {
-	return false, nil
-}
-
 func (r *testRepo) GetInteractions(ctx context.Context, postID uuid.UUID, interactionType string, cursor string, limit int) ([]InteractionResponse, string, error) {
 	return nil, "", nil
 }
@@ -266,7 +291,10 @@ func (r *testRepo) GetSeals(ctx context.Context, postID uuid.UUID, cursor string
 	return nil, "", nil
 }
 
-func (r *testRepo) ToggleLike(ctx context.Context, postID uuid.UUID, userID uuid.UUID) error {
+func (r *testRepo) UpdateMediaProcessingResult(ctx context.Context, mediaID uuid.UUID, url1080p, url480p, thumbURL, status string) error {
+	if r.updateMediaProcessingResultFn != nil {
+		return r.updateMediaProcessingResultFn(ctx, mediaID, url1080p, url480p, thumbURL, status)
+	}
 	return nil
 }
 
@@ -332,7 +360,7 @@ func TestApplyStateTransitions_ActivePhase_ResetAfterLongAway(t *testing.T) {
 		IsInCooldown:             false,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, false, true)
+	result := svc.applyStateTransitions(state, now, false, true)
 
 	if result.AccumulatedActiveSeconds != 0 {
 		t.Errorf("expected full reset to 0, got %d", result.AccumulatedActiveSeconds)
@@ -355,7 +383,7 @@ func TestApplyStateTransitions_BreakPhase_SyncFreezesAndRefreshesLastSync(t *tes
 		IsInCooldown:             true,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, true, false)
+	result := svc.applyStateTransitions(state, now, true, false)
 
 	if result.AccumulatedBreakSeconds != 120 {
 		t.Errorf("expected break seconds to stay frozen, got %d", result.AccumulatedBreakSeconds)
@@ -379,7 +407,7 @@ func TestApplyStateTransitions_BreakPhase_TracksElapsedFromBreakStartAt(t *testi
 		BreakStartedAt:           &breakStart,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, false, true)
+	result := svc.applyStateTransitions(state, now, false, true)
 
 	if result.AccumulatedBreakSeconds != 150 {
 		t.Errorf("expected break seconds to reflect wall-clock elapsed (150), got %d", result.AccumulatedBreakSeconds)
@@ -403,7 +431,7 @@ func TestApplyStateTransitions_BreakPhase_SyncPausesBreakWhenOnFeed(t *testing.T
 		BreakStartedAt:           &breakStart,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, true, false)
+	result := svc.applyStateTransitions(state, now, true, false)
 
 	if result.AccumulatedBreakSeconds != 100 {
 		t.Errorf("expected break seconds to stay frozen during on-feed sync, got %d", result.AccumulatedBreakSeconds)
@@ -427,7 +455,7 @@ func TestApplyStateTransitions_BreakPhase_ResolvesAfterEnoughOffFeed(t *testing.
 		BreakStartedAt:           &breakStart,
 	}
 
-	result := svc.applyStateTransitions(context.Background(), state, now, false, true)
+	result := svc.applyStateTransitions(state, now, false, true)
 
 	if result.IsInCooldown {
 		t.Error("expected cooldown resolved")
@@ -749,7 +777,7 @@ func TestDeletePost_DelegatesRepository(t *testing.T) {
 	called := false
 
 	repo := &testRepo{
-		deletePostFn: func(ctx context.Context, gotPostID, gotUserID uuid.UUID) error {
+		deletePostFn: func(ctx context.Context, gotPostID, gotUserID uuid.UUID, isModerator bool) error {
 			called = true
 			if gotPostID != postID || gotUserID != userID {
 				t.Fatalf("unexpected delete args: %s %s", gotPostID, gotUserID)

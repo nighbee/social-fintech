@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/url"
+
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,6 +13,7 @@ import (
 
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/logger"
+	"github.com/brightbund-backend/internal/platform/vision"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -29,16 +30,18 @@ type Handler struct {
 	worker     *InteractionWorker
 	economy    economy.Service
 	storage    ObjectStorage
+	vision     vision.Client
 	publicURL  string
 	tempBucket string
 }
 
-func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, storageClient ObjectStorage, publicURL, tempBucket string) *Handler {
+func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, storageClient ObjectStorage, visionClient vision.Client, publicURL, tempBucket string) *Handler {
 	return &Handler{
 		service:    service,
 		worker:     worker,
 		economy:    economyService,
 		storage:    storageClient,
+		vision:     visionClient,
 		publicURL:  publicURL,
 		tempBucket: tempBucket,
 	}
@@ -174,6 +177,33 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 	}
 	defer src.Close()
 
+	// MODERATION: Media safety inspection
+	if mediaType == "image" && h.vision != nil {
+		ok, reason, err := h.vision.DetectInappropriateContent(c.Context(), src)
+		if err != nil {
+			logger.Error("vision api detection failed", zap.Error(err))
+			// Fail open on transient API errors, but log warning
+		} else if !ok {
+			userID, _ := requireUserID(c)
+			// Log to DB
+			_ = h.service.LogMediaAbuse(c.Context(), userID, "inappropriate_content", reason, map[string]interface{}{
+				"filename":     file.Filename,
+				"content_type": contentType,
+				"size":         file.Size,
+			})
+
+			return c.Status(403).JSON(fiber.Map{
+				"error":   "content_rejected",
+				"message": "Media rejected due to safety policy violation",
+			})
+		}
+
+		// Reset reader for storage upload
+		if seeker, ok := src.(io.Seeker); ok {
+			_, _ = seeker.Seek(0, io.SeekStart)
+		}
+	}
+
 	if h.storage == nil {
 		logger.Error("object storage not configured")
 		return c.Status(503).JSON(fiber.Map{
@@ -232,27 +262,6 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 		"url":  publicURL,
 		"type": mediaType,
 	})
-}
-
-func resolvePublicBaseURL(configured, requestBase string) string {
-	candidate := strings.TrimSuffix(configured, "/")
-	fallback := strings.TrimSuffix(requestBase, "/")
-	if fallback == "" {
-		fallback = "http://localhost:8080"
-	}
-	if candidate == "" {
-		return fallback
-	}
-
-	u, err := url.Parse(candidate)
-	if err != nil {
-		return fallback
-	}
-	host := strings.ToLower(u.Hostname())
-	if host == "localhost" || host == "127.0.0.1" {
-		return fallback
-	}
-	return candidate
 }
 
 // ... unchanged intermediate ...
@@ -725,8 +734,11 @@ func (h *Handler) ReportComment(c *fiber.Ctx) error {
 		if errors.Is(err, ErrDuplicateReport) {
 			return c.Status(409).JSON(fiber.Map{"error": ErrDuplicateReport.Error()})
 		}
-		if errors.Is(err, ErrReportRateLimited) {
-			return c.Status(429).JSON(fiber.Map{"error": ErrReportRateLimited.Error()})
+		if errors.Is(err, ErrReportRateLimited) || errors.Is(err, ErrReportCooldownActive) {
+			return c.Status(429).JSON(fiber.Map{"error": err.Error()})
+		}
+		if errors.Is(err, ErrPostNotFound) {
+			return c.Status(404).JSON(fiber.Map{"error": "target_not_found"})
 		}
 		logger.Error("failed to report comment", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": "report_failed"})
@@ -774,8 +786,11 @@ func (h *Handler) ReportPost(c *fiber.Ctx) error {
 		if errors.Is(err, ErrDuplicateReport) {
 			return c.Status(409).JSON(fiber.Map{"error": ErrDuplicateReport.Error()})
 		}
-		if errors.Is(err, ErrReportRateLimited) {
-			return c.Status(429).JSON(fiber.Map{"error": ErrReportRateLimited.Error()})
+		if errors.Is(err, ErrReportRateLimited) || errors.Is(err, ErrReportCooldownActive) {
+			return c.Status(429).JSON(fiber.Map{"error": err.Error()})
+		}
+		if errors.Is(err, ErrPostNotFound) {
+			return c.Status(404).JSON(fiber.Map{"error": "target_not_found"})
 		}
 		logger.Error("failed to report post", zap.Error(err))
 		return c.Status(500).JSON(fiber.Map{"error": "report_failed"})
@@ -1084,19 +1099,6 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	})
 }
 
-// contains is a simple substring helper to avoid importing strings twice.
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 &&
-		func() bool {
-			for i := 0; i <= len(s)-len(substr); i++ {
-				if s[i:i+len(substr)] == substr {
-					return true
-				}
-			}
-			return false
-		}())
-}
-
 // GetSeals godoc
 // @Summary Fetch post seals
 // @Description Fetch all users who contributed Silver Seals and their messages
@@ -1250,4 +1252,64 @@ func parseOptionalUUID(s string) *uuid.UUID {
 		return nil
 	}
 	return &id
+}
+
+// AdminDeletePost godoc
+// @Summary Admin emergency post deletion
+// @Description Emergency deletion of any post by an administrator.
+// @Tags Feed Moderation
+// @Produce json
+// @Security Bearer
+// @Param post_id path string true "Post UUID"
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /admin/posts/{post_id} [delete]
+func (h *Handler) AdminDeletePost(c *fiber.Ctx) error {
+	adminID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	postID, err := uuid.Parse(c.Params("post_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_post_id"})
+	}
+
+	if err := h.service.DeletePost(c.Context(), adminID, postID); err != nil {
+		logger.Error("admin failed to delete post", zap.Error(err), zap.String("admin_id", adminID.String()), zap.String("post_id", postID.String()))
+		return c.Status(500).JSON(fiber.Map{"error": "admin_post_delete_failed"})
+	}
+
+	return c.JSON(fiber.Map{"status": "deleted_by_admin"})
+}
+
+// AdminDeleteComment godoc
+// @Summary Admin emergency comment deletion
+// @Description Emergency deletion of any comment by an administrator.
+// @Tags Feed Moderation
+// @Produce json
+// @Security Bearer
+// @Param comment_id path string true "Comment UUID"
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Router /admin/comments/{comment_id} [delete]
+func (h *Handler) AdminDeleteComment(c *fiber.Ctx) error {
+	adminID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	commentID, err := uuid.Parse(c.Params("comment_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_comment_id"})
+	}
+
+	if err := h.service.DeleteComment(c.Context(), adminID, commentID); err != nil {
+		logger.Error("admin failed to delete comment", zap.Error(err), zap.String("admin_id", adminID.String()), zap.String("comment_id", commentID.String()))
+		return c.Status(500).JSON(fiber.Map{"error": "admin_comment_delete_failed"})
+	}
+
+	return c.JSON(fiber.Map{"status": "deleted_by_admin"})
 }

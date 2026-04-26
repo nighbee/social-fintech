@@ -41,6 +41,7 @@ type Repository interface {
 	UpsertUserInteraction(ctx context.Context, senderID, receiverID string, amount int64) error
 
 	GetPairCooldown(ctx context.Context, senderID, receiverID string) (*PairCooldown, error)
+	GetLastTransferMessageBetweenUsers(ctx context.Context, senderID, receiverID string) (string, error)
 	UpsertPairCooldown(ctx context.Context, cooldown *PairCooldown) error
 	UpsertGoldPeriodStat(ctx context.Context, userID string, periodYear, periodWeek int, amount int64) error
 	GetTopGoldUserForWeek(ctx context.Context, periodYear, periodWeek int) (string, int64, error)
@@ -663,4 +664,38 @@ func (r *repository) UpsertPairCooldown(ctx context.Context, cooldown *PairCoold
 	}
 
 	return nil
+}
+
+func (r *repository) GetLastTransferMessageBetweenUsers(ctx context.Context, senderID, receiverID string) (string, error) {
+	query := `
+		SELECT le.metadata->>'reason' as reason, le.metadata->>'message' as message
+		FROM ledger_entries le
+		JOIN wallets ws ON le.sender_wallet_id = ws.id
+		WHERE le.category = 'P2P_TRANSFER'
+		  AND ws.user_id = $1
+		  AND (le.metadata->>'receiver_user_id' = $2 OR le.metadata->>'referee_id' = $2)
+		ORDER BY le.created_at DESC
+		LIMIT 1
+	`
+	
+	row := struct {
+		Reason  sql.NullString `db:"reason"`
+		Message sql.NullString `db:"message"`
+	}{}
+	
+	err := sqlx.GetContext(ctx, r.getExecutor(), &row, query, senderID, receiverID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", nil
+		}
+		return "", fmt.Errorf("failed to get last transfer message: %w", err)
+	}
+	
+	if row.Reason.Valid && row.Reason.String != "" {
+		return row.Reason.String, nil
+	}
+	if row.Message.Valid && row.Message.String != "" {
+		return row.Message.String, nil
+	}
+	return "", nil
 }

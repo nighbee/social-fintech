@@ -43,6 +43,7 @@ type Repository interface {
 	ConsumePhoneVerification(ctx context.Context, id string, consumedAt time.Time) error
 	UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error
 	SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error
+	BanUser(ctx context.Context, userID string, restrictionsUntil *time.Time, reason string) error
 }
 
 // структурирование бд в первый слой репозитория
@@ -458,5 +459,17 @@ func (r *PostgresRepository) UsePhoneVerification(ctx context.Context, id string
 func (r *PostgresRepository) SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error {
 	query := `UPDATE users SET is_admin = $1 WHERE id = $2`
 	_, err := r.db.ExecContext(ctx, query, isAdmin, userID)
+	return err
+}
+
+func (r *PostgresRepository) BanUser(ctx context.Context, userID string, restrictionsUntil *time.Time, reason string) error {
+	query := `
+		UPDATE users 
+		SET activation_status = 'blocked', 
+		    restrictions_until = $1,
+		    updated_at = NOW()
+		WHERE id = $2
+	`
+	_, err := r.db.ExecContext(ctx, query, restrictionsUntil, userID)
 	return err
 }

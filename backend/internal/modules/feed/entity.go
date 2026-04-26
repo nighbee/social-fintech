@@ -299,6 +299,14 @@ type ReportItem struct {
 	CreatedAt        time.Time `json:"created_at"`
 }
 
+type ReportCooldown struct {
+	ReporterID           uuid.UUID `json:"reporter_id" db:"reporter_id"`
+	TargetUserID         uuid.UUID `json:"target_user_id" db:"target_user_id"`
+	CooldownUntil        time.Time `json:"cooldown_until" db:"cooldown_until"`
+	CurrentCooldownHours int       `json:"current_cooldown_hours" db:"current_cooldown_hours"`
+	LastReportAt         time.Time `json:"last_report_at" db:"last_report_at"`
+}
+
 type ReportsListResponse struct {
 	Items  []ReportItem `json:"items"`
 	Total  int          `json:"total"`

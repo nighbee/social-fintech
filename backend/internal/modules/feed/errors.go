@@ -88,6 +88,8 @@ var (
 	ErrDuplicateReport = errors.New("duplicate_report")
 	// ErrReportRateLimited is returned when reporter exceeds allowed report rate.
 	ErrReportRateLimited = errors.New("report_rate_limited")
+	// ErrReportCooldownActive is returned when reporter is still in cooldown for the specific target user.
+	ErrReportCooldownActive = errors.New("report_cooldown_active: you can only report this user once every 24 hours (or longer if frequent)")
 	// ErrInvalidReportTargetType is returned when moderation target type is not supported.
 	ErrInvalidReportTargetType = errors.New("invalid_report_target_type")
 	// ErrInvalidReportDecision is returned when moderation decision is not supported.
