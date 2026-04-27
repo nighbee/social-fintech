@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:app/src/core/api/client/dio/rest_client.dart';
+import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/service/storage/app_storage/storage_service.dart';
 import 'package:app/src/core/service/storage/key_store.dart';
 import 'package:app/src/core/router/router.dart';
@@ -1555,9 +1557,17 @@ class MapPageController {
       return;
     }
     final rejectedTaskId = viewModel.applyToTaskResult.taskId.trim();
+    final rejectedApplicationId =
+        viewModel.applyToTaskResult.applicationId.trim();
+    // If executor explicitly cancelled their own application, show only the
+    // "Request canceled" dialog and never the creator rejection dialog.
+    if (rejectedApplicationId.isNotEmpty &&
+        locallyCanceledExecutorApplicationIds.contains(rejectedApplicationId)) {
+      return;
+    }
     final shown = await _dialogs.tryShowExecutorRejectedDialog(
       context: context,
-      applicationId: viewModel.applyToTaskResult.applicationId,
+      applicationId: rejectedApplicationId,
       executorCompletionShown: executorCompletionShown,
       executorTaskStatus: executorTaskStatus,
       executorCreatorName: executorCreatorName,
@@ -1682,12 +1692,64 @@ class MapPageController {
       }
     }
 
+    String normalizeStatus(String rawStatus) {
+      return rawStatus
+          .trim()
+          .toLowerCase()
+          .replaceAll('-', '_')
+          .replaceAll(' ', '_');
+    }
+
+    bool isPendingLikeStatus(String rawStatus) {
+      final normalized = normalizeStatus(rawStatus);
+      return normalized.isEmpty ||
+          normalized == 'pending' ||
+          normalized.contains('await');
+    }
+
+    final shouldUseDirectStatus = matchedTaskStatus == null ||
+        isPendingLikeStatus(matchedTaskStatus) ||
+        isPendingLikeStatus(executorTaskStatus);
+    if (shouldUseDirectStatus) {
+      final directStatus = await _fetchExecutorApplicationStatusDirect(
+        taskId: taskId,
+        applicationId: applicationId,
+      );
+      if (directStatus != null && directStatus.trim().isNotEmpty) {
+        matchedTaskStatus = directStatus;
+      }
+    }
+
+    final pendingAfterDirectCheck = matchedTaskStatus == null ||
+        isPendingLikeStatus(matchedTaskStatus);
+    if (pendingAfterDirectCheck) {
+      final taskSnapshot = await _fetchTaskSnapshotDirect(taskId: taskId);
+      if (taskSnapshot != null) {
+        final normalizedTaskStatus = normalizeStatus(taskSnapshot.status);
+        final hasNoSlotsLeft = taskSnapshot.workersNeeded > 0 &&
+            taskSnapshot.workersFilled >= taskSnapshot.workersNeeded;
+        final isTaskAssignedLike = normalizedTaskStatus.contains('accepted') ||
+            normalizedTaskStatus.contains('assigned') ||
+            normalizedTaskStatus.contains('arrived') ||
+            normalizedTaskStatus.contains('in_progress') ||
+            normalizedTaskStatus.contains('code_required') ||
+            normalizedTaskStatus.contains('code_verified') ||
+            normalizedTaskStatus.contains('confirmed') ||
+            normalizedTaskStatus.contains('completed') ||
+            normalizedTaskStatus.contains('closed') ||
+            normalizedTaskStatus.contains('cancelled');
+        if (hasNoSlotsLeft || isTaskAssignedLike) {
+          matchedTaskStatus = 'rejected';
+        }
+      }
+    }
+
     if (matchedTaskStatus != null) {
       consecutiveMissingAppliedTaskChecks = 0;
     }
 
     bool isRejectedLikeStatus(String rawStatus) {
-      final normalized = rawStatus.trim().toLowerCase();
+      final normalized = normalizeStatus(rawStatus);
       if (normalized.isEmpty) {
         return false;
       }
@@ -1746,6 +1808,77 @@ class MapPageController {
       // Wait for explicit backend status to avoid false "rejected" for
       // already accepted executors.
       return;
+    }
+  }
+
+  Future<String?> _fetchExecutorApplicationStatusDirect({
+    required String taskId,
+    required String applicationId,
+  }) async {
+    final normalizedTaskId = taskId.trim();
+    final normalizedApplicationId = applicationId.trim();
+    if (normalizedTaskId.isEmpty || normalizedApplicationId.isEmpty) {
+      return null;
+    }
+    try {
+      final client = getIt<RestClient>(instanceName: 'DioClient');
+      final response = await client.get(
+        EndPoints.mapWithdrawTaskApplication(
+          normalizedTaskId,
+          normalizedApplicationId,
+        ),
+      );
+      return response.fold(
+        (_) => null,
+        (result) {
+          final raw = result.data;
+          if (raw is! Map) {
+            return null;
+          }
+          final status = (raw['status'] ?? '').toString().trim();
+          return status.isEmpty ? null : status;
+        },
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<({int workersNeeded, int workersFilled, String status})?>
+      _fetchTaskSnapshotDirect({
+    required String taskId,
+  }) async {
+    final normalizedTaskId = taskId.trim();
+    if (normalizedTaskId.isEmpty) {
+      return null;
+    }
+    try {
+      final client = getIt<RestClient>(instanceName: 'DioClient');
+      final response = await client.get(
+        EndPoints.mapTaskById(normalizedTaskId),
+      );
+      return response.fold(
+        (_) => null,
+        (result) {
+          final raw = result.data;
+          if (raw is! Map) {
+            return null;
+          }
+          final workersNeededRaw = raw['workers_needed'];
+          final workersFilledRaw = raw['workers_filled'];
+          final statusRaw = raw['status'];
+          if (workersNeededRaw is! num || workersFilledRaw is! num) {
+            return null;
+          }
+          return (
+            workersNeeded: workersNeededRaw.toInt(),
+            workersFilled: workersFilledRaw.toInt(),
+            status: (statusRaw ?? '').toString(),
+          );
+        },
+      );
+    } catch (_) {
+      return null;
     }
   }
 
