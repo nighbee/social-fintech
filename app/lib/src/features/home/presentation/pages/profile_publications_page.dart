@@ -9,6 +9,7 @@ import 'package:app/src/features/home/domain/requests/get_my_profile_posts_reque
 import 'package:app/src/features/home/domain/requests/get_profile_posts_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
+import 'package:app/src/features/home/presentation/widgets/publications_post_card.dart';
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' hide State;
 import 'package:go_router/go_router.dart';
@@ -190,6 +191,16 @@ class _ProfilePublicationsPageState extends State<ProfilePublicationsPage> {
               isInitialLoading: _isInitialLoading,
               isLoadingMore: _isLoadingMore,
               errorMessage: _errorMessage,
+              isOwnerViewer: widget.isCurrentUser,
+              onOwnerDeletedPost: (postId) {
+                setState(() {
+                  _feed = _feed.copyWith(
+                    items: _feed.items
+                        .where((p) => p.postId != postId)
+                        .toList(),
+                  );
+                });
+              },
             ),
           ),
         ),
@@ -209,6 +220,7 @@ class _ProfilePublicationsAppBar extends StatelessWidget
   @override
   Widget build(BuildContext context) {
     return AppBar(
+      toolbarHeight: 72,
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       automaticallyImplyLeading: false,
@@ -228,7 +240,7 @@ class _ProfilePublicationsAppBar extends StatelessWidget
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(72);
 }
 
 class _ProfilePublicationsTitle extends StatelessWidget {
@@ -247,10 +259,16 @@ class _ProfilePublicationsTitle extends StatelessWidget {
           'Publications',
           style: TextStyles.titleMain.copyWith(color: Colors.white),
         ),
-        Text(
-          displayName.trim(),
-          style: TextStyles.bodySecondary.copyWith(
-            color: AppColors.colorff9CA3AF,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40),
+          child: Text(
+            displayName.trim(),
+            style: TextStyles.bodySecondary.copyWith(
+              color: AppColors.colorff9CA3AF,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
           ),
         ),
       ],
@@ -265,6 +283,8 @@ class _ProfilePublicationsBody extends StatelessWidget {
     required this.isInitialLoading,
     required this.isLoadingMore,
     required this.errorMessage,
+    required this.isOwnerViewer,
+    required this.onOwnerDeletedPost,
   });
 
   final ScrollController controller;
@@ -272,6 +292,8 @@ class _ProfilePublicationsBody extends StatelessWidget {
   final bool isInitialLoading;
   final bool isLoadingMore;
   final String errorMessage;
+  final bool isOwnerViewer;
+  final ValueChanged<String> onOwnerDeletedPost;
 
   @override
   Widget build(BuildContext context) {
@@ -298,6 +320,13 @@ class _ProfilePublicationsBody extends StatelessWidget {
         }
 
         final post = feed.items[index];
+        if (isOwnerViewer) {
+          return PublicationsPostCard(
+            anchorPost: post,
+            bloc: getIt<HomeBloc>(),
+            onPostDeleted: () => onOwnerDeletedPost(post.postId),
+          );
+        }
         return PostCardWidget(
           post: post,
           bloc: getIt<HomeBloc>(),

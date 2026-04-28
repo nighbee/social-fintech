@@ -8,12 +8,14 @@ extension BuildContextExt on BuildContext {
     bool isDismissible = true,
     bool enableDrag = true,
     Color? backgroundColor,
+    Color? barrierColor,
     double? maxHeightFactor,
     VoidCallback? whenDismissed,
   }) {
     return showModalBottomSheet<T>(
       context: this,
       backgroundColor: backgroundColor,
+      barrierColor: barrierColor,
       isScrollControlled: isScrollControlled,
       useRootNavigator: useRootNavigator,
       isDismissible: isDismissible,

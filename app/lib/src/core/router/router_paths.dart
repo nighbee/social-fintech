@@ -25,7 +25,6 @@ class RoutePaths {
   static const String notifications = '/notifications';
   static const String search = '/search';
   static const String store = '/store';
-  static const String profilePublications = '/profile-publications';
 
   // Map routes
   static const String map = '/map';
@@ -44,6 +43,8 @@ class RoutePaths {
 
   // Profile routes
   static const String profile = '/profile';
+  /// Full path for nested GoRoute (`path: 'publications'` under [profile]).
+  static const String profilePublications = '$profile/publications';
   static const String settings = '/settings';
   static const String allies = '/allies';
   static const String publicProfile = '/public-profile/:userId';

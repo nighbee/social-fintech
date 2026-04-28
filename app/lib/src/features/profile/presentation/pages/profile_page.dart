@@ -40,6 +40,34 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
   VoidCallback? _routerListener;
   GoRouter? _router;
 
+  String _publicationsDisplayName({
+    required String displayName,
+    required String firstName,
+    required String lastName,
+    required String userId,
+  }) {
+    final dn = displayName.trim();
+    if (dn.isNotEmpty) return dn;
+    final name = '$firstName $lastName'.trim();
+    if (name.isNotEmpty) return name;
+    return userId.trim();
+  }
+
+  void _openMyPublications(
+    BuildContext context, {
+    required String displayName,
+    required String initialPostId,
+  }) {
+    context.pushNamed(
+      RouteNames.profilePublications,
+      extra: <String, dynamic>{
+        'displayName': displayName,
+        'initialPostId': initialPostId,
+        'isCurrentUser': true,
+      },
+    );
+  }
+
   void _openSettings() {
     final currentUserId = getIt<ProfileBloc>().state.maybeWhen(
           loaded: (viewModel) => viewModel.profile.userId,
@@ -280,6 +308,16 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                           else
                             ProfilePostGrid(
                               posts: _myPosts,
+                              onPostTap: (postId) => _openMyPublications(
+                                context,
+                                displayName: _publicationsDisplayName(
+                                  displayName: profile.displayName,
+                                  firstName: profile.firstName,
+                                  lastName: profile.lastName,
+                                  userId: profile.userId,
+                                ),
+                                initialPostId: postId,
+                              ),
                             ),
                         ],
                       ),
