@@ -500,6 +500,13 @@ func (s *Service) AcceptApplication(ctx context.Context, userID, taskID, applica
 		return fmt.Errorf("application is not pending")
 	}
 
+	if acceptedCount+1 >= task.WorkersNeeded {
+		_, err := s.repo.RejectPendingApplicationsForTask(ctx, taskID)
+		if err != nil {
+			logger.Error("failed to auto-reject pending applications", zap.String("task_id", taskID), zap.Error(err))
+		}
+	}
+
 	if s.chat != nil {
 		if err := s.chat.OnTaskApplicationAccepted(ctx, taskID, userID, app.ApplicantID); err != nil {
 			logger.Error("failed to initialize task chat on application acceptance",

@@ -32,6 +32,7 @@ type Repository interface {
 	DeleteApplication(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationAccepted(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationRejected(ctx context.Context, applicationID string) (bool, error)
+	RejectPendingApplicationsForTask(ctx context.Context, taskID string) (int64, error)
 	MarkApplicationCodeVerified(ctx context.Context, applicationID string) (bool, error)
 	MarkApplicationConfirmed(ctx context.Context, applicationID string) (bool, error)
 	IncrementWorkersFilled(ctx context.Context, taskID string) error
@@ -439,6 +440,26 @@ func (r *repository) MarkApplicationRejected(ctx context.Context, applicationID 
 		return false, fmt.Errorf("failed to get rows affected: %w", err)
 	}
 	return rows > 0, nil
+}
+
+// RejectPendingApplicationsForTask transitions all remaining pending applications for a task to rejected.
+// Returns the number of applications rejected.
+func (r *repository) RejectPendingApplicationsForTask(ctx context.Context, taskID string) (int64, error) {
+	query := `
+		UPDATE task_applications
+		SET status = 'rejected',
+		    updated_at = NOW()
+		WHERE task_id = $1 AND status = 'pending'
+	`
+	res, err := r.executor().ExecContext(ctx, query, taskID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to reject pending applications for task: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	return rows, nil
 }
 
 // MarkApplicationCodeVerified transitions an accepted application to code_verified.

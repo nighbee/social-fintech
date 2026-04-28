@@ -5,8 +5,8 @@ import (
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/vision"
-	"github.com/hibiken/asynq"
 	"github.com/gofiber/fiber/v2"
+	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 )
 
