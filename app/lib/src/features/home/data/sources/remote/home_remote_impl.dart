@@ -374,7 +374,17 @@ class HomeRemoteImpl implements IHomeRemote {
       );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractMapPayload(result.data);
-        return Right(StatusResponseDto.fromJson(payload));
+        // PATCH /posts/:id may return full PostResponse without `status`.
+        final status = (payload['status'] as String?)?.trim();
+        final error = payload['error'] as String?;
+        final message = payload['message'] as String?;
+        return Right(
+          StatusResponseDto(
+            status: (status == null || status.isEmpty) ? 'success' : status,
+            error: error,
+            message: message,
+          ),
+        );
       });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));

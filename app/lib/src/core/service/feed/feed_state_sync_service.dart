@@ -126,8 +126,7 @@ class FeedStateSyncService with WidgetsBindingObserver {
         path.startsWith(RoutePaths.createPost) ||
         path.startsWith(RoutePaths.notifications) ||
         path.startsWith(RoutePaths.search) ||
-        path.startsWith(RoutePaths.store) ||
-        path.startsWith(RoutePaths.profilePublications);
+        path.startsWith(RoutePaths.store);
   }
 
   String _appSectionForPath(String path) {

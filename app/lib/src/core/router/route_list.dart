@@ -566,6 +566,29 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                     },
                   ),
                   GoRoute(
+                    path: 'publications',
+                    name: RouteNames.profilePublications,
+                    parentNavigatorKey: rootNavigatorKey,
+                    redirect: AuthGuard,
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      final map = extra is Map<String, dynamic>
+                          ? extra
+                          : <String, dynamic>{};
+                      final displayName = map['displayName'] as String? ?? '';
+                      final initialPostId = map['initialPostId'] as String? ?? '';
+                      final isCurrentUser =
+                          map['isCurrentUser'] as bool? ?? true;
+                      final userId = map['userId'] as String?;
+                      return ProfilePublicationsPage(
+                        displayName: displayName,
+                        initialPostId: initialPostId,
+                        isCurrentUser: isCurrentUser,
+                        userId: userId,
+                      );
+                    },
+                  ),
+                  GoRoute(
                     path: 'allies',
                     name: RouteNames.allies,
                     redirect: AuthGuard,

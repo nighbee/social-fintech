@@ -23,12 +23,14 @@ class PostCardWidget extends StatelessWidget
   final PostResponseEntity post;
   final HomeBloc bloc;
   final VoidCallback? onReported;
+  final VoidCallback? onMoreTap;
 
   const PostCardWidget({
     super.key,
     required this.post,
     required this.bloc,
     this.onReported,
+    this.onMoreTap,
   });
 
   @override
@@ -122,14 +124,21 @@ class PostCardWidget extends StatelessWidget
                 ),
               ),
               GestureDetector(
-                onTap: () => showPostReportBottomSheet(
-                  context,
-                  bloc: homeBloc,
-                  postId: post.postId,
-                  authorId: post.author.id,
-                  username: post.author.username,
-                  onReported: onReported,
-                ),
+                onTap: () {
+                  final customMoreTap = onMoreTap;
+                  if (customMoreTap != null) {
+                    customMoreTap();
+                    return;
+                  }
+                  showPostReportBottomSheet(
+                    context,
+                    bloc: homeBloc,
+                    postId: post.postId,
+                    authorId: post.author.id,
+                    username: post.author.username,
+                    onReported: onReported,
+                  );
+                },
                 child: Assets.icons.more.svg(width: 16, height: 16),
               ),
             ],
@@ -496,9 +505,15 @@ class _PostAvatar extends StatelessWidget {
 }
 
 class PostImageGrid extends StatefulWidget {
-  final List<MediaAttachmentEntity> attachments;
+  const PostImageGrid({
+    super.key,
+    required this.attachments,
+    /// Edge-to-edge tiles inside the outer clip (e.g. publications / Figma-style block).
+    this.flushInnerMedia = false,
+  });
 
-  const PostImageGrid({super.key, required this.attachments});
+  final List<MediaAttachmentEntity> attachments;
+  final bool flushInnerMedia;
 
   @override
   State<PostImageGrid> createState() => _PostImageGridState();
@@ -530,17 +545,22 @@ class _PostImageGridState extends State<PostImageGrid> {
     return item.type.toLowerCase() == 'video';
   }
 
+  BorderRadius get _innerRadius =>
+      widget.flushInnerMedia ? BorderRadius.zero : BorderRadius.circular(8);
+
   Widget _mediaTile(
     MediaAttachmentEntity item, {
     required double height,
     double? width,
   }) {
+    final inner = _innerRadius;
     if (_isVideo(item)) {
       return _InlineVideoTile(
         videoUrl: item.url.trim(),
         thumbnailUrl: item.thumbnailUrl.trim(),
         height: height,
         width: width,
+        clipRadius: inner,
       );
     }
 
@@ -548,7 +568,7 @@ class _PostImageGridState extends State<PostImageGrid> {
       imageUrl: item.url,
       height: height,
       width: width,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: inner,
     );
   }
 
@@ -556,11 +576,18 @@ class _PostImageGridState extends State<PostImageGrid> {
   Widget build(BuildContext context) {
     final attachments = widget.attachments;
     if (attachments.length == 1) {
-      return _mediaTile(
+      final tile = _mediaTile(
         attachments[0],
         height: 240,
         width: double.infinity,
       );
+      if (widget.flushInnerMedia) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: tile,
+        );
+      }
+      return tile;
     }
 
     return ClipRRect(
@@ -617,12 +644,14 @@ class _InlineVideoTile extends StatefulWidget {
     required this.thumbnailUrl,
     required this.height,
     this.width,
+    this.clipRadius = const BorderRadius.all(Radius.circular(8)),
   });
 
   final String videoUrl;
   final String thumbnailUrl;
   final double height;
   final double? width;
+  final BorderRadius clipRadius;
 
   @override
   State<_InlineVideoTile> createState() => _InlineVideoTileState();
@@ -699,26 +728,27 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
   @override
   Widget build(BuildContext context) {
     final controller = _controller;
+    final r = widget.clipRadius;
     final thumbWidget = widget.thumbnailUrl.isNotEmpty
         ? CustomNetworkImage(
             imageUrl: widget.thumbnailUrl,
             height: widget.height,
             width: widget.width,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: r,
           )
         : Container(
             width: widget.width,
             height: widget.height,
             decoration: BoxDecoration(
               color: const Color(0xFF121418),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: r,
             ),
           );
 
     final canShowVideo = controller != null && controller.value.isInitialized;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: r,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
