@@ -1444,3 +1444,252 @@ func (s *Service) AdminBanUser(ctx context.Context, req AdminBanRequest) error {
 	s.logger.Info("user_banned_successfully", zap.String("user_id", req.UserID))
 	return nil
 }
+
+// FirebaseEmailAuth handles email authentication using Firebase ID token (Magic Link)
+func (s *Service) FirebaseEmailAuth(ctx context.Context, req FirebaseEmailAuthRequest, ip string) (*LoginResponse, error) {
+	if req.FirebaseIDToken == "" || req.DeviceID == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	firebaseSender, ok := s.sms.(*FirebaseSMSSender)
+	if !ok {
+		return nil, fmt.Errorf("firebase authentication not enabled")
+	}
+
+	token, err := firebaseSender.VerifyIDToken(ctx, req.FirebaseIDToken)
+	if err != nil {
+		s.logger.Warn("firebase_token_verification_failed", zap.Error(err))
+		return nil, ErrInvalidProviderToken
+	}
+
+	email, ok := token.Claims["email"].(string)
+	if !ok || email == "" {
+		return nil, fmt.Errorf("email not found in token")
+	}
+
+	// Verify if the email is marked as verified by Firebase
+	emailVerified, _ := token.Claims["email_verified"].(bool)
+	if !emailVerified {
+		// Log warning, though magic links usually verify the email immediately
+		s.logger.Warn("firebase_email_not_verified", zap.String("email", email))
+	}
+
+	email = normalizeEmail(email)
+	if err := validateEmail(email); err != nil {
+		return nil, err
+	}
+
+	s.logger.Info("firebase_email_auth_attempt",
+		zap.String("email", email),
+		zap.String("uid", token.UID),
+	)
+
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if IsNotFound(err) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
+	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	session := &Session{
+		ID:           uuid.NewString(),
+		UserID:       user.ID,
+		DeviceID:     req.DeviceID,
+		IP:           ip,
+		UserAgent:    req.UserAgent,
+		AppVersion:   req.AppVersion,
+		LastActiveAt: now,
+		CreatedAt:    now,
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return nil, err
+	}
+
+	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), now); err != nil {
+		return nil, err
+	}
+
+	_ = s.repo.TouchUser(ctx, user.ID, now)
+
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
+
+	s.logger.Info("firebase_email_auth_success", zap.String("user_id", user.ID))
+
+	return &LoginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User:         *user,
+	}, nil
+}
+
+// FirebaseEmailRegister handles email registration using Firebase ID token (Magic Link)
+func (s *Service) FirebaseEmailRegister(ctx context.Context, req FirebaseEmailRegisterRequest, ip string) (*LoginResponse, error) {
+	observability.IncRegistrationAttempt("firebase_email")
+	fail := func(reason string, err error) (*LoginResponse, error) {
+		observability.IncRegistrationFailure("firebase_email", reason)
+		return nil, err
+	}
+
+	if req.FirebaseIDToken == "" || req.FirstName == "" || req.LastName == "" || req.DateOfBirth == "" {
+		return fail("invalid_credentials", ErrInvalidCredentials)
+	}
+	if err := verifyCaptchaToken(ctx, req.CaptchaToken, ip); err != nil {
+		return fail("captcha_invalid", err)
+	}
+
+	firebaseSender, ok := s.sms.(*FirebaseSMSSender)
+	if !ok {
+		return fail("firebase_not_enabled", fmt.Errorf("firebase authentication not enabled"))
+	}
+
+	token, err := firebaseSender.VerifyIDToken(ctx, req.FirebaseIDToken)
+	if err != nil {
+		s.logger.Warn("firebase_token_verification_failed", zap.Error(err))
+		return fail("invalid_provider_token", ErrInvalidProviderToken)
+	}
+
+	email, ok := token.Claims["email"].(string)
+	if !ok || email == "" {
+		return fail("email_missing", fmt.Errorf("email not found in token"))
+	}
+
+	email = normalizeEmail(email)
+	if err := validateEmail(email); err != nil {
+		return fail("invalid_email", err)
+	}
+
+	s.logger.Info("firebase_email_register_attempt",
+		zap.String("email", email),
+		zap.String("uid", token.UID),
+	)
+
+	if _, err := s.repo.GetUserByEmail(ctx, email); err == nil {
+		return fail("email_exists", ErrEmailExists)
+	} else if !IsNotFound(err) {
+		return fail("db_error", err)
+	}
+
+	now := time.Now()
+	dob, err := validateDateOfBirth(req.DateOfBirth, now)
+	if err != nil {
+		return fail("invalid_dob", err)
+	}
+
+	username, err := s.generateUniqueUsername(ctx, req.FirstName, req.LastName, &dob)
+	if err != nil {
+		return fail("username_generation_failed", err)
+	}
+
+	activationStatus, restrictionsUntil, err := s.resolveInitialActivation(ctx, req.DeviceID, ip)
+	if err != nil {
+		if err == ErrRegistrationRateLimited {
+			s.logger.Warn("firebase_email_register_rate_limited", zap.String("ip", ip))
+			return fail("rate_limited", err)
+		}
+		s.logger.Warn("initial_activation_resolution_failed", zap.Error(err))
+		activationStatus = "restricted"
+		restrictionsUntil = nil
+	}
+
+	user := &User{
+		ID:               uuid.NewString(),
+		Email:            email,
+		Username:         username,
+		FirstName:        req.FirstName,
+		LastName:         req.LastName,
+		DateOfBirth:      &dob,
+		ReferralCode:     "",
+		AvatarURL:        "",
+		IsShadowBanned:   false,
+		ActivationStatus: activationStatus,
+		ActivationUnlockedAt: func() *time.Time {
+			if activationStatus == "active" {
+				t := now
+				return &t
+			}
+			return nil
+		}(),
+		RestrictionsUntil: restrictionsUntil,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+		LastActiveAt:      now,
+	}
+	if err := s.repo.CreateUser(ctx, user); err != nil {
+		return fail("create_user_failed", err)
+	}
+
+	if s.economyService != nil {
+		if err := s.economyService.GrantSignupBonus(ctx, user.ID); err != nil {
+			s.logger.Warn("signup_bonus_failed", zap.String("user_id", user.ID), zap.Error(err))
+		}
+	}
+
+	if req.ReferrerUserID != "" {
+		if err := s.economyService.ProcessReferralBonus(ctx, req.ReferrerUserID, user.ID); err != nil {
+			s.logger.Warn("referral_bonus_failed",
+				zap.String("referrer_user_id", req.ReferrerUserID),
+				zap.String("referee_user_id", user.ID),
+				zap.Error(err),
+			)
+		}
+	}
+
+	identity := &Identity{
+		UserID:    user.ID,
+		Provider:  string(ProviderEmail),
+		Subject:   email,
+		Email:     email,
+		CreatedAt: now,
+	}
+	if err := s.repo.CreateIdentity(ctx, identity); err != nil {
+		return fail("create_identity_failed", err)
+	}
+
+	session := &Session{
+		ID:           uuid.NewString(),
+		UserID:       user.ID,
+		DeviceID:     req.DeviceID,
+		IP:           ip,
+		UserAgent:    req.UserAgent,
+		AppVersion:   req.AppVersion,
+		LastActiveAt: now,
+		CreatedAt:    now,
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return fail("create_session_failed", err)
+	}
+
+	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
+	if err != nil {
+		return fail("issue_tokens_failed", err)
+	}
+
+	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), now); err != nil {
+		return fail("save_refresh_failed", err)
+	}
+
+	if _, err := s.onSuccessfulLogin(ctx, user.ID); err != nil {
+		s.logger.Warn("activation_login_tracking_failed", zap.String("user_id", user.ID), zap.Error(err))
+	}
+
+	s.logger.Info("firebase_email_register_success", zap.String("user_id", user.ID))
+	observability.IncRegistrationSuccess("firebase_email")
+
+	return &LoginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User:         *user,
+	}, nil
+}

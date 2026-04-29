@@ -33,7 +33,7 @@ type Notification struct {
 	Kind      Kind            `db:"kind" json:"kind"`
 	Title     string          `db:"title" json:"title"`
 	Body      string          `db:"body" json:"body,omitempty"`
-	Payload   json.RawMessage `db:"payload" json:"payload"`
+	Payload   json.RawMessage `db:"payload" json:"payload" swaggertype:"object"`
 	ReadAt    *time.Time      `db:"read_at" json:"read_at,omitempty"`
 	CreatedAt time.Time       `db:"created_at" json:"created_at"`
 }

@@ -1,4 +1,4 @@
-﻿server:
+server:
   port: 8080
   environment: development
   read_timeout: 30s
@@ -72,8 +72,8 @@ cors:
 
 firebase:
   enabled: true
-  credentials_path: ./firebase-service-account.json
-  project_id: smsbb-6e583
+  credentials_path: ../google/brightbund-7784f-firebase-adminsdk-fbsvc-af554bc032.json
+  project_id: brightbund-7784f
 
 storage:
   endpoint: localhost:9001

@@ -23,6 +23,116 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/comments/{comment_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Emergency deletion of any comment by an administrator.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Moderation"
+                ],
+                "summary": "Admin emergency comment deletion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Comment UUID",
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/posts/{post_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Emergency deletion of any post by an administrator.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed Moderation"
+                ],
+                "summary": "Admin emergency post deletion",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/reports": {
             "get": {
                 "security": [
@@ -151,6 +261,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/admin/ban": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Ban a user temporarily or permanently (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth Admin"
+                ],
+                "summary": "Admin: Ban user",
+                "parameters": [
+                    {
+                        "description": "Ban details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.AdminBanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/check-email": {
             "post": {
                 "description": "Check if an email is already registered in the system",
@@ -184,6 +354,220 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/email/request": {
+            "post": {
+                "description": "Send a 6-digit confirmation code to the supplied email address.\nPurpose drives existence checks:\nregister → email must NOT exist\nlogin | password_reset → email MUST exist\nemail_change → no check (used after the user is already authenticated)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Request Email Verification Code",
+                "parameters": [
+                    {
+                        "description": "Email and purpose",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.EmailCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.EmailCodeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/email/verify": {
+            "post": {
+                "description": "Verify the 6-digit code returned to the user's inbox during the\nemail confirmation step. Returns the verification_id which higher\nlevel flows (registration, password reset) reference to prove the\nemail is owned by the requester.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify Email Code",
+                "parameters": [
+                    {
+                        "description": "Verification ID and email code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.EmailVerifyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.EmailVerifyResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/firebase-email-login": {
+            "post": {
+                "description": "Authenticate user with Firebase ID token from email link verification. For existing users.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Firebase Email Authentication (Magic Link)",
+                "parameters": [
+                    {
+                        "description": "Firebase ID token and device info",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.FirebaseEmailAuthRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/firebase-email-register": {
+            "post": {
+                "description": "Register new user with Firebase ID token (email link) and profile information",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Firebase Email Registration (Magic Link)",
+                "parameters": [
+                    {
+                        "description": "Firebase ID token and user profile",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.FirebaseEmailRegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/auth.ErrorResponse"
                         }
@@ -2103,6 +2487,40 @@ const docTemplate = `{
                 }
             }
         },
+        "/map/ranking/timer": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the absolute timestamp of the next champion/ranking reset\n(start of the next ISO week, Monday 00:00 UTC) along with the\nremaining seconds and a pre-formatted HH:MM:SS string for the UI.\nThis powers the \"Ranking resets in 48:12:05\" widget on the map.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Map"
+                ],
+                "summary": "Time until next ranking reset",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/mapmodule.RankingTimerResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/map/region": {
             "post": {
                 "security": [
@@ -2165,6 +2583,131 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    }
+                }
+            }
+        },
+        "/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns notifications for the current user, newest first.\nCursor is the RFC3339 nano timestamp of the last item from the previous page.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "List notifications",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RFC3339 nano timestamp from previous page",
+                        "name": "cursor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 30,
+                        "description": "Page size (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notifications.ListResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/read-all": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/notifications/unread-count": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the unread notification count for the current user.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Unread count",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/notifications.UnreadCountResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Mark a notification as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     }
                 }
             }
@@ -4062,6 +4605,161 @@ const docTemplate = `{
                 }
             }
         },
+        "/seasons/current": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the currently-active 6-month season window with seconds remaining.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seasons"
+                ],
+                "summary": "Current season status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/seasons.CurrentSeasonResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seasons/me/archive": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the caller's archived per-season standings, newest first.\nPowers the \"Архив\" tab inside the profile screen.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seasons"
+                ],
+                "summary": "Personal season archive",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/seasons.ArchiveResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/seasons/users/{user_id}/archive": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Same as /seasons/me/archive but for a specified user id.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Seasons"
+                ],
+                "summary": "Public season archive for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User UUID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/seasons.ArchiveResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/settings/support/contact": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "In-app \"Contact us\" form. Persists the submission and forwards\nit to the support inbox (defaults to 19thZaratustra@gmail.com).\nCategories: bug | error | suggestion | other.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Send a Contact Us message to support",
+                "parameters": [
+                    {
+                        "description": "Contact submission",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/settings.ContactRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/settings.ContactResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "validation error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tasks": {
             "post": {
                 "security": [
@@ -5211,6 +5909,48 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "auth.AdminBanRequest": {
+            "type": "object",
+            "required": [
+                "ban_type",
+                "reason",
+                "user_id"
+            ],
+            "properties": {
+                "ban_type": {
+                    "enum": [
+                        "temporary",
+                        "permanent"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/auth.BanType"
+                        }
+                    ]
+                },
+                "duration": {
+                    "description": "e.g. \"24h\", \"7d\". Required if BanType is temporary",
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.BanType": {
+            "type": "string",
+            "enum": [
+                "temporary",
+                "permanent"
+            ],
+            "x-enum-varnames": [
+                "BanTypeTemporary",
+                "BanTypePermanent"
+            ]
+        },
         "auth.CheckEmailRequest": {
             "type": "object",
             "properties": {
@@ -5226,6 +5966,30 @@ const docTemplate = `{
                 "exists": {
                     "type": "boolean",
                     "example": true
+                }
+            }
+        },
+        "auth.EmailCodeRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                },
+                "purpose": {
+                    "type": "string",
+                    "example": "register"
+                }
+            }
+        },
+        "auth.EmailCodeResponse": {
+            "type": "object",
+            "properties": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
                 }
             }
         },
@@ -5299,6 +6063,28 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.EmailVerifyRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "verification_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.EmailVerifyResponse": {
+            "type": "object",
+            "properties": {
+                "verification_id": {
+                    "type": "string"
+                },
+                "verified": {
+                    "type": "boolean"
+                }
+            }
+        },
         "auth.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -5309,6 +6095,56 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "Invalid email or password"
+                }
+            }
+        },
+        "auth.FirebaseEmailAuthRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "firebase_id_token": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.FirebaseEmailRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "captcha_token": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "firebase_id_token": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "referrer_user_id": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
                 }
             }
         },
@@ -5879,7 +6715,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "amount",
-                "currency"
+                "currency",
+                "message"
             ],
             "properties": {
                 "amount": {
@@ -5897,7 +6734,8 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string",
-                    "maxLength": 200
+                    "maxLength": 200,
+                    "minLength": 10
                 }
             }
         },
@@ -6050,6 +6888,7 @@ const docTemplate = `{
             "required": [
                 "amount",
                 "currency",
+                "reason",
                 "recipient_user_id"
             ],
             "properties": {
@@ -6070,7 +6909,8 @@ const docTemplate = `{
                 },
                 "reason": {
                     "type": "string",
-                    "maxLength": 255,
+                    "maxLength": 200,
+                    "minLength": 10,
                     "example": "Payment for task"
                 },
                 "recipient_user_id": {
@@ -6611,9 +7451,13 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "comment": {
+                    "description": "deprecated alias of reason; mirrored for clients on older builds",
                     "type": "string"
                 },
                 "created_at": {
+                    "type": "string"
+                },
+                "reason": {
                     "type": "string"
                 },
                 "user": {
@@ -6628,9 +7472,13 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "comment": {
+                    "description": "deprecated: kept for backwards compatibility, prefer \"reason\"",
                     "type": "string"
                 },
                 "idempotency_key": {
+                    "type": "string"
+                },
+                "reason": {
                     "type": "string"
                 }
             }
@@ -6933,6 +7781,20 @@ const docTemplate = `{
                 }
             }
         },
+        "mapmodule.RankingTimerResponse": {
+            "type": "object",
+            "properties": {
+                "formatted": {
+                    "type": "string"
+                },
+                "next_reset_at": {
+                    "type": "string"
+                },
+                "seconds_remaining": {
+                    "type": "integer"
+                }
+            }
+        },
         "mapmodule.RegionAssignmentRequest": {
             "type": "object",
             "properties": {
@@ -6948,7 +7810,7 @@ const docTemplate = `{
                     "type": "number",
                     "example": -122.4194
                 },
-                "participate_district": {
+                "participate_region": {
                     "type": "boolean",
                     "example": true
                 }
@@ -6967,9 +7829,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "location_opt_in": {
-                    "type": "boolean"
-                },
-                "participate_district": {
                     "type": "boolean"
                 },
                 "updated_at": {
@@ -7044,6 +7903,73 @@ const docTemplate = `{
                 "status": {
                     "description": "\"code_verified\" on success",
                     "type": "string"
+                }
+            }
+        },
+        "notifications.Kind": {
+            "type": "string",
+            "enum": [
+                "ranking_up",
+                "moved_user",
+                "season_end"
+            ],
+            "x-enum-varnames": [
+                "KindRankingUp",
+                "KindMovedUser",
+                "KindSeasonEnd"
+            ]
+        },
+        "notifications.ListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/notifications.Notification"
+                    }
+                },
+                "next_cursor": {
+                    "type": "string"
+                },
+                "unread_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "notifications.Notification": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "kind": {
+                    "$ref": "#/definitions/notifications.Kind"
+                },
+                "payload": {
+                    "type": "object"
+                },
+                "read_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "notifications.UnreadCountResponse": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
                 }
             }
         },
@@ -7449,6 +8375,144 @@ const docTemplate = `{
                 },
                 "min_seals": {
                     "type": "integer"
+                }
+            }
+        },
+        "seasons.ArchiveItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "ends_at": {
+                    "type": "string"
+                },
+                "final_position": {
+                    "type": "integer"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "seal_count": {
+                    "type": "integer"
+                },
+                "season_half": {
+                    "type": "integer"
+                },
+                "season_id": {
+                    "type": "string"
+                },
+                "season_year": {
+                    "type": "integer"
+                },
+                "snapshot_payload": {
+                    "type": "object"
+                },
+                "starts_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "seasons.ArchiveResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/seasons.ArchiveItem"
+                    }
+                }
+            }
+        },
+        "seasons.CurrentSeasonResponse": {
+            "type": "object",
+            "properties": {
+                "season": {
+                    "$ref": "#/definitions/seasons.Season"
+                },
+                "seconds_remaining": {
+                    "type": "integer"
+                }
+            }
+        },
+        "seasons.Season": {
+            "type": "object",
+            "properties": {
+                "closed_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "ends_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "season_half": {
+                    "type": "integer"
+                },
+                "season_year": {
+                    "type": "integer"
+                },
+                "starts_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "settings.ContactCategory": {
+            "type": "string",
+            "enum": [
+                "bug",
+                "error",
+                "suggestion",
+                "other"
+            ],
+            "x-enum-varnames": [
+                "ContactCategoryBug",
+                "ContactCategoryError",
+                "ContactCategorySuggestion",
+                "ContactCategoryOther"
+            ]
+        },
+        "settings.ContactRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "category": {
+                    "$ref": "#/definitions/settings.ContactCategory"
+                },
+                "device_os": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            }
+        },
+        "settings.ContactResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "received_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
                 }
             }
         }

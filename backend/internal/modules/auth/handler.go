@@ -568,3 +568,111 @@ func (h *Handler) AdminBanUser(c *fiber.Ctx) error {
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// FirebaseEmailAuth godoc
+// @Summary Firebase Email Authentication (Magic Link)
+// @Description Authenticate user with Firebase ID token from email link verification. For existing users.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body FirebaseEmailAuthRequest true "Firebase ID token and device info"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/firebase-email-login [post]
+func (h *Handler) FirebaseEmailAuth(c *fiber.Ctx) error {
+	var req FirebaseEmailAuthRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if req.UserAgent == "" {
+		req.UserAgent = c.Get("User-Agent")
+	}
+	if req.AppVersion == "" {
+		req.AppVersion = c.Get("X-App-Version")
+	}
+
+	resp, err := h.service.FirebaseEmailAuth(c.Context(), req, c.IP())
+	if err != nil {
+		switch err {
+		case ErrInvalidProviderToken:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_firebase_token"})
+		case ErrUserNotFound:
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user_not_found", "message": "Please register first"})
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
+		case ErrAccountBlocked:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "account_blocked"})
+		case ErrInvalidEmailDomain:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_email_domain", "message": "Unsupported email provider domain"})
+		case ErrInvalidEmail:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_email"})
+		default:
+			log.Printf("FirebaseEmailAuth unexpected error: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
+		}
+	}
+	return c.JSON(resp)
+}
+
+// FirebaseEmailRegister godoc
+// @Summary Firebase Email Registration (Magic Link)
+// @Description Register new user with Firebase ID token (email link) and profile information
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body FirebaseEmailRegisterRequest true "Firebase ID token and user profile"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 401 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/firebase-email-register [post]
+func (h *Handler) FirebaseEmailRegister(c *fiber.Ctx) error {
+	var req FirebaseEmailRegisterRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if req.UserAgent == "" {
+		req.UserAgent = c.Get("User-Agent")
+	}
+	if req.AppVersion == "" {
+		req.AppVersion = c.Get("X-App-Version")
+	}
+
+	resp, err := h.service.FirebaseEmailRegister(c.Context(), req, c.IP())
+	if err != nil {
+		switch err {
+		case ErrInvalidProviderToken:
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_firebase_token"})
+		case ErrEmailExists:
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "email_exists", "message": "User already exists, please login"})
+		case ErrInvalidDateOfBirth:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_date_of_birth"})
+		case ErrDateOfBirthTooOld:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_old"})
+		case ErrDateOfBirthTooYoung:
+			return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "date_of_birth_too_young"})
+		case ErrRegistrationRateLimited:
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "registration_rate_limited"})
+		case ErrCaptchaRequired:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "captcha_required"})
+		case ErrCaptchaInvalid:
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "captcha_invalid"})
+		case ErrInvalidCredentials:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
+		case ErrInvalidEmailDomain:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_email_domain", "message": "Unsupported email provider domain"})
+		case ErrInvalidEmail:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_email"})
+		default:
+			log.Printf("FirebaseEmailRegister unexpected error: %v", err)
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
+		}
+	}
+	return c.JSON(resp)
+}

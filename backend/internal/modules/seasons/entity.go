@@ -37,7 +37,7 @@ type ArchiveItem struct {
 	SealCount       int64           `db:"seal_count" json:"seal_count"`
 	Region          string          `db:"region" json:"region,omitempty"`
 	Scope           string          `db:"scope" json:"scope,omitempty"`
-	SnapshotPayload json.RawMessage `db:"snapshot_payload" json:"snapshot_payload,omitempty"`
+	SnapshotPayload json.RawMessage `db:"snapshot_payload" json:"snapshot_payload,omitempty" swaggertype:"object"`
 	StartsAt        time.Time       `db:"starts_at" json:"starts_at"`
 	EndsAt          time.Time       `db:"ends_at" json:"ends_at"`
 	CreatedAt       time.Time       `db:"created_at" json:"created_at"`

@@ -231,6 +231,29 @@ type FirebasePhoneRegisterRequest struct {
 	AppVersion      string `json:"app_version"`
 }
 
+// Firebase email authentication request
+// Client sends Firebase ID token after successful magic link / OTP verification
+type FirebaseEmailAuthRequest struct {
+	FirebaseIDToken string `json:"firebase_id_token"`
+	DeviceID        string `json:"device_id"`
+	UserAgent       string `json:"user_agent"`
+	AppVersion      string `json:"app_version"`
+}
+
+// Firebase email registration request
+// Used when Firebase token is verified but user doesn't exist yet
+type FirebaseEmailRegisterRequest struct {
+	FirebaseIDToken string `json:"firebase_id_token"`
+	FirstName       string `json:"first_name"`
+	LastName        string `json:"last_name"`
+	DateOfBirth     string `json:"date_of_birth"` // YYYY-MM-DD
+	CaptchaToken    string `json:"captcha_token,omitempty"`
+	ReferrerUserID  string `json:"referrer_user_id"`
+	DeviceID        string `json:"device_id"`
+	UserAgent       string `json:"user_agent"`
+	AppVersion      string `json:"app_version"`
+}
+
 // Swagger error response
 type ErrorResponse struct {
 	Error   string `json:"error" example:"invalid_credentials"`

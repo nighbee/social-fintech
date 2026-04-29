@@ -49,10 +49,34 @@ func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
+var allowedEmailDomains = map[string]bool{
+	"gmail.com":   true,
+	"yahoo.com":   true,
+	"outlook.com": true,
+	"hotmail.com": true,
+	"icloud.com":  true,
+	"mail.ru":     true,
+	"yandex.ru":   true,
+	"bk.ru":       true,
+	"inbox.ru":    true,
+	"list.ru":     true,
+}
+
 func validateEmail(email string) error {
 	if !emailRegex.MatchString(email) {
 		return ErrInvalidEmail
 	}
+
+	parts := strings.Split(email, "@")
+	if len(parts) != 2 {
+		return ErrInvalidEmail
+	}
+
+	domain := strings.ToLower(parts[1])
+	if !allowedEmailDomains[domain] {
+		return ErrInvalidEmailDomain
+	}
+
 	return nil
 }
 

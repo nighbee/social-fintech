@@ -28,5 +28,6 @@ var (
 	ErrVerificationNotReady = errors.New("verification_not_ready")
 	ErrInvalidPurpose       = errors.New("invalid_purpose")
 
-	ErrInvalidEmail = errors.New("invalid_email")
+	ErrInvalidEmail       = errors.New("invalid_email")
+	ErrInvalidEmailDomain = errors.New("invalid_email_domain")
 )
