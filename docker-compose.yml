@@ -65,6 +65,8 @@ services:
       - MINIO_USE_SSL=${MINIO_USE_SSL}
       - MINIO_BUCKET=${MINIO_BUCKET}
       - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CREDENTIALS_PATH=${FIREBASE_CREDENTIALS_PATH}
     depends_on:
       db:
         condition: service_healthy
@@ -110,6 +112,8 @@ services:
       - MINIO_USE_SSL=${MINIO_USE_SSL}
       - MINIO_BUCKET=${MINIO_BUCKET}
       - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_CREDENTIALS_PATH=${FIREBASE_CREDENTIALS_PATH}
     depends_on:
       db:
         condition: service_healthy
