@@ -93,6 +93,10 @@ func (s *Service) getUserMaxSeconds(ctx context.Context, userID uuid.UUID) int {
 
 // ---------------- Anti-Doomscroll System ----------------
 
+func (s *Service) SearchProfiles(ctx context.Context, currentUserID, query string, limit, offset int) ([]profiles.ProfileSearchResult, error) {
+	return s.profileRepo.SearchProfilesForFeed(ctx, currentUserID, query, limit, offset)
+}
+
 func (s *Service) GetFeedState(ctx context.Context, userID uuid.UUID) (*FeedStateResponse, error) {
 	state, err := s.getOrInitState(ctx, userID)
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/economy"
+	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/vision"
 	"github.com/gofiber/fiber/v2"
@@ -625,6 +626,42 @@ func (h *Handler) GetFeed(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(resp)
+}
+
+// SearchProfiles godoc
+// @Summary Search profiles for feed
+// @Description Search for public user profiles by display name or name. Results are filtered by privacy and blocks.
+// @Tags Feed
+// @Produce json
+// @Security Bearer
+// @Param query query string true "Search query (nickname or name)"
+// @Param limit query int false "Max results" default(20)
+// @Param offset query int false "Offset for pagination" default(0)
+// @Success 200 {array} profiles.ProfileSearchResult
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal error"
+// @Router /feed/search/profiles [get]
+func (h *Handler) SearchProfiles(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	query := c.Query("query")
+	if query == "" {
+		return c.JSON([]profiles.ProfileSearchResult{})
+	}
+
+	limit := c.QueryInt("limit", 20)
+	offset := c.QueryInt("offset", 0)
+
+	results, err := h.service.SearchProfiles(c.Context(), userID.String(), query, limit, offset)
+	if err != nil {
+		logger.Error("failed to search profiles", zap.Error(err))
+		return c.Status(500).JSON(fiber.Map{"error": "search_failed"})
+	}
+
+	return c.JSON(results)
 }
 
 // CreateComment godoc

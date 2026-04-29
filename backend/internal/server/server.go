@@ -176,6 +176,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	feedGroup.Post("/media/upload", feedHandler.UploadMedia)
 	feedGroup.Get("/", feedHandler.GetFeed)
 	feedGroup.Post("/comments/:comment_id/likes", feedHandler.ToggleCommentLike)
+	feedGroup.Get("/search/profiles", feedHandler.SearchProfiles)
 
 	// Notice: for Post creations and interactions, they typically fall under /posts
 	// To keep RESTful:
