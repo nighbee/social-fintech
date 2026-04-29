@@ -10,7 +10,9 @@ import (
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
+	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
+	"github.com/brightbund-backend/internal/modules/seasons"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/observability"
 	"github.com/brightbund-backend/internal/server/middleware"
@@ -25,7 +27,7 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, notificationsHandler *notifications.Handler, seasonsHandler *seasons.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:     cfg.Server.ReadTimeout,
 		WriteTimeout:    cfg.Server.WriteTimeout,
@@ -92,6 +94,10 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	authGroup.Post("/phone/request", authLim, authHandler.RequestPhoneCode)
 	authGroup.Post("/phone/verify", authLim, authHandler.VerifyPhoneCode)
 	authGroup.Post("/register-phone", registerLim, authHandler.RegisterPhone)
+
+	// Email confirmation code flow ("ввод кода" on the signup screen).
+	authGroup.Post("/email/request", authLim, authHandler.RequestEmailCode)
+	authGroup.Post("/email/verify", authLim, authHandler.VerifyEmailCode)
 
 	// Firebase phone auth endpoints (recommended)
 	authGroup.Post("/firebase-phone-login", authLim, authHandler.FirebasePhoneAuth)
@@ -251,6 +257,22 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	settingsGroup.Delete("/interactions/blocked/:userId", settingsHandler.UnblockUser)
 
 	settingsGroup.Post("/support/bugs", settingsHandler.ReportBug)
+	settingsGroup.Post("/support/contact", settingsHandler.Contact)
+
+	notificationsGroup := api.Group("/notifications")
+	notificationsGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	notificationsGroup.Use(middleware.TouchSession(authRepo))
+	notificationsGroup.Get("/", notificationsHandler.List)
+	notificationsGroup.Get("/unread-count", notificationsHandler.UnreadCount)
+	notificationsGroup.Post("/read-all", notificationsHandler.MarkAllRead)
+	notificationsGroup.Post("/:id/read", notificationsHandler.MarkRead)
+
+	seasonsGroup := api.Group("/seasons")
+	seasonsGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	seasonsGroup.Use(middleware.TouchSession(authRepo))
+	seasonsGroup.Get("/current", seasonsHandler.GetCurrent)
+	seasonsGroup.Get("/me/archive", seasonsHandler.GetMyArchive)
+	seasonsGroup.Get("/users/:user_id/archive", seasonsHandler.GetUserArchive)
 
 	chatSendLimiter := limiter.New(limiter.Config{
 		Max:        25,
@@ -303,6 +325,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	// Map / Champions & Geo Lookup
 	mapGroup.Post("/map/region", mapHandler.SetUserRegion)
 	mapGroup.Get("/map/champions", mapHandler.GetRegionChampions)
+	mapGroup.Get("/map/ranking/timer", mapHandler.GetRankingTimer)
 	mapGroup.Get("/map/h3/:h3_index/admin", mapHandler.GetH3AdminHierarchy)
 
 	return app

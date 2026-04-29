@@ -889,6 +889,56 @@ func (h *Handler) GetRegionChampions(c *fiber.Ctx) error {
 	return c.JSON(pins)
 }
 
+// GetRankingTimer godoc
+// @Summary Time until next ranking reset
+// @Description Returns the absolute timestamp of the next champion/ranking reset
+// @Description (start of the next ISO week, Monday 00:00 UTC) along with the
+// @Description remaining seconds and a pre-formatted HH:MM:SS string for the UI.
+// @Description This powers the "Ranking resets in 48:12:05" widget on the map.
+// @Tags Map
+// @Produce json
+// @Security Bearer
+// @Success 200 {object} RankingTimerResponse
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Router /map/ranking/timer [get]
+func (h *Handler) GetRankingTimer(c *fiber.Ctx) error {
+	if _, ok := requireUserID(c); !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	now := time.Now().UTC()
+	nextReset := nextISOWeekStart(now)
+	remaining := nextReset.Sub(now)
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	totalSeconds := int64(remaining.Seconds())
+	hours := totalSeconds / 3600
+	minutes := (totalSeconds % 3600) / 60
+	seconds := totalSeconds % 60
+
+	return c.JSON(RankingTimerResponse{
+		NextResetAt:      nextReset.Format(time.RFC3339),
+		SecondsRemaining: totalSeconds,
+		Formatted:        fmt.Sprintf("%02d:%02d:%02d", hours, minutes, seconds),
+	})
+}
+
+// nextISOWeekStart returns the next Monday 00:00 UTC strictly after `now`.
+// ISO weeks start on Monday; this aligns with the leaderboard week buckets
+// used by the champions snapshot worker.
+func nextISOWeekStart(now time.Time) time.Time {
+	now = now.UTC()
+	weekday := int(now.Weekday())
+	if weekday == 0 {
+		weekday = 7 // treat Sunday as the 7th day of the ISO week
+	}
+	daysUntilMonday := 8 - weekday // 8 - weekday gives days until next Monday
+	nextMonday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, daysUntilMonday)
+	return nextMonday
+}
+
 // GetH3AdminHierarchy godoc
 // @Summary Resolve H3 cell to administrative regions
 // @Description Returns the city, region, and country for a given H3 cell index.

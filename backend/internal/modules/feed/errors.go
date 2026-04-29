@@ -111,6 +111,13 @@ var (
 	// ErrSealOwnPost is returned when a user attempts to seal their own post.
 	ErrSealOwnPost = errors.New("cannot_seal_own_post")
 
+	// ErrSealReasonTooShort is returned when the seal reason has fewer than 10 characters
+	// after trimming. Mirrors economy "Reason" validation (min=10).
+	ErrSealReasonTooShort = errors.New("seal_reason_too_short: add a bit more detail (min 10 characters)")
+	// ErrSealReasonTooLong is returned when the seal reason exceeds 200 characters
+	// after trimming. Mirrors economy "Reason" validation (max=200).
+	ErrSealReasonTooLong = errors.New("seal_reason_too_long: keep it short (max 200 characters)")
+
 	// ── Media ─────────────────────────────────────────────────────────────
 	// ErrMediaTooLarge is returned when an uploaded file exceeds the size limit.
 	ErrMediaTooLarge = errors.New("media_too_large: file exceeds maximum allowed size")

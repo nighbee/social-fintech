@@ -1,6 +1,7 @@
 package mapmodule
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -162,20 +163,68 @@ type TaskCompletionResponse struct {
 	Completed bool    `json:"completed"`
 }
 
+// RegionAssignmentRequest is the body of POST /map/region.
+// The `participate_district` JSON key is kept as a legacy alias of
+// `participate_region` so older clients keep working during the
+// Districts → Region rename. New clients should send `participate_region`.
 type RegionAssignmentRequest struct {
 	Latitude            float64 `json:"latitude"             example:"37.7749"`
 	Longitude           float64 `json:"longitude"            example:"-122.4194"`
-	ParticipateDistrict bool    `json:"participate_district" example:"true"`
+	ParticipateDistrict bool    `json:"participate_region"   example:"true"`
 	LocationOptIn       bool    `json:"location_opt_in"      example:"true"`
 }
 
+// UnmarshalJSON accepts either `participate_region` (preferred) or
+// `participate_district` (legacy alias) when decoding the request body.
+func (r *RegionAssignmentRequest) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		Latitude            float64 `json:"latitude"`
+		Longitude           float64 `json:"longitude"`
+		ParticipateRegion   *bool   `json:"participate_region"`
+		ParticipateDistrict *bool   `json:"participate_district"`
+		LocationOptIn       bool    `json:"location_opt_in"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	r.Latitude = raw.Latitude
+	r.Longitude = raw.Longitude
+	r.LocationOptIn = raw.LocationOptIn
+	switch {
+	case raw.ParticipateRegion != nil:
+		r.ParticipateDistrict = *raw.ParticipateRegion
+	case raw.ParticipateDistrict != nil:
+		r.ParticipateDistrict = *raw.ParticipateDistrict
+	}
+	return nil
+}
+
+// RegionAssignmentResponse mirrors the new Region nomenclature in JSON
+// while still emitting the legacy `participate_district` key alongside
+// `participate_region` for clients that have not yet migrated.
 type RegionAssignmentResponse struct {
 	H3Res5              string    `json:"h3_res5,omitempty"`
 	H3Res4              string    `json:"h3_res4,omitempty"`
 	H3Res2              string    `json:"h3_res2,omitempty"`
-	ParticipateDistrict bool      `json:"participate_district"`
+	ParticipateDistrict bool      `json:"-"`
 	LocationOptIn       bool      `json:"location_opt_in"`
 	UpdatedAt           time.Time `json:"updated_at"`
+}
+
+// MarshalJSON emits both `participate_region` (canonical) and
+// `participate_district` (legacy alias) so older clients continue to work
+// during the Districts → Region rename.
+func (r RegionAssignmentResponse) MarshalJSON() ([]byte, error) {
+	type alias RegionAssignmentResponse
+	return json.Marshal(struct {
+		alias
+		ParticipateRegion   bool `json:"participate_region"`
+		ParticipateDistrict bool `json:"participate_district"`
+	}{
+		alias:               alias(r),
+		ParticipateRegion:   r.ParticipateDistrict,
+		ParticipateDistrict: r.ParticipateDistrict,
+	})
 }
 
 type UserRegionState struct {
@@ -229,4 +278,13 @@ type ChampionPin struct {
 	Longitude   float64 `json:"longitude"`
 	CityName    string  `json:"city_name,omitempty"`
 	CountryName string  `json:"country_name,omitempty"`
+}
+
+// RankingTimerResponse is returned by GET /map/ranking/timer.
+// `Formatted` follows HH:MM:SS without rolling into days, so the
+// "Ranking resets in 48:12:05" widget on the map can render it directly.
+type RankingTimerResponse struct {
+	NextResetAt      string `json:"next_reset_at"`
+	SecondsRemaining int64  `json:"seconds_remaining"`
+	Formatted        string `json:"formatted"`
 }

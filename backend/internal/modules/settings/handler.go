@@ -461,3 +461,44 @@ func (h *Handler) ReportBug(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusCreated)
 }
+
+// Contact godoc
+// @Summary Send a Contact Us message to support
+// @Description In-app "Contact us" form. Persists the submission and forwards
+// @Description it to the support inbox (defaults to 19thZaratustra@gmail.com).
+// @Description Categories: bug | error | suggestion | other.
+// @Tags Settings
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body ContactRequest true "Contact submission"
+// @Success 201 {object} ContactResponse
+// @Failure 400 {object} map[string]string "validation error"
+// @Failure 401 {object} map[string]string "unauthorized"
+// @Router /settings/support/contact [post]
+func (h *Handler) Contact(c *fiber.Ctx) error {
+	userID, _, err := getUserAndSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	var req ContactRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	resp, err := h.service.CreateContactMessage(c.Context(), userID, &req)
+	if err != nil {
+		switch err {
+		case ErrInvalidContactCategory:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_category"})
+		case ErrMessageRequired:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "message_required"})
+		case ErrMessageTooLong:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "message_too_long"})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "contact_failed"})
+		}
+	}
+	return c.Status(fiber.StatusCreated).JSON(resp)
+}

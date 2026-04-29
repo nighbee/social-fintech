@@ -199,6 +199,18 @@ func (r *testRepo) CreateBugReport(ctx context.Context, userID string, req *BugR
 	return nil
 }
 
+func (r *testRepo) CreateContactMessage(ctx context.Context, id, userID string, req *ContactRequest) error {
+	return nil
+}
+
+func (r *testRepo) MarkContactMessageDelivered(ctx context.Context, id string, deliveredAt time.Time, deliveryErr string) error {
+	return nil
+}
+
+func (r *testRepo) GetUserEmail(ctx context.Context, userID string) (string, error) {
+	return "", nil
+}
+
 func (r *testRepo) ListBlockedUsers(ctx context.Context, userID string, cursor *time.Time, limit int) ([]BlockedUserItem, error) {
 	return nil, nil
 }

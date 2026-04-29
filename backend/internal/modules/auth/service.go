@@ -38,6 +38,7 @@ type Service struct {
 	jwt            *JWTManager
 	verifiers      map[ProviderType]OAuthVerifier
 	sms            SMSSender
+	email          EmailSender
 	logger         *zap.Logger
 	economyService EconomyService
 }
@@ -55,9 +56,19 @@ func NewService(repo Repository, jwt *JWTManager, verifiers map[ProviderType]OAu
 		jwt:            jwt,
 		verifiers:      verifiers,
 		sms:            smsSender,
+		email:          NewNoopEmailSender(),
 		logger:         logger,
 		economyService: economyService,
 	}
+}
+
+// SetEmailSender swaps the placeholder NoopEmailSender for a real
+// transport (SMTP, SES, etc). Called from main.go after wiring config.
+func (s *Service) SetEmailSender(sender EmailSender) {
+	if sender == nil {
+		return
+	}
+	s.email = sender
 }
 
 // OAuth логин или регистриация, сразу создается новая сесси яи выдача токенов
@@ -594,8 +605,8 @@ func (s *Service) CheckEmailExists(ctx context.Context, email string) (bool, err
 // генерит код и отправляет смс
 func (s *Service) RequestPhoneCode(ctx context.Context, req PhoneCodeRequest) (*PhoneCodeResponse, error) {
 	cc, pn := normalizePhone(req.CountryCode, req.PhoneNumber)
-	if cc == "" || pn == "" {
-		return nil, ErrInvalidPhone
+	if err := validateE164(cc, pn); err != nil {
+		return nil, err
 	}
 
 	if req.Purpose != "login" && req.Purpose != "register" {
@@ -718,6 +729,105 @@ func (s *Service) VerifyPhoneCode(ctx context.Context, req PhoneVerifyRequest, i
 		AccessToken:  access,
 		RefreshToken: refresh,
 		User:         user,
+	}, nil
+}
+
+// RequestEmailCode sends a 6-digit confirmation code to the requested
+// email address. Purpose drives existence checks:
+//   - register: email must NOT already be tied to an account
+//   - login | password_reset: email MUST already exist
+//   - email_change: caller-specific, no existence check (used post-auth)
+//
+// The code is hashed before persistence; only the email address itself
+// is stored in plaintext (it's required to send the message).
+func (s *Service) RequestEmailCode(ctx context.Context, req EmailCodeRequest) (*EmailCodeResponse, error) {
+	email := normalizeEmail(req.Email)
+	if err := validateEmail(email); err != nil {
+		return nil, err
+	}
+
+	switch req.Purpose {
+	case "register":
+		if _, err := s.repo.GetUserByEmail(ctx, email); err == nil {
+			return nil, ErrEmailExists
+		} else if !IsNotFound(err) {
+			return nil, err
+		}
+	case "login", "password_reset":
+		if _, err := s.repo.GetUserByEmail(ctx, email); err != nil {
+			if IsNotFound(err) {
+				return nil, ErrUserNotFound
+			}
+			return nil, err
+		}
+	case "email_change":
+		// no-op: caller has already authenticated and is opting into the new address
+	default:
+		return nil, ErrInvalidPurpose
+	}
+
+	code, err := generate6DigitOTP()
+	if err != nil {
+		return nil, err
+	}
+
+	v := &EmailVerification{
+		ID:        uuid.NewString(),
+		Email:     email,
+		Purpose:   req.Purpose,
+		CodeHash:  hashEmailCode(code),
+		ExpiresAt: time.Now().Add(emailCodeTTL),
+		CreatedAt: time.Now(),
+	}
+	if err := s.repo.CreateEmailVerification(ctx, v); err != nil {
+		return nil, err
+	}
+
+	subject := "Your BrightBund verification code"
+	body := fmt.Sprintf("Your BrightBund code is %s. It expires in 10 minutes.", code)
+	if err := s.email.Send(ctx, email, subject, body); err != nil {
+		s.logger.Warn("email_send_failed", zap.String("email", email), zap.Error(err))
+		// Fail soft: surface a generic error so we don't leak whether the
+		// transport succeeded but the inbox refused, matching SMS behaviour.
+		return nil, err
+	}
+
+	return &EmailCodeResponse{
+		VerificationID: v.ID,
+		ExpiresAt:      v.ExpiresAt,
+	}, nil
+}
+
+// VerifyEmailCode validates a 6-digit code against an outstanding
+// EmailVerification row. On success the row is marked consumed. The
+// caller (signup, password reset, etc.) is then expected to act on the
+// returned verification id within its own flow.
+func (s *Service) VerifyEmailCode(ctx context.Context, req EmailVerifyRequest) (*EmailVerifyResponse, error) {
+	if req.VerificationID == "" || req.Code == "" {
+		return nil, ErrInvalidCode
+	}
+
+	v, err := s.repo.GetEmailVerificationByID(ctx, req.VerificationID)
+	if err != nil {
+		return nil, ErrInvalidCode
+	}
+	if v.ExpiresAt.Before(time.Now()) {
+		return nil, ErrVerificationExpired
+	}
+	if v.ConsumedAt != nil {
+		return nil, ErrVerificationConsumed
+	}
+	if v.CodeHash != hashEmailCode(req.Code) {
+		return nil, ErrInvalidCode
+	}
+
+	if err := s.repo.ConsumeEmailVerification(ctx, v.ID, time.Now()); err != nil {
+		return nil, err
+	}
+
+	return &EmailVerifyResponse{
+		Verified:       true,
+		VerificationID: v.ID,
 	}, nil
 }
 

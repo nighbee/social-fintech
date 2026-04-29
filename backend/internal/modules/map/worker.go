@@ -15,6 +15,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// ChampionNotifier is the optional hook the map worker calls when the
+// reigning champion of a region changes. It's deliberately a small
+// interface so the notifications module can satisfy it without the map
+// package importing notifications (avoiding an import cycle).
+type ChampionNotifier interface {
+	NotifyRankingUp(ctx context.Context, userID uuid.UUID, scope, region string, oldPos, newPos int) error
+}
+
 // Worker runs two background loops:
 //  1. Champions snapshot  — every 1 h, persists Redis leaderboard leaders to Postgres.
 //  2. Auto-shutdown sweep — every 5 min, cancels expired tasks and refunds their creators.
@@ -23,6 +31,7 @@ type Worker struct {
 	repo        Repository
 	economyRepo economy.Repository
 	service     *Service
+	notifier    ChampionNotifier
 
 	mu      sync.Mutex
 	running bool
@@ -38,6 +47,13 @@ func NewWorker(cacheClient *cache.Cache, repo Repository, economyRepo economy.Re
 		economyRepo: economyRepo,
 		service:     service,
 	}
+}
+
+// SetChampionNotifier installs an optional hook that fires when the
+// champion user for a region transitions to a new user. Called from
+// main.go after wiring the notifications service.
+func (w *Worker) SetChampionNotifier(n ChampionNotifier) {
+	w.notifier = n
 }
 
 func (w *Worker) Start() {
@@ -161,6 +177,13 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 			champion.CountryName = meta.CountryName
 		}
 
+		// Capture the previous champion (if any) before the upsert so we
+		// can detect a champion *change* and fire a "ranking up" event.
+		previousChampionID := uuid.Nil
+		if existing, lookupErr := w.repo.GetRegionChampions(ctx, []string{h3Index}, resolution, year, week); lookupErr == nil && len(existing) > 0 {
+			previousChampionID = existing[0].UserID
+		}
+
 		if err := w.repo.UpsertRegionChampion(ctx, champion); err != nil {
 			logger.Warn("failed to upsert region champion",
 				zap.String("h3_index", h3Index),
@@ -169,7 +192,57 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 				zap.Int("week", week),
 				zap.Error(err),
 			)
+			continue
 		}
+
+		w.fireChampionChange(ctx, champion, previousChampionID, scopeLabel(resolution))
+	}
+}
+
+// fireChampionChange notifies the new champion when their user_id is
+// different from the previous champion. Best-effort: notification
+// failures are logged but never fail the snapshot loop.
+func (w *Worker) fireChampionChange(ctx context.Context, champion *RegionChampion, previousChampionID uuid.UUID, scope string) {
+	if w.notifier == nil {
+		return
+	}
+	if champion.UserID == uuid.Nil || champion.UserID == previousChampionID {
+		return
+	}
+
+	region := champion.CityName
+	if region == "" {
+		region = champion.RegionName
+	}
+	if region == "" {
+		region = champion.CountryName
+	}
+
+	// We don't track exact previous-position numbers in this snapshot,
+	// so we model the transition as "moved into 1st place" with old=2.
+	if err := w.notifier.NotifyRankingUp(ctx, champion.UserID, scope, region, 2, 1); err != nil {
+		logger.Warn("failed to fire ranking_up notification",
+			zap.String("user_id", champion.UserID.String()),
+			zap.String("scope", scope),
+			zap.Error(err),
+		)
+	}
+}
+
+// scopeLabel maps the H3 resolution used by the snapshot worker to the
+// human-readable scope strings exposed in notification payloads.
+func scopeLabel(resolution int) string {
+	switch resolution {
+	case 0:
+		return "global"
+	case 2:
+		return "country"
+	case 4:
+		return "city"
+	case 5:
+		return "region"
+	default:
+		return "region"
 	}
 }
 

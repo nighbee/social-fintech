@@ -2,6 +2,7 @@ package settings
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 )
 
@@ -18,6 +19,46 @@ type UserSettings struct {
 	CommentsFilterUnwanted     bool   `db:"comments_filter_unwanted_enabled" json:"comments_filter_unwanted_enabled"`
 	MentionsWhoCanMention      string `db:"mentions_who_can_mention" json:"mentions_who_can_mention"`
 	ParticipateDistrictRanking bool   `db:"participate_district_ranking" json:"participate_district_ranking"`
+}
+
+// MarshalJSON emits the canonical Region key
+// (`participate_region_ranking`) alongside the legacy
+// `participate_district_ranking` key, so frontend clients
+// can transition off "district" without breaking older builds.
+func (s UserSettings) MarshalJSON() ([]byte, error) {
+	type alias UserSettings
+	return json.Marshal(struct {
+		alias
+		ParticipateRegionRanking bool `json:"participate_region_ranking"`
+	}{
+		alias:                    alias(s),
+		ParticipateRegionRanking: s.ParticipateDistrictRanking,
+	})
+}
+
+// PatchPrivacySettingsRequest accepts either
+// `participate_region_ranking` (preferred) or the legacy
+// `participate_district_ranking` to toggle regional ranking visibility.
+type PatchPrivacySettingsRequest struct {
+	ParticipateRegionRanking *bool `json:"-"`
+}
+
+// UnmarshalJSON wires both legacy and new field names.
+func (p *PatchPrivacySettingsRequest) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ParticipateRegionRanking   *bool `json:"participate_region_ranking"`
+		ParticipateDistrictRanking *bool `json:"participate_district_ranking"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	switch {
+	case raw.ParticipateRegionRanking != nil:
+		p.ParticipateRegionRanking = raw.ParticipateRegionRanking
+	case raw.ParticipateDistrictRanking != nil:
+		p.ParticipateRegionRanking = raw.ParticipateDistrictRanking
+	}
+	return nil
 }
 
 const (
@@ -155,6 +196,52 @@ type BugReportRequest struct {
 	Screenshot  string `json:"screenshot,omitempty"`
 	AppVersion  string `json:"app_version,omitempty"`
 	DeviceOS    string `json:"device_os,omitempty"`
+}
+
+// ContactCategory is the dropdown selector on the in-app "Contact us"
+// form. Reasonable defaults match the founder spec: bug, error,
+// suggestion, other.
+type ContactCategory string
+
+const (
+	ContactCategoryBug        ContactCategory = "bug"
+	ContactCategoryError      ContactCategory = "error"
+	ContactCategorySuggestion ContactCategory = "suggestion"
+	ContactCategoryOther      ContactCategory = "other"
+)
+
+// IsValid returns true if the category matches one of the supported
+// dropdown options.
+func (c ContactCategory) IsValid() bool {
+	switch c {
+	case ContactCategoryBug,
+		ContactCategoryError,
+		ContactCategorySuggestion,
+		ContactCategoryOther:
+		return true
+	}
+	return false
+}
+
+// ContactRequest is the body of POST /settings/support/contact.
+// `Email` is optional — when omitted we fall back to the user's
+// registered email so support can still reach them.
+type ContactRequest struct {
+	Category   ContactCategory `json:"category"`
+	Subject    string          `json:"subject,omitempty"`
+	Message    string          `json:"message"`
+	Email      string          `json:"email,omitempty"`
+	AppVersion string          `json:"app_version,omitempty"`
+	DeviceOS   string          `json:"device_os,omitempty"`
+}
+
+// ContactResponse acknowledges a successful submission and returns the
+// generated id so support staff can correlate the row with any inbound
+// email.
+type ContactResponse struct {
+	ID         string    `json:"id"`
+	Status     string    `json:"status"`
+	ReceivedAt time.Time `json:"received_at"`
 }
 
 type BlockedUserItem struct {

@@ -316,14 +316,28 @@ type ReportsListResponse struct {
 
 type SendSealRequest struct {
 	Amount         int64  `json:"amount"`
-	Comment        string `json:"comment,omitempty"`
+	Reason         string `json:"reason,omitempty"`
+	Comment        string `json:"comment,omitempty"` // deprecated: kept for backwards compatibility, prefer "reason"
 	IdempotencyKey string `json:"idempotency_key,omitempty"`
+}
+
+// EffectiveReason returns the canonical seal reason text, preferring
+// the new `reason` field but falling back to the legacy `comment` field.
+func (r *SendSealRequest) EffectiveReason() string {
+	if r == nil {
+		return ""
+	}
+	if r.Reason != "" {
+		return r.Reason
+	}
+	return r.Comment
 }
 
 type SealResponse struct {
 	User      AuthorInfo `json:"user"`
 	Amount    int64      `json:"amount"`
-	Comment   string     `json:"comment,omitempty"`
+	Reason    string     `json:"reason,omitempty"`
+	Comment   string     `json:"comment,omitempty"` // deprecated alias of reason; mirrored for clients on older builds
 	CreatedAt time.Time  `json:"created_at"`
 }
 

@@ -18,4 +18,8 @@ var (
 	ErrDescriptionRequired        = errors.New("description_required")
 	ErrDescriptionTooLong         = errors.New("description_too_long")
 	ErrRateLimited                = errors.New("rate_limited")
+
+	ErrInvalidContactCategory = errors.New("invalid_contact_category")
+	ErrMessageRequired        = errors.New("message_required")
+	ErrMessageTooLong         = errors.New("message_too_long")
 )

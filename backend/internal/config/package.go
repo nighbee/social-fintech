@@ -26,6 +26,29 @@ type Config struct {
 	Admin      AdminConfig      `yaml:"admin"`
 	Moderation ModerationConfig `yaml:"moderation"`
 	Activation ActivationConfig `yaml:"activation"`
+	SMTP       SMTPConfig       `yaml:"smtp"`
+	Support    SupportConfig    `yaml:"support"`
+}
+
+// SMTPConfig drives outbound email (registration codes, Contact Us
+// notifications). When Host is empty the platform email package falls
+// back to a logging stub, so dev runs work without configured SMTP.
+type SMTPConfig struct {
+	Host          string `yaml:"host"`
+	Port          int    `yaml:"port"`
+	Username      string `yaml:"username"`
+	Password      string `yaml:"password"`
+	FromAddress   string `yaml:"from_address"`
+	FromName      string `yaml:"from_name"`
+	UseStartTLS   bool   `yaml:"use_starttls"`
+	UseImplicitTLS bool  `yaml:"use_implicit_tls"`
+}
+
+// SupportConfig overrides the destination address for the in-app
+// Contact Us form. Defaults to the founder-mandated inbox in the
+// settings module if left blank.
+type SupportConfig struct {
+	Inbox string `yaml:"inbox"`
 }
 
 type AdminConfig struct {
@@ -510,6 +533,38 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if cfg.Activation.MaxRegistrationsPerDeviceDay == 0 {
 		cfg.Activation.MaxRegistrationsPerDeviceDay = 3
+	}
+
+	// SMTP / Support overrides — empty values keep the platform email
+	// package on its logging stub so dev environments don't need real SMTP.
+	if v := os.Getenv("SMTP_HOST"); v != "" {
+		cfg.SMTP.Host = v
+	}
+	if v := os.Getenv("SMTP_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			cfg.SMTP.Port = p
+		}
+	}
+	if v := os.Getenv("SMTP_USERNAME"); v != "" {
+		cfg.SMTP.Username = v
+	}
+	if v := os.Getenv("SMTP_PASSWORD"); v != "" {
+		cfg.SMTP.Password = v
+	}
+	if v := os.Getenv("SMTP_FROM_ADDRESS"); v != "" {
+		cfg.SMTP.FromAddress = v
+	}
+	if v := os.Getenv("SMTP_FROM_NAME"); v != "" {
+		cfg.SMTP.FromName = v
+	}
+	if v := os.Getenv("SMTP_USE_STARTTLS"); v != "" {
+		cfg.SMTP.UseStartTLS = strings.EqualFold(v, "true") || v == "1"
+	}
+	if v := os.Getenv("SMTP_USE_IMPLICIT_TLS"); v != "" {
+		cfg.SMTP.UseImplicitTLS = strings.EqualFold(v, "true") || v == "1"
+	}
+	if v := os.Getenv("SUPPORT_INBOX"); v != "" {
+		cfg.Support.Inbox = v
 	}
 
 	// Cache enabled by default (true by default if not specified)

@@ -11,6 +11,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
+	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
@@ -107,6 +108,10 @@ func main() {
 	mapRepo := mapmodule.NewRepository(db.DB)
 	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
 	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo, mapService)
+
+	notificationsRepo := notifications.NewRepository(db.DB)
+	notificationsService := notifications.NewService(notificationsRepo)
+	mapWorker.SetChampionNotifier(notificationsService)
 
 	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)

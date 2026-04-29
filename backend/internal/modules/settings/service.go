@@ -17,18 +17,38 @@ import (
 type Service struct {
 	repo         Repository
 	smsSender    SMSSender
+	emailSender  EmailSender
+	supportInbox string
 	authProvider AuthAdapter
 }
 
 const hardDeleteBatchSize = 100
 
+// DefaultSupportInbox is the founder-mandated destination for the
+// in-app Contact Us form. It can be overridden at construction time
+// if a deploy needs a different recipient.
+const DefaultSupportInbox = "19thZaratustra@gmail.com"
+
 type SMSSender interface {
 	Send(ctx context.Context, to, message string) error
+}
+
+// EmailSender abstracts the SMTP transport used for outbound support
+// notifications (Contact Us, etc). Settings deliberately defines its
+// own interface so it does not depend on the auth package.
+type EmailSender interface {
+	Send(ctx context.Context, to, subject, body string) error
 }
 
 type noopSMSSender struct{}
 
 func (n *noopSMSSender) Send(ctx context.Context, to, message string) error {
+	return nil
+}
+
+type noopEmailSender struct{}
+
+func (n *noopEmailSender) Send(ctx context.Context, to, subject, body string) error {
 	return nil
 }
 
@@ -42,7 +62,33 @@ func NewService(repo Repository, smsSender SMSSender, authProvider ...AuthAdapte
 		provider = authProvider[0]
 	}
 
-	return &Service{repo: repo, smsSender: smsSender, authProvider: provider}
+	return &Service{
+		repo:         repo,
+		smsSender:    smsSender,
+		emailSender:  &noopEmailSender{},
+		supportInbox: DefaultSupportInbox,
+		authProvider: provider,
+	}
+}
+
+// SetEmailSender installs a real SMTP transport for outbound support
+// emails. Called from main.go after wiring SMTP config; defaults to a
+// no-op so unit tests don't need to fake delivery.
+func (s *Service) SetEmailSender(sender EmailSender) {
+	if sender == nil {
+		return
+	}
+	s.emailSender = sender
+}
+
+// SetSupportInbox overrides the default support recipient address.
+// Empty values are ignored so deploys can rely on the constant default.
+func (s *Service) SetSupportInbox(addr string) {
+	addr = strings.TrimSpace(addr)
+	if addr == "" {
+		return
+	}
+	s.supportInbox = addr
 }
 
 func (s *Service) countActiveSessions(ctx context.Context, userID string) (int, error) {
@@ -557,6 +603,102 @@ func (s *Service) CreateBugReport(ctx context.Context, userID string, req *BugRe
 		return ErrDescriptionTooLong
 	}
 	return s.repo.CreateBugReport(ctx, userID, req)
+}
+
+// CreateContactMessage persists a Contact Us submission and forwards it
+// to the support inbox. The DB row is the source of truth: it's written
+// before the SMTP attempt so that even if delivery fails we still have
+// the user's message and can retry transport later.
+func (s *Service) CreateContactMessage(ctx context.Context, userID string, req *ContactRequest) (*ContactResponse, error) {
+	if req == nil {
+		return nil, ErrMessageRequired
+	}
+
+	req.Category = ContactCategory(strings.ToLower(strings.TrimSpace(string(req.Category))))
+	if !req.Category.IsValid() {
+		return nil, ErrInvalidContactCategory
+	}
+
+	req.Message = strings.TrimSpace(req.Message)
+	if req.Message == "" {
+		return nil, ErrMessageRequired
+	}
+	if len(req.Message) > 5000 {
+		return nil, ErrMessageTooLong
+	}
+
+	req.Subject = strings.TrimSpace(req.Subject)
+	req.Email = strings.TrimSpace(req.Email)
+	req.AppVersion = strings.TrimSpace(req.AppVersion)
+	req.DeviceOS = strings.TrimSpace(req.DeviceOS)
+
+	id := uuid.NewString()
+	if err := s.repo.CreateContactMessage(ctx, id, userID, req); err != nil {
+		return nil, err
+	}
+
+	// Best-effort fill of the reply-to: prefer what the user typed, but
+	// fall back to their account email so support can always respond.
+	replyTo := req.Email
+	if replyTo == "" && userID != "" {
+		if accountEmail, err := s.repo.GetUserEmail(ctx, userID); err == nil {
+			replyTo = accountEmail
+		}
+	}
+
+	subject := contactSubjectLine(req.Category, req.Subject)
+	body := buildContactEmailBody(id, userID, replyTo, req)
+
+	now := time.Now()
+	if err := s.emailSender.Send(ctx, s.supportInbox, subject, body); err != nil {
+		// Persist the transport error so support tooling can re-drive
+		// undelivered messages without losing them.
+		_ = s.repo.MarkContactMessageDelivered(ctx, id, time.Time{}, err.Error())
+		return &ContactResponse{
+			ID:         id,
+			Status:     "queued",
+			ReceivedAt: now,
+		}, nil
+	}
+
+	_ = s.repo.MarkContactMessageDelivered(ctx, id, now, "")
+	return &ContactResponse{
+		ID:         id,
+		Status:     "delivered",
+		ReceivedAt: now,
+	}, nil
+}
+
+func contactSubjectLine(category ContactCategory, subject string) string {
+	prefix := fmt.Sprintf("[BrightBund Contact - %s]", strings.ToUpper(string(category)))
+	if subject == "" {
+		return prefix + " New message"
+	}
+	return prefix + " " + subject
+}
+
+func buildContactEmailBody(id, userID, replyTo string, req *ContactRequest) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Submission ID: %s\n", id)
+	fmt.Fprintf(&b, "Category:      %s\n", req.Category)
+	if userID != "" {
+		fmt.Fprintf(&b, "User ID:       %s\n", userID)
+	} else {
+		b.WriteString("User ID:       (anonymous)\n")
+	}
+	if replyTo != "" {
+		fmt.Fprintf(&b, "Reply-to:      %s\n", replyTo)
+	}
+	if req.AppVersion != "" {
+		fmt.Fprintf(&b, "App version:   %s\n", req.AppVersion)
+	}
+	if req.DeviceOS != "" {
+		fmt.Fprintf(&b, "Device OS:     %s\n", req.DeviceOS)
+	}
+	b.WriteString("\n--- Message ---\n")
+	b.WriteString(req.Message)
+	b.WriteString("\n")
+	return b.String()
 }
 
 func (s *Service) ApplyDueFeedLimits(ctx context.Context) error {

@@ -85,6 +85,18 @@ func (m *MockAuthRepository) ConsumePhoneVerification(ctx context.Context, id st
 func (m *MockAuthRepository) UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error {
 	return nil
 }
+func (m *MockAuthRepository) CreateEmailVerification(ctx context.Context, v *auth.EmailVerification) error {
+	return nil
+}
+func (m *MockAuthRepository) GetEmailVerificationByID(ctx context.Context, id string) (*auth.EmailVerification, error) {
+	return nil, nil
+}
+func (m *MockAuthRepository) ConsumeEmailVerification(ctx context.Context, id string, consumedAt time.Time) error {
+	return nil
+}
+func (m *MockAuthRepository) UseEmailVerification(ctx context.Context, id string, usedAt time.Time) error {
+	return nil
+}
 func (m *MockAuthRepository) SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error {
 	return nil
 }

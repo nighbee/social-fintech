@@ -42,6 +42,11 @@ type Repository interface {
 	GetPhoneVerificationByID(ctx context.Context, id string) (*PhoneVerification, error)
 	ConsumePhoneVerification(ctx context.Context, id string, consumedAt time.Time) error
 	UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error
+
+	CreateEmailVerification(ctx context.Context, v *EmailVerification) error
+	GetEmailVerificationByID(ctx context.Context, id string) (*EmailVerification, error)
+	ConsumeEmailVerification(ctx context.Context, id string, consumedAt time.Time) error
+	UseEmailVerification(ctx context.Context, id string, usedAt time.Time) error
 	SetAdminStatus(ctx context.Context, userID string, isAdmin bool) error
 	BanUser(ctx context.Context, userID string, restrictionsUntil *time.Time, reason string) error
 }
@@ -452,6 +457,39 @@ func (r *PostgresRepository) ConsumePhoneVerification(ctx context.Context, id st
 
 func (r *PostgresRepository) UsePhoneVerification(ctx context.Context, id string, usedAt time.Time) error {
 	query := `UPDATE phone_verifications SET used_at = $1 WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, query, usedAt, id)
+	return err
+}
+
+func (r *PostgresRepository) CreateEmailVerification(ctx context.Context, v *EmailVerification) error {
+	query := `
+		INSERT INTO email_verifications (
+			id, email, purpose, code_hash, expires_at, created_at
+		) VALUES ($1, $2, $3, $4, $5, $6)
+	`
+	_, err := r.db.ExecContext(ctx, query,
+		v.ID, strings.ToLower(strings.TrimSpace(v.Email)), v.Purpose, v.CodeHash, v.ExpiresAt, v.CreatedAt,
+	)
+	return err
+}
+
+func (r *PostgresRepository) GetEmailVerificationByID(ctx context.Context, id string) (*EmailVerification, error) {
+	var v EmailVerification
+	query := `SELECT * FROM email_verifications WHERE id = $1`
+	if err := r.db.GetContext(ctx, &v, query, id); err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
+
+func (r *PostgresRepository) ConsumeEmailVerification(ctx context.Context, id string, consumedAt time.Time) error {
+	query := `UPDATE email_verifications SET consumed_at = $1 WHERE id = $2`
+	_, err := r.db.ExecContext(ctx, query, consumedAt, id)
+	return err
+}
+
+func (r *PostgresRepository) UseEmailVerification(ctx context.Context, id string, usedAt time.Time) error {
+	query := `UPDATE email_verifications SET used_at = $1 WHERE id = $2`
 	_, err := r.db.ExecContext(ctx, query, usedAt, id)
 	return err
 }

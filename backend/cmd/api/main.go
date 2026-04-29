@@ -17,16 +17,20 @@ import (
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/feed"
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
+	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
+	"github.com/brightbund-backend/internal/modules/seasons"
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
 	"github.com/brightbund-backend/internal/platform/database/migrate"
+	"github.com/brightbund-backend/internal/platform/email"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/storage"
 	"github.com/brightbund-backend/internal/platform/vision"
 	"github.com/brightbund-backend/internal/server"
+	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -191,6 +195,22 @@ func main() {
 		auth.ProviderGoogle: googleVerifier,
 	}, smsSender, economyService)
 
+	// Wire the outbound email transport. Platform-level sender picks
+	// SMTP when configured, otherwise a logging stub. Both auth and
+	// settings consume it via tiny adapters so neither module depends
+	// on the platform package directly.
+	emailSender := email.NewSender(email.Config{
+		Host:           cfg.SMTP.Host,
+		Port:           cfg.SMTP.Port,
+		Username:       cfg.SMTP.Username,
+		Password:       cfg.SMTP.Password,
+		FromAddress:    cfg.SMTP.FromAddress,
+		FromName:       cfg.SMTP.FromName,
+		UseStartTLS:    cfg.SMTP.UseStartTLS,
+		UseImplicitTLS: cfg.SMTP.UseImplicitTLS,
+	})
+	authService.SetEmailSender(authEmailAdapter{sender: emailSender})
+
 	authHandler := auth.NewHandler(authService)
 
 	if err := authService.EnsureAdmins(context.Background(), cfg.Admin.Emails); err != nil {
@@ -266,6 +286,8 @@ func main() {
 	settingsRepo := settings.NewRepository(db.DB)
 	settingsAuthAdapter := settings.NewAuthAdapter(authRepo)
 	settingsService := settings.NewService(settingsRepo, smsSender, settingsAuthAdapter)
+	settingsService.SetEmailSender(settingsEmailAdapter{sender: emailSender})
+	settingsService.SetSupportInbox(cfg.Support.Inbox)
 	settingsHandler := settings.NewHandler(settingsService)
 	settingsWorker := settings.NewWorker(settingsService)
 	settingsWorker.Start()
@@ -279,7 +301,27 @@ func main() {
 	mapService.SetChatIntegrator(chatService)
 	logger.Info("chat module initialized")
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, jwtManager, authRepo, logger.Get())
+	notificationsRepo := notifications.NewRepository(db.DB)
+	notificationsService := notifications.NewService(notificationsRepo)
+	notificationsHandler := notifications.NewHandler(notificationsService)
+	logger.Info("notifications module initialized")
+
+	// Wire the post-seal notifier so that when user A seals user B's
+	// post, A receives "You moved [B] to position X in [region]".
+	feedHandler.SetSealNotifier(&postSealNotifier{
+		cache:    redisCache,
+		mapRepo:  mapRepo,
+		mapSvc:   mapService,
+		authRepo: authRepo,
+		notifier: notificationsService,
+	})
+
+	seasonsRepo := seasons.NewRepository(db.DB)
+	seasonsService := seasons.NewService(seasonsRepo)
+	seasonsHandler := seasons.NewHandler(seasonsService)
+	logger.Info("seasons module initialized")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, notificationsHandler, seasonsHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
@@ -327,4 +369,119 @@ func runStartupMigrations(db *sqlx.DB) error {
 	}
 
 	return fmt.Errorf("failed to run migrations from known paths: \n- %s", strings.Join(errors, "\n- "))
+}
+
+// authEmailAdapter satisfies auth.EmailSender by delegating to the
+// platform-level email.Sender. Lives here (not in the auth package) so
+// the auth module stays free of any platform/email import.
+type authEmailAdapter struct {
+	sender email.Sender
+}
+
+func (a authEmailAdapter) Send(ctx context.Context, to, subject, body string) error {
+	return a.sender.Send(ctx, to, subject, body)
+}
+
+// settingsEmailAdapter mirrors authEmailAdapter for the settings module's
+// EmailSender interface. The two interfaces are intentionally defined
+// per-module to avoid a shared dependency, hence the duplicate adapter.
+type settingsEmailAdapter struct {
+	sender email.Sender
+}
+
+func (a settingsEmailAdapter) Send(ctx context.Context, to, subject, body string) error {
+	return a.sender.Send(ctx, to, subject, body)
+}
+
+// postSealNotifier implements feed.SealNotifier. After a successful seal
+// it computes the recipient's leaderboard rank and fires a notification
+// to the *sender* matching the founder spec
+// "You moved [username] to position X in [city/country]."
+//
+// All lookups are best-effort: missing H3 / leaderboard / metadata
+// degrades gracefully into a notification without those fields rather
+// than failing.
+type postSealNotifier struct {
+	cache    *cache.Cache
+	mapRepo  mapmodule.Repository
+	mapSvc   *mapmodule.Service
+	authRepo auth.Repository
+	notifier *notifications.Service
+}
+
+func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipientID uuid.UUID) error {
+	if p == nil || p.notifier == nil {
+		return nil
+	}
+
+	// Recipient profile — needed for the username string in the title.
+	recipientUser, err := p.authRepo.GetUserByID(ctx, recipientID.String())
+	if err != nil || recipientUser == nil {
+		return nil
+	}
+	username := recipientUser.Username
+	if username == "" {
+		username = strings.TrimSpace(recipientUser.FirstName + " " + recipientUser.LastName)
+	}
+	if username == "" {
+		username = "your ally"
+	}
+
+	// Recipient region — pick the most granular H3 cell available so we
+	// resolve to the smallest meaningful place name (city → region → country).
+	regionState, _ := p.mapRepo.GetUserRegionState(ctx, recipientID.String())
+	scope := "region"
+	leaderboardKey := ""
+	h3Index := ""
+	year, week := time.Now().UTC().ISOWeek()
+	if regionState != nil {
+		switch {
+		case regionState.H3Res5 != nil && *regionState.H3Res5 != "":
+			h3Index = *regionState.H3Res5
+			leaderboardKey = fmt.Sprintf("leaderboard:arena:%s:week:%d:%d", h3Index, year, week)
+			scope = "city"
+		case regionState.H3Res4 != nil && *regionState.H3Res4 != "":
+			h3Index = *regionState.H3Res4
+			leaderboardKey = fmt.Sprintf("leaderboard:city:%s:week:%d:%d", h3Index, year, week)
+			scope = "city"
+		case regionState.H3Res2 != nil && *regionState.H3Res2 != "":
+			h3Index = *regionState.H3Res2
+			leaderboardKey = fmt.Sprintf("leaderboard:country:%s:week:%d:%d", h3Index, year, week)
+			scope = "country"
+		}
+	}
+
+	// Position lookup: ZRevRank is 0-based, so add 1 for human display.
+	position := 0
+	if leaderboardKey != "" && p.cache != nil {
+		if rank, err := p.cache.ZRevRank(ctx, leaderboardKey, recipientID.String()); err == nil {
+			position = int(rank) + 1
+		}
+	}
+
+	region := ""
+	if h3Index != "" {
+		if meta, err := p.mapSvc.ResolveH3ToLocation(ctx, h3Index); err == nil && meta != nil {
+			switch scope {
+			case "country":
+				region = meta.CountryName
+			default:
+				if meta.CityName != "" {
+					region = meta.CityName
+				} else if meta.RegionName != "" {
+					region = meta.RegionName
+				} else {
+					region = meta.CountryName
+				}
+			}
+		}
+	}
+
+	// If we couldn't infer a position the message would read "to position 0",
+	// which is worse than no notification — skip it instead.
+	if position == 0 {
+		return nil
+	}
+
+	return p.notifier.NotifyMovedUser(ctx, actorID, recipientID, username, scope, region, position)
 }

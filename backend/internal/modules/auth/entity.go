@@ -1,6 +1,9 @@
 package auth
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // модель для аккаунта для хранения имени, юзернейма имейла и дату рождения тд...
 type User struct {
@@ -59,6 +62,45 @@ type PhoneVerification struct {
 	ConsumedAt   *time.Time `db:"consumed_at"`
 	UsedAt       *time.Time `db:"used_at"`
 	CreatedAt    time.Time  `db:"created_at"`
+}
+
+// EmailVerification stores 6-digit OTP codes for the email confirmation flow.
+type EmailVerification struct {
+	ID         string     `db:"id"`
+	Email      string     `db:"email"`
+	Purpose    string     `db:"purpose"` // register | login | email_change | password_reset
+	CodeHash   string     `db:"code_hash"`
+	ExpiresAt  time.Time  `db:"expires_at"`
+	ConsumedAt *time.Time `db:"consumed_at"`
+	UsedAt     *time.Time `db:"used_at"`
+	CreatedAt  time.Time  `db:"created_at"`
+}
+
+// EmailCodeRequest starts the email confirmation flow ("ввод кода" on the
+// signup screen). Purpose drives whether the email must already exist
+// (login | password_reset) or must NOT exist (register).
+type EmailCodeRequest struct {
+	Email   string `json:"email" example:"john.doe@example.com"`
+	Purpose string `json:"purpose" example:"register"`
+}
+
+type EmailCodeResponse struct {
+	VerificationID string    `json:"verification_id"`
+	ExpiresAt      time.Time `json:"expires_at"`
+}
+
+// EmailVerifyRequest finalises the email confirmation step.
+type EmailVerifyRequest struct {
+	VerificationID string `json:"verification_id"`
+	Code           string `json:"code"`
+}
+
+// EmailVerifyResponse returns whether the supplied code matched and echoes
+// the verification id so subsequent flows (e.g. registration completion)
+// can reference it.
+type EmailVerifyResponse struct {
+	Verified       bool   `json:"verified"`
+	VerificationID string `json:"verification_id,omitempty"`
 }
 
 //вот здесь сделал связку с провайдером через что пользовательно заходит (oauth/телефон/имейл)
@@ -207,4 +249,18 @@ type AdminBanRequest struct {
 	BanType  BanType `json:"ban_type" validate:"required,oneof=temporary permanent"`
 	Duration string  `json:"duration,omitempty"` // e.g. "24h", "7d". Required if BanType is temporary
 	Reason   string  `json:"reason" validate:"required"`
+}
+
+// MarshalJSON emits both the legacy `participate_district` JSON key and
+// the canonical `participate_region` key so clients on either side of the
+// Districts → Region rename keep working.
+func (u User) MarshalJSON() ([]byte, error) {
+	type alias User
+	return json.Marshal(struct {
+		alias
+		ParticipateRegion bool `json:"participate_region"`
+	}{
+		alias:             alias(u),
+		ParticipateRegion: u.ParticipateDistrict,
+	})
 }

@@ -1587,7 +1587,9 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 			return nil, "", err
 		}
 		resp.Amount = amount / economy.CentinelsPerSeal
-		resp.Comment = strings.TrimSpace(comment)
+		trimmed := strings.TrimSpace(comment)
+		resp.Reason = trimmed
+		resp.Comment = trimmed
 		resp.CreatedAt = createdAt
 		if avatarURL.Valid {
 			resp.User.ProfilePicURL = r.buildURL(avatarURL.String)

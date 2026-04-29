@@ -71,6 +71,9 @@ type Repository interface {
 	SoftDeleteUser(ctx context.Context, userID string, deletedAt, hardDeleteAt time.Time) error
 
 	CreateBugReport(ctx context.Context, userID string, req *BugReportRequest) error
+	CreateContactMessage(ctx context.Context, id, userID string, req *ContactRequest) error
+	MarkContactMessageDelivered(ctx context.Context, id string, deliveredAt time.Time, deliveryErr string) error
+	GetUserEmail(ctx context.Context, userID string) (string, error)
 
 	ListBlockedUsers(ctx context.Context, userID string, cursor *time.Time, limit int) ([]BlockedUserItem, error)
 	UnblockUser(ctx context.Context, userID, targetUserID string) error
@@ -627,6 +630,50 @@ func (r *PostgresRepository) CreateBugReport(ctx context.Context, userID string,
 		VALUES ($1, $2, $3, $4, $5, 'new')
 	`, userID, req.Description, req.Screenshot, req.AppVersion, req.DeviceOS)
 	return err
+}
+
+func (r *PostgresRepository) CreateContactMessage(ctx context.Context, id, userID string, req *ContactRequest) error {
+	var userIDArg interface{}
+	if userID != "" {
+		userIDArg = userID
+	}
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO contact_messages (
+			id, user_id, category, subject, message, contact_email, app_version, device_os
+		) VALUES ($1, $2, $3, NULLIF($4, ''), $5, NULLIF($6, ''), NULLIF($7, ''), NULLIF($8, ''))
+	`,
+		id, userIDArg, string(req.Category), req.Subject, req.Message,
+		req.Email, req.AppVersion, req.DeviceOS,
+	)
+	return err
+}
+
+func (r *PostgresRepository) MarkContactMessageDelivered(ctx context.Context, id string, deliveredAt time.Time, deliveryErr string) error {
+	if deliveryErr != "" {
+		_, err := r.db.ExecContext(ctx, `
+			UPDATE contact_messages
+			SET delivery_error = $2
+			WHERE id = $1
+		`, id, deliveryErr)
+		return err
+	}
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE contact_messages
+		SET delivered_at = $2, delivery_error = NULL
+		WHERE id = $1
+	`, id, deliveredAt)
+	return err
+}
+
+func (r *PostgresRepository) GetUserEmail(ctx context.Context, userID string) (string, error) {
+	var email sql.NullString
+	if err := r.db.QueryRowContext(ctx, `SELECT email FROM users WHERE id = $1`, userID).Scan(&email); err != nil {
+		return "", err
+	}
+	if !email.Valid {
+		return "", nil
+	}
+	return email.String, nil
 }
 
 func hashDeleteOTP(code string) string {

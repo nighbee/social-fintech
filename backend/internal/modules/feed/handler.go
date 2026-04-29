@@ -25,6 +25,15 @@ type ObjectStorage interface {
 	Delete(ctx context.Context, bucketName, objectName string) error
 }
 
+// SealNotifier is the optional hook the seal handler calls after a
+// successful Silver Seal transfer to push a "you moved X to position N"
+// notification to the actor. The interface is deliberately tiny so the
+// feed package does not need to import the notifications, map, or
+// cache modules — main.go wires a concrete adapter.
+type SealNotifier interface {
+	NotifyPostSealed(ctx context.Context, actorID, postAuthorID uuid.UUID) error
+}
+
 type Handler struct {
 	service    *Service
 	worker     *InteractionWorker
@@ -33,6 +42,7 @@ type Handler struct {
 	vision     vision.Client
 	publicURL  string
 	tempBucket string
+	notifier   SealNotifier
 }
 
 func NewHandler(service *Service, worker *InteractionWorker, economyService economy.Service, storageClient ObjectStorage, visionClient vision.Client, publicURL, tempBucket string) *Handler {
@@ -45,6 +55,12 @@ func NewHandler(service *Service, worker *InteractionWorker, economyService econ
 		publicURL:  publicURL,
 		tempBucket: tempBucket,
 	}
+}
+
+// SetSealNotifier installs the post-seal notifier. Called from main.go
+// after wiring map service + notifications service.
+func (h *Handler) SetSealNotifier(n SealNotifier) {
+	h.notifier = n
 }
 
 // Constants for media upload hardening (SAFETY)
@@ -194,7 +210,7 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 
 			return c.Status(403).JSON(fiber.Map{
 				"error":   "content_rejected",
-				"message": "Media rejected due to safety policy violation",
+				"message": "This content can't be posted due to community guidelines.",
 			})
 		}
 
@@ -1023,7 +1039,18 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	if req.Amount != 1 {
 		return c.Status(400).JSON(fiber.Map{"error": ErrInvalidSealAmount.Error()})
 	}
-	req.Comment = strings.TrimSpace(req.Comment)
+
+	// Reason text validation (10-200 chars). Accept legacy `comment` as fallback.
+	reason := strings.TrimSpace(req.EffectiveReason())
+	runes := []rune(reason)
+	if len(runes) < 10 {
+		return c.Status(400).JSON(fiber.Map{"error": ErrSealReasonTooShort.Error()})
+	}
+	if len(runes) > 200 {
+		return c.Status(400).JSON(fiber.Map{"error": ErrSealReasonTooLong.Error()})
+	}
+	req.Reason = reason
+	req.Comment = reason
 
 	// Resolve the post author so Economy knows who receives the Silver.
 	// GetPostPermissionsInfo returns (commentPermission, authorID, error).
@@ -1050,7 +1077,7 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 		// (e.g. 12:59:59 vs 13:00:00) which bypass the Economy idempotency gate
 		// and produce duplicate ledger entries / double seal credits on a post.
 		window := time.Now().UTC().Format("20060102")
-		autoKeyMaterial := fmt.Sprintf("post-seal|%s|%s|%s|%d|%s|%s", userID.String(), authorID.String(), postID.String(), req.Amount, req.Comment, window)
+		autoKeyMaterial := fmt.Sprintf("post-seal|%s|%s|%s|%d|%s|%s", userID.String(), authorID.String(), postID.String(), req.Amount, reason, window)
 		idempotencyKey = "auto_post_seal_" + uuid.NewSHA1(uuid.NameSpaceOID, []byte(autoKeyMaterial)).String()
 	}
 
@@ -1058,7 +1085,7 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	txResp, err := h.economy.GiveSealToPost(c.Context(), userID.String(), postID.String(), &economy.GiveSealToPostRequest{
 		ReceiverUserID: authorID.String(),
 		Amount:         req.Amount,
-		Comment:        req.Comment,
+		Comment:        reason,
 		Currency:       "SILVER_SEAL",
 		IdempotencyKey: idempotencyKey,
 	})
@@ -1090,6 +1117,24 @@ func (h *Handler) SendSeal(c *fiber.Ctx) error {
 	// increments even when two concurrent HTTP requests both receive CreatedNew=true.
 	if txResp.CreatedNew {
 		_ = h.worker.TryQueueSeal(c.Context(), postID, idempotencyKey, req.Amount)
+
+		// Fire the "you moved <author> up the ranking" notification to the
+		// sender. Best-effort — we never fail the seal transaction because
+		// of a notification error, and we only fire on first acceptance so
+		// idempotent retries don't double-notify.
+		if h.notifier != nil {
+			go func(actor, recipient uuid.UUID) {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := h.notifier.NotifyPostSealed(ctx, actor, recipient); err != nil {
+					logger.Get().Warn("notify_post_sealed_failed",
+						zap.String("actor", actor.String()),
+						zap.String("recipient", recipient.String()),
+						zap.Error(err),
+					)
+				}
+			}(userID, authorID)
+		}
 	}
 
 	return c.Status(201).JSON(fiber.Map{

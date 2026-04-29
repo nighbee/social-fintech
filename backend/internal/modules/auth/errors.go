@@ -27,4 +27,6 @@ var (
 	ErrVerificationConsumed = errors.New("verification_consumed")
 	ErrVerificationNotReady = errors.New("verification_not_ready")
 	ErrInvalidPurpose       = errors.New("invalid_purpose")
+
+	ErrInvalidEmail = errors.New("invalid_email")
 )

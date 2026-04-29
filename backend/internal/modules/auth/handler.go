@@ -221,6 +221,78 @@ func (h *Handler) RequestPhoneCode(c *fiber.Ctx) error {
 	return c.JSON(resp)
 }
 
+// RequestEmailCode godoc
+// @Summary Request Email Verification Code
+// @Description Send a 6-digit confirmation code to the supplied email address.
+// @Description Purpose drives existence checks:
+// @Description   register → email must NOT exist
+// @Description   login | password_reset → email MUST exist
+// @Description   email_change → no check (used after the user is already authenticated)
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body EmailCodeRequest true "Email and purpose"
+// @Success 200 {object} EmailCodeResponse
+// @Failure 400 {object} ErrorResponse
+// @Failure 404 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /auth/email/request [post]
+func (h *Handler) RequestEmailCode(c *fiber.Ctx) error {
+	var req EmailCodeRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	resp, err := h.service.RequestEmailCode(c.Context(), req)
+	if err != nil {
+		switch err {
+		case ErrInvalidEmail:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_email"})
+		case ErrInvalidPurpose:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_purpose"})
+		case ErrEmailExists:
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "email_exists"})
+		case ErrUserNotFound:
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user_not_found"})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "email_request_failed"})
+		}
+	}
+	return c.JSON(resp)
+}
+
+// VerifyEmailCode godoc
+// @Summary Verify Email Code
+// @Description Verify the 6-digit code returned to the user's inbox during the
+// @Description email confirmation step. Returns the verification_id which higher
+// @Description level flows (registration, password reset) reference to prove the
+// @Description email is owned by the requester.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param request body EmailVerifyRequest true "Verification ID and email code"
+// @Success 200 {object} EmailVerifyResponse
+// @Failure 400 {object} ErrorResponse
+// @Router /auth/email/verify [post]
+func (h *Handler) VerifyEmailCode(c *fiber.Ctx) error {
+	var req EmailVerifyRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	resp, err := h.service.VerifyEmailCode(c.Context(), req)
+	if err != nil {
+		switch err {
+		case ErrInvalidCode, ErrVerificationExpired, ErrVerificationConsumed:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_code"})
+		default:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_verification"})
+		}
+	}
+	return c.JSON(resp)
+}
+
 // VerifyPhoneCode godoc
 // @Summary Verify Phone Code (Step 2)
 // @Description Verify SMS code. Returns tokens for login, or verification_id for register flow
