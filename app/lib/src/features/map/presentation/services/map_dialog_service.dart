@@ -197,6 +197,7 @@ class MapDialogService {
     await showDialog<void>(
       context: context,
       barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.18),
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.transparent,
@@ -209,7 +210,7 @@ class MapDialogService {
                 width: 390,
                 height: 140,
                 padding: const EdgeInsets.all(16),
-                decoration: _executorCancelPopupDecoration(18),
+                decoration: _centerGlassPopupDecoration(18),
                 child: SizedBox(
                   width: double.infinity,
                   height: 100,
@@ -290,6 +291,7 @@ class MapDialogService {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.18),
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.transparent,
@@ -304,7 +306,7 @@ class MapDialogService {
                   minHeight: 140,
                 ),
                 padding: const EdgeInsets.all(16),
-                decoration: _executorCancelPopupDecoration(18),
+                decoration: _centerGlassPopupDecoration(18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -342,8 +344,8 @@ class MapDialogService {
                         borderRadius: 6,
                         backgroundColor: Colors.white.withValues(alpha: 0.03),
                         border: Border.all(
-                          color: const Color(0xFFCACACA),
-                          width: 1.5,
+                          color: const Color(0x99CACACA),
+                          width: 1.0,
                         ),
                         textStyle: TextStyles.bodyMain.copyWith(
                           fontFamily: FontFamily.lora,
@@ -410,6 +412,7 @@ class MapDialogService {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.18),
       builder: (dialogContext) {
         final helperName =
             selectedApplication!.applicantUsername.trim().isNotEmpty
@@ -424,32 +427,12 @@ class MapDialogService {
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 30),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(18),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 13),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF4E5560).withValues(alpha: 0.48),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0x42FFFFFF),
-                      Color(0x1CFFFFFF),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  border:
-                      Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.18),
-                      blurRadius: 14,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
+                decoration: _centerGlassPopupDecoration(18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -555,18 +538,19 @@ class MapDialogService {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.18),
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: const EdgeInsets.symmetric(horizontal: 30),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(18),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
               child: Container(
                 width: 390,
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-                decoration: _executorRejectedPopupDecoration(10),
+                decoration: _centerGlassPopupDecoration(18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -617,8 +601,8 @@ class MapDialogService {
                         borderRadius: 6,
                         backgroundColor: Colors.white.withValues(alpha: 0.03),
                         border: Border.all(
-                          color: const Color(0xFFCACACA),
-                          width: 1.5,
+                          color: const Color(0x99CACACA),
+                          width: 1.0,
                         ),
                         textStyle: TextStyles.bodyMain.copyWith(
                           fontFamily: FontFamily.lora,
@@ -711,53 +695,27 @@ class MapDialogService {
     );
   }
 
-  BoxDecoration _executorCancelPopupDecoration(double radius) {
+  BoxDecoration _centerGlassPopupDecoration(double radius) {
     return BoxDecoration(
-      color: const Color(0xFF5A616C).withValues(alpha: 0.38),
+      color: const Color.fromRGBO(30, 32, 35, 0.18),
       gradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0x52FFFFFF),
-          Color(0x1EFFFFFF),
+          Color(0x44FFFFFF),
+          Color(0x12FFFFFF),
         ],
       ),
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(
-        color: Colors.white.withValues(alpha: 0.32),
+        color: const Color(0x4DFFFFFF),
         width: 0.5,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: 0.18),
+          color: const Color(0xFF000000).withValues(alpha: 0.16),
           blurRadius: 14,
-          offset: const Offset(0, 8),
-        ),
-      ],
-    );
-  }
-
-  BoxDecoration _executorRejectedPopupDecoration(double radius) {
-    return BoxDecoration(
-      color: const Color(0xFF5A616C).withValues(alpha: 0.38),
-      gradient: const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Color(0x52FFFFFF),
-          Color(0x1EFFFFFF),
-        ],
-      ),
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(
-        color: Colors.white.withValues(alpha: 0.32),
-        width: 0.5,
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.18),
-          blurRadius: 14,
-          offset: const Offset(0, 8),
+          offset: const Offset(0, 3),
         ),
       ],
     );
