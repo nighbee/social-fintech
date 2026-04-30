@@ -220,6 +220,13 @@ func (s *Service) GetSecurityOverview(ctx context.Context, userID, currentSessio
 	if err != nil {
 		return nil, err
 	}
+
+	hash, err := s.getUserPasswordHash(ctx, userID)
+	if err != nil {
+		// Non-fatal, just assume no password
+		hash = ""
+	}
+
 	methodNames := make([]string, 0, len(methods))
 	for _, m := range methods {
 		methodNames = append(methodNames, m.Method)
@@ -229,7 +236,8 @@ func (s *Service) GetSecurityOverview(ctx context.Context, userID, currentSessio
 		TwoFAMethods:       methodNames,
 		ActiveSessions:     sessions,
 		CurrentSessionID:   currentSessionID,
-		PasswordLoginReady: true,
+		PasswordLoginReady: hash != "",
+		HasPassword:        hash != "",
 	}, nil
 }
 
@@ -241,8 +249,12 @@ func (s *Service) ChangePassword(ctx context.Context, userID, currentSessionID, 
 	if err != nil {
 		return err
 	}
-	if hash == "" || bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)) != nil {
-		return ErrInvalidCredentials
+	// If the user already has a password, we MUST verify the current one.
+	// If they don't (e.g. magic link signup), we allow setting the first password without a current one.
+	if hash != "" {
+		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)) != nil {
+			return ErrInvalidCredentials
+		}
 	}
 	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
@@ -310,8 +322,10 @@ func (s *Service) DisableTwoFA(ctx context.Context, userID, currentPassword stri
 	if err != nil {
 		return err
 	}
-	if hash == "" || bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)) != nil {
-		return ErrInvalidCredentials
+	if hash != "" {
+		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)) != nil {
+			return ErrInvalidCredentials
+		}
 	}
 	if err := s.repo.DeactivateAllTwoFAMethods(ctx, userID); err != nil {
 		return err
@@ -402,8 +416,10 @@ func (s *Service) DeleteAccountVerify(ctx context.Context, userID string, req *D
 		if err != nil {
 			return nil, err
 		}
-		if hash == "" || bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)) != nil {
-			return nil, ErrInvalidCredentials
+		if hash != "" {
+			if bcrypt.CompareHashAndPassword([]byte(hash), []byte(req.Password)) != nil {
+				return nil, ErrInvalidCredentials
+			}
 		}
 	case "otp":
 		if req.OTP == "" {

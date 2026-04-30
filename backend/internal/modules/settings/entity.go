@@ -82,6 +82,7 @@ type SecurityOverviewResponse struct {
 	ActiveSessions     int      `json:"active_sessions"`
 	CurrentSessionID   string   `json:"current_session_id,omitempty"`
 	PasswordLoginReady bool     `json:"password_login_ready"`
+	HasPassword        bool     `json:"has_password"`
 }
 
 type FeedSettingsResponse struct {
