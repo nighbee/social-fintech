@@ -3,7 +3,6 @@ package payment
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/jmoiron/sqlx"
 )

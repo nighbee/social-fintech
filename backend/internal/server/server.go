@@ -12,7 +12,7 @@ import (
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
-	"github.com/brightbund-backend/internal/modules/ranks"
+	"github.com/brightbund-backend/internal/modules/seasons"
 	"github.com/brightbund-backend/internal/modules/payment"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/observability"

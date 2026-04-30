@@ -1,7 +1,5 @@
 package payment
 
-import "time"
-
 // RevenueCat Product IDs
 const (
 	ProductStarter   = "starter_pack"

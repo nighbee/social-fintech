@@ -2,17 +2,19 @@ package payment
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/economy"
-	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
+
+type ProfilesRepository interface {
+	SetPatronStatus(ctx context.Context, userID string, isPatron bool) error
+}
 
 type Service interface {
 	HandleRevenueCatWebhook(ctx context.Context, authToken string, payload *RevenueCatWebhook) error
@@ -22,13 +24,13 @@ type Service interface {
 type service struct {
 	repo           Repository
 	economyService economy.Service
-	profilesRepo   *profiles.Repository
+	profilesRepo   ProfilesRepository
 	producer       *eventbus.Producer
 	logger         *zap.Logger
 	webhookToken   string
 }
 
-func NewService(repo Repository, economyService economy.Service, profilesRepo *profiles.Repository, producer *eventbus.Producer, logger *zap.Logger, webhookToken string) Service {
+func NewService(repo Repository, economyService economy.Service, profilesRepo ProfilesRepository, producer *eventbus.Producer, logger *zap.Logger, webhookToken string) Service {
 	return &service{
 		repo:           repo,
 		economyService: economyService,

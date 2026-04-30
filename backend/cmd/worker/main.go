@@ -118,6 +118,7 @@ func main() {
 	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache, eventProducer)
 	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo, mapService)
 
+	profilesRepo := profiles.NewRepository(db.DB)
 	notificationsRepo := notifications.NewRepository(db.DB)
 	notificationsService := notifications.NewService(notificationsRepo)
 	mapWorker.SetChampionNotifier(notificationsService)
