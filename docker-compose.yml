@@ -151,7 +151,7 @@ services:
       - brightbund-network
 
   kafka:
-    image: bitnami/kafka:3.7
+    image: bitnami/kafka:3.4.1
     container_name: brightbund-kafka
     restart: unless-stopped
     ports:
