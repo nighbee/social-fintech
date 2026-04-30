@@ -14,6 +14,7 @@ import (
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
+	"github.com/brightbund-backend/internal/modules/payment"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
@@ -141,6 +142,19 @@ func main() {
 		)
 	}
 
+	var paymentConsumer *payment.EventConsumer
+	if cfg.EventBus.Enabled {
+		paymentRepo := payment.NewRepository(db.DB)
+		paymentService := payment.NewService(paymentRepo, economyService, profilesRepo, eventProducer, logger.Get(), "")
+		paymentConsumer = payment.NewEventConsumer(
+			cfg.EventBus.Brokers,
+			cfg.EventBus.Topics.SystemEvents,
+			"brightbund.payment",
+			paymentService,
+			logger.Get(),
+		)
+	}
+
 	// Start workers
 	economyWorker.Start()
 	logger.Info("economy worker started")
@@ -161,6 +175,15 @@ func main() {
 			}
 		}()
 		logger.Info("notification event consumer started")
+	}
+
+	if paymentConsumer != nil {
+		go func() {
+			if err := paymentConsumer.Start(context.Background()); err != nil {
+				logger.Error("payment consumer error", zap.Error(err))
+			}
+		}()
+		logger.Info("payment event consumer started")
 	}
 
 	// Start Asynq Server for Video Processing
@@ -219,6 +242,10 @@ func main() {
 		if notificationConsumer != nil {
 			_ = notificationConsumer.Close()
 		}
+		if paymentConsumer != nil {
+			_ = paymentConsumer.Close()
+		}
+		logger.Info("payment event consumer stopped")
 		logger.Info("notification event consumer stopped")
 	}()
 

@@ -19,6 +19,7 @@ type Profile struct {
 	// FeedTimeLimitMins controls the Anti-Doomscroll ceiling.
 	// 0 = No limit; 20/40/60 = limit in minutes. Defaults to 20.
 	FeedTimeLimitMins int       `db:"feed_time_limit_mins" json:"feed_time_limit_mins" example:"20"`
+	IsPatron          bool      `db:"is_patron" json:"is_patron" example:"true"`
 	CreatedAt         time.Time `db:"created_at" json:"created_at" example:"2024-01-15T10:30:00Z"`
 	UpdatedAt         time.Time `db:"updated_at" json:"updated_at" example:"2024-01-20T14:45:00Z"`
 }
@@ -53,6 +54,7 @@ type PublicProfileResponse struct {
 	City            string `json:"city" example:"San Francisco"`
 	ReputationScore int    `json:"reputation_score" example:"100"`
 	RankTier        string `json:"rank_tier" example:"Quartz"`
+	IsPatron        bool   `json:"is_patron" example:"true"`
 }
 
 // ProfileStats represents user's economy statistics

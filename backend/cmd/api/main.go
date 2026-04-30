@@ -21,6 +21,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/seasons"
 	"github.com/brightbund-backend/internal/modules/ranks"
+	"github.com/brightbund-backend/internal/modules/payment"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
@@ -334,7 +335,12 @@ func main() {
 	seasonsHandler := seasons.NewHandler(seasonsService)
 	logger.Info("seasons module initialized")
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, notificationsHandler, seasonsHandler, jwtManager, authRepo, logger.Get())
+	paymentRepo := payment.NewRepository(db.DB)
+	paymentService := payment.NewService(paymentRepo, economyService, profilesRepo, eventProducer, logger.Get(), os.Getenv("REVENUECAT_WEBHOOK_TOKEN"))
+	paymentHandler := payment.NewHandler(paymentService)
+	logger.Info("payment module initialized")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, notificationsHandler, seasonsHandler, paymentHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))

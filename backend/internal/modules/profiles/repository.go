@@ -34,6 +34,7 @@ func (r *Repository) GetProfile(ctx context.Context, userID string) (*Profile, e
 			p.is_profile_public, 
 			COALESCE(w.balance / 100, 0) as reputation_score,
 			COALESCE(u.feed_time_limit_mins, 20) as feed_time_limit_mins,
+			p.is_patron,
 			p.created_at, p.updated_at 
 		FROM profiles p
 		JOIN users u ON p.user_id = u.id
@@ -595,4 +596,20 @@ func (r *Repository) SearchProfilesForFeed(ctx context.Context, currentUserID, q
 		return nil, fmt.Errorf("search profiles for feed failed: %w", err)
 	}
 	return rows, nil
+}
+
+func (r *Repository) SetPatronStatus(ctx context.Context, userID string, isPatron bool) error {
+	query := `UPDATE profiles SET is_patron = $1, updated_at = NOW() WHERE user_id = $2`
+	result, err := r.db.ExecContext(ctx, query, isPatron, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("profile not found for user %s", userID)
+	}
+	return nil
 }

@@ -16,6 +16,7 @@ const (
 	TypeTaskAccepted    EventType = "task.accepted"
 	TypeTaskCompleted   EventType = "task.completed"
 	TypeMessageReceived EventType = "chat.message_received"
+	TypeIAPReceived     EventType = "payment.iap_received"
 )
 
 // BaseEvent contains fields common to all system events.
@@ -57,6 +58,16 @@ type ChatEvent struct {
 	RecipientID    string `json:"recipient_id"`
 	ConversationID string `json:"conversation_id"`
 	Preview        string `json:"preview"`
+}
+
+// PaymentEvent is used for IAP purchases.
+type PaymentEvent struct {
+	BaseEvent
+	EventID   string  `json:"event_id"`
+	ProductID string  `json:"product_id"`
+	Amount    int64   `json:"amount"` // Seals amount
+	Price     float64 `json:"price"`
+	Currency  string  `json:"currency"`
 }
 
 // Envelope wraps any event with its metadata for Kafka transport.

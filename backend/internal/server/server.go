@@ -12,7 +12,8 @@ import (
 	mapmodule "github.com/brightbund-backend/internal/modules/map"
 	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
-	"github.com/brightbund-backend/internal/modules/seasons"
+	"github.com/brightbund-backend/internal/modules/ranks"
+	"github.com/brightbund-backend/internal/modules/payment"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/observability"
 	"github.com/brightbund-backend/internal/server/middleware"
@@ -27,7 +28,7 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, notificationsHandler *notifications.Handler, seasonsHandler *seasons.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, notificationsHandler *notifications.Handler, seasonsHandler *seasons.Handler, paymentHandler *payment.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:     cfg.Server.ReadTimeout,
 		WriteTimeout:    cfg.Server.WriteTimeout,
@@ -102,6 +103,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	// Firebase phone auth endpoints (recommended)
 	authGroup.Post("/firebase-phone-login", authLim, authHandler.FirebasePhoneAuth)
 	authGroup.Post("/firebase-phone-register", registerLim, authHandler.FirebasePhoneRegister)
+	
+	// Payment / RevenueCat Webhook (No JWT auth, uses internal token verification)
+	api.Post("/payment/webhook", paymentHandler.HandleWebhook)
 
 	authGroup.Post("/refresh", authLim, authHandler.Refresh)
 	authGroup.Post("/logout", middleware.RequireAuth(jwt, authRepo), middleware.TouchSession(authRepo), authHandler.Logout)
