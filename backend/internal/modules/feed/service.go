@@ -16,6 +16,7 @@ import (
 	"github.com/brightbund-backend/internal/platform/observability"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"go.uber.org/zap"
 )
 
@@ -53,14 +54,16 @@ type Service struct {
 	asynqClient *asynq.Client
 	profileRepo *profiles.Repository
 	settingsSvc settings.PublicService
+	eventBus    *eventbus.Producer
 }
 
-func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Repository, asynqClient *asynq.Client) *Service {
+func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Repository, asynqClient *asynq.Client, eventBus *eventbus.Producer) *Service {
 	return &Service{
 		repo:        repo,
 		cache:       cache,
 		profileRepo: profileRepo,
 		asynqClient: asynqClient,
+		eventBus:    eventBus,
 	}
 }
 
@@ -696,6 +699,21 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 		return nil, err
 	}
 
+	// Publish event
+	if s.eventBus != nil {
+		_ = s.eventBus.Publish(ctx, eventbus.TypePostCommented, eventbus.SocialEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypePostCommented,
+				ActorID:   userID.String(),
+				Timestamp: time.Now(),
+			},
+			PostID:       postID.String(),
+			PostAuthorID: authorID.String(),
+			CommentID:    comment.ID.String(),
+			CommentText:  comment.Content,
+		})
+	}
+
 	return s.repo.GetComment(ctx, comment.ID, userID)
 }
 
@@ -1055,7 +1073,20 @@ func (s *Service) ToggleLike(ctx context.Context, postID, userID uuid.UUID) (*Po
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.GetPost(ctx, postID, userID)
+
+	resp, err := s.repo.GetPost(ctx, postID, userID)
+	if err == nil && resp != nil && resp.ViewerHasLiked && s.eventBus != nil {
+		_ = s.eventBus.Publish(ctx, eventbus.TypePostLiked, eventbus.SocialEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypePostLiked,
+				ActorID:   userID.String(),
+				Timestamp: time.Now(),
+			},
+			PostID:       postID.String(),
+			PostAuthorID: resp.Author.ID.String(),
+		})
+	}
+	return resp, err
 }
 
 func (s *Service) GetInteractions(ctx context.Context, postID uuid.UUID, iType string, cursor string, limit int) (*InteractionListResponse, error) {

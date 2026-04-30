@@ -34,6 +34,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"go.uber.org/zap"
 )
 
@@ -141,6 +142,12 @@ func main() {
 
 	logger.Info("health checks passed")
 
+	var eventProducer *eventbus.Producer
+	if cfg.EventBus.Enabled {
+		eventProducer = eventbus.NewProducer(cfg.EventBus.Brokers, cfg.EventBus.Topics.SystemEvents, logger.Get())
+		logger.Info("Kafka event bus producer initialized")
+	}
+
 	verifiers := make(map[auth.ProviderType]auth.OAuthVerifier)
 
 	appleVerifier, err := auth.NewOIDCVerifier(auth.ProviderApple, cfg.OAuth.Apple.Issuer, cfg.OAuth.Apple.ClientID)
@@ -173,7 +180,7 @@ func main() {
 
 	// Initialize economy module with cache invalidator
 	economyRepo := economy.NewRepository(db.DB)
-	economyService := economy.NewService(economyRepo, cfg.Economy, profilesCache)
+	economyService := economy.NewService(economyRepo, cfg.Economy, profilesCache, eventProducer)
 	economyHandler := economy.NewHandler(economyService)
 	logger.Info("economy module initialized")
 
@@ -232,7 +239,7 @@ func main() {
 	profilesRepo := profiles.NewRepository(db.DB)
 
 	mapRepo := mapmodule.NewRepository(db.DB)
-	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
+	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache, eventProducer)
 
 	profilesService := profiles.NewService(profilesRepo, storageClient, profilesCache, mapService)
 
@@ -261,7 +268,7 @@ func main() {
 		LocalShareHigh:     cfg.Feed.LocalShareHigh,
 	})
 	feedCache := feed.NewCacheRepository(redisCache)
-	feedService := feed.NewService(feedRepo, feedCache, profilesRepo, asynqClient)
+	feedService := feed.NewService(feedRepo, feedCache, profilesRepo, asynqClient, eventProducer)
 
 	// Initialize Vision Client
 	var visionClient vision.Client
@@ -296,7 +303,13 @@ func main() {
 	chatRepo := chat.NewRepository(db.DB)
 	chatHub := chat.NewHub(redisCache)
 	chatHub.Start(context.Background())
-	chatService := chat.NewService(chatRepo, settingsService, chatHub, nil)
+
+	var pushNotifier chat.PushNotifier
+	if eventProducer != nil {
+		pushNotifier = chat.NewEventBusNotifier(eventProducer)
+	}
+
+	chatService := chat.NewService(chatRepo, settingsService, chatHub, pushNotifier)
 	chatHandler := chat.NewHandler(chatService, chatHub, jwtManager, authRepo)
 	mapService.SetChatIntegrator(chatService)
 	logger.Info("chat module initialized")
@@ -339,6 +352,9 @@ func main() {
 	<-sigCh
 	logger.Info("shutting down server...")
 	settingsWorker.Stop()
+	if eventProducer != nil {
+		_ = eventProducer.Close()
+	}
 
 	if err := app.ShutdownWithTimeout(10 * time.Second); err != nil {
 		logger.Error("server shutdown error", zap.Error(err))

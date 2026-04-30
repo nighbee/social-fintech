@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 )
 
 type Service struct {
@@ -134,4 +135,127 @@ func (s *Service) MarkRead(ctx context.Context, userID, notificationID uuid.UUID
 
 func (s *Service) MarkAllRead(ctx context.Context, userID uuid.UUID) error {
 	return s.repo.MarkAllRead(ctx, userID, time.Now().UTC())
+}
+
+// HandleSystemEvent takes a raw event from the bus and translates it into
+// a durable notification for the appropriate user.
+func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envelope) error {
+	switch envelope.Type {
+	case eventbus.TypePostLiked:
+		var ev eventbus.SocialEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		// Don't notify if user liked their own post
+		if ev.ActorID == ev.PostAuthorID {
+			return nil
+		}
+		authorUUID, _ := uuid.Parse(ev.PostAuthorID)
+		_, err := s.Enqueue(ctx, Enqueue{
+			UserID: authorUUID,
+			Kind:   KindPostLiked,
+			Title:  "Someone liked your post",
+			Payload: map[string]any{
+				"post_id":  ev.PostID,
+				"actor_id": ev.ActorID,
+			},
+		})
+		return err
+
+	case eventbus.TypePostCommented:
+		var ev eventbus.SocialEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		if ev.ActorID == ev.PostAuthorID {
+			return nil
+		}
+		authorUUID, _ := uuid.Parse(ev.PostAuthorID)
+		_, err := s.Enqueue(ctx, Enqueue{
+			UserID: authorUUID,
+			Kind:   KindPostCommented,
+			Title:  "Someone commented on your post",
+			Body:   ev.CommentText,
+			Payload: map[string]any{
+				"post_id":    ev.PostID,
+				"actor_id":   ev.ActorID,
+				"comment_id": ev.CommentID,
+			},
+		})
+		return err
+
+	case eventbus.TypeSealReceived:
+		var ev eventbus.EconomyEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		recipientUUID, _ := uuid.Parse(ev.RecipientID)
+		_, err := s.Enqueue(ctx, Enqueue{
+			UserID: recipientUUID,
+			Kind:   KindSealReceived,
+			Title:  fmt.Sprintf("You received %d seals!", ev.Amount),
+			Payload: map[string]any{
+				"actor_id": ev.ActorID,
+				"amount":   ev.Amount,
+				"post_id":  ev.PostID,
+			},
+		})
+		return err
+
+	case eventbus.TypeTaskAccepted:
+		var ev eventbus.TaskEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		helperUUID, _ := uuid.Parse(ev.HelperID)
+		_, err := s.Enqueue(ctx, Enqueue{
+			UserID: helperUUID,
+			Kind:   KindTaskAccepted,
+			Title:  "Your task application was accepted!",
+			Payload: map[string]any{
+				"task_id":    ev.TaskID,
+				"creator_id": ev.CreatorID,
+			},
+		})
+		return err
+
+	case eventbus.TypeTaskCompleted:
+		var ev eventbus.TaskEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		helperUUID, _ := uuid.Parse(ev.HelperID)
+		_, err := s.Enqueue(ctx, Enqueue{
+			UserID: helperUUID,
+			Kind:   KindTaskCompleted,
+			Title:  "Task completed! Reward received.",
+			Body:   fmt.Sprintf("You earned %d seals.", ev.Reward),
+			Payload: map[string]any{
+				"task_id": ev.TaskID,
+				"reward":  ev.Reward,
+			},
+		})
+		return err
+
+	case eventbus.TypeMessageReceived:
+		var ev eventbus.ChatEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		recipientUUID, _ := uuid.Parse(ev.RecipientID)
+		_, err := s.Enqueue(ctx, Enqueue{
+			UserID: recipientUUID,
+			Kind:   KindMessageReceived,
+			Title:  "New message",
+			Body:   ev.Preview,
+			Payload: map[string]any{
+				"actor_id":        ev.ActorID,
+				"conversation_id": ev.ConversationID,
+			},
+		})
+		return err
+
+	default:
+		return nil // Ignore unknown events
+	}
 }

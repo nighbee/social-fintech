@@ -24,6 +24,21 @@ const (
 	// KindSeasonEnd fires once when a 6-month season closes.
 	// Payload: { "season_year": int, "season_half": int, "final_position": int, "seals": int, "region": string }
 	KindSeasonEnd Kind = "season_end"
+
+	// Social
+	KindPostLiked     Kind = "post_liked"
+	KindPostCommented Kind = "post_commented"
+
+	// Economy
+	KindSealReceived Kind = "seal_received"
+
+	// Tasks
+	KindTaskApplied  Kind = "task_applied"
+	KindTaskAccepted Kind = "task_accepted"
+	KindTaskCompleted Kind = "task_completed"
+
+	// Chat
+	KindMessageReceived Kind = "message_received"
 )
 
 // Notification is the durable inbox row backing the bell icon.

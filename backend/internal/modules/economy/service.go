@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/brightbund-backend/internal/config"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 )
 
 type Service interface {
@@ -48,9 +49,10 @@ type service struct {
 	repo             Repository
 	cfg              config.EconomyConfig
 	cacheInvalidator StatsCacheInvalidator // Optional cache invalidator for profile stats
+	eventBus         *eventbus.Producer
 }
 
-func NewService(repo Repository, cfg config.EconomyConfig, cacheInvalidator StatsCacheInvalidator) Service {
+func NewService(repo Repository, cfg config.EconomyConfig, cacheInvalidator StatsCacheInvalidator, eventBus *eventbus.Producer) Service {
 	// Use no-op invalidator if none provided
 	if cacheInvalidator == nil {
 		cacheInvalidator = &NoopCacheInvalidator{}
@@ -59,6 +61,7 @@ func NewService(repo Repository, cfg config.EconomyConfig, cacheInvalidator Stat
 		repo:             repo,
 		cfg:              cfg,
 		cacheInvalidator: cacheInvalidator,
+		eventBus:         eventBus,
 	}
 }
 
@@ -1637,6 +1640,24 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 
 		if err := tx.Commit(); err != nil {
 			return WrapErrorf(err, "failed to commit transaction")
+		}
+
+		// Publish event
+		if s.eventBus != nil {
+			postID := ""
+			if pid, ok := metadata["post_id"].(string); ok {
+				postID = pid
+			}
+			_ = s.eventBus.Publish(ctx, eventbus.TypeSealReceived, eventbus.EconomyEvent{
+				BaseEvent: eventbus.BaseEvent{
+					Type:      eventbus.TypeSealReceived,
+					ActorID:   senderID,
+					Timestamp: time.Now(),
+				},
+				RecipientID: receiverID,
+				Amount:      int(CentinelsToSeals(amount)),
+				PostID:      postID,
+			})
 		}
 
 		_ = s.cacheInvalidator.InvalidateStats(ctx, senderID)

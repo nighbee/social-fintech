@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/settings"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"go.uber.org/zap"
 )
@@ -27,6 +28,31 @@ type noopPushNotifier struct{}
 
 func (n *noopPushNotifier) TriggerNewMessage(ctx context.Context, userID string, conversationID string, preview string) error {
 	return nil
+}
+
+type EventBusNotifier struct {
+	producer *eventbus.Producer
+}
+
+func NewEventBusNotifier(producer *eventbus.Producer) *EventBusNotifier {
+	return &EventBusNotifier{producer: producer}
+}
+
+func (n *EventBusNotifier) TriggerNewMessage(ctx context.Context, userID string, conversationID string, preview string) error {
+	if n.producer == nil {
+		return nil
+	}
+	// ActorID is not easily available in the TriggerNewMessage signature without refactoring callers.
+	// For now we set it empty, but ideally the caller passes it.
+	return n.producer.Publish(ctx, eventbus.TypeMessageReceived, eventbus.ChatEvent{
+		BaseEvent: eventbus.BaseEvent{
+			Type:      eventbus.TypeMessageReceived,
+			Timestamp: time.Now(),
+		},
+		RecipientID:    userID,
+		ConversationID: conversationID,
+		Preview:        preview,
+	})
 }
 
 type Service struct {

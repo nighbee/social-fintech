@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/database"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/storage"
 	"github.com/hibiken/asynq"
@@ -101,12 +103,18 @@ func main() {
 		profilesCache = profiles.NewCacheWrapperStatsCache(redisCache)
 	}
 
+	var eventProducer *eventbus.Producer
+	if cfg.EventBus.Enabled {
+		eventProducer = eventbus.NewProducer(cfg.EventBus.Brokers, cfg.EventBus.Topics.SystemEvents, logger.Get())
+		defer eventProducer.Close()
+	}
+
 	economyRepo := economy.NewRepository(db.DB)
-	economyService := economy.NewService(economyRepo, cfg.Economy, profilesCache)
+	economyService := economy.NewService(economyRepo, cfg.Economy, profilesCache, eventProducer)
 	economyWorker := economy.NewWorker(economyService, economyRepo, cfg.Economy)
 
 	mapRepo := mapmodule.NewRepository(db.DB)
-	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache)
+	mapService := mapmodule.NewService(mapRepo, economyRepo, redisCache, eventProducer)
 	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo, mapService)
 
 	notificationsRepo := notifications.NewRepository(db.DB)
@@ -122,6 +130,17 @@ func main() {
 	settingsService := settings.NewService(settingsRepo, nil)
 	settingsHardDeleteWorker := settings.NewHardDeleteWorker(settingsService)
 
+	var notificationConsumer *notifications.EventConsumer
+	if cfg.EventBus.Enabled {
+		notificationConsumer = notifications.NewEventConsumer(
+			cfg.EventBus.Brokers,
+			cfg.EventBus.Topics.SystemEvents,
+			"brightbund.notifications",
+			notificationsService,
+			logger.Get(),
+		)
+	}
+
 	// Start workers
 	economyWorker.Start()
 	logger.Info("economy worker started")
@@ -134,6 +153,15 @@ func main() {
 
 	settingsHardDeleteWorker.Start()
 	logger.Info("settings hard-delete worker started")
+
+	if notificationConsumer != nil {
+		go func() {
+			if err := notificationConsumer.Start(context.Background()); err != nil {
+				logger.Error("notification consumer error", zap.Error(err))
+			}
+		}()
+		logger.Info("notification event consumer started")
+	}
 
 	// Start Asynq Server for Video Processing
 	mux := asynq.NewServeMux()
@@ -154,7 +182,7 @@ func main() {
 	logger.Info("shutting down workers...")
 
 	var wg sync.WaitGroup
-	wg.Add(5)
+	wg.Add(6)
 
 	go func() {
 		defer wg.Done()
@@ -184,6 +212,14 @@ func main() {
 		defer wg.Done()
 		asynqServer.Shutdown()
 		logger.Info("asynq task server stopped")
+	}()
+
+	go func() {
+		defer wg.Done()
+		if notificationConsumer != nil {
+			_ = notificationConsumer.Close()
+		}
+		logger.Info("notification event consumer stopped")
 	}()
 
 	wg.Wait()

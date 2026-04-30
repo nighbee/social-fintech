@@ -45,7 +45,7 @@ func TestProcessReferralBonus_WritesLedgerAndWallet(t *testing.T) {
 	cfg := config.EconomyConfig{
 		ReferralBonusCents: 100,
 	}
-	svc := NewService(repo, cfg, nil)
+	svc := NewService(repo, cfg, nil, nil)
 
 	if err := svc.ProcessReferralBonus(ctx, referrerID, refereeID); err != nil {
 		t.Fatalf("ProcessReferralBonus failed: %v", err)
@@ -133,7 +133,7 @@ func TestProcessReferralBonus_RestrictedRefereeRegistersPendingOnly(t *testing.T
 
 	repo := NewRepository(db)
 	cfg := config.EconomyConfig{ReferralBonusCents: 100}
-	svc := NewService(repo, cfg, nil)
+	svc := NewService(repo, cfg, nil, nil)
 
 	if err := svc.ProcessReferralBonus(ctx, referrerID, refereeID); err != nil {
 		t.Fatalf("ProcessReferralBonus failed: %v", err)
@@ -182,7 +182,7 @@ func TestActivateDeferredReferral_RequiresActiveReferee(t *testing.T) {
 
 	repo := NewRepository(db)
 	cfg := config.EconomyConfig{ReferralBonusCents: 100}
-	svc := NewService(repo, cfg, nil)
+	svc := NewService(repo, cfg, nil, nil)
 
 	if err := svc.RegisterPendingReferral(ctx, referrerID, refereeID); err != nil {
 		t.Fatalf("RegisterPendingReferral failed: %v", err)

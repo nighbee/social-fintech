@@ -14,7 +14,7 @@ func RegisterRoutes(app *fiber.App, db *sqlx.DB, redisClient *cache.Cache, profi
 	// Initialize layers
 	repo := NewRepository(db, publicURL)
 	cacheRepo := NewCacheRepository(redisClient)
-	service := NewService(repo, cacheRepo, profilesRepo, asynqClient)
+	service := NewService(repo, cacheRepo, profilesRepo, asynqClient, nil)
 	// Start Background Workers
 	interactionWorker := NewInteractionWorker(redisClient, repo)
 	interactionWorker.Start()

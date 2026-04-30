@@ -119,3 +119,10 @@ activation:
   required_meaningful_actions: 5
   max_registrations_per_device_day: 3
 
+eventbus:
+  enabled: true
+  brokers:
+    - kafka:9092
+  topics:
+    system_events: "brightbund.system.events"
+

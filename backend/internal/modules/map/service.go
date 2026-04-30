@@ -12,6 +12,7 @@ import (
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/google/uuid"
 	"github.com/uber/h3-go/v4"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"go.uber.org/zap"
 )
 
@@ -39,17 +40,19 @@ type Service struct {
 	economyRepo economy.Repository
 	cache       *cache.Cache
 	chat        ChatIntegrator
+	eventBus    *eventbus.Producer
 }
 
 type ChatIntegrator interface {
 	OnTaskApplicationAccepted(ctx context.Context, taskID, creatorID, helperID string) error
 }
 
-func NewService(repo Repository, economyRepo economy.Repository, cacheClient *cache.Cache) *Service {
+func NewService(repo Repository, economyRepo economy.Repository, cacheClient *cache.Cache, eventBus *eventbus.Producer) *Service {
 	return &Service{
 		repo:        repo,
 		economyRepo: economyRepo,
 		cache:       cacheClient,
+		eventBus:    eventBus,
 	}
 }
 
@@ -402,6 +405,20 @@ func (s *Service) ApplyToTask(ctx context.Context, userID, taskID string) (*Appl
 		return nil, err
 	}
 
+	// Publish event
+	if s.eventBus != nil {
+		_ = s.eventBus.Publish(ctx, eventbus.TypeTaskApplied, eventbus.TaskEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeTaskApplied,
+				ActorID:   userID,
+				Timestamp: time.Now(),
+			},
+			TaskID:    taskID,
+			CreatorID: task.CreatorID,
+			HelperID:  userID,
+		})
+	}
+
 	// TODO(Phase 6): Open a direct chat between task.CreatorID and userID scoped to taskID.
 	// call: s.chatService.OpenTaskChat(ctx, task.CreatorID, userID, taskID)
 
@@ -498,6 +515,20 @@ func (s *Service) AcceptApplication(ctx context.Context, userID, taskID, applica
 	}
 	if !updated {
 		return fmt.Errorf("application is not pending")
+	}
+
+	// Publish event
+	if s.eventBus != nil {
+		_ = s.eventBus.Publish(ctx, eventbus.TypeTaskAccepted, eventbus.TaskEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeTaskAccepted,
+				ActorID:   userID,
+				Timestamp: time.Now(),
+			},
+			TaskID:    taskID,
+			CreatorID: userID,
+			HelperID:  app.ApplicantID,
+		})
 	}
 
 	if acceptedCount+1 >= task.WorkersNeeded {
@@ -650,6 +681,21 @@ func (s *Service) ConfirmCompletion(ctx context.Context, userID, taskID, applica
 	// Update leaderboards for the helper (fire-and-forget).
 	s.updateLeaderboards(app.ApplicantID, task)
 
+	// Publish event
+	if s.eventBus != nil {
+		_ = s.eventBus.Publish(ctx, eventbus.TypeTaskCompleted, eventbus.TaskEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeTaskCompleted,
+				ActorID:   userID,
+				Timestamp: time.Now(),
+			},
+			TaskID:    taskID,
+			CreatorID: userID,
+			HelperID:  app.ApplicantID,
+			Reward:    int(economy.CentinelsToSeals(task.Reward)),
+		})
+	}
+
 	return &ConfirmCompletionResponse{
 		TaskID:        taskID,
 		ApplicationID: applicationID,
@@ -752,7 +798,7 @@ func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionA
 	}
 	// Stabilize district/city assignment within the same ISO week when country is unchanged.
 	// This prevents ranking "jumps" for users on border zones while keeping country moves immediate.
-	if shouldKeepWeeklyRegion(prev, h3Res5, h3Res4, h3Res2, time.Now().UTC()) {
+	if shouldKeepWeeklyRegion(prev, h3Res5, h3Res2, time.Now().UTC()) {
 		if prev != nil {
 			if prev.H3Res5 != nil && *prev.H3Res5 != "" {
 				h3Res5 = *prev.H3Res5
@@ -781,7 +827,7 @@ func (s *Service) SetUserRegion(ctx context.Context, userID string, req *RegionA
 	}, nil
 }
 
-func shouldKeepWeeklyRegion(prev *UserRegionState, nextRes5, nextRes4, nextRes2 string, now time.Time) bool {
+func shouldKeepWeeklyRegion(prev *UserRegionState, nextRes5, nextRes2 string, now time.Time) bool {
 	if prev == nil || prev.LocationUpdatedAt == nil || prev.H3Res5 == nil || prev.H3Res2 == nil {
 		return false
 	}

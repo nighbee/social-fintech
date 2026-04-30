@@ -28,6 +28,7 @@ type Config struct {
 	Activation ActivationConfig `yaml:"activation"`
 	SMTP       SMTPConfig       `yaml:"smtp"`
 	Support    SupportConfig    `yaml:"support"`
+	EventBus   EventBusConfig   `yaml:"eventbus"`
 }
 
 // SMTPConfig drives outbound email (registration codes, Contact Us
@@ -49,6 +50,16 @@ type SMTPConfig struct {
 // settings module if left blank.
 type SupportConfig struct {
 	Inbox string `yaml:"inbox"`
+}
+
+type EventBusConfig struct {
+	Enabled bool           `yaml:"enabled"`
+	Brokers []string       `yaml:"brokers"`
+	Topics  EventBusTopics `yaml:"topics"`
+}
+
+type EventBusTopics struct {
+	SystemEvents string `yaml:"system_events"`
 }
 
 type AdminConfig struct {
@@ -575,6 +586,20 @@ func overrideFromEnv(cfg *Config) {
 		if ttl, err := parseDurationEnv(v); err == nil {
 			cfg.Cache.ProfileStatsTTL = ttl
 		}
+	}
+
+	// EventBus
+	if v := os.Getenv("EVENTBUS_ENABLED"); v != "" {
+		cfg.EventBus.Enabled = strings.EqualFold(v, "true") || v == "1"
+	}
+	if v := os.Getenv("KAFKA_BROKERS"); v != "" {
+		cfg.EventBus.Brokers = strings.Split(v, ",")
+		for i := range cfg.EventBus.Brokers {
+			cfg.EventBus.Brokers[i] = strings.TrimSpace(cfg.EventBus.Brokers[i])
+		}
+	}
+	if v := os.Getenv("EVENTBUS_TOPIC_SYSTEM"); v != "" {
+		cfg.EventBus.Topics.SystemEvents = v
 	}
 }
 
