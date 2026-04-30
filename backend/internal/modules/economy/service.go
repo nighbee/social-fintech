@@ -129,7 +129,7 @@ func (s *service) ensureUserActivated(ctx context.Context, userID string) error 
 		return NewCooldownError(now, restrictionsUntil.Time.Sub(now), 0)
 	}
 
-	return NewCooldownError(now, 24*time.Hour, 0)
+	return NewEconomyError(ErrCooldownActive, CodeCooldownActive, "user account is not activated or restricted", 403)
 }
 
 func (s *service) isUserActivationEligible(ctx context.Context, userID string) (bool, error) {

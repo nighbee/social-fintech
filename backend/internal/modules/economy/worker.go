@@ -125,6 +125,7 @@ func (w *Worker) ProcessDailyAccruals(ctx context.Context) {
 		FROM wallets w
 		JOIN users u ON u.id = w.user_id
 		WHERE currency = 'SILVER_SEAL'
+		  AND u.activation_status = 'active'
 		  AND free_balance < $1
 		  AND (
 		    last_daily_accrual_at IS NULL 
