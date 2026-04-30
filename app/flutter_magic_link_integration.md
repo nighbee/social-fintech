@@ -73,4 +73,3 @@ If the login endpoint returns a `404`, route the user to an onboarding screen to
 
 ## 5. Security & Rate Limiting Guidelines
 - [ ] Ensure the UI handles `429 Too Many Requests` gracefully if the user tries to request too many links or hits the registration endpoint too frequently.
-- [ ] Implement a heartbeat animation or subtle UI cue when handling `INSUFFICIENT_FUNDS` or rate limits, rather than disruptive popups (as per BrightBund's Anti-Abuse mandates).
