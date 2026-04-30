@@ -1720,30 +1720,6 @@ class MapPageController {
       }
     }
 
-    final pendingAfterDirectCheck = matchedTaskStatus == null ||
-        isPendingLikeStatus(matchedTaskStatus);
-    if (pendingAfterDirectCheck) {
-      final taskSnapshot = await _fetchTaskSnapshotDirect(taskId: taskId);
-      if (taskSnapshot != null) {
-        final normalizedTaskStatus = normalizeStatus(taskSnapshot.status);
-        final hasNoSlotsLeft = taskSnapshot.workersNeeded > 0 &&
-            taskSnapshot.workersFilled >= taskSnapshot.workersNeeded;
-        final isTaskAssignedLike = normalizedTaskStatus.contains('accepted') ||
-            normalizedTaskStatus.contains('assigned') ||
-            normalizedTaskStatus.contains('arrived') ||
-            normalizedTaskStatus.contains('in_progress') ||
-            normalizedTaskStatus.contains('code_required') ||
-            normalizedTaskStatus.contains('code_verified') ||
-            normalizedTaskStatus.contains('confirmed') ||
-            normalizedTaskStatus.contains('completed') ||
-            normalizedTaskStatus.contains('closed') ||
-            normalizedTaskStatus.contains('cancelled');
-        if (hasNoSlotsLeft || isTaskAssignedLike) {
-          matchedTaskStatus = 'rejected';
-        }
-      }
-    }
-
     if (matchedTaskStatus != null) {
       consecutiveMissingAppliedTaskChecks = 0;
     }
@@ -1837,44 +1813,6 @@ class MapPageController {
           }
           final status = (raw['status'] ?? '').toString().trim();
           return status.isEmpty ? null : status;
-        },
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<({int workersNeeded, int workersFilled, String status})?>
-      _fetchTaskSnapshotDirect({
-    required String taskId,
-  }) async {
-    final normalizedTaskId = taskId.trim();
-    if (normalizedTaskId.isEmpty) {
-      return null;
-    }
-    try {
-      final client = getIt<RestClient>(instanceName: 'DioClient');
-      final response = await client.get(
-        EndPoints.mapTaskById(normalizedTaskId),
-      );
-      return response.fold(
-        (_) => null,
-        (result) {
-          final raw = result.data;
-          if (raw is! Map) {
-            return null;
-          }
-          final workersNeededRaw = raw['workers_needed'];
-          final workersFilledRaw = raw['workers_filled'];
-          final statusRaw = raw['status'];
-          if (workersNeededRaw is! num || workersFilledRaw is! num) {
-            return null;
-          }
-          return (
-            workersNeeded: workersNeededRaw.toInt(),
-            workersFilled: workersFilledRaw.toInt(),
-            status: (statusRaw ?? '').toString(),
-          );
         },
       );
     } catch (_) {
@@ -1993,6 +1931,10 @@ class MapPageController {
 
       // Keep applied tasks in sync for mixed-role accounts.
       _mapBloc.add(const MapEvent.getAppliedTasks());
+      // Backend auto-reject is async; refresh once more shortly after moderation.
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
+        _mapBloc.add(const MapEvent.getAppliedTasks());
+      });
       runSetState(() {});
     }
   }
