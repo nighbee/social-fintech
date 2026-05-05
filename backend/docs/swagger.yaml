@@ -1363,11 +1363,25 @@ definitions:
     - ranking_up
     - moved_user
     - season_end
+    - post_liked
+    - post_commented
+    - seal_received
+    - task_applied
+    - task_accepted
+    - task_completed
+    - message_received
     type: string
     x-enum-varnames:
     - KindRankingUp
     - KindMovedUser
     - KindSeasonEnd
+    - KindPostLiked
+    - KindPostCommented
+    - KindSealReceived
+    - KindTaskApplied
+    - KindTaskAccepted
+    - KindTaskCompleted
+    - KindMessageReceived
   notifications.ListResponse:
     properties:
       items:
@@ -1402,6 +1416,40 @@ definitions:
     properties:
       count:
         type: integer
+    type: object
+  payment.EventPayload:
+    properties:
+      app_user_id:
+        type: string
+      currency:
+        type: string
+      entitlement_ids:
+        items:
+          type: string
+        type: array
+      environment:
+        type: string
+      expiration_at_ms:
+        type: integer
+      id:
+        type: string
+      is_restore:
+        type: boolean
+      price:
+        type: number
+      product_id:
+        type: string
+      purchased_at_ms:
+        type: integer
+      store:
+        type: string
+      type:
+        type: string
+    type: object
+  payment.RevenueCatWebhook:
+    properties:
+      event:
+        $ref: '#/definitions/payment.EventPayload'
     type: object
   profiles.AllyProfile:
     properties:
@@ -1449,6 +1497,9 @@ definitions:
       first_name:
         example: Alice
         type: string
+      is_patron:
+        example: true
+        type: boolean
       is_public:
         example: true
         type: boolean
@@ -1528,6 +1579,9 @@ definitions:
       first_name:
         example: Alice
         type: string
+      is_patron:
+        example: true
+        type: boolean
       last_name:
         example: Wonderland
         type: string
@@ -1816,6 +1870,44 @@ info:
   title: BrightBund API
   version: "1.0"
 paths:
+  /admin/ban:
+    post:
+      consumes:
+      - application/json
+      description: Ban a user temporarily or permanently (admin only)
+      parameters:
+      - description: Ban details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AdminBanRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - Bearer: []
+      summary: 'Admin: Ban user'
+      tags:
+      - Auth Admin
   /admin/comments/{comment_id}:
     delete:
       description: Emergency deletion of any comment by an administrator.
@@ -1968,44 +2060,6 @@ paths:
       summary: Review moderation reports
       tags:
       - Feed Moderation
-  /auth/admin/ban:
-    post:
-      consumes:
-      - application/json
-      description: Ban a user temporarily or permanently (admin only)
-      parameters:
-      - description: Ban details
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/auth.AdminBanRequest'
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-      security:
-      - Bearer: []
-      summary: 'Admin: Ban user'
-      tags:
-      - Auth Admin
   /auth/check-email:
     post:
       consumes:
@@ -3628,6 +3682,48 @@ paths:
       summary: Unread count
       tags:
       - Notifications
+  /payment/webhook:
+    post:
+      consumes:
+      - application/json
+      description: Receives IAP events from RevenueCat and publishes them to the event
+        bus
+      parameters:
+      - description: RevenueCat Webhook Secret
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: RevenueCat Webhook Payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/payment.RevenueCatWebhook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: RevenueCat Webhook
+      tags:
+      - payment
   /posts:
     post:
       consumes:

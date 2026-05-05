@@ -555,7 +555,7 @@ func (h *Handler) FirebasePhoneRegister(c *fiber.Ctx) error {
 // @Failure 401 {object} ErrorResponse
 // @Failure 403 {object} ErrorResponse
 // @Failure 500 {object} ErrorResponse
-// @Router /auth/admin/ban [post]
+// @Router /admin/ban [post]
 func (h *Handler) AdminBanUser(c *fiber.Ctx) error {
 	var req AdminBanRequest
 	if err := c.BodyParser(&req); err != nil {

@@ -51,3 +51,12 @@ app.*.map.json
 # FVM Version Cache
 .fvm/
 .fvmrc
+
+
+.agents/ 
+.claude/ 
+.firebase/
+.kiro/ 
+.windsurf/ 
+
+.firebaserc 

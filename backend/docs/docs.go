@@ -23,6 +23,66 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/ban": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Ban a user temporarily or permanently (admin only)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth Admin"
+                ],
+                "summary": "Admin: Ban user",
+                "parameters": [
+                    {
+                        "description": "Ban details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.AdminBanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/comments/{comment_id}": {
             "delete": {
                 "security": [
@@ -256,66 +316,6 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/admin/ban": {
-            "post": {
-                "security": [
-                    {
-                        "Bearer": []
-                    }
-                ],
-                "description": "Ban a user temporarily or permanently (admin only)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth Admin"
-                ],
-                "summary": "Admin: Ban user",
-                "parameters": [
-                    {
-                        "description": "Ban details",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/auth.AdminBanRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -2777,6 +2777,68 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/payment/webhook": {
+            "post": {
+                "description": "Receives IAP events from RevenueCat and publishes them to the event bus",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "payment"
+                ],
+                "summary": "RevenueCat Webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "RevenueCat Webhook Secret",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "RevenueCat Webhook Payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/payment.RevenueCatWebhook"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             }
@@ -7980,12 +8042,26 @@ const docTemplate = `{
             "enum": [
                 "ranking_up",
                 "moved_user",
-                "season_end"
+                "season_end",
+                "post_liked",
+                "post_commented",
+                "seal_received",
+                "task_applied",
+                "task_accepted",
+                "task_completed",
+                "message_received"
             ],
             "x-enum-varnames": [
                 "KindRankingUp",
                 "KindMovedUser",
-                "KindSeasonEnd"
+                "KindSeasonEnd",
+                "KindPostLiked",
+                "KindPostCommented",
+                "KindSealReceived",
+                "KindTaskApplied",
+                "KindTaskAccepted",
+                "KindTaskCompleted",
+                "KindMessageReceived"
             ]
         },
         "notifications.ListResponse": {
@@ -8039,6 +8115,58 @@ const docTemplate = `{
             "properties": {
                 "count": {
                     "type": "integer"
+                }
+            }
+        },
+        "payment.EventPayload": {
+            "type": "object",
+            "properties": {
+                "app_user_id": {
+                    "type": "string"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "entitlement_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "environment": {
+                    "type": "string"
+                },
+                "expiration_at_ms": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_restore": {
+                    "type": "boolean"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "product_id": {
+                    "type": "string"
+                },
+                "purchased_at_ms": {
+                    "type": "integer"
+                },
+                "store": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "payment.RevenueCatWebhook": {
+            "type": "object",
+            "properties": {
+                "event": {
+                    "$ref": "#/definitions/payment.EventPayload"
                 }
             }
         },
@@ -8102,6 +8230,10 @@ const docTemplate = `{
                 "first_name": {
                     "type": "string",
                     "example": "Alice"
+                },
+                "is_patron": {
+                    "type": "boolean",
+                    "example": true
                 },
                 "is_public": {
                     "type": "boolean",
@@ -8209,6 +8341,10 @@ const docTemplate = `{
                 "first_name": {
                     "type": "string",
                     "example": "Alice"
+                },
+                "is_patron": {
+                    "type": "boolean",
+                    "example": true
                 },
                 "last_name": {
                     "type": "string",

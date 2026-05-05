@@ -103,6 +103,10 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	// Firebase phone auth endpoints (recommended)
 	authGroup.Post("/firebase-phone-login", authLim, authHandler.FirebasePhoneAuth)
 	authGroup.Post("/firebase-phone-register", registerLim, authHandler.FirebasePhoneRegister)
+
+	// Firebase email auth endpoints (magic link)
+	authGroup.Post("/firebase-email-login", authLim, authHandler.FirebaseEmailAuth)
+	authGroup.Post("/firebase-email-register", registerLim, authHandler.FirebaseEmailRegister)
 	
 	// Payment / RevenueCat Webhook (No JWT auth, uses internal token verification)
 	api.Post("/payment/webhook", paymentHandler.HandleWebhook)
