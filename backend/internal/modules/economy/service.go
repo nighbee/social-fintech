@@ -385,6 +385,10 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 			return err
 		}
 		receiverWallet.Balance = newRBalance
+		// Mirror the DB-side increment so the in-memory copy stays consistent
+		// for downstream rank-tier computation (rank is driven by received
+		// seals, not balance).
+		receiverWallet.TotalReceivedAmount += amountCents
 
 		debitEntry := &LedgerEntry{
 			ID:             uuid.New().String(),
@@ -420,7 +424,7 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 			return WrapErrorf(err, "failed to upsert gold period stat")
 		}
 
-		receiverRankTier := ranks.GetRankTierString(int(receiverWallet.Balance / CentinelsPerSeal))
+		receiverRankTier := ranks.GetRankTierString(int(receiverWallet.TotalReceivedAmount / CentinelsPerSeal))
 		if err := txRepo.UpsertProfileSealProjection(ctx, senderUserID, req.RecipientUserID, amountCents/CentinelsPerSeal, receiverWallet.Balance, receiverRankTier); err != nil {
 			return WrapErrorf(err, "failed to upsert profile seal projection")
 		}
@@ -1562,6 +1566,9 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			return err
 		}
 		receiverWallet.Balance = newRBalance
+		// Keep the in-memory total_received_amount in sync with the DB
+		// increment so rank-tier reflects the post-credit state.
+		receiverWallet.TotalReceivedAmount += amount
 
 		// 6. Create Ledger Entries (SILVER debit + GOLD credit)
 		debitMeta := map[string]interface{}{
@@ -1618,7 +1625,7 @@ func (s *service) processSealTransfer(ctx context.Context, senderID, receiverID 
 			return WrapErrorf(err, "failed to upsert gold period stat")
 		}
 
-		receiverRankTier := ranks.GetRankTierString(int(receiverWallet.Balance / CentinelsPerSeal))
+		receiverRankTier := ranks.GetRankTierString(int(receiverWallet.TotalReceivedAmount / CentinelsPerSeal))
 		if err := txRepo.UpsertProfileSealProjection(ctx, senderID, receiverID, amount/CentinelsPerSeal, receiverWallet.Balance, receiverRankTier); err != nil {
 			return WrapErrorf(err, "failed to upsert profile seal projection")
 		}

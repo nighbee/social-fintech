@@ -29,7 +29,14 @@ type CurrentSeasonResponse struct {
 }
 
 // ArchiveItem is one row of the user's per-season archive.
+//
+// SealCount stores the number of Gold Seals the user **received** during
+// the season (whole seals, not centinels). Per-season "given" seals,
+// rank, and level live inside SnapshotPayload so we can extend the
+// schema without migrations — see seasons.snapshotProvider for the
+// payload shape.
 type ArchiveItem struct {
+	UserID          uuid.UUID       `db:"user_id" json:"user_id"`
 	SeasonID        uuid.UUID       `db:"season_id" json:"season_id"`
 	SeasonYear      int             `db:"season_year" json:"season_year"`
 	SeasonHalf      int             `db:"season_half" json:"season_half"`

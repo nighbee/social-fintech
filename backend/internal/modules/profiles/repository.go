@@ -32,7 +32,7 @@ func (r *Repository) GetProfile(ctx context.Context, userID string) (*Profile, e
 			COALESCE(p.location_country, '') as location_country,
 			COALESCE(p.location_city, '') as location_city, 
 			p.is_profile_public, 
-			COALESCE(w.balance / 100, 0) as reputation_score,
+			COALESCE(w.total_received_amount / 100, 0) as reputation_score,
 			COALESCE(u.feed_time_limit_mins, 20) as feed_time_limit_mins,
 			p.is_patron,
 			p.created_at, p.updated_at 
@@ -314,7 +314,7 @@ func (r *Repository) GetAllies(ctx context.Context, userID, searchQuery string, 
 			p.user_id,
 			COALESCE(p.display_name, '') as display_name,
 			COALESCE(p.avatar_url, '') as avatar_url,
-			COALESCE(w.balance / 100, 0) as reputation_score
+			COALESCE(w.total_received_amount / 100, 0) as reputation_score
 		FROM user_relationships r
 		JOIN profiles p ON r.user_id = p.user_id
 		JOIN users u ON u.id = p.user_id
@@ -566,7 +566,7 @@ func (r *Repository) SearchProfilesForFeed(ctx context.Context, currentUserID, q
 			u.id as user_id,
 			COALESCE(p.display_name, '') as display_name,
 			COALESCE(p.avatar_url, '') as avatar_url,
-			COALESCE(w.balance / 100, 0) as reputation_score
+			COALESCE(w.total_received_amount / 100, 0) as reputation_score
 		FROM users u
 		JOIN profiles p ON p.user_id = u.id
 		LEFT JOIN wallets w ON u.id = w.user_id AND w.currency = 'GOLD_SEAL'

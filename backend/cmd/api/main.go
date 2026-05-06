@@ -333,6 +333,9 @@ func main() {
 	seasonsRepo := seasons.NewRepository(db.DB)
 	seasonsService := seasons.NewService(seasonsRepo)
 	seasonsHandler := seasons.NewHandler(seasonsService)
+	seasonsSnapshot := seasons.NewSnapshotProvider(db.DB)
+	seasonsWorker := seasons.NewCloseWorker(seasonsService, seasonsSnapshot, time.Hour, logger.Get())
+	seasonsWorker.Start()
 	logger.Info("seasons module initialized")
 
 	paymentRepo := payment.NewRepository(db.DB)
@@ -358,6 +361,7 @@ func main() {
 	<-sigCh
 	logger.Info("shutting down server...")
 	settingsWorker.Stop()
+	seasonsWorker.Stop()
 	if eventProducer != nil {
 		_ = eventProducer.Close()
 	}

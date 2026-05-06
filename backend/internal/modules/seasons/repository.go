@@ -114,7 +114,7 @@ func (r *PostgresRepository) UpsertArchive(ctx context.Context, item *ArchiveIte
 			scope            = EXCLUDED.scope,
 			snapshot_payload = EXCLUDED.snapshot_payload
 	`,
-		item.SeasonID, item.SeasonID, item.SeasonYear, item.SeasonHalf,
+		item.UserID, item.SeasonID, item.SeasonYear, item.SeasonHalf,
 		positionArg, item.SealCount, item.Region, item.Scope, string(payload),
 	)
 	return err
