@@ -91,26 +91,13 @@ class Runner {
       debugPrint('Firebase initialized successfully');
       return;
     } catch (e) {
-      debugPrint('Firebase default init failed on mobile, trying fallback: $e');
-    }
-
-    if (defaultTargetPlatform == TargetPlatform.iOS) {
-      await Firebase.initializeApp(
-        options: const FirebaseOptions(
-          apiKey: 'AIzaSyD0n3YjMtKPAGAR_kprsMMYYl-Wt-vrlK4',
-          appId: '1:493875542368:ios:4b7c0c7d67bb972d868605',
-          messagingSenderId: '493875542368',
-          projectId: 'smsbb-6e583',
-          storageBucket: 'smsbb-6e583.firebasestorage.app',
-          iosBundleId: 'com.brightbund.bb',
-        ),
-      );
-      debugPrint('Firebase initialized successfully (iOS fallback options)');
-      return;
+      debugPrint('Firebase default init failed on mobile: $e');
     }
 
     throw StateError(
-      'Firebase initialization failed on mobile and no fallback options are configured for this platform.',
+      'Firebase initialization failed on mobile. '
+      'Check ios/Runner/GoogleService-Info.plist (or Android google-services.json) '
+      'and ensure it matches PRODUCT_BUNDLE_IDENTIFIER.',
     );
   }
 }

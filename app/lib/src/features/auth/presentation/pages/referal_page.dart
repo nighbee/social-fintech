@@ -19,6 +19,7 @@ class ReferalPage extends StatefulWidget {
     this.password,
     this.phoneNumber,
     this.firebaseIdToken,
+    this.firebaseAuthProvider,
     this.firstName,
     this.lastName,
     this.dateOfBirth,
@@ -29,6 +30,7 @@ class ReferalPage extends StatefulWidget {
   final String? password;
   final String? phoneNumber;
   final String? firebaseIdToken;
+  final String? firebaseAuthProvider;
   final String? firstName;
   final String? lastName;
   final String? dateOfBirth;
@@ -83,12 +85,9 @@ class _ReferalPageState extends State<ReferalPage> {
 
     final referralUserId = _selectedReferralUser?.userId;
     final request = widget.firebaseIdToken != null
-        ? RegisterRequest.firebasePhone(
-            firebaseIdToken: widget.firebaseIdToken!,
-            firstName: widget.firstName!,
-            lastName: widget.lastName!,
-            dateOfBirth: widget.dateOfBirth!,
-            referral: withReferral ? referralUserId : '',
+        ? _buildFirebaseRegisterRequest(
+            withReferral: withReferral,
+            referralUserId: referralUserId,
           )
         : RegisterRequest.email(
             email: widget.email!,
@@ -100,6 +99,29 @@ class _ReferalPageState extends State<ReferalPage> {
           );
 
     getIt<AuthBloc>().add(AuthEvent.register(request: request));
+  }
+
+  RegisterRequest _buildFirebaseRegisterRequest({
+    required bool withReferral,
+    required String? referralUserId,
+  }) {
+    final provider = (widget.firebaseAuthProvider ?? '').trim().toLowerCase();
+    if (provider == 'email') {
+      return RegisterRequest.firebaseEmail(
+        firebaseIdToken: widget.firebaseIdToken!,
+        firstName: widget.firstName!,
+        lastName: widget.lastName!,
+        dateOfBirth: widget.dateOfBirth!,
+        referral: withReferral ? referralUserId : '',
+      );
+    }
+    return RegisterRequest.firebasePhone(
+      firebaseIdToken: widget.firebaseIdToken!,
+      firstName: widget.firstName!,
+      lastName: widget.lastName!,
+      dateOfBirth: widget.dateOfBirth!,
+      referral: withReferral ? referralUserId : '',
+    );
   }
 
   @override
@@ -115,7 +137,22 @@ class _ReferalPageState extends State<ReferalPage> {
               SnackBar(content: Text(message), backgroundColor: Colors.red),
             );
           },
-          goRegister: () {},
+          goRegister: () {
+                    final authBloc = context.read<AuthBloc>();
+                    final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
+                    final firebaseAuthProvider =
+                        authBloc.viewModel.firebaseAuthProvider;
+                    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+                      return;
+                    }
+                    context.pushNamed(
+                      RouteNames.info,
+                      extra: {
+                        'firebaseIdToken': firebaseIdToken,
+                        'firebaseAuthProvider': firebaseAuthProvider,
+                      },
+                    );
+                  },
           loaded: (_) {},
           authenticated: (_) async {
             if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
@@ -146,6 +183,7 @@ class _ReferalPageState extends State<ReferalPage> {
           },
           phoneVerificationStarted: (_, __) {},
           emailChecked: (_, __) {},
+          magicLinkSent: (_) {},
         );
       },
       builder: (context, state) {

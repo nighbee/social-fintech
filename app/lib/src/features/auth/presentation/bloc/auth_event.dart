@@ -17,6 +17,12 @@ class AuthEvent with _$AuthEvent {
     required String code,
     required bool isLogin,
   }) = _VerifyOtpCode;
+  const factory AuthEvent.sendEmailMagicLink({
+    required String email,
+  }) = _SendEmailMagicLink;
+  const factory AuthEvent.completeEmailMagicLink({
+    required String emailLink,
+  }) = _CompleteEmailMagicLink;
   const factory AuthEvent.searchUsers({
     required SearchUsersRequest request,
   }) = _SearchUsers;

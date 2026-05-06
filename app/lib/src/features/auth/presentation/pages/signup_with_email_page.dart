@@ -31,23 +31,26 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
     super.dispose();
   }
 
-  void _continueToCreatePassword() {
+  void _sendMagicLink() {
     if (_formKey.currentState!.validate()) {
-      context.pushNamed(
-        RouteNames.createPassword,
-        extra: {'email': _emailController.text.trim()},
+      context.read<AuthBloc>().add(
+        AuthEvent.sendEmailMagicLink(
+          email: _emailController.text.trim(),
+        ),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.theme.mainBackground,
-      body: Form(
-        key: _formKey,
-        child: Stack(
-          children: [
+    return BlocProvider.value(
+      value: getIt<AuthBloc>(),
+      child: Scaffold(
+        backgroundColor: context.theme.mainBackground,
+        body: Form(
+          key: _formKey,
+          child: Stack(
+            children: [
             // Layer 1: Fixed particle background (doesn't scroll)
             Positioned.fill(
               child: IgnorePointer(
@@ -74,7 +77,22 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                       ),
                     );
                   },
-                  goRegister: () {},
+                  goRegister: () {
+                    final authBloc = context.read<AuthBloc>();
+                    final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
+                    final firebaseAuthProvider =
+                        authBloc.viewModel.firebaseAuthProvider;
+                    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+                      return;
+                    }
+                    context.pushNamed(
+                      RouteNames.info,
+                      extra: {
+                        'firebaseIdToken': firebaseIdToken,
+                        'firebaseAuthProvider': firebaseAuthProvider,
+                      },
+                    );
+                  },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
                     if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
@@ -84,6 +102,13 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {},
                   emailChecked: (exists, email) {},
+                  magicLinkSent: (email) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Check your email: $email'),
+                      ),
+                    );
+                  },
                 );
               },
               child: SafeArea(
@@ -146,8 +171,9 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                           ),
                           Gap(28),
                           CustomButton(
-                            text: "Continue",
-                            onTap: _continueToCreatePassword,
+                            text: isLoading ? "Loading..." : "Continue",
+                            isDisabled: isLoading,
+                            onTap: _sendMagicLink,
                           ),
                           Gap(57),
                           Row(
@@ -183,7 +209,16 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                               CustomButton(
                                 text: "Continue with Apple",
                                 prefixIcon: Assets.icons.appleLogo.svg(),
-                                onTap: () {},
+                                isDisabled: isLoading,
+                                onTap: () {
+                                  context.read<AuthBloc>().add(
+                                    AuthEvent.login(
+                                      request: LoginRequest.social(
+                                        provider: SocialProvider.apple,
+                                      ),
+                                    ),
+                                  );
+                                },
                                 padding: EdgeInsets.symmetric(vertical: 10),
                                 textStyle: TextStyles.titleMain.copyWith(
                                   fontSize: 17,
@@ -194,7 +229,7 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                                 prefixIcon: Assets.icons.googleLogo.svg(),
                                 isDisabled: isLoading,
                                 onTap: () {
-                                  getIt<AuthBloc>().add(
+                                  context.read<AuthBloc>().add(
                                     AuthEvent.login(
                                       request: LoginRequest.social(
                                         provider: SocialProvider.google,
@@ -227,7 +262,8 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
                 ),
               ),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

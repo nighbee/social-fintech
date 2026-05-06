@@ -23,4 +23,8 @@ class LoginRequest with _$LoginRequest {
   const factory LoginRequest.firebasePhone({
     required String firebaseIdToken,
   }) = _FirebasePhoneLoginRequest;
+
+  const factory LoginRequest.firebaseEmail({
+    required String firebaseIdToken,
+  }) = _FirebaseEmailLoginRequest;
 }

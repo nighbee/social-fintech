@@ -49,8 +49,8 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AuthBloc>(),
+    return BlocProvider.value(
+      value: getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
         appBar: const CustomAppBar(
@@ -79,7 +79,22 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                           content: Text(message), backgroundColor: Colors.red),
                     );
                   },
-                  goRegister: () {},
+                  goRegister: () {
+                    final authBloc = context.read<AuthBloc>();
+                    final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
+                    final firebaseAuthProvider =
+                        authBloc.viewModel.firebaseAuthProvider;
+                    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+                      return;
+                    }
+                    context.pushNamed(
+                      RouteNames.info,
+                      extra: {
+                        'firebaseIdToken': firebaseIdToken,
+                        'firebaseAuthProvider': firebaseAuthProvider,
+                      },
+                    );
+                  },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
                     if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
@@ -89,6 +104,7 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {},
                   emailChecked: (exists, email) {},
+                  magicLinkSent: (email) {},
                 );
               },
               child: BlocBuilder<AuthBloc, AuthState>(

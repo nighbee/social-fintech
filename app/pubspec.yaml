@@ -70,6 +70,7 @@ dependencies:
   # Firebase
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
+  app_links: ^7.0.0
 
   # ========================
   # Управление состоянием

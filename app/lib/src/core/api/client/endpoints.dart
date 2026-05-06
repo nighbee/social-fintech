@@ -14,6 +14,9 @@ class EndPoints {
   static const String authFirebasePhoneLogin = '/auth/firebase-phone-login';
   static const String authFirebasePhoneRegister =
       '/auth/firebase-phone-register';
+  static const String authFirebaseEmailLogin = '/auth/firebase-email-login';
+  static const String authFirebaseEmailRegister =
+      '/auth/firebase-email-register';
   static const String authRefresh = '/auth/refresh';
   static const String authLogout = '/auth/logout';
   static const String profile = '/profiles/me';

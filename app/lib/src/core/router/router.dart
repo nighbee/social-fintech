@@ -84,6 +84,19 @@ GoRouter routerProvider(AppFlavor flavor) {
     initialLocation: RoutePaths.initial,
     debugLogDiagnostics: flavor == AppFlavor.development,
     navigatorKey: rootNavigatorKey,
+    // App Links pass the full Firebase Hosting URL as the route; go_router
+    // only knows paths like /home. Land on email login while app_links + AuthBloc
+    // complete the magic link (see MainApp._resolveMagicLink).
+    redirect: (context, state) {
+      final uri = state.uri;
+      if (uri.scheme == 'https' &&
+          (uri.host.contains('firebaseapp.com') ||
+              uri.host.contains('web.app')) &&
+          uri.path.contains('/__/auth')) {
+        return RoutePaths.loginWithEmail;
+      }
+      return null;
+    },
     routes: _routes(talker: talker, flavor: flavor),
     observers: [TalkerRouteObserver(talker)],
   );

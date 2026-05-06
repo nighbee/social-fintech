@@ -111,6 +111,7 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                     password: extra?['password'] as String?,
                     phoneNumber: extra?['phoneNumber'] as String?,
                     firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                    firebaseAuthProvider: extra?['firebaseAuthProvider'] as String?,
                   );
                 },
               ),
@@ -124,6 +125,7 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                     password: extra?['password'] as String?,
                     phoneNumber: extra?['phoneNumber'] as String?,
                     firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                    firebaseAuthProvider: extra?['firebaseAuthProvider'] as String?,
                     firstName: extra?['firstName'] as String?,
                     lastName: extra?['lastName'] as String?,
                     dateOfBirth: extra?['dateOfBirth'] as String?,

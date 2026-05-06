@@ -16,6 +16,7 @@ class InfoPage extends StatefulWidget {
     this.password,
     this.phoneNumber,
     this.firebaseIdToken,
+    this.firebaseAuthProvider,
     super.key,
   });
 
@@ -23,6 +24,7 @@ class InfoPage extends StatefulWidget {
   final String? password;
   final String? phoneNumber;
   final String? firebaseIdToken;
+  final String? firebaseAuthProvider;
 
   @override
   State<InfoPage> createState() => _InfoPageState();
@@ -81,6 +83,7 @@ class _InfoPageState extends State<InfoPage> {
         'password': widget.password,
         'phoneNumber': widget.phoneNumber,
         'firebaseIdToken': widget.firebaseIdToken,
+        'firebaseAuthProvider': widget.firebaseAuthProvider,
         'firstName': _firstNameController.text.trim(),
         'lastName': _lastNameController.text.trim(),
         'dateOfBirth': dateStr,

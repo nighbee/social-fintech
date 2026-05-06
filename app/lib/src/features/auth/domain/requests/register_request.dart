@@ -28,4 +28,12 @@ class RegisterRequest with _$RegisterRequest {
     required String dateOfBirth,
     String? referral,
   }) = _FirebasePhoneRegisterRequest;
+
+  const factory RegisterRequest.firebaseEmail({
+    required String firebaseIdToken,
+    required String firstName,
+    required String lastName,
+    required String dateOfBirth,
+    String? referral,
+  }) = _FirebaseEmailRegisterRequest;
 }

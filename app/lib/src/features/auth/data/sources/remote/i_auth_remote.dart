@@ -52,6 +52,16 @@ abstract interface class IAuthRemote {
     required String dateOfBirth,
     String? referral,
   });
+  Future<Either<DomainException, LoginDto>> firebaseEmailLogin({
+    required String firebaseIdToken,
+  });
+  Future<Either<DomainException, LoginDto>> firebaseEmailRegister({
+    required String firebaseIdToken,
+    required String firstName,
+    required String lastName,
+    required String dateOfBirth,
+    String? referral,
+  });
   Future<Either<DomainException, List<UserSearchDto>>> searchUsers({
     required String firstName,
     required String lastName,

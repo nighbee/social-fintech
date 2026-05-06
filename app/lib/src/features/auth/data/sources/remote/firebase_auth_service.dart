@@ -2,9 +2,13 @@ import 'dart:async';
 import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  static const String _pendingMagicEmailKey = 'pending_magic_email';
+  static const String _defaultMagicLinkUrl =
+      'https://brightbund-7784f.firebaseapp.com/__/auth/handler';
 
   String? _verificationId;
   int? _resendToken;
@@ -102,6 +106,61 @@ class FirebaseAuthService {
       }
       throw Exception('Verification failed: ${e.message}');
     }
+  }
+
+  Future<void> sendSignInLinkToEmail({
+    required String email,
+    required String androidPackageName,
+    required String iOSBundleId,
+    String continueUrl = _defaultMagicLinkUrl,
+    bool androidInstallIfNotAvailable = true,
+    String? androidMinimumVersion,
+  }) async {
+    final actionCodeSettings = ActionCodeSettings(
+      url: continueUrl,
+      handleCodeInApp: true,
+      androidPackageName: androidPackageName,
+      androidInstallApp: androidInstallIfNotAvailable,
+      androidMinimumVersion: androidMinimumVersion,
+      iOSBundleId: iOSBundleId,
+    );
+
+    await _auth.sendSignInLinkToEmail(
+      email: email,
+      actionCodeSettings: actionCodeSettings,
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_pendingMagicEmailKey, email.trim());
+  }
+
+  Future<String> signInWithEmailLink({
+    required String emailLink,
+    String? fallbackEmail,
+  }) async {
+    if (!_auth.isSignInWithEmailLink(emailLink)) {
+      throw Exception('Invalid sign-in email link');
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString(_pendingMagicEmailKey);
+    final email = (savedEmail ?? fallbackEmail ?? '').trim();
+    if (email.isEmpty) {
+      throw Exception('Email is required to complete magic link sign in');
+    }
+
+    final credential = await _auth.signInWithEmailLink(
+      email: email,
+      emailLink: emailLink,
+    );
+
+    final idToken = await credential.user?.getIdToken();
+    if (idToken == null || idToken.isEmpty) {
+      throw Exception('Failed to get Firebase ID token');
+    }
+
+    await prefs.remove(_pendingMagicEmailKey);
+    return idToken;
   }
 
   Future<void> signOut() async {

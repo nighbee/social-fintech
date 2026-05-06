@@ -101,8 +101,8 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AuthBloc>(),
+    return BlocProvider.value(
+      value: getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
         body: Stack(
@@ -135,7 +135,22 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                       ),
                     );
                   },
-                  goRegister: () {},
+                  goRegister: () {
+                    final authBloc = context.read<AuthBloc>();
+                    final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
+                    final firebaseAuthProvider =
+                        authBloc.viewModel.firebaseAuthProvider;
+                    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+                      return;
+                    }
+                    context.pushNamed(
+                      RouteNames.info,
+                      extra: {
+                        'firebaseIdToken': firebaseIdToken,
+                        'firebaseAuthProvider': firebaseAuthProvider,
+                      },
+                    );
+                  },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {
                     if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
@@ -154,6 +169,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                     );
                   },
                   emailChecked: (exists, email) {},
+                  magicLinkSent: (email) {},
                 );
               },
               child: SafeArea(
@@ -281,7 +297,15 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                               CustomButton(
                                 text: "Continue with Apple",
                                 prefixIcon: Assets.icons.appleLogo.svg(),
-                                onTap: () {},
+                                isDisabled: isLoading,
+                                onTap: () {
+                                  context.read<AuthBloc>().add(
+                                        AuthEvent.login(
+                                            request: LoginRequest.social(
+                                                provider:
+                                                    SocialProvider.apple)),
+                                      );
+                                },
                                 padding: EdgeInsets.symmetric(vertical: 10),
                                 textStyle: TextStyles.titleMain.copyWith(
                                   fontSize: 17,

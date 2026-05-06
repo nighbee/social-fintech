@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.brightbund"
+        applicationId = "com.brightbund.brightbundapp"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

@@ -32,8 +32,8 @@ class _CodePageState extends State<CodePage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AuthBloc>(),
+    return BlocProvider.value(
+      value: getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
         appBar: const CustomAppBar(
@@ -79,6 +79,7 @@ class _CodePageState extends State<CodePage> {
                       extra: {
                         'phoneNumber': widget.phoneNumber,
                         'firebaseIdToken': firebaseIdToken,
+                        'firebaseAuthProvider': 'phone',
                       },
                     );
                   },
@@ -91,6 +92,7 @@ class _CodePageState extends State<CodePage> {
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {},
                   emailChecked: (exists, email) {},
+                  magicLinkSent: (email) {},
                 );
               },
               child: SafeArea(

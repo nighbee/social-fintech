@@ -389,6 +389,73 @@ class AuthRemoteImpl implements IAuthRemote {
   }
 
   @override
+  Future<Either<DomainException, LoginDto>> firebaseEmailLogin({
+    required String firebaseIdToken,
+  }) async {
+    final deviceId = await _deviceId.getDeviceId();
+    final appVersion = await _getAppVersion();
+    final userAgent = _getUserAgent();
+
+    final result = await _client.post(
+      EndPoints.authFirebaseEmailLogin,
+      data: {
+        'firebase_id_token': firebaseIdToken,
+        'device_id': deviceId,
+        'app_version': appVersion,
+        'user_agent': userAgent,
+      },
+    );
+
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final dto = LoginDto.fromJson(response.data);
+        return Right(dto);
+      } catch (e) {
+        return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
+  }
+
+  @override
+  Future<Either<DomainException, LoginDto>> firebaseEmailRegister({
+    required String firebaseIdToken,
+    required String firstName,
+    required String lastName,
+    required String dateOfBirth,
+    String? referral,
+  }) async {
+    final deviceId = await _deviceId.getDeviceId();
+    final appVersion = await _getAppVersion();
+    final userAgent = _getUserAgent();
+
+    final requestData = {
+      'firebase_id_token': firebaseIdToken,
+      'first_name': firstName,
+      'last_name': lastName,
+      'device_id': deviceId,
+      'app_version': appVersion,
+      'user_agent': userAgent,
+      'date_of_birth': dateOfBirth,
+      if ((referral ?? '').trim().isNotEmpty)
+        'referrer_user_id': referral!.trim(),
+    };
+
+    final result = await _client.post(
+      EndPoints.authFirebaseEmailRegister,
+      data: requestData,
+    );
+
+    return result.fold((error) => Left(error), (response) {
+      try {
+        final dto = LoginDto.fromJson(response.data);
+        return Right(dto);
+      } catch (e) {
+        return Left(NetworkException(message: 'Failed to parse response: $e'));
+      }
+    });
+  }
+
+  @override
   Future<Either<DomainException, List<UserSearchDto>>> searchUsers({
     required String firstName,
     required String lastName,

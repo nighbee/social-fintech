@@ -20,6 +20,12 @@ abstract interface class IAuthRepository {
     required String verificationId,
     required String code,
   });
+  Future<Either<DomainException, void>> sendEmailMagicLink({
+    required String email,
+  });
+  Future<Either<DomainException, String>> completeEmailMagicLink({
+    required String emailLink,
+  });
   Future<Either<DomainException, List<UserSearchEntity>>> searchUsers({
     required String firstName,
     required String lastName,

@@ -17,6 +17,9 @@ class AuthState with _$AuthState {
     required bool exists,
     required String email,
   }) = _EmailChecked;
+  const factory AuthState.magicLinkSent({
+    required String email,
+  }) = _MagicLinkSent;
 }
 
 @freezed
@@ -27,6 +30,7 @@ class AuthViewModel with _$AuthViewModel {
     @Default(false) bool isUserSearchLoading,
     @Default([]) List<UserSearchEntity> userSearchResults,
     String? firebaseIdToken,
+    String? firebaseAuthProvider,
     String? email,
     String? password,
   }) = _AuthViewModel;

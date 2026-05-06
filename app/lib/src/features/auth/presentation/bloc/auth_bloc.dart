@@ -38,6 +38,10 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       checkEmail: (_) => _checkEmail(event as _CheckEmail, emit),
       verifyOtpCode: (_, __, ___) =>
           _verifyOtpCode(event as _VerifyOtpCode, emit),
+      sendEmailMagicLink: (_) =>
+          _sendEmailMagicLink(event as _SendEmailMagicLink, emit),
+      completeEmailMagicLink: (_) =>
+          _completeEmailMagicLink(event as _CompleteEmailMagicLink, emit),
       searchUsers: (_) => _searchUsers(event as _SearchUsers, emit),
       logout: () => _logout(event as _Logout, emit),
     );
@@ -54,6 +58,12 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       (error) {
         final firebaseIdToken = event.request.maybeWhen(
           firebasePhone: (firebaseIdToken) => firebaseIdToken,
+          firebaseEmail: (firebaseIdToken) => firebaseIdToken,
+          orElse: () => null,
+        );
+        final firebaseAuthProvider = event.request.maybeWhen(
+          firebasePhone: (_) => 'phone',
+          firebaseEmail: (_) => 'email',
           orElse: () => null,
         );
         final socialProviderToken = error is SocialRegisterRequiredException
@@ -69,6 +79,8 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
                 error is SocialRegisterRequiredException)) {
           viewModel = viewModel.copyWith(
             firebaseIdToken: socialProviderToken ?? firebaseIdToken,
+            firebaseAuthProvider:
+                socialProviderToken != null ? 'social' : firebaseAuthProvider,
           );
           emit(AuthState.goRegister());
           return;
@@ -87,6 +99,7 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       email: (_, __, ___, ____, dateOfBirth, _____) => dateOfBirth,
       phone: (_, __, ___, dateOfBirth, ____) => dateOfBirth,
       firebasePhone: (_, __, ___, dateOfBirth, ____) => dateOfBirth,
+      firebaseEmail: (_, __, ___, dateOfBirth, ____) => dateOfBirth,
     );
 
     if (dateOfBirth.trim().isEmpty) {
@@ -220,6 +233,7 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
           viewModel = viewModel.copyWith(
             isLoading: false,
             firebaseIdToken: firebaseIdToken,
+            firebaseAuthProvider: 'phone',
           );
           emit(AuthState.goRegister());
         }
@@ -248,6 +262,49 @@ class AuthBloc extends BaseBloc<AuthEvent, AuthState> {
       (users) {
         viewModel = viewModel.copyWith(userSearchResults: users);
         emit(AuthState.loaded(viewModel: viewModel));
+      },
+    );
+  }
+
+  Future<void> _sendEmailMagicLink(
+    _SendEmailMagicLink event,
+    Emitter emit,
+  ) async {
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
+
+    final result = await _repository.sendEmailMagicLink(email: event.email);
+
+    viewModel = viewModel.copyWith(isLoading: false, email: event.email);
+    result.fold(
+      (error) => emit(AuthState.loadingFailure(error.message)),
+      (_) => emit(AuthState.magicLinkSent(email: event.email)),
+    );
+  }
+
+  Future<void> _completeEmailMagicLink(
+    _CompleteEmailMagicLink event,
+    Emitter emit,
+  ) async {
+    viewModel = viewModel.copyWith(isLoading: true);
+    emit(AuthState.loaded(viewModel: viewModel));
+
+    final tokenResult = await _repository.completeEmailMagicLink(
+      emailLink: event.emailLink,
+    );
+
+    await tokenResult.fold(
+      (error) async {
+        viewModel = viewModel.copyWith(isLoading: false);
+        emit(AuthState.loadingFailure(error.message));
+      },
+      (firebaseIdToken) async {
+        await _login(
+          _Login(
+            request: LoginRequest.firebaseEmail(firebaseIdToken: firebaseIdToken),
+          ),
+          emit,
+        );
       },
     );
   }

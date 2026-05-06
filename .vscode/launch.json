@@ -11,7 +11,7 @@
         "dev",
         "--dart-define-from-file=${workspaceFolder}/app/.env",
         "--dart-define",
-        "DEV_BASE_URL=http://10.0.2.2:8081/api/v1"
+        "DEV_BASE_URL=http://35.209.210.231/api/v1"
       ]
     },
     {

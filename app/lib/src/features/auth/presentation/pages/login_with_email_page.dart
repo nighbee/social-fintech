@@ -35,8 +35,8 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AuthBloc>(),
+    return BlocProvider.value(
+      value: getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
         body: Stack(
@@ -71,12 +71,15 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                     );
                   },
                   goRegister: () {
-                    final firebaseIdToken =
-                        context.read<AuthBloc>().viewModel.firebaseIdToken;
+                    final authBloc = context.read<AuthBloc>();
+                    final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
+                    final firebaseAuthProvider =
+                        authBloc.viewModel.firebaseAuthProvider;
                     context.pushNamed(
                       RouteNames.info,
                       extra: {
                         'firebaseIdToken': firebaseIdToken,
+                        'firebaseAuthProvider': firebaseAuthProvider,
                       },
                     );
                   },
@@ -90,6 +93,7 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {},
                   emailChecked: (exists, email) {},
+                  magicLinkSent: (email) {},
                 );
               },
               child: SafeArea(

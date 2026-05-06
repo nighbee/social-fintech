@@ -26,16 +26,8 @@ class AuthRepositoryImpl implements IAuthRepository {
 
   final IAuthRemote _authRemote;
   final IAuthLocal _authLocal;
-  // static const String _googleServerClientId =
-  //     '493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com';
-  // static const String _googleWebClientId = String.fromEnvironment(
-  //   'GOOGLE_WEB_CLIENT_ID',
-  //   defaultValue: _googleServerClientId,
-  // );
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    serverClientId:
-        '493875542368-vi58p07f5006e1pnobc40eub1406df2d.apps.googleusercontent.com',
   );
   final FirebaseAuthService _firebaseAuth = FirebaseAuthService();
 
@@ -46,6 +38,7 @@ class AuthRepositoryImpl implements IAuthRepository {
       social: _loginWithSocial,
       phoneCode: _verifyPhoneCode,
       firebasePhone: _firebasePhoneLogin,
+      firebaseEmail: _firebaseEmailLogin,
     );
   }
 
@@ -64,6 +57,7 @@ class AuthRepositoryImpl implements IAuthRepository {
       email: _registerWithEmail,
       phone: _registerWithPhone,
       firebasePhone: _firebasePhoneRegister,
+      firebaseEmail: _firebaseEmailRegister,
     );
   }
 
@@ -136,6 +130,36 @@ class AuthRepositoryImpl implements IAuthRepository {
       final idToken = await _firebaseAuth.verifyOtpCode(
         verificationId: verificationId,
         smsCode: code,
+      );
+      return Right(idToken);
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> sendEmailMagicLink({
+    required String email,
+  }) async {
+    try {
+      await _firebaseAuth.sendSignInLinkToEmail(
+        email: email,
+        androidPackageName: 'com.brightbund.brightbundapp',
+        iOSBundleId: 'com.brightbund.brightbundapp',
+      );
+      return const Right(null);
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, String>> completeEmailMagicLink({
+    required String emailLink,
+  }) async {
+    try {
+      final idToken = await _firebaseAuth.signInWithEmailLink(
+        emailLink: emailLink,
       );
       return Right(idToken);
     } catch (e) {
@@ -251,6 +275,16 @@ class AuthRepositoryImpl implements IAuthRepository {
     return _mapLoginResult(result);
   }
 
+  Future<Either<DomainException, LoginEntity>> _firebaseEmailLogin(
+    String firebaseIdToken,
+  ) async {
+    final result = await _authRemote.firebaseEmailLogin(
+      firebaseIdToken: firebaseIdToken,
+    );
+
+    return _mapLoginResult(result);
+  }
+
   Future<Either<DomainException, LoginEntity>> _registerWithEmail(
     String email,
     String password,
@@ -297,6 +331,24 @@ class AuthRepositoryImpl implements IAuthRepository {
     String? referral,
   ) async {
     final result = await _authRemote.firebasePhoneRegister(
+      firebaseIdToken: firebaseIdToken,
+      firstName: firstName,
+      lastName: lastName,
+      dateOfBirth: dateOfBirth,
+      referral: referral,
+    );
+
+    return _mapLoginResult(result);
+  }
+
+  Future<Either<DomainException, LoginEntity>> _firebaseEmailRegister(
+    String firebaseIdToken,
+    String firstName,
+    String lastName,
+    String dateOfBirth,
+    String? referral,
+  ) async {
+    final result = await _authRemote.firebaseEmailRegister(
       firebaseIdToken: firebaseIdToken,
       firstName: firstName,
       lastName: lastName,

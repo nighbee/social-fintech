@@ -231,6 +231,13 @@ class $AssetsImagesGen {
   /// File path: assets/images/Heroes.png
   AssetGenImage get heroes => const AssetGenImage('assets/images/Heroes.png');
 
+  /// File path: assets/images/MapOpen.png
+  AssetGenImage get mapOpen => const AssetGenImage('assets/images/MapOpen.png');
+
+  /// File path: assets/images/Task_create.png
+  AssetGenImage get taskCreate =>
+      const AssetGenImage('assets/images/Task_create.png');
+
   /// File path: assets/images/ammolite.png
   AssetGenImage get ammolite =>
       const AssetGenImage('assets/images/ammolite.png');
@@ -274,6 +281,8 @@ class $AssetsImagesGen {
   List<AssetGenImage> get values => [
         bigGoldenCoin,
         heroes,
+        mapOpen,
+        taskCreate,
         ammolite,
         goldenHonor,
         image,

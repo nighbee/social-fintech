@@ -34,8 +34,8 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => getIt<AuthBloc>(),
+    return BlocProvider.value(
+      value: getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
         appBar: const CustomAppBar(title: 'Email', backgroundColor: Colors.transparent),
@@ -67,7 +67,22 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                       ),
                     );
                   },
-                  goRegister: () {},
+                  goRegister: () {
+                    final authBloc = context.read<AuthBloc>();
+                    final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
+                    final firebaseAuthProvider =
+                        authBloc.viewModel.firebaseAuthProvider;
+                    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+                      return;
+                    }
+                    context.pushNamed(
+                      RouteNames.info,
+                      extra: {
+                        'firebaseIdToken': firebaseIdToken,
+                        'firebaseAuthProvider': firebaseAuthProvider,
+                      },
+                    );
+                  },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {},
                   phoneVerificationStarted:
@@ -76,6 +91,13 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                     context.pushNamed(
                       RouteNames.emailPassword,
                       extra: {'email': email, 'isNewUser': !exists},
+                    );
+                  },
+                  magicLinkSent: (email) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Check your email: $email'),
+                      ),
                     );
                   },
                 );
@@ -116,13 +138,18 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                           ),
                           Gap(40),
                           CustomButton(
-                            text: isLoading ? "Checking..." : "Continue",
+                            text: isLoading ? "Loading..." : "Continue",
                             isDisabled:
                                 isLoading || !_isValidEmail(_emailController.text),
+                            backgroundColor: Colors.transparent,
+                            border: Border.all(color: Colors.white38),
+                            textStyle: TextStyles.titleMain.copyWith(
+                              color: Colors.white,
+                            ),
                             onTap: () {
                               if (_isValidEmail(_emailController.text)) {
                                 context.read<AuthBloc>().add(
-                                  AuthEvent.checkEmail(
+                                  AuthEvent.sendEmailMagicLink(
                                     email: _emailController.text.trim(),
                                   ),
                                 );
