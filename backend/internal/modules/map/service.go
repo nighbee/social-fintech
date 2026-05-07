@@ -944,9 +944,9 @@ func (s *Service) recordLeaderboardScore(leaderboardKey, userID string, score fl
 
 func computeH3Indices(lat, lon float64) (string, string, string) {
 	latLng := h3.LatLng{Lat: lat, Lng: lon}
-	cell5 := h3.LatLngToCell(latLng, h3ResDistrict)
-	cell4 := h3.LatLngToCell(latLng, h3ResCity)
-	cell2 := h3.LatLngToCell(latLng, h3ResCountry)
+	cell5, _ := h3.LatLngToCell(latLng, h3ResDistrict)
+	cell4, _ := h3.LatLngToCell(latLng, h3ResCity)
+	cell2, _ := h3.LatLngToCell(latLng, h3ResCountry)
 	return cell5.String(), cell4.String(), cell2.String()
 }
 
@@ -1114,7 +1114,10 @@ func centerOfH3(h3Index string) (float64, float64) {
 	if err != nil {
 		return 0, 0
 	}
-	latLng := h3.CellToLatLng(cell)
+	latLng, err := h3.CellToLatLng(cell)
+	if err != nil {
+		return 0, 0
+	}
 	return latLng.Lat, latLng.Lng
 }
 
@@ -1123,12 +1126,13 @@ func boundaryWKTOfH3(h3Index string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	boundary := h3.CellToBoundary(cell)
+	boundary, err := h3.CellToBoundary(cell)
+	if err != nil {
+		return "", err
+	}
 	if len(boundary) == 0 {
 		return "", fmt.Errorf("invalid h3 boundary")
 	}
-
 	coords := make([]string, 0, len(boundary)+1)
 	for _, point := range boundary {
 		coords = append(coords, fmt.Sprintf("%f %f", point.Lng, point.Lat))
