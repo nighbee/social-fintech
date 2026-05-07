@@ -13,6 +13,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/seasons"
+	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/modules/payment"
 	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/observability"
@@ -28,7 +29,7 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, notificationsHandler *notifications.Handler, seasonsHandler *seasons.Handler, paymentHandler *payment.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, notificationsHandler *notifications.Handler, seasonsHandler *seasons.Handler, ranksHandler *ranks.Handler, paymentHandler *payment.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:     cfg.Server.ReadTimeout,
 		WriteTimeout:    cfg.Server.WriteTimeout,
@@ -168,7 +169,14 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Delete("/:user_id/restrict", profilesHandler.UnrestrictUser)
 	profilesGroup.Post("/:user_id/report", profilesHandler.ReportUser)
 
-	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank)
+	profilesGroup.Get("/me/rank", profilesHandler.GetMyRank) // Deprecated: use /api/v1/ranks/me
+
+	// Ranks module
+	api.Get("/ranks", ranksHandler.GetAllRanks)
+	ranksGroup := api.Group("/ranks")
+	ranksGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	ranksGroup.Use(middleware.TouchSession(authRepo))
+	ranksGroup.Get("/me", ranksHandler.GetMyRank)
 
 	// Feed & Interactions (Note: Feed router actually manages its own sub-routing in routes.go
 	// but for consistency we can call a Feed register wrapper here or just inject the handler)

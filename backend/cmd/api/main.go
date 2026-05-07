@@ -250,6 +250,8 @@ func main() {
 
 	profilesHandler := profiles.NewHandler(profilesService, ranksService)
 	logger.Info("profiles module initialized")
+	ranksHandler := ranks.NewHandler(ranksService)
+	logger.Info("ranks module initialized (handler)")
 	mapHandler := mapmodule.NewHandler(mapService)
 	logger.Info("map module initialized")
 
@@ -343,7 +345,7 @@ func main() {
 	paymentHandler := payment.NewHandler(paymentService)
 	logger.Info("payment module initialized")
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, notificationsHandler, seasonsHandler, paymentHandler, jwtManager, authRepo, logger.Get())
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, notificationsHandler, seasonsHandler, ranksHandler, paymentHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
