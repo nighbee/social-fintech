@@ -1,6 +1,6 @@
 module github.com/brightbund-backend
 
-go 1.23
+go 1.26.3
 
 require (
 	cloud.google.com/go/vision v1.2.0
@@ -11,7 +11,7 @@ require (
 	github.com/gofiber/websocket/v2 v2.2.1
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
-	github.com/hibiken/asynq v0.25.1
+	github.com/hibiken/asynq v0.26.0
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
@@ -21,7 +21,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/swaggo/fiber-swagger v1.3.0
 	github.com/swaggo/swag v1.16.2
-	github.com/uber/h3-go/v4 v4.1.0
+	github.com/uber/h3-go/v4 v4.4.1
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.47.0
 	golang.org/x/net v0.48.0

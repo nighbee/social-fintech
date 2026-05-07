@@ -5,6 +5,13 @@
     "GOOS": "windows",
     "GOARCH": "amd64",
     "GOTOOLCHAIN": "local"
+  },
+  "gopls": {
+    "env": {
+      "GOOS": "windows",
+      "GOARCH": "amd64"
+    },
+    "buildFlags": []
   }
 }
 

@@ -9,10 +9,10 @@ import (
 
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/cache"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/google/uuid"
 	"github.com/uber/h3-go/v4"
-	"github.com/brightbund-backend/internal/platform/eventbus"
 	"go.uber.org/zap"
 )
 

@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/cache"
+	"github.com/brightbund-backend/internal/platform/logger"
+	"go.uber.org/zap"
 )
 
 type Service struct {
