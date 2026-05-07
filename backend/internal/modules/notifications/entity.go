@@ -74,3 +74,46 @@ type Enqueue struct {
 	Body    string
 	Payload map[string]any
 }
+
+// DevicePlatform represents the mobile OS.
+type DevicePlatform string
+
+const (
+	PlatformIOS     DevicePlatform = "ios"
+	PlatformAndroid DevicePlatform = "android"
+	PlatformHuawei  DevicePlatform = "huawei"
+)
+
+// DeviceToken maps a user to a physical device push token.
+type DeviceToken struct {
+	ID         uuid.UUID      `db:"id" json:"id"`
+	UserID     uuid.UUID      `db:"user_id" json:"user_id"`
+	Token      string         `db:"token" json:"token"`
+	Platform   DevicePlatform `db:"platform" json:"platform"`
+	DeviceID     string         `db:"device_id" json:"device_id,omitempty"`
+	AppVersion   string         `db:"app_version" json:"app_version,omitempty"`
+	Locale       string         `db:"locale" json:"locale,omitempty"`
+	IsActive     bool           `db:"is_active" json:"is_active"`
+	LastSeenAt time.Time      `db:"last_seen_at" json:"last_seen_at"`
+	CreatedAt  time.Time      `db:"created_at" json:"created_at"`
+}
+
+// RegisterDeviceRequest is used to add or refresh a push token.
+type RegisterDeviceRequest struct {
+	Token    string         `json:"token" validate:"required"`
+	Platform DevicePlatform `json:"platform" validate:"required,oneof=ios android huawei"`
+	DeviceID   string         `json:"device_id"`
+	AppVersion string         `json:"app_version"`
+	Locale     string         `json:"locale"`
+}
+
+// SentNotification tracks actual delivery attempts to prevent duplicates
+type SentNotification struct {
+	ID             uuid.UUID `db:"id"`
+	IdempotencyKey string    `db:"idempotency_key"`
+	DeviceToken    string    `db:"device_token"`
+	Platform       string    `db:"platform"`
+	SentAt         time.Time `db:"sent_at"`
+	Status         string    `db:"status"`
+	ErrorMessage   string    `db:"error_message"`
+}

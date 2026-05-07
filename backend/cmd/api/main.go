@@ -318,7 +318,7 @@ func main() {
 	logger.Info("chat module initialized")
 
 	notificationsRepo := notifications.NewRepository(db.DB)
-	notificationsService := notifications.NewService(notificationsRepo)
+	notificationsService := notifications.NewService(notificationsRepo, eventProducer, redisCache)
 	notificationsHandler := notifications.NewHandler(notificationsService)
 	logger.Info("notifications module initialized")
 

@@ -17,7 +17,20 @@ const (
 	TypeTaskCompleted   EventType = "task.completed"
 	TypeMessageReceived EventType = "chat.message_received"
 	TypeIAPReceived     EventType = "payment.iap_received"
+	TypePushDispatch    EventType = "push.dispatch"
 )
+
+// PushNotificationEvent is emitted when a push needs to be fanned out.
+type PushNotificationEvent struct {
+	UserID     string         `json:"user_id"`
+	Title      string         `json:"title"`
+	Body       string         `json:"body"`
+	Payload        map[string]any `json:"payload"`
+	Category       string         `json:"category,omitempty"` // e.g., 'social', 'chat', 'economy'
+	IdempotencyKey string         `json:"idempotency_key,omitempty"`
+	RetryCount     int            `json:"retry_count,omitempty"`
+	DeliverAfter   *time.Time     `json:"deliver_after,omitempty"`
+}
 
 // BaseEvent contains fields common to all system events.
 type BaseEvent struct {

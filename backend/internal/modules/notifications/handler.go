@@ -129,3 +129,58 @@ func (h *Handler) MarkAllRead(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// RegisterDevice godoc
+// @Summary Register a device token for push notifications
+// @Description Adds or updates a push token for the authenticated user.
+// @Tags Notifications
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param body body RegisterDeviceRequest true "Device Token Data"
+// @Success 204
+// @Failure 400 {object} map[string]string
+// @Router /notifications/devices [post]
+func (h *Handler) RegisterDevice(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	var req RegisterDeviceRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_request"})
+	}
+
+	if req.Token == "" || req.Platform == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "token_and_platform_required"})
+	}
+
+	if err := h.service.RegisterDevice(c.Context(), userID, req); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "registration_failed"})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// UnregisterDevice godoc
+// @Summary Unregister a device token
+// @Description Deactivates a push token to stop receiving notifications on that device.
+// @Tags Notifications
+// @Produce json
+// @Security Bearer
+// @Param token path string true "Device Token"
+// @Success 204
+// @Router /notifications/devices/{token} [delete]
+func (h *Handler) UnregisterDevice(c *fiber.Ctx) error {
+	token := c.Params("token")
+	if token == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "token_required"})
+	}
+
+	if err := h.service.UnregisterDevice(c.Context(), token); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "unregistration_failed"})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}

@@ -120,7 +120,7 @@ func main() {
 
 	profilesRepo := profiles.NewRepository(db.DB)
 	notificationsRepo := notifications.NewRepository(db.DB)
-	notificationsService := notifications.NewService(notificationsRepo)
+	notificationsService := notifications.NewService(notificationsRepo, eventProducer, redisCache)
 	mapWorker.SetChampionNotifier(notificationsService)
 
 	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
@@ -144,6 +144,12 @@ func main() {
 	}
 
 	var paymentConsumer *payment.EventConsumer
+	var pushDispatcher *notifications.PushDispatcher
+	var iosWorker *notifications.IOSWorker
+	var androidWorker *notifications.AndroidWorker
+	var huaweiWorker *notifications.HuaweiWorker
+	var retryWorker *notifications.RetryWorker
+
 	if cfg.EventBus.Enabled {
 		paymentRepo := payment.NewRepository(db.DB)
 		paymentService := payment.NewService(paymentRepo, economyService, profilesRepo, eventProducer, logger.Get(), "")
@@ -152,6 +158,58 @@ func main() {
 			cfg.EventBus.Topics.SystemEvents,
 			"brightbund.payment",
 			paymentService,
+			logger.Get(),
+		)
+
+		pushDispatcher = notifications.NewPushDispatcher(
+			cfg.EventBus.Brokers,
+			"push.dispatch",
+			"brightbund.push_dispatcher",
+			eventProducer,
+			notificationsService,
+			logger.Get(),
+		)
+
+		iosWorker = notifications.NewIOSWorker(
+			cfg.EventBus.Brokers,
+			"push.ios",
+			"brightbund.push_ios",
+			eventProducer,
+			notificationsService,
+			logger.Get(),
+		)
+
+		androidWorker, _ = notifications.NewAndroidWorker(
+			cfg.EventBus.Brokers,
+			"push.android",
+			"brightbund.push_android",
+			cfg.Firebase.CredentialsPath,
+			eventProducer,
+			notificationsService,
+			logger.Get(),
+		)
+
+		huaweiWorker = notifications.NewHuaweiWorker(
+			cfg.EventBus.Brokers,
+			"push.huawei",
+			"brightbund.push_huawei",
+			"", // HMS App ID (TODO: Config)
+			"", // HMS App Secret (TODO: Config)
+			eventProducer,
+			notificationsService,
+			logger.Get(),
+		)
+
+		retryWorker = notifications.NewRetryWorker(
+			cfg.EventBus.Brokers,
+			[]string{
+				"push.ios.retry.1", "push.ios.retry.2", "push.ios.retry.3",
+				"push.android.retry.1", "push.android.retry.2", "push.android.retry.3",
+				"push.huawei.retry.1", "push.huawei.retry.2", "push.huawei.retry.3",
+				"push.dlq",
+			},
+			"brightbund.push_retry",
+			eventProducer,
 			logger.Get(),
 		)
 	}
@@ -185,6 +243,51 @@ func main() {
 			}
 		}()
 		logger.Info("payment event consumer started")
+	}
+
+	if pushDispatcher != nil {
+		go func() {
+			if err := pushDispatcher.Start(context.Background()); err != nil {
+				logger.Error("push dispatcher error", zap.Error(err))
+			}
+		}()
+		logger.Info("push notification dispatcher started")
+	}
+
+	if iosWorker != nil {
+		go func() {
+			if err := iosWorker.Start(context.Background()); err != nil {
+				logger.Error("ios worker error", zap.Error(err))
+			}
+		}()
+		logger.Info("ios push worker started")
+	}
+
+	if androidWorker != nil {
+		go func() {
+			if err := androidWorker.Start(context.Background()); err != nil {
+				logger.Error("android worker error", zap.Error(err))
+			}
+		}()
+		logger.Info("android push worker started")
+	}
+
+	if huaweiWorker != nil {
+		go func() {
+			if err := huaweiWorker.Start(context.Background()); err != nil {
+				logger.Error("huawei worker error", zap.Error(err))
+			}
+		}()
+		logger.Info("huawei push worker started")
+	}
+
+	if retryWorker != nil {
+		go func() {
+			if err := retryWorker.Start(context.Background()); err != nil {
+				logger.Error("retry worker error", zap.Error(err))
+			}
+		}()
+		logger.Info("push retry worker started")
 	}
 
 	// Start Asynq Server for Video Processing
@@ -246,8 +349,27 @@ func main() {
 		if paymentConsumer != nil {
 			_ = paymentConsumer.Close()
 		}
+		if pushDispatcher != nil {
+			_ = pushDispatcher.Close()
+		}
+		if iosWorker != nil {
+			_ = iosWorker.Close()
+		}
+		if androidWorker != nil {
+			_ = androidWorker.Close()
+		}
+		if huaweiWorker != nil {
+			_ = huaweiWorker.Close()
+		}
+		if retryWorker != nil {
+			_ = retryWorker.Close()
+		}
 		logger.Info("payment event consumer stopped")
 		logger.Info("notification event consumer stopped")
+		logger.Info("push dispatcher stopped")
+		logger.Info("ios worker stopped")
+		logger.Info("android worker stopped")
+		logger.Info("huawei worker stopped")
 	}()
 
 	wg.Wait()

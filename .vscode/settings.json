@@ -1,5 +1,10 @@
 {
   "dart.flutterHotReloadOnSave": "always",
-  "dart.flutterSdkPath": "/Users/pyro/Development/flutter"
+  "dart.flutterSdkPath": "/Users/pyro/Development/flutter",
+  "go.toolsEnvVars": {
+    "GOOS": "windows",
+    "GOARCH": "amd64",
+    "GOTOOLCHAIN": "local"
+  }
 }
 

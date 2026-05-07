@@ -283,6 +283,8 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	notificationsGroup.Get("/unread-count", notificationsHandler.UnreadCount)
 	notificationsGroup.Post("/read-all", notificationsHandler.MarkAllRead)
 	notificationsGroup.Post("/:id/read", notificationsHandler.MarkRead)
+	notificationsGroup.Post("/devices", notificationsHandler.RegisterDevice)
+	notificationsGroup.Delete("/devices/:token", notificationsHandler.UnregisterDevice)
 
 	seasonsGroup := api.Group("/seasons")
 	seasonsGroup.Use(middleware.RequireAuth(jwt, authRepo))

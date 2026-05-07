@@ -35,8 +35,13 @@ func (p *Producer) Close() error {
 	return p.writer.Close()
 }
 
-// Publish sends a structured event to the Kafka topic.
+// Publish sends a structured event to the default Kafka topic.
 func (p *Producer) Publish(ctx context.Context, eventType EventType, payload interface{}) error {
+	return p.PublishToTopic(ctx, p.topic, eventType, payload)
+}
+
+// PublishToTopic sends a structured event to a specific Kafka topic.
+func (p *Producer) PublishToTopic(ctx context.Context, topic string, eventType EventType, payload interface{}) error {
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event payload: %w", err)
@@ -55,13 +60,14 @@ func (p *Producer) Publish(ctx context.Context, eventType EventType, payload int
 	}
 
 	err = p.writer.WriteMessages(ctx, kafka.Message{
-		Key:   []byte(eventType), // Use event type as key for basic partitioning
+		Topic: topic,
+		Key:   []byte(eventType),
 		Value: envelopeBytes,
 	})
 
 	if err != nil {
 		p.logger.Error("failed to publish event to kafka",
-			zap.String("topic", p.topic),
+			zap.String("topic", topic),
 			zap.String("type", string(eventType)),
 			zap.Error(err),
 		)
@@ -69,7 +75,7 @@ func (p *Producer) Publish(ctx context.Context, eventType EventType, payload int
 	}
 
 	p.logger.Debug("event published to kafka",
-		zap.String("topic", p.topic),
+		zap.String("topic", topic),
 		zap.String("type", string(eventType)),
 	)
 

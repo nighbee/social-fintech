@@ -15,6 +15,12 @@ type Repository interface {
 	UnreadCount(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkRead(ctx context.Context, userID, notificationID uuid.UUID, readAt time.Time) error
 	MarkAllRead(ctx context.Context, userID uuid.UUID, readAt time.Time) error
+
+	// Device Tokens
+	UpsertDeviceToken(ctx context.Context, t *DeviceToken) error
+	DeactivateDeviceToken(ctx context.Context, token string) error
+	GetActiveTokensByUserID(ctx context.Context, userID uuid.UUID) ([]DeviceToken, error)
+	LogSentNotification(ctx context.Context, sn *SentNotification) error
 }
 
 type PostgresRepository struct {
@@ -132,5 +138,56 @@ func (r *PostgresRepository) MarkAllRead(ctx context.Context, userID uuid.UUID, 
 		SET read_at = $2
 		WHERE user_id = $1 AND read_at IS NULL
 	`, userID, readAt)
+	return err
+}
+
+func (r *PostgresRepository) UpsertDeviceToken(ctx context.Context, t *DeviceToken) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO device_tokens (user_id, token, platform, device_id, app_version, locale, is_active, last_seen_at)
+		VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
+		ON CONFLICT (token) DO UPDATE SET
+			user_id = EXCLUDED.user_id,
+			app_version = COALESCE(NULLIF(EXCLUDED.app_version, ''), device_tokens.app_version),
+			locale = COALESCE(NULLIF(EXCLUDED.locale, ''), device_tokens.locale),
+			is_active = TRUE,
+			last_seen_at = NOW()
+	`, t.UserID, t.Token, string(t.Platform), t.DeviceID, t.AppVersion, t.Locale)
+	return err
+}
+
+func (r *PostgresRepository) DeactivateDeviceToken(ctx context.Context, token string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE device_tokens SET is_active = FALSE WHERE token = $1
+	`, token)
+	return err
+}
+
+func (r *PostgresRepository) GetActiveTokensByUserID(ctx context.Context, userID uuid.UUID) ([]DeviceToken, error) {
+	var tokens []DeviceToken
+	err := r.db.SelectContext(ctx, &tokens, `
+		SELECT id, user_id, token, platform, COALESCE(device_id, '') as device_id, 
+		       COALESCE(app_version, '') as app_version, COALESCE(locale, '') as locale,
+		       is_active, last_seen_at, created_at
+		FROM device_tokens
+		WHERE user_id = $1 AND is_active = TRUE
+	`, userID)
+	return tokens, err
+}
+
+func (r *PostgresRepository) LogSentNotification(ctx context.Context, sn *SentNotification) error {
+	if sn.ID == uuid.Nil {
+		sn.ID = uuid.New()
+	}
+	if sn.SentAt.IsZero() {
+		sn.SentAt = time.Now().UTC()
+	}
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO sent_notifications (id, idempotency_key, device_token, platform, sent_at, status, error_message)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (idempotency_key, device_token) DO UPDATE SET
+			status = EXCLUDED.status,
+			error_message = EXCLUDED.error_message,
+			sent_at = EXCLUDED.sent_at
+	`, sn.ID, sn.IdempotencyKey, sn.DeviceToken, sn.Platform, sn.SentAt, sn.Status, sn.ErrorMessage)
 	return err
 }

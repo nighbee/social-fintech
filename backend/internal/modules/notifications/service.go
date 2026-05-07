@@ -8,14 +8,17 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/brightbund-backend/internal/platform/eventbus"
+	"github.com/brightbund-backend/internal/platform/cache"
 )
 
 type Service struct {
-	repo Repository
+	repo     Repository
+	producer *eventbus.Producer
+	cache    *cache.Cache
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository, producer *eventbus.Producer, cache *cache.Cache) *Service {
+	return &Service{repo: repo, producer: producer, cache: cache}
 }
 
 // Enqueue persists a notification for the user. Other modules call this
@@ -50,6 +53,19 @@ func (s *Service) Enqueue(ctx context.Context, in Enqueue) (*Notification, error
 	if err := s.repo.Insert(ctx, n); err != nil {
 		return nil, err
 	}
+
+	// Emit push dispatch event if producer is configured
+	if s.producer != nil {
+		event := eventbus.PushNotificationEvent{
+			UserID:  in.UserID.String(),
+			Title:   in.Title,
+			Body:    in.Body,
+			Payload: in.Payload,
+		}
+		// We use TypePushDispatch to trigger the fan-out dispatcher
+		_ = s.producer.Publish(ctx, eventbus.TypePushDispatch, event)
+	}
+
 	return n, nil
 }
 
@@ -258,4 +274,85 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 	default:
 		return nil // Ignore unknown events
 	}
+}
+func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req RegisterDeviceRequest) error {
+	token := &DeviceToken{
+		UserID:     userID,
+		Token:      req.Token,
+		Platform:   req.Platform,
+		DeviceID:   req.DeviceID,
+		AppVersion: req.AppVersion,
+		Locale:     req.Locale,
+	}
+	if err := s.repo.UpsertDeviceToken(ctx, token); err != nil {
+		return err
+	}
+	_ = s.InvalidateTokenCache(ctx, userID)
+	return nil
+}
+
+func (s *Service) UnregisterDevice(ctx context.Context, token string) error {
+	// We need to find the user_id first to invalidate their cache
+	// (Alternatively, we could accept userID in the interface, but for now we'll just deactivate)
+	if err := s.repo.DeactivateDeviceToken(ctx, token); err != nil {
+		return err
+	}
+	// Best-effort cache wipe would require token-to-user lookup. 
+	// For now, the 5m TTL will handle the cleanup if user_id is unknown.
+	return nil
+}
+
+func (s *Service) GetUserDevices(ctx context.Context, userID uuid.UUID) ([]DeviceToken, error) {
+	if s.cache != nil {
+		key := fmt.Sprintf("device_tokens:%s", userID.String())
+		if cached, err := s.cache.Get(ctx, key); err == nil {
+			var tokens []DeviceToken
+			if err := json.Unmarshal([]byte(cached), &tokens); err == nil {
+				logger.Debug("device token cache hit", zap.String("user_id", userID.String()))
+				return tokens, nil
+			}
+		}
+		logger.Debug("device token cache miss", zap.String("user_id", userID.String()))
+	}
+
+	tokens, err := s.repo.GetActiveTokensByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	if s.cache != nil && len(tokens) > 0 {
+		key := fmt.Sprintf("device_tokens:%s", userID.String())
+		data, _ := json.Marshal(tokens)
+		_ = s.cache.Set(ctx, key, data, 5*time.Minute)
+	}
+
+	return tokens, nil
+}
+
+func (s *Service) InvalidateTokenCache(ctx context.Context, userID uuid.UUID) error {
+	if s.cache == nil {
+		return nil
+	}
+	key := fmt.Sprintf("device_tokens:%s", userID.String())
+	return s.cache.Delete(ctx, key)
+}
+
+func (s *Service) PublishToRetry(ctx context.Context, platform string, event eventbus.PushNotificationEvent) error {
+	event.RetryCount++
+	if event.RetryCount > 3 {
+		return s.producer.PublishToTopic(ctx, "push.dlq", eventbus.TypePushDispatch, event)
+	}
+
+	delay := 30 * time.Second
+	if event.RetryCount == 2 {
+		delay = 5 * time.Minute
+	} else if event.RetryCount == 3 {
+		delay = 1 * time.Hour
+	}
+
+	deliverAfter := time.Now().Add(delay)
+	event.DeliverAfter = &deliverAfter
+
+	topic := fmt.Sprintf("push.%s.retry.%d", platform, event.RetryCount)
+	return s.producer.PublishToTopic(ctx, topic, eventbus.TypePushDispatch, event)
 }

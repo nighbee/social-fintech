@@ -171,6 +171,24 @@ services:
     networks:
       - brightbund-network
 
+  kafka-setup:
+    image: apache/kafka:latest
+    container_name: brightbund-kafka-setup
+    depends_on:
+      - kafka
+    command: >
+      bash -c "
+      /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic system.events;
+      /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic push.dispatch;
+      /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic push.ios;
+      /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic push.android;
+      /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server kafka:9092 --partitions 3 --replication-factor 1 --topic push.huawei;
+      /opt/kafka/bin/kafka-topics.sh --create --if-not-exists --bootstrap-server kafka:9092 --partitions 1 --replication-factor 1 --topic push.dlq;
+      echo 'Kafka topics created successfully'
+      "
+    networks:
+      - brightbund-network
+
   nginx:
     image: nginx:alpine
     container_name: brightbund-nginx
