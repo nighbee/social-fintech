@@ -15,9 +15,6 @@ tmp/
 uploads/
 google/
 
-# Documentation
-docs/
-
 # Misc
 .DS_Store
 .env
