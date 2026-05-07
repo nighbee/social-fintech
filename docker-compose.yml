@@ -39,6 +39,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: brightbund-backend:latest
     container_name: brightbund-api
     command: ["./api"]
     restart: unless-stopped
@@ -86,9 +87,7 @@ services:
       - brightbund-network
 
   worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: brightbund-backend:latest
     container_name: brightbund-worker
     restart: unless-stopped
     command: ["./worker"]

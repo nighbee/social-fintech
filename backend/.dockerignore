@@ -1,0 +1,24 @@
+# Binaries
+api
+api.exe
+worker
+worker.exe
+economy.test.exe
+bin/
+
+# Development / Temporary
+tmp/
+.air.toml
+.air.worker.toml
+
+# Data / Media
+uploads/
+google/
+
+# Documentation
+docs/
+
+# Misc
+.DS_Store
+.env
+firebase-service-account.json

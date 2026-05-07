@@ -11,7 +11,7 @@ var RankCatalog = []RankDefinition{
 		MaxSeals:    10,
 		Order:       1,
 		IconURL:     "/assets/ranks/pearl.png",
-		Description: "Pearl is a versatile and widely loved gemstone known for its clarity and variety of colors. It’s durable, easy to polish, and used in everything from jewelry to technology. ",
+		Description: "Beginning of the path. The member shows conscious participation and earns recognition for consistent, real actions.",
 		Levels:      []string{"C", "B", "A", "S"},
 	},
 	{
@@ -22,7 +22,7 @@ var RankCatalog = []RankDefinition{
 		MaxSeals:    25,
 		Order:       2,
 		IconURL:     "/assets/ranks/moonstone.png",
-		Description: "Moonstone is a gemstone known for its soft, glowing shimmer called adularescence. Its milky, dreamy appearance makes it feel almost magical. It’s often associated with calmness, intuition, and gentle energy.",
+		Description: "Actions become deliberate. The member acts with purpose and supports others in a meaningful way.",
 		Levels:      []string{"C", "B", "A", "S"},
 	},
 	{
@@ -33,7 +33,7 @@ var RankCatalog = []RankDefinition{
 		MaxSeals:    60,
 		Order:       3,
 		IconURL:     "/assets/ranks/jade.png",
-		Description: "Jade is a durable gemstone famous for its deep, waxy green color. It’s valued for its exceptional toughness and unique internal structure, which give each stone its own character.",
+		Description: "Consistency under control. Recognition reflects reliability, self-control, and repeated contribution over time.",
 		Levels:      []string{"C", "B", "A", "S"},
 	},
 	{
@@ -44,7 +44,7 @@ var RankCatalog = []RankDefinition{
 		MaxSeals:    140,
 		Order:       4,
 		IconURL:     "/assets/ranks/lapis.png",
-		Description: "Lapis Lazuli is a captivating gemstone famous for its intense, deep blue color. It’s valued for its vivid shade and shimmering golden pyrite flecks, which give each stone its own character.",
+		Description: "Impact extends beyond self. The member's actions begin shaping the behavior and standards of others.",
 		Levels:      []string{"C", "B", "A", "S"},
 	},
 	{
@@ -55,7 +55,7 @@ var RankCatalog = []RankDefinition{
 		MaxSeals:    260,
 		Order:       5,
 		IconURL:     "/assets/ranks/ammolite.png",
-		Description: "Ammolite is a rare, iridescent gemstone formed from ancient ammonite fossils. Its shifting rainbow colors make it one of the most vibrant natural stones in the world. ",
+		Description: "Strength through pressure. Recognition reflects resilience, long-term commitment, and stability in difficult moments.",
 		Levels:      []string{"C", "B", "A", "S"},
 	},
 	{
@@ -66,7 +66,7 @@ var RankCatalog = []RankDefinition{
 		MaxSeals:    700,
 		Order:       6,
 		IconURL:     "/assets/ranks/onyx.png",
-		Description: "Onyx is a natural gemstone known for its deep black color and smooth, polished surface. It has long been associated with strength, protection, and timeless elegance, giving it a bold yet refined presence.",
+		Description: "Above ego and noise. The member is respected for composure, principles, and clean conduct even when unseen.",
 		Levels:      []string{"C", "B", "A", "S"},
 	},
 	{
@@ -77,8 +77,8 @@ var RankCatalog = []RankDefinition{
 		MaxSeals:    999999,
 		Order:       7,
 		IconURL:     "/assets/ranks/supernova.png",
-		Description: "A supernova is a powerful stellar explosion that occurs when a massive star reaches the end of its life cycle. It releases an enormous amount of energy and creates many of the heavy elements found in the universe.",
-		Levels:      []string{"C", "B", "A", "S"},
+		Description: "System-level recognition. Top-tier rank awarded for sustained impact, influence, and community-wide respect.",
+		Levels:      nil,
 	},
 }
 
@@ -98,6 +98,9 @@ func GetRankBySeals(seals int) *RankDefinition {
 
 func CalculateRankAndLevel(seals int) (rank *RankDefinition, level string, levelMin int, levelMax int) {
 	rank = GetRankBySeals(seals)
+	if len(rank.Levels) == 0 {
+		return rank, "", rank.MinSeals, rank.MaxSeals
+	}
 
 	rangeSize := rank.MaxSeals - rank.MinSeals
 	quarterSize := float64(rangeSize) / 4.0
@@ -133,30 +136,33 @@ func GetAllRanksWithLevels() []RankWithLevels {
 	result := make([]RankWithLevels, len(RankCatalog))
 
 	for i, rank := range RankCatalog {
-		rangeSize := rank.MaxSeals - rank.MinSeals
-		quarterSize := float64(rangeSize) / 4.0
+		var subLevels []SubLevelInfo
+		if len(rank.Levels) > 0 {
+			rangeSize := rank.MaxSeals - rank.MinSeals
+			quarterSize := float64(rangeSize) / 4.0
 
-		subLevels := []SubLevelInfo{
-			{
-				Level:    "C",
-				MinSeals: rank.MinSeals,
-				MaxSeals: rank.MinSeals + int(quarterSize),
-			},
-			{
-				Level:    "B",
-				MinSeals: rank.MinSeals + int(quarterSize),
-				MaxSeals: rank.MinSeals + int(quarterSize*2),
-			},
-			{
-				Level:    "A",
-				MinSeals: rank.MinSeals + int(quarterSize*2),
-				MaxSeals: rank.MinSeals + int(quarterSize*3),
-			},
-			{
-				Level:    "S",
-				MinSeals: rank.MinSeals + int(quarterSize*3),
-				MaxSeals: rank.MaxSeals,
-			},
+			subLevels = []SubLevelInfo{
+				{
+					Level:    "C",
+					MinSeals: rank.MinSeals,
+					MaxSeals: rank.MinSeals + int(quarterSize),
+				},
+				{
+					Level:    "B",
+					MinSeals: rank.MinSeals + int(quarterSize),
+					MaxSeals: rank.MinSeals + int(quarterSize*2),
+				},
+				{
+					Level:    "A",
+					MinSeals: rank.MinSeals + int(quarterSize*2),
+					MaxSeals: rank.MinSeals + int(quarterSize*3),
+				},
+				{
+					Level:    "S",
+					MinSeals: rank.MinSeals + int(quarterSize*3),
+					MaxSeals: rank.MaxSeals,
+				},
+			}
 		}
 
 		result[i] = RankWithLevels{
@@ -169,6 +175,9 @@ func GetAllRanksWithLevels() []RankWithLevels {
 }
 
 func FormatRankTitle(rankName, quality, level string) string {
+	if level == "" {
+		return fmt.Sprintf("%s | %s", rankName, quality)
+	}
 	return fmt.Sprintf("%s | %s | %s", rankName, quality, level)
 }
 
