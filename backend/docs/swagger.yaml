@@ -1452,6 +1452,16 @@ definitions:
         description: '"code_verified" on success'
         type: string
     type: object
+  internal_modules_notifications.DevicePlatform:
+    enum:
+    - ios
+    - android
+    - huawei
+    type: string
+    x-enum-varnames:
+    - PlatformIOS
+    - PlatformAndroid
+    - PlatformHuawei
   internal_modules_notifications.Kind:
     enum:
     - ranking_up
@@ -1505,6 +1515,27 @@ definitions:
         type: string
       user_id:
         type: string
+    type: object
+  internal_modules_notifications.RegisterDeviceRequest:
+    properties:
+      app_version:
+        type: string
+      device_id:
+        type: string
+      locale:
+        type: string
+      platform:
+        allOf:
+        - $ref: '#/definitions/internal_modules_notifications.DevicePlatform'
+        enum:
+        - ios
+        - android
+        - huawei
+      token:
+        type: string
+    required:
+    - platform
+    - token
     type: object
   internal_modules_notifications.UnreadCountResponse:
     properties:
@@ -3731,6 +3762,54 @@ paths:
       security:
       - Bearer: []
       summary: Mark a notification as read
+      tags:
+      - Notifications
+  /notifications/devices:
+    post:
+      consumes:
+      - application/json
+      description: Adds or updates a push token for the authenticated user.
+      parameters:
+      - description: Device Token Data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_notifications.RegisterDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Register a device token for push notifications
+      tags:
+      - Notifications
+  /notifications/devices/{token}:
+    delete:
+      description: Deactivates a push token to stop receiving notifications on that
+        device.
+      parameters:
+      - description: Device Token
+        in: path
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+      security:
+      - Bearer: []
+      summary: Unregister a device token
       tags:
       - Notifications
   /notifications/read-all:

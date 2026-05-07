@@ -2705,6 +2705,82 @@ const docTemplate = `{
                 }
             }
         },
+        "/notifications/devices": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Adds or updates a push token for the authenticated user.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Register a device token for push notifications",
+                "parameters": [
+                    {
+                        "description": "Device Token Data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_notifications.RegisterDeviceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/notifications/devices/{token}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deactivates a push token to stop receiving notifications on that device.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Unregister a device token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Device Token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/notifications/read-all": {
             "post": {
                 "security": [
@@ -8256,6 +8332,19 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_modules_notifications.DevicePlatform": {
+            "type": "string",
+            "enum": [
+                "ios",
+                "android",
+                "huawei"
+            ],
+            "x-enum-varnames": [
+                "PlatformIOS",
+                "PlatformAndroid",
+                "PlatformHuawei"
+            ]
+        },
         "internal_modules_notifications.Kind": {
             "type": "string",
             "enum": [
@@ -8325,6 +8414,39 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_notifications.RegisterDeviceRequest": {
+            "type": "object",
+            "required": [
+                "platform",
+                "token"
+            ],
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "locale": {
+                    "type": "string"
+                },
+                "platform": {
+                    "enum": [
+                        "ios",
+                        "android",
+                        "huawei"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/internal_modules_notifications.DevicePlatform"
+                        }
+                    ]
+                },
+                "token": {
                     "type": "string"
                 }
             }
