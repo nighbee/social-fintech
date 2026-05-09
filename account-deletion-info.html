@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Deletion & Data Privacy - BrightBund</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2fe;
+            --secondary: #7000ff;
+            --bg: #0a0a0c;
+            --surface: #16161a;
+            --text: #f0f0f2;
+            --text-muted: #a0a0ab;
+            --border: #27272a;
+            --accent-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        h2::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 1.5rem;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        /* Instructions List */
+        .steps {
+            list-style: none;
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .step-number {
+            background: var(--accent-gradient);
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        /* Data Handling Grid */
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 640px) {
+            .data-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .data-card {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .data-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+        }
+
+        .data-card p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        /* Button */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.875rem 2rem;
+            background: var(--accent-gradient);
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 1rem;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(112, 0, 255, 0.3);
+        }
+
+        .contact-box {
+            text-align: center;
+            padding-top: 1rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 4rem;
+            padding-bottom: 2rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .legal-note {
+            font-style: italic;
+            font-size: 0.85rem;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-left: 2px solid var(--border);
+            color: var(--text-muted);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .container { padding: 2rem 1rem; }
+            h1 { font-size: 2rem; }
+            section { padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>BrightBund</h1>
+            <p class="subtitle">Account Deletion & Data Request Portal</p>
+        </header>
+
+        <section id="in-app">
+            <h2>Delete within the App</h2>
+            <p style="margin-bottom: 1.5rem; color: var(--text-muted);">The fastest way to delete your account is through the BrightBund app settings.</p>
+            <div class="steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <div><strong>Open BrightBund</strong> and ensure you are logged in.</div>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <div>Navigate to your <strong>Profile</strong> tab in the bottom menu.</div>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <div>Tap the <strong>Settings</strong> (gear icon) in the top right corner.</div>
+                </div>
+                <div class="step">
+                    <span class="step-number">4</span>
+                    <div>Select <strong>Security & Privacy</strong>, then tap <strong>Delete Account</strong>.</div>
+                </div>
+                <div class="step">
+                    <span class="step-number">5</span>
+                    <div>Verify your identity via password or SMS code and confirm the final request.</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="data-handling">
+            <h2>Data Handling Policy</h2>
+            <div class="data-grid">
+                <div class="data-card">
+                    <h3>Immediate Removal</h3>
+                    <p>Upon request, your personal profile (name, email, avatar), authentication tokens, and all active device sessions are revoked and marked for removal immediately.</p>
+                </div>
+                <div class="data-card">
+                    <h3>30-Day Grace Period</h3>
+                    <p>Activity logs, transaction history, and uploaded media files are moved to a restricted storage state for 30 days before permanent purging to allow for accidental deletion recovery.</p>
+                </div>
+            </div>
+            <div class="legal-note">
+                <strong>Legal Retention:</strong> Please note that certain data points (such as financial transaction records) may be retained beyond the 30-day window if required by applicable laws for tax, audit, or regulatory compliance purposes.
+            </div>
+        </section>
+
+        <section id="web-request">
+            <h2>Manual Request</h2>
+            <div class="contact-box">
+                <p style="margin-bottom: 1.5rem;">If you no longer have the app installed or cannot access your account, you can request deletion via our support team.</p>
+                <a href="mailto:support@brightbund.com?subject=Account%20Deletion%20Request" class="btn">Contact Support</a>
+                <p style="margin-top: 1rem; font-size: 0.875rem; color: var(--text-muted);">Please use the email address associated with your account.</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 BrightBund. All rights reserved.</p>
+            <p style="margin-top: 0.5rem;">Publicly accessible per Google Play Data Safety Requirements.</p>
+        </footer>
+    </div>
+
+</body>
+</html>
