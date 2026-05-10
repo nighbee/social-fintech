@@ -31,7 +31,7 @@ class ActionBottomSheet extends StatelessWidget {
       children: [
         if (showDivider) const ActionBottomSheetDivider(),
         if (appBar != null) appBar!,
-        Flexible(child: child),
+        if (isExpanded) Expanded(child: child) else child,
       ],
     );
 

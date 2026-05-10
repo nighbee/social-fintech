@@ -157,7 +157,11 @@ class ProfileHeaderCard extends StatelessWidget {
                         const Gap(4),
                         ProfileExpandableBio(text: bio),
                         const Gap(8),
-                        ProfileStatsRow(goldenSeals: reputationScore),
+                        ProfileStatsRow(
+                          goldenSeals: reputationScore,
+                          statsLabel:
+                              isPublicProfile ? 'User Stats' : 'Your Stats',
+                        ),
                       ],
                     ),
                   ),

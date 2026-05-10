@@ -13,6 +13,7 @@ import 'package:app/src/features/home/presentation/widgets/feed_app_bar.dart';
 import 'package:app/src/features/home/presentation/widgets/feed_soft_limit_scroll_physics.dart';
 import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
 import 'package:app/src/features/home/presentation/widgets/reported_post_card_widget.dart';
+import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/widgets/referral_invite_success_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -111,6 +112,23 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     setState(() {
       _showReportSuccessBanner = false;
     });
+  }
+
+  void _onFeedAuthorTap(String authorId) {
+    final id = authorId.trim();
+    if (id.isEmpty) return;
+    final myId = getIt<ProfileBloc>().state.maybeWhen(
+      loaded: (vm) => vm.profile.userId.trim(),
+      orElse: () => '',
+    );
+    if (id == myId && myId.isNotEmpty) {
+      context.go(RoutePaths.profile);
+      return;
+    }
+    context.pushNamed(
+      RouteNames.publicProfile,
+      pathParameters: <String, String>{'userId': id},
+    );
   }
 
   @override
@@ -459,6 +477,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               post: post,
                               bloc: _homeBloc,
                               onReported: _onPostReported,
+                              onAuthorTap: () => _onFeedAuthorTap(post.author.id),
                             );
                           },
                         ),

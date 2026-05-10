@@ -24,6 +24,7 @@ class PostCardWidget extends StatelessWidget
   final HomeBloc bloc;
   final VoidCallback? onReported;
   final VoidCallback? onMoreTap;
+  final VoidCallback? onAuthorTap;
 
   const PostCardWidget({
     super.key,
@@ -31,6 +32,7 @@ class PostCardWidget extends StatelessWidget
     required this.bloc,
     this.onReported,
     this.onMoreTap,
+    this.onAuthorTap,
   });
 
   @override
@@ -47,6 +49,56 @@ class PostCardWidget extends StatelessWidget
         ? post.author.profilePicUrl
         : '';
     final legacyPost = _toLegacyPost(post, imageUrls);
+    final authorHeader = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _PostAvatar(imageUrl: avatarUrl),
+        const Gap(10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      post.author.username,
+                      style: TextStyles.titleHeadline.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Gap(8),
+                  Text(
+                    post.timeAgo,
+                    style: TextStyles.bodyMain.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+              const Gap(2),
+              Row(
+                children: [
+                  Text(
+                    rankMeta.label,
+                    style: TextStyles.bodyMain.copyWith(
+                      color: const Color(0xFF4E92CE),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Gap(4),
+                  rankMeta.badge.image(width: 16, height: 16),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
 
     return Container(
       width: double.infinity,
@@ -78,50 +130,16 @@ class PostCardWidget extends StatelessWidget
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _PostAvatar(imageUrl: avatarUrl),
-              const Gap(10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            post.author.username,
-                            style: TextStyles.titleHeadline.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                child: onAuthorTap == null
+                    ? authorHeader
+                    : Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onAuthorTap,
+                          child: authorHeader,
                         ),
-                        const Gap(8),
-                        Text(
-                          post.timeAgo,
-                          style: TextStyles.bodyMain.copyWith(
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Gap(2),
-                    Row(
-                      children: [
-                        Text(
-                          rankMeta.label,
-                          style: TextStyles.bodyMain.copyWith(
-                            color: const Color(0xFF4E92CE),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Gap(4),
-                        rankMeta.badge.image(width: 16, height: 16),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
               ),
               GestureDetector(
                 onTap: () {

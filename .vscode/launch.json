@@ -11,7 +11,7 @@
         "dev",
         "--dart-define-from-file=${workspaceFolder}/app/.env",
         "--dart-define",
-        "DEV_BASE_URL=http://35.209.210.231/api/v1"
+        "DEV_BASE_URL=https://brightbund.app/api/v1"
       ]
     },
     {
@@ -22,7 +22,7 @@
       "toolArgs": [
         "--dart-define-from-file=${workspaceFolder}/app/.env",
         "--dart-define",
-        "DEV_BASE_URL=http://35.209.210.231/api/v1",
+        "DEV_BASE_URL=https://brightbund.app/api/v1",
         "--dart-define",
         "MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoienRrdHNuIiwiYSI6ImNtbjdwbjNlbjAyeDMycHF1eHp4NGM3bDUifQ.8S_7m_dx6_Idqy0nYgqb5w"
       ]
@@ -48,7 +48,7 @@
       "toolArgs": [
         "--dart-define-from-file=${workspaceFolder}/app/.env",
         "--dart-define",
-        "DEV_BASE_URL=http://35.209.210.231/api/v1",
+        "DEV_BASE_URL=https://brightbund.app/api/v1",
         "--dart-define",
         "MAPBOX_ACCESS_TOKEN=pk.eyJ1IjoienRrdHNuIiwiYSI6ImNtbjdwbjNlbjAyeDMycHF1eHp4NGM3bDUifQ.8S_7m_dx6_Idqy0nYgqb5w"
       ]

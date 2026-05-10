@@ -40,6 +40,7 @@ mixin ShowPostReportBottomSheet {
   }) {
     context.showRoundedModalBottomSheet(
       backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.42),
       maxHeightFactor: 0.9,
       child: ActionBottomSheet(
         backgroundColor: const Color(0xFF202020),

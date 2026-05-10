@@ -3,6 +3,7 @@ import 'package:app/src/features/profile/domain/entities/relationship_status_ent
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
+/// Matches [ProfileActionButtons] pill metrics; "Add to favorites" (not following) stays white per Figma.
 class PublicUserActionButtons extends StatelessWidget {
   const PublicUserActionButtons({
     super.key,
@@ -21,16 +22,28 @@ class PublicUserActionButtons extends StatelessWidget {
   final VoidCallback? onUnblock;
   final VoidCallback? onMessage;
 
+  static const Color _primaryBtnFill = Color.fromRGBO(109, 109, 109, 0.35);
+  static const Color _primaryBtnBorder = Color.fromRGBO(101, 101, 101, 0.25);
+  static const double _pillHeight = 30;
+  static const double _radius = 6;
+
+  static TextStyle _pillTextStyle(Color color) {
+    return TextStyles.titleTag.copyWith(
+      color: color,
+      fontSize: 12,
+      fontWeight: FontWeight.w400,
+      height: 14 / 12,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isBlocked = relationshipStatus?.iBlockedThem ?? false;
 
-    // Priority 1: If user is blocked, show ONLY unblock button
     if (isBlocked) {
       return _UnblockButton(onUnblock: onUnblock);
     }
 
-    // Priority 2: Normal state - show follow + message buttons
     return _NormalButtons(
       relationshipStatus: relationshipStatus,
       onFollow: onFollow,
@@ -47,21 +60,25 @@ class _UnblockButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 40,
-      child: ElevatedButton(
-        onPressed: onUnblock,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: const BorderSide(color: Color(0xFF656565)),
+    return GestureDetector(
+      onTap: onUnblock,
+      child: Container(
+        width: double.infinity,
+        height: PublicUserActionButtons._pillHeight,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(PublicUserActionButtons._radius),
+          border: Border.all(
+            color: PublicUserActionButtons._primaryBtnBorder,
+            width: 0.8,
           ),
         ),
         child: Text(
           'Unblock',
-          style: TextStyles.titleTag.copyWith(color: const Color(0xFFCACACA)),
+          style: PublicUserActionButtons._pillTextStyle(
+            const Color(0xFF191919),
+          ).copyWith(fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -86,82 +103,98 @@ class _NormalButtons extends StatelessWidget {
     final isFollowing = relationshipStatus?.iFollowThem ?? false;
     final isRestricted = relationshipStatus?.iRestrictedThem ?? false;
 
-    return SizedBox(
-      height: 40,
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                if (isFollowing) {
-                  onUnfollow?.call();
-                } else {
-                  onFollow?.call();
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF656565)),
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              if (isFollowing) {
+                onUnfollow?.call();
+              } else {
+                onFollow?.call();
+              }
+            },
+            child: Container(
+              height: PublicUserActionButtons._pillHeight,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                color: isFollowing
+                    ? PublicUserActionButtons._primaryBtnFill
+                    : Colors.white,
+                borderRadius:
+                    BorderRadius.circular(PublicUserActionButtons._radius),
+                border: Border.all(
+                  color: PublicUserActionButtons._primaryBtnBorder,
+                  width: 0.8,
                 ),
-                child: Center(
-                  child: Text(
-                    isFollowing ? 'Added to favorites' : 'Add to favorites',
-                    style: TextStyles.titleTag.copyWith(
-                      color: const Color(0xFFCACACA),
+              ),
+              child: Text(
+                isFollowing ? 'Added to favorites' : 'Add to favorites',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: PublicUserActionButtons._pillTextStyle(
+                  isFollowing
+                      ? const Color(0xFFCACACA)
+                      : const Color(0xFF191919),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const Gap(6),
+        Expanded(
+          child: GestureDetector(
+            onTap: onMessage,
+            child: Container(
+              height: PublicUserActionButtons._pillHeight,
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: isRestricted
+                    ? const Color(0xFFFF3B30).withValues(alpha: 0.2)
+                    : PublicUserActionButtons._primaryBtnFill,
+                borderRadius:
+                    BorderRadius.circular(PublicUserActionButtons._radius),
+                border: Border.all(
+                  color: isRestricted
+                      ? const Color(0xFFFF3B30)
+                      : PublicUserActionButtons._primaryBtnBorder,
+                  width: 0.8,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isRestricted) ...[
+                    const Icon(
+                      Icons.block,
+                      size: 14,
+                      color: Color(0xFFFF3B30),
+                    ),
+                    const Gap(4),
+                  ],
+                  Flexible(
+                    child: Text(
+                      'Message',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: PublicUserActionButtons._pillTextStyle(
+                        isRestricted
+                            ? const Color(0xFFFF3B30)
+                            : const Color(0xFFCACACA),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
-          const Gap(12),
-          Expanded(
-            child: GestureDetector(
-              onTap: onMessage,
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: isRestricted
-                      ? const Color(0xFFFF3B30).withValues(alpha: 0.2)
-                      : const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isRestricted
-                        ? const Color(0xFFFF3B30)
-                        : const Color(0xFF656565),
-                  ),
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (isRestricted) ...[
-                        const Icon(
-                          Icons.block,
-                          size: 16,
-                          color: Color(0xFFFF3B30),
-                        ),
-                        const Gap(4),
-                      ],
-                      Text(
-                        'Message',
-                        style: TextStyles.titleTag.copyWith(
-                          color: isRestricted
-                              ? const Color(0xFFFF3B30)
-                              : const Color(0xFFCACACA),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

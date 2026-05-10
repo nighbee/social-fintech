@@ -1,3 +1,6 @@
+# Release signing (keystore lives next to android/, not under android/.gitignore rules)
+upload-keystore.jks
+
 # Miscellaneous
 *.class
 *.log

@@ -143,12 +143,28 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
       final request = UserIdRequest(userId: event.userId);
       final result = await _repository.getPublicProfile(request);
 
-      result.fold((error) => emit(ProfileState.loadingError(error.message)), (
-        publicProfile,
-      ) {
-        _viewModel = _viewModel.copyWith(publicProfile: publicProfile);
-        emit(ProfileState.loaded(viewModel: _viewModel));
-      });
+      await result.fold(
+        (error) async => emit(ProfileState.loadingError(error.message)),
+        (publicProfile) async {
+          _viewModel = _viewModel.copyWith(publicProfile: publicProfile);
+
+          final relResult = await _repository.getRelationship(request);
+          relResult.fold(
+            (_) {
+              _viewModel = _viewModel.copyWith(
+                relationshipStatus: RelationshipStatusEntity.empty(
+                  userId: event.userId,
+                ),
+              );
+            },
+            (relationship) {
+              _viewModel =
+                  _viewModel.copyWith(relationshipStatus: relationship);
+            },
+          );
+          emit(ProfileState.loaded(viewModel: _viewModel));
+        },
+      );
     } catch (e) {
       emit(ProfileState.loadingError(e.toString()));
     }

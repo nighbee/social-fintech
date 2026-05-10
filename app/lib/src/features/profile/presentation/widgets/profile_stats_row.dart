@@ -4,9 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
 class ProfileStatsRow extends StatelessWidget {
-  const ProfileStatsRow({required this.goldenSeals, super.key});
+  const ProfileStatsRow({
+    required this.goldenSeals,
+    this.statsLabel = 'Your Stats',
+    super.key,
+  });
 
   final int goldenSeals;
+  final String statsLabel;
 
   static const _pillBg = Color.fromRGBO(64, 64, 64, 0.24);
   static const _honorBorder = Color.fromRGBO(215, 215, 217, 0.53);
@@ -137,7 +142,7 @@ class ProfileStatsRow extends StatelessWidget {
                       const Gap(_statsInnerGap),
                       Expanded(
                         child: Text(
-                          'Your Stats',
+                          statsLabel,
                           maxLines: 1,
                           softWrap: false,
                           overflow: TextOverflow.ellipsis,
