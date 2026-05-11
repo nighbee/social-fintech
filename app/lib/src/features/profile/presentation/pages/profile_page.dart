@@ -1,8 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
-import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
@@ -13,7 +13,6 @@ import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_post_grid.dart';
 import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
 class ProfilePage extends StatelessWidget {
@@ -170,6 +169,30 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         .toList(growable: false);
   }
 
+  /// Figma: 16 сверху, иконка 24×24, затем 32 до карточки профиля.
+  List<Widget> _ownProfileMenuAndGapSlivers() {
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: _openSettings,
+              behavior: HitTestBehavior.opaque,
+              child: Assets.images.menu.image(
+                width: 24,
+                height: 24,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+    ];
+  }
+
   Future<void> _loadMyPosts({bool force = false}) async {
     if (_isPostsLoading && !force) return;
     setState(() {
@@ -221,21 +244,6 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
         // Layer 2: Scaffold with transparent background (above particles)
         Scaffold(
           backgroundColor: Colors.transparent,
-          appBar: CustomAppBar(
-            backgroundColor: Colors.transparent,
-            showLeading: false,
-            actions: [
-              GestureDetector(
-                onTap: _openSettings,
-                child: const Icon(
-                  Icons.menu_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-              const Gap(16),
-            ],
-          ),
           bottomNavigationBar: const CustomNavBar(
             currentTab: RoutePaths.profile,
           ),
@@ -243,26 +251,53 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
             child: BlocBuilder<ProfileBloc, ProfileState>(
               bloc: getIt<ProfileBloc>(),
               builder: (context, state) {
+                const scrollPhysics = AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                );
                 return state.when(
-                  initial: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  loading: (_) =>
-                      const Center(child: CircularProgressIndicator()),
-                  loadingError: (message) => Center(child: Text(message)),
+                  initial: () => CustomScrollView(
+                    physics: scrollPhysics,
+                    slivers: [
+                      ..._ownProfileMenuAndGapSlivers(),
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ],
+                  ),
+                  loading: (_) => CustomScrollView(
+                    physics: scrollPhysics,
+                    slivers: [
+                      ..._ownProfileMenuAndGapSlivers(),
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ],
+                  ),
+                  loadingError: (message) => CustomScrollView(
+                    physics: scrollPhysics,
+                    slivers: [
+                      ..._ownProfileMenuAndGapSlivers(),
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: Text(message)),
+                      ),
+                    ],
+                  ),
                   loaded: (ProfileViewModel viewmodel) {
                     final profile = viewmodel.profile;
 
                     return RefreshIndicator(
                       onRefresh: () => _loadMyPosts(force: true),
                       child: CustomScrollView(
-                        physics: const AlwaysScrollableScrollPhysics(
-                          parent: BouncingScrollPhysics(),
-                        ),
+                        physics: scrollPhysics,
                         slivers: [
+                          ..._ownProfileMenuAndGapSlivers(),
                           // Profile Header Card
                           SliverToBoxAdapter(
                             child: Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 22, 16, 8),
+                              padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
                               child: ProfileHeaderCard(
                                 displayName: profile.displayName,
                                 userId: profile.userId,
@@ -291,7 +326,7 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                             SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
+                                  horizontal: 20,
                                   vertical: 32,
                                 ),
                                 child: Center(
@@ -306,17 +341,21 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                               ),
                             )
                           else
-                            ProfilePostGrid(
-                              posts: _myPosts,
-                              onPostTap: (postId) => _openMyPublications(
-                                context,
-                                displayName: _publicationsDisplayName(
-                                  displayName: profile.displayName,
-                                  firstName: profile.firstName,
-                                  lastName: profile.lastName,
-                                  userId: profile.userId,
+                            SliverPadding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              sliver: ProfilePostGrid(
+                                posts: _myPosts,
+                                onPostTap: (postId) => _openMyPublications(
+                                  context,
+                                  displayName: _publicationsDisplayName(
+                                    displayName: profile.displayName,
+                                    firstName: profile.firstName,
+                                    lastName: profile.lastName,
+                                    userId: profile.userId,
+                                  ),
+                                  initialPostId: postId,
                                 ),
-                                initialPostId: postId,
                               ),
                             ),
                         ],

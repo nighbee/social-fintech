@@ -28,6 +28,8 @@ import 'package:app/src/features/map/presentation/utils/map_flow_evaluator.dart'
 import 'package:app/src/features/map/presentation/utils/map_marker_zoom_scale.dart';
 import 'package:app/src/features/profile/data/local/location_access_prefs.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:go_router/go_router.dart';
@@ -92,7 +94,6 @@ class MapPageController {
   var _didCameraFollowFirstDeviceFix = false;
   bool isRequestExpanded = false;
   Offset myRequestPanelOffset = Offset.zero;
-  bool hasSavedCenter = false;
   String? _lastChampionsRegionKey;
   DateTime? _lastEmptyChampionsFetchAt;
   String? _lastHandledAutoClosedTaskId;
@@ -619,18 +620,19 @@ class MapPageController {
         LocationComponentSettings(enabled: false),
       ),
     );
-    if (hasSavedCenter) {
-      unawaited(
-        map.easeTo(
-          CameraOptions(
-            center:
-                Point(coordinates: Position(currentLongitude, currentLatitude)),
-            zoom: 14.5,
-          ),
-          MapAnimationOptions(duration: 450),
+    // Синхронизируем камеру с контроллером (в т.ч. после readSavedCenter):
+    // раньше hasSavedCenter после restore блокировал первый реальный GPS.
+    final initialZoom = _mapBloc.viewModel.zoom.clamp(1.5, 20.0).toDouble();
+    unawaited(
+      map.easeTo(
+        CameraOptions(
+          center:
+              Point(coordinates: Position(currentLongitude, currentLatitude)),
+          zoom: initialZoom,
         ),
-      );
-    }
+        MapAnimationOptions(duration: 450),
+      ),
+    );
 
     // Чемпионы: сначала создаём менеджер аннотаций, иначе onLoaded мог вызвать
     // updateChampions раньше — там manager == null и пины тихо не создаются.
@@ -790,9 +792,6 @@ class MapPageController {
     if (_didCameraFollowFirstDeviceFix) {
       return;
     }
-    if (hasSavedCenter) {
-      return;
-    }
     final map = mapboxMap;
     if (map == null) {
       return;
@@ -810,7 +809,6 @@ class MapPageController {
       MapAnimationOptions(duration: 550),
     );
 
-    hasSavedCenter = true;
     await _persistence.writeSavedCenter(lat, lon);
   }
 
@@ -1088,16 +1086,6 @@ class MapPageController {
     }
 
     try {
-      final serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location services are disabled.')),
-          );
-        }
-        return;
-      }
-
       var permission = await geo.Geolocator.checkPermission();
       if (permission == geo.LocationPermission.denied) {
         permission = await geo.Geolocator.requestPermission();
@@ -1113,13 +1101,28 @@ class MapPageController {
         return;
       }
 
+      final serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled && defaultTargetPlatform != TargetPlatform.android) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location services are disabled.')),
+          );
+        }
+        return;
+      }
+
       final position = await MapGeo.getBestCurrentPosition();
 
       if (position == null) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Unable to determine current location.')),
+            SnackBar(
+              content: Text(
+                serviceEnabled
+                    ? 'Unable to determine current location.'
+                    : 'Turn on location (GPS) in system settings, then try again.',
+              ),
+            ),
           );
         }
         return;
@@ -1132,7 +1135,6 @@ class MapPageController {
       _deviceLongitude = lon;
       currentLatitude = lat;
       currentLongitude = lon;
-      hasSavedCenter = true;
       await _persistence.writeSavedCenter(lat, lon);
 
       if (!_didAssignRegionWithDeviceLocation) {
@@ -1301,7 +1303,6 @@ class MapPageController {
 
     currentLatitude = savedCenter.lat;
     currentLongitude = savedCenter.lon;
-    hasSavedCenter = true;
 
     final map = mapboxMap;
     if (map != null) {

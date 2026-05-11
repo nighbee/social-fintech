@@ -5,6 +5,7 @@ import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
+import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_silver_honor_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_publication_owner_actions_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
@@ -112,6 +113,7 @@ _PubRankMeta _pubResolveRankMeta(String rank, String rankSubLevel) {
 class PublicationsPostCard extends StatelessWidget
     with
         ShowPostCommentsBottomSheet,
+        ShowPostReportBottomSheet,
         ShowPostSilverHonorBottomSheet,
         ShowPublicationOwnerActionsBottomSheet {
   const PublicationsPostCard({
@@ -119,11 +121,15 @@ class PublicationsPostCard extends StatelessWidget
     required this.anchorPost,
     required this.bloc,
     required this.onPostDeleted,
+    this.isOwnerMode = true,
+    this.onReported,
   });
 
   final PostResponseEntity anchorPost;
   final HomeBloc bloc;
   final VoidCallback onPostDeleted;
+  final bool isOwnerMode;
+  final VoidCallback? onReported;
 
   static const String _outlineLikeIcon = '''
 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -142,7 +148,9 @@ class PublicationsPostCard extends StatelessWidget
     return BlocBuilder<HomeBloc, HomeState>(
       bloc: bloc,
       builder: (context, state) {
-        final post = _mergeFromMyPublicationsCache(bloc, anchorPost);
+        final post = isOwnerMode
+            ? _mergeFromMyPublicationsCache(bloc, anchorPost)
+            : anchorPost;
         final rankMeta = _pubResolveRankMeta(post.author.rank, post.author.rankSubLevel);
         final avatarUrl = post.author.profilePicUrl.trim().isNotEmpty
             ? post.author.profilePicUrl
@@ -204,12 +212,25 @@ class PublicationsPostCard extends StatelessWidget
                     ),
                   ),
                   GestureDetector(
-                    onTap: () => showPublicationOwnerActionsBottomSheet(
-                      context,
-                      bloc: bloc,
-                      post: post,
-                      onPostDeleted: onPostDeleted,
-                    ),
+                    onTap: () {
+                      if (isOwnerMode) {
+                        showPublicationOwnerActionsBottomSheet(
+                          context,
+                          bloc: bloc,
+                          post: post,
+                          onPostDeleted: onPostDeleted,
+                        );
+                        return;
+                      }
+                      showPostReportBottomSheet(
+                        context,
+                        bloc: bloc,
+                        postId: post.postId,
+                        authorId: post.author.id,
+                        username: post.author.username,
+                        onReported: onReported,
+                      );
+                    },
                     child: Assets.icons.more.svg(width: 16, height: 16),
                   ),
                 ],

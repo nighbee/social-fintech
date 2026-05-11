@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:app/src/features/map/presentation/services/map_location_settings.dart';
@@ -99,11 +100,6 @@ class MapSelfMarkerService {
     await _positionSub?.cancel();
     _positionSub = null;
 
-    final enabled = await geo.Geolocator.isLocationServiceEnabled();
-    if (!enabled) {
-      return;
-    }
-
     var permission = await geo.Geolocator.checkPermission();
     if (permission == geo.LocationPermission.denied) {
       permission = await geo.Geolocator.requestPermission();
@@ -111,6 +107,15 @@ class MapSelfMarkerService {
     if (permission == geo.LocationPermission.denied ||
         permission == geo.LocationPermission.deniedForever) {
       return;
+    }
+
+    // На Android `isLocationServiceEnabled` иногда false при включённых службах
+    // (режим батареи и т.д.) — не блокируем стрим, если разрешение уже есть.
+    if (!Platform.isAndroid) {
+      final enabled = await geo.Geolocator.isLocationServiceEnabled();
+      if (!enabled) {
+        return;
+      }
     }
 
     void handlePosition(geo.Position p) {
@@ -131,7 +136,12 @@ class MapSelfMarkerService {
 
     _positionSub = geo.Geolocator.getPositionStream(
       locationSettings: MapGeo.streamSettings(),
-    ).listen(handlePosition);
+    ).listen(
+      handlePosition,
+      onError: (Object e, StackTrace st) {
+        debugPrint('[MapSelfMarkerService] position stream error: $e');
+      },
+    );
   }
 
   Future<void> updatePosition(

@@ -159,6 +159,82 @@ class _PublicProfilePageState extends State<PublicProfilePage>
     );
   }
 
+  List<Widget> _publicProfileToolbarAndGapSlivers({
+    required BuildContext context,
+    required ProfileBloc bloc,
+    required ProfileState state,
+  }) {
+    final titleStyle = TextStyles.titleHeadline.copyWith(
+      color: Colors.white,
+      fontFamily: 'Lora',
+      fontWeight: FontWeight.w600,
+      fontSize: 18,
+    );
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+          child: SizedBox(
+            height: 24,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    GestureDetector(
+                      onTap: () => context.pop(),
+                      behavior: HitTestBehavior.opaque,
+                      child: Assets.images.chevronLeft.image(
+                        width: 24,
+                        height: 24,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () {
+                        showProfileActionsBottomSheet(
+                          context,
+                          userName: state.maybeMap(
+                            loaded: (s) =>
+                                s.viewModel.publicProfile.displayName,
+                            orElse: () => 'User',
+                          ),
+                          onBlock: () {
+                            bloc.add(ProfileEvent.blockUser(widget.userId));
+                          },
+                          onReport: () {
+                            bloc.add(ProfileEvent.reportUser(widget.userId));
+                          },
+                          onRestrict: () {
+                            bloc.add(ProfileEvent.restrictUser(widget.userId));
+                          },
+                          onCopyUrl: _copyProfileUrlToClipboard,
+                          onShare: _shareProfileLink,
+                        );
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Assets.images.dots.image(
+                        width: 24,
+                        height: 24,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ],
+                ),
+                IgnorePointer(
+                  child: Text('Profile', style: titleStyle),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      const SliverToBoxAdapter(child: SizedBox(height: 32)),
+    ];
+  }
+
   void _openTheirPublications(
     BuildContext context, {
     required String displayName,
@@ -222,80 +298,77 @@ class _PublicProfilePageState extends State<PublicProfilePage>
             ),
             Scaffold(
               backgroundColor: Colors.transparent,
-              appBar: AppBar(
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () => context.pop(),
-                ),
-                title: Text(
-                  'Profile',
-                  style: TextStyles.titleHeadline.copyWith(
-                    color: Colors.white,
-                    fontFamily: 'Lora',
-                    fontWeight: FontWeight.w600,
-                    fontSize: 18,
-                  ),
-                ),
-                centerTitle: true,
-                actions: [
-                  IconButton(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    onPressed: () {
-                      showProfileActionsBottomSheet(
-                        context,
-                        userName: state.maybeMap(
-                          loaded: (s) =>
-                              s.viewModel.publicProfile.displayName,
-                          orElse: () => 'User',
-                        ),
-                        onBlock: () {
-                          bloc.add(ProfileEvent.blockUser(widget.userId));
-                        },
-                        onReport: () {
-                          bloc.add(ProfileEvent.reportUser(widget.userId));
-                        },
-                        onRestrict: () {
-                          bloc.add(ProfileEvent.restrictUser(widget.userId));
-                        },
-                        onCopyUrl: _copyProfileUrlToClipboard,
-                        onShare: _shareProfileLink,
-                      );
-                    },
-                  ),
-                ],
-              ),
               body: SafeArea(
                 child: state.when(
-                  initial: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  loading: (_) =>
-                      const Center(child: CircularProgressIndicator()),
-                  loadingError: (message) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 64, color: Colors.red),
-                        const SizedBox(height: 16),
-                        Text(
-                          message,
-                          style: TextStyles.bodyMain.copyWith(
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
+                  initial: () => CustomScrollView(
+                    slivers: [
+                      ..._publicProfileToolbarAndGapSlivers(
+                        context: context,
+                        bloc: bloc,
+                        state: state,
+                      ),
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ],
+                  ),
+                  loading: (_) => CustomScrollView(
+                    slivers: [
+                      ..._publicProfileToolbarAndGapSlivers(
+                        context: context,
+                        bloc: bloc,
+                        state: state,
+                      ),
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
+                    ],
+                  ),
+                  loadingError: (message) => CustomScrollView(
+                    slivers: [
+                      ..._publicProfileToolbarAndGapSlivers(
+                        context: context,
+                        bloc: bloc,
+                        state: state,
+                      ),
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 64,
+                              color: Colors.red,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              message,
+                              style: TextStyles.bodyMain.copyWith(
+                                color: Colors.white,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                   loaded: (viewModel) {
                     final profile = viewModel.publicProfile;
 
                     return CustomScrollView(
                       slivers: [
+                        ..._publicProfileToolbarAndGapSlivers(
+                          context: context,
+                          bloc: bloc,
+                          state: state,
+                        ),
                         SliverToBoxAdapter(
                           child: Padding(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
                             child: ProfileHeaderCard(
                               displayName: profile.displayName,
                               userId: profile.userId,
@@ -373,7 +446,7 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                             SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
+                                  horizontal: 20,
                                   vertical: 32,
                                 ),
                                 child: Center(
@@ -388,17 +461,21 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                               ),
                             )
                           else
-                            ProfilePostGrid(
-                              posts: _theirPosts,
-                              onPostTap: (postId) => _openTheirPublications(
-                                context,
-                                displayName: _publicationsDisplayName(
-                                  displayName: profile.displayName,
-                                  firstName: profile.firstName,
-                                  lastName: profile.lastName,
-                                  userId: profile.userId,
+                            SliverPadding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              sliver: ProfilePostGrid(
+                                posts: _theirPosts,
+                                onPostTap: (postId) => _openTheirPublications(
+                                  context,
+                                  displayName: _publicationsDisplayName(
+                                    displayName: profile.displayName,
+                                    firstName: profile.firstName,
+                                    lastName: profile.lastName,
+                                    userId: profile.userId,
+                                  ),
+                                  initialPostId: postId,
                                 ),
-                                initialPostId: postId,
                               ),
                             ),
                         ],

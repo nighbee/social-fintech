@@ -5,6 +5,9 @@ import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:flutter/material.dart';
 
 class ProfilePostGrid extends StatelessWidget {
+  /// Figma cell proportion (width × height).
+  static const double _cellAspectRatio = 132 / 120;
+
   const ProfilePostGrid({
     required this.posts,
     this.onPostTap,
@@ -56,7 +59,7 @@ class ProfilePostGrid extends StatelessWidget {
             crossAxisCount: 3,
             crossAxisSpacing: 2,
             mainAxisSpacing: 2,
-            childAspectRatio: 1,
+            childAspectRatio: _cellAspectRatio,
           ),
           delegate: SliverChildBuilderDelegate((context, index) {
             final post = mediaPosts[index];

@@ -228,6 +228,13 @@ class $AssetsImagesGen {
   AssetGenImage get bigGoldenCoin =>
       const AssetGenImage('assets/images/Big_golden_coin.png');
 
+  /// File path: assets/images/Chevron left.png
+  AssetGenImage get chevronLeft =>
+      const AssetGenImage('assets/images/Chevron left.png');
+
+  /// File path: assets/images/Dots.png
+  AssetGenImage get dots => const AssetGenImage('assets/images/Dots.png');
+
   /// File path: assets/images/Heroes.png
   AssetGenImage get heroes => const AssetGenImage('assets/images/Heroes.png');
 
@@ -260,6 +267,9 @@ class $AssetsImagesGen {
   AssetGenImage get mapTriangleMarker =>
       const AssetGenImage('assets/images/map_triangle_marker.png');
 
+  /// File path: assets/images/menu.png
+  AssetGenImage get menu => const AssetGenImage('assets/images/menu.png');
+
   /// File path: assets/images/moonstone.png
   AssetGenImage get moonstone =>
       const AssetGenImage('assets/images/moonstone.png');
@@ -280,6 +290,8 @@ class $AssetsImagesGen {
   /// List of all assets
   List<AssetGenImage> get values => [
         bigGoldenCoin,
+        chevronLeft,
+        dots,
         heroes,
         mapOpen,
         taskCreate,
@@ -289,6 +301,7 @@ class $AssetsImagesGen {
         jade,
         lapislazuli,
         mapTriangleMarker,
+        menu,
         moonstone,
         myTask,
         onyx,

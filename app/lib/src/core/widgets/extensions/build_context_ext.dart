@@ -28,8 +28,23 @@ extension BuildContextExt on BuildContext {
             ? MediaQuery.of(this).size.height * maxHeightFactor
             : double.infinity,
       ),
-      builder: (context) {
-        return child;
+      builder: (sheetContext) {
+        // Иначе Material 3 подмешивает surface / modalBackground из темы — «стекло» становится плотной плашкой.
+        return Material(
+          type: MaterialType.transparency,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          child: Theme(
+            data: Theme.of(this).copyWith(
+              bottomSheetTheme: Theme.of(this).bottomSheetTheme.copyWith(
+                modalBackgroundColor: Colors.transparent,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+              ),
+            ),
+            child: child,
+          ),
+        );
       },
     ).then((result) {
       whenDismissed?.call();

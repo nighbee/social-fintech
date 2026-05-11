@@ -8,7 +8,6 @@ import 'package:app/src/features/home/domain/entities/post_response_entity.dart'
 import 'package:app/src/features/home/domain/requests/get_my_profile_posts_request.dart';
 import 'package:app/src/features/home/domain/requests/get_profile_posts_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
-import 'package:app/src/features/home/presentation/widgets/post_card_widget.dart';
 import 'package:app/src/features/home/presentation/widgets/publications_post_card.dart';
 import 'package:flutter/material.dart';
 import 'package:fpdart/fpdart.dart' hide State;
@@ -320,16 +319,11 @@ class _ProfilePublicationsBody extends StatelessWidget {
         }
 
         final post = feed.items[index];
-        if (isOwnerViewer) {
-          return PublicationsPostCard(
-            anchorPost: post,
-            bloc: getIt<HomeBloc>(),
-            onPostDeleted: () => onOwnerDeletedPost(post.postId),
-          );
-        }
-        return PostCardWidget(
-          post: post,
+        return PublicationsPostCard(
+          anchorPost: post,
           bloc: getIt<HomeBloc>(),
+          isOwnerMode: isOwnerViewer,
+          onPostDeleted: () => onOwnerDeletedPost(post.postId),
         );
       },
     );
