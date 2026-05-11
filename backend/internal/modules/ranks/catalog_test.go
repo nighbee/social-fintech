@@ -77,8 +77,8 @@ func TestCalculateRankAndLevel(t *testing.T) {
 		{seals: 480, wantRank: "Onyx", wantLevel: "A"},
 		{seals: 590, wantRank: "Onyx", wantLevel: "S"},
 		{seals: 699, wantRank: "Onyx", wantLevel: "S"},
-		{seals: 700, wantRank: "Supernova", wantLevel: "C"},
-		{seals: 5000, wantRank: "Supernova", wantLevel: "C"},
+		{seals: 700, wantRank: "Supernova", wantLevel: ""},
+		{seals: 5000, wantRank: "Supernova", wantLevel: ""},
 	}
 
 	for _, tt := range tests {
@@ -118,12 +118,20 @@ func TestGetAllRanksWithLevels(t *testing.T) {
 		t.Fatalf("GetAllRanksWithLevels() returned %d ranks, want 7", len(ranks))
 	}
 
+	levels := []string{"C", "B", "A", "S"}
 	for _, rank := range ranks {
+		// Supernova is intentionally tier-capped — no sub-levels.
+		if len(rank.Levels) == 0 {
+			if len(rank.SubLevels) != 0 {
+				t.Errorf("Rank %s declares no Levels but produced %d sub-levels",
+					rank.Name, len(rank.SubLevels))
+			}
+			continue
+		}
+
 		if len(rank.SubLevels) != 4 {
 			t.Errorf("Rank %s has %d sub-levels, want 4", rank.Name, len(rank.SubLevels))
 		}
-
-		levels := []string{"C", "B", "A", "S"}
 		for i, subLevel := range rank.SubLevels {
 			if subLevel.Level != levels[i] {
 				t.Errorf("Rank %s sub-level %d = %q, want %q",
