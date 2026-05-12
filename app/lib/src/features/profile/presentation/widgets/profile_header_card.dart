@@ -10,10 +10,13 @@ import 'package:app/src/features/profile/presentation/widgets/profile_stats_row.
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
+const double _kProfileBioSlotHeight = 32;
+
 class ProfileHeaderCard extends StatelessWidget {
   const ProfileHeaderCard({
     required this.displayName,
     required this.userId,
+    this.username = '',
     required this.firstName,
     required this.lastName,
     required this.avatarUrl,
@@ -35,6 +38,7 @@ class ProfileHeaderCard extends StatelessWidget {
 
   final String displayName;
   final String userId;
+  final String username;
   final String firstName;
   final String lastName;
   final String avatarUrl;
@@ -55,6 +59,7 @@ class ProfileHeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final normalizedDisplayName = displayName.trim();
+    final normalizedUsername = username.trim();
     final normalizedFirstName = firstName.trim();
     final normalizedLastName = lastName.trim();
     final normalizedUserId = userId.trim();
@@ -63,12 +68,16 @@ class ProfileHeaderCard extends StatelessWidget {
         .join(' ');
     final bestName = normalizedDisplayName.isNotEmpty
         ? normalizedDisplayName
-        : (fullName.isNotEmpty ? fullName : normalizedUserId);
+        : (fullName.isNotEmpty
+            ? fullName
+            : (normalizedUsername.isNotEmpty
+                ? normalizedUsername
+                : normalizedUserId));
     final title = bestName.isEmpty
         ? '@unknown'
         : (bestName.startsWith('@') ? bestName : '@$bestName');
-    final rankText =
-        rankTier.trim().isNotEmpty ? rankTier : 'Moonstone · Intention · A';
+    final rankText = rankTier.trim().isNotEmpty ? rankTier : '';
+    final hasBio = bio.trim().isNotEmpty;
 
     return Container(
       width: double.infinity,
@@ -155,7 +164,16 @@ class ProfileHeaderCard extends StatelessWidget {
                         const Gap(6),
                         ProfileRankMetaLine(rankTier: rankText),
                         const Gap(4),
-                        ProfileExpandableBio(text: bio),
+                        SizedBox(
+                          width: double.infinity,
+                          height: _kProfileBioSlotHeight,
+                          child: hasBio
+                              ? Align(
+                                  alignment: Alignment.topLeft,
+                                  child: ProfileExpandableBio(text: bio),
+                                )
+                              : null,
+                        ),
                         const Gap(8),
                         ProfileStatsRow(
                           goldenSeals: reputationScore,

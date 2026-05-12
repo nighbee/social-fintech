@@ -9,6 +9,7 @@ class ProfileEntity extends BaseEntity with _$ProfileEntity {
   const factory ProfileEntity({
     required String userId,
     required String displayName,
+    @Default('') String username,
     required String firstName,
     required String lastName,
     required String dateOfBirth,
@@ -27,6 +28,7 @@ class ProfileEntity extends BaseEntity with _$ProfileEntity {
   const factory ProfileEntity.empty({
     @Default('') String userId,
     @Default('') String displayName,
+    @Default('') String username,
     @Default('') String firstName,
     @Default('') String lastName,
     @Default('') String dateOfBirth,

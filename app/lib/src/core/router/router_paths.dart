@@ -41,6 +41,9 @@ class RoutePaths {
   // Chats routes
   static const String chats = '/chats';
 
+  /// Полноэкранный диалог (корневой стек GoRouter, не вложен в [chats]).
+  static const String chatThread = '/chat/:chatId';
+
   // Profile routes
   static const String profile = '/profile';
   /// Full path for nested GoRoute (`path: 'publications'` under [profile]).

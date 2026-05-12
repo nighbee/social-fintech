@@ -6,6 +6,7 @@ import 'package:video_player/video_player.dart';
 
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/widgets/feed_ink_well.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/media_attachment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
@@ -135,8 +136,8 @@ class PostCardWidget extends StatelessWidget
                     ? authorHeader
                     : Material(
                         color: Colors.transparent,
-                        child: InkWell(
-                          onTap: onAuthorTap,
+                        child: FeedInkWell(
+                          onTap: onAuthorTap!,
                           child: authorHeader,
                         ),
                       ),
@@ -284,25 +285,27 @@ class PostActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          icon,
-          if (count != null) ...[
-            const Gap(4),
-            Text(
-              count.toString(),
-              style: TextStyles.bodyMain.copyWith(
-                color: AppColors.textPrimary,
-                fontSize: 12,
-              ),
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        icon,
+        if (count != null) ...[
+          const Gap(4),
+          Text(
+            count.toString(),
+            style: TextStyles.bodyMain.copyWith(
+              color: AppColors.textPrimary,
+              fontSize: 12,
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
+    final tap = onTap;
+    if (tap == null) {
+      return row;
+    }
+    return FeedInkWell(onTap: tap, child: row);
   }
 }
 
@@ -339,7 +342,7 @@ class PostLikeButton extends StatelessWidget {
             final currentlyLiked = currentPost?.viewerHasLiked ?? isLiked;
             final currentCount = currentPost?.metrics.likes ?? count;
 
-            return InkWell(
+            return FeedInkWell(
               onTap: () {
                 bloc.add(HomeEvent.togglePostLike(postId: postId));
               },
@@ -371,7 +374,7 @@ class PostLikeButton extends StatelessWidget {
               ),
             );
           },
-          orElse: () => InkWell(
+          orElse: () => FeedInkWell(
             onTap: () {
               bloc.add(HomeEvent.togglePostLike(postId: postId));
             },
@@ -769,7 +772,7 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
       borderRadius: r,
       child: Material(
         color: Colors.transparent,
-        child: InkWell(
+        child: FeedInkWell(
           onTap: _togglePlay,
           child: SizedBox(
             width: widget.width,

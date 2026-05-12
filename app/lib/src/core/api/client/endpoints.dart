@@ -86,6 +86,14 @@ class EndPoints {
   //* Users
   static const String usersSearch = '/users/search';
 
+  //* Chats
+  static const String chatsConversations = '/chats/conversations';
+  static String chatsConversationMessages(String conversationId) =>
+      '/chats/conversations/$conversationId/messages';
+  static String chatsConversationRead(String conversationId) =>
+      '/chats/conversations/$conversationId/read';
+  static const String chatsConversationsDirect = '/chats/conversations/direct';
+
   //* Profile
   static const String profiles = '/profiles';
   static const String profileMe = '/profiles/me';

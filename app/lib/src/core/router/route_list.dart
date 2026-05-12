@@ -39,15 +39,6 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             name: RouteNames.rangs,
             builder: (context, state) => const RangsPage(),
           ),
-          // Public Profile route (protected by auth guard)
-          GoRoute(
-            path: RoutePaths.publicProfile,
-            name: RouteNames.publicProfile,
-            builder: (context, state) {
-              final userId = state.pathParameters['userId'] ?? '';
-              return PublicProfilePage(userId: userId);
-            },
-          ),
         ],
       ),
 
@@ -213,6 +204,21 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 redirect: AuthGuard,
                 builder: (context, state) => const CreatePostPage(),
               ),
+              GoRoute(
+                path: RoutePaths.search,
+                name: RouteNames.search,
+                redirect: AuthGuard,
+                builder: (context, state) => const SearchPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.publicProfile,
+                name: RouteNames.publicProfile,
+                redirect: AuthGuard,
+                builder: (context, state) {
+                  final userId = state.pathParameters['userId'] ?? '';
+                  return PublicProfilePage(userId: userId);
+                },
+              ),
 
               // Map route (protected by auth guard)
               GoRoute(
@@ -282,6 +288,17 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 pageBuilder: (context, state) {
                   return const NoTransitionPage(child: ChatsPage());
                 },
+                routes: [
+                  GoRoute(
+                    path: 'requests',
+                    name: RouteNames.chatRequests,
+                    parentNavigatorKey: rootNavigatorKey,
+                    redirect: AuthGuard,
+                    pageBuilder: (context, state) {
+                      return const NoTransitionPage(child: ChatRequestsPage());
+                    },
+                  ),
+                ],
               ),
 
               // Profile route (protected by auth guard)
@@ -599,6 +616,75 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 ],
               ),
             ],
+          ),
+        ],
+      ),
+      // Диалог: вне StatefulShell — иначе у Scaffold ломаются constraints (пустое тело, композер «не там»).
+      GoRoute(
+        path: RoutePaths.chatThread,
+        name: RouteNames.chatConversation,
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: AuthGuard,
+        pageBuilder: (context, state) {
+          final chatId = state.pathParameters['chatId'] ?? '';
+          final extra = state.extra;
+          final ChatThreadPreview? preview =
+              extra is ChatThreadPreview ? extra : null;
+          return NoTransitionPage(
+            child: ChatConversationPage(
+              chatId: chatId,
+              threadPreview: preview,
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: 'forward',
+            name: RouteNames.chatConversationForward,
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: AuthGuard,
+            pageBuilder: (context, state) {
+              final chatId = state.pathParameters['chatId'] ?? '';
+              return NoTransitionPage(
+                child: ChatForwardMessagePage(chatId: chatId),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'select',
+            name: RouteNames.chatConversationSelect,
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: AuthGuard,
+            pageBuilder: (context, state) {
+              final chatId = state.pathParameters['chatId'] ?? '';
+              return NoTransitionPage(
+                child: ChatSelectMessagePage(chatId: chatId),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'blocked',
+            name: RouteNames.chatConversationBlocked,
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: AuthGuard,
+            pageBuilder: (context, state) {
+              final chatId = state.pathParameters['chatId'] ?? '';
+              return NoTransitionPage(
+                child: ChatBlockedPage(chatId: chatId),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'deleted',
+            name: RouteNames.chatConversationDeleted,
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: AuthGuard,
+            pageBuilder: (context, state) {
+              final chatId = state.pathParameters['chatId'] ?? '';
+              return NoTransitionPage(
+                child: ChatDeletedPage(chatId: chatId),
+              );
+            },
           ),
         ],
       ),

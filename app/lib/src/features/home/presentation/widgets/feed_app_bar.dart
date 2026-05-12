@@ -11,6 +11,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
     super.key,
     this.onCreatePostTap,
     this.onNotificationsTap,
+    this.onSearchTap,
     this.silverCount = 0,
     this.timerLabel = '20 min',
     this.timerTone = FeedTimerTone.normal,
@@ -18,6 +19,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   final VoidCallback? onCreatePostTap;
   final VoidCallback? onNotificationsTap;
+  final VoidCallback? onSearchTap;
   final int silverCount;
   final String timerLabel;
   final FeedTimerTone timerTone;
@@ -122,7 +124,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         Gap(7),
         GestureDetector(
-          onTap: () {},
+          onTap: onSearchTap,
           child: Container(
             padding: EdgeInsets.all(6),
             child: Assets.icons.search.svg(width: 24, height: 24),

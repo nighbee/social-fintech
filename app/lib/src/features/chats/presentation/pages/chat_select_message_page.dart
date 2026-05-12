@@ -30,9 +30,8 @@ class _ChatSelectMessagePageState extends State<ChatSelectMessagePage> {
     _messages = List<ChatMessageUiModel>.from(
       ChatMockStore.baseMessages(widget.chatId),
     );
-    _selectedMessageIds = _messages.isEmpty
-        ? <String>{}
-        : <String>{_messages.first.id};
+    _selectedMessageIds =
+        _messages.isEmpty ? <String>{} : <String>{_messages.first.id};
   }
 
   @override
@@ -93,6 +92,7 @@ class _ChatSelectMessagePageState extends State<ChatSelectMessagePage> {
   @override
   Widget build(BuildContext context) {
     return ChatScaffold(
+      backgroundVariant: ChatBackgroundVariant.thread,
       appBar: ChatDetailAppBar(
         thread: _thread,
         actions: [

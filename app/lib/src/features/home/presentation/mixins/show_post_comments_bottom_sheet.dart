@@ -25,13 +25,21 @@ mixin ShowPostCommentsBottomSheet {
     required PostEntity post,
   }) {
     context.showRoundedModalBottomSheet(
-      backgroundColor: Colors.transparent,
-      maxHeightFactor: 0.92,
+      // Непрозрачный фон маршрута — иначе anti-alias скругления даёт «белую кромку»
+      // на тёмном шите (просвечивает светлый scaffold под прозрачной модалкой).
+      backgroundColor: const Color(0xFF161616),
+      // ~70% экрана — ближе к макету; 0.92 ощущалось как «на весь экран».
+      maxHeightFactor: 0.72,
       child: ActionBottomSheet(
         backgroundColor: const Color(0xFF161616),
         backgroundOpacity: 1,
         enableGlassEffect: false,
         enableDropShadow: false,
+        useBackdropBlur: false,
+        showTopBorder: false,
+        grabberColor: const Color(0xFFA3ADB6),
+        clipBehavior: Clip.hardEdge,
+        isExpanded: true,
         child: PostCommentsBottomSheet(post: post),
       ),
     );
@@ -123,7 +131,8 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
         curve: Curves.easeOut,
         padding: EdgeInsets.only(bottom: mediaQuery.viewInsets.bottom),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.max,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -138,7 +147,7 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
               ],
             ),
             const Gap(16),
-            Flexible(
+            Expanded(
               child: BlocBuilder<HomeBloc, HomeState>(
                 bloc: _bloc,
                 builder: (context, state) {
@@ -176,42 +185,76 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                           : viewModel.getCommentById(
                               viewModel.replyingToCommentId!,
                             );
+                      final commentsError = viewModel.postCommentsError.trim();
 
                       return Column(
                         children: [
                           Expanded(
-                            child: topLevelComments.isEmpty
+                            child: commentsError.isNotEmpty
                                 ? Center(
-                                    child: Text(
-                                      'No comments yet',
-                                      style: TextStyles.bodyMain.copyWith(
-                                        color: Colors.white70,
-                                      ),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          commentsError,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyles.bodyMain.copyWith(
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                        const Gap(8),
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.refresh,
+                                            color: Colors.white,
+                                          ),
+                                          onPressed: () {
+                                            _bloc.add(
+                                              HomeEvent.loadComments(
+                                                widget.post.id,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   )
-                                : ListView.separated(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 20,
-                                    ),
-                                    shrinkWrap: true,
-                                    itemCount: topLevelComments.length,
-                                    separatorBuilder: (_, __) => const Gap(12),
-                                    itemBuilder: (context, index) {
-                                      final comment = topLevelComments[index];
-                                      return PostCommentItem(
-                                        comment: comment,
-                                        postId: widget.post.id,
-                                        viewModel: viewModel,
-                                        depth: 0,
-                                        onReply: (target) {
-                                          _bloc.add(
-                                            HomeEvent.setReplyTarget(target.id),
+                                : topLevelComments.isEmpty
+                                    ? Center(
+                                        child: Text(
+                                          'No comments yet',
+                                          style: TextStyles.bodyMain.copyWith(
+                                            color: Colors.white70,
+                                          ),
+                                        ),
+                                      )
+                                    : ListView.separated(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 20,
+                                        ),
+                                        itemCount: topLevelComments.length,
+                                        separatorBuilder: (_, __) =>
+                                            const Gap(12),
+                                        itemBuilder: (context, index) {
+                                          final comment =
+                                              topLevelComments[index];
+                                          return PostCommentItem(
+                                            comment: comment,
+                                            postId: widget.post.id,
+                                            viewModel: viewModel,
+                                            depth: 0,
+                                            onReply: (target) {
+                                              _bloc.add(
+                                                HomeEvent.setReplyTarget(
+                                                  target.id,
+                                                ),
+                                              );
+                                              _focusNode.requestFocus();
+                                            },
                                           );
-                                          _focusNode.requestFocus();
                                         },
-                                      );
-                                    },
-                                  ),
+                                      ),
                           ),
                           const Gap(12),
                           _CommentInputBar(
@@ -222,7 +265,9 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                             replyToUsername: replyTarget?.username,
                             composerPhotos: viewModel.composerPhotos,
                             onRemovePhoto: (fileName) {
-                              _bloc.add(HomeEvent.removeCommentPhoto(fileName));
+                              _bloc.add(
+                                HomeEvent.removeCommentPhoto(fileName),
+                              );
                             },
                             onCancelReply: () {
                               _bloc.add(const HomeEvent.setReplyTarget(null));

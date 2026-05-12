@@ -400,6 +400,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   onCreatePostTap: () => context.push(RoutePaths.createPost),
                   onNotificationsTap: () =>
                       context.push(RoutePaths.notifications),
+                  onSearchTap: () => context.push(RoutePaths.search),
                   silverCount: _silverCountFromState(state),
                   timerLabel: _timerLabelFromState(state),
                   timerTone: _timerToneFromState(state),

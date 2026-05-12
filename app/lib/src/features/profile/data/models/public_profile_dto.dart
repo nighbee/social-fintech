@@ -11,6 +11,7 @@ class PublicProfileDto extends BaseDto with _$PublicProfileDto {
   const factory PublicProfileDto({
     @JsonKey(name: 'user_id') required String userId,
     @JsonKey(name: 'display_name') required String displayName,
+    @JsonKey(name: 'username', defaultValue: '') required String username,
     @JsonKey(name: 'first_name') required String firstName,
     @JsonKey(name: 'last_name') required String lastName,
     @JsonKey(name: 'bio') required String bio,
@@ -28,6 +29,7 @@ class PublicProfileDto extends BaseDto with _$PublicProfileDto {
   PublicProfileEntity toEntity() => PublicProfileEntity(
     userId: userId,
     displayName: displayName,
+    username: username,
     firstName: firstName,
     lastName: lastName,
     bio: bio,

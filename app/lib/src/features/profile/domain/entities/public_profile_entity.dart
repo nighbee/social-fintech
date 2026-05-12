@@ -9,6 +9,7 @@ class PublicProfileEntity extends BaseEntity with _$PublicProfileEntity {
   const factory PublicProfileEntity({
     required String userId,
     required String displayName,
+    @Default('') String username,
     required String firstName,
     required String lastName,
     required String bio,
@@ -23,6 +24,7 @@ class PublicProfileEntity extends BaseEntity with _$PublicProfileEntity {
   const factory PublicProfileEntity.empty({
     @Default('') String userId,
     @Default('') String displayName,
+    @Default('') String username,
     @Default('') String firstName,
     @Default('') String lastName,
     @Default('') String bio,

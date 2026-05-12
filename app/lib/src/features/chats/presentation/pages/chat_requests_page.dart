@@ -45,6 +45,7 @@ class ChatRequestsPage extends StatelessWidget {
                     pathParameters: <String, String>{
                       'chatId': requestThread.id,
                     },
+                    extra: requestThread,
                   );
                 },
               ),

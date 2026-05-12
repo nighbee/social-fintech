@@ -76,7 +76,8 @@ class _ChatForwardMessagePageState extends State<ChatForwardMessagePage> {
           direction: ChatMessageDirection.outgoing,
           text: text,
           timeLabel: _buildTimeLabel(),
-          showSeenMark: true,
+          createdAt: DateTime.now(),
+          outgoingReceipt: ChatOutgoingReceipt.read,
         ),
       ];
     });
@@ -94,6 +95,7 @@ class _ChatForwardMessagePageState extends State<ChatForwardMessagePage> {
   @override
   Widget build(BuildContext context) {
     return ChatScaffold(
+      backgroundVariant: ChatBackgroundVariant.thread,
       appBar: ChatDetailAppBar(
         thread: _thread,
         actions: [

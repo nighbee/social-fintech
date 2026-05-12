@@ -114,6 +114,9 @@ class _NavBarItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      hoverColor: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Column(

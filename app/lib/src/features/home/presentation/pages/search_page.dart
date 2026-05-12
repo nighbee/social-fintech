@@ -6,6 +6,9 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
+import 'package:app/src/core/widgets/feed_ink_well.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/features/profile/presentation/widgets/profile_rank_meta_line.dart';
 import 'package:app/src/features/home/domain/entities/profile_search_recent_item_entity.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/profile/domain/entities/profile_search_result_entity.dart';
@@ -40,6 +43,11 @@ class _SearchPageState extends State<SearchPage> {
     super.initState();
     _bloc.add(const HomeEvent.clearProfileSearch());
     _focusNode.addListener(_handleFocusChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
   }
 
   @override
@@ -177,16 +185,31 @@ class _SearchPageAtmosphere extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: AppColors.colorff19191A,
-              gradient: RadialGradient(
-                center: const Alignment(0, -0.9),
-                radius: 1.15,
-                colors: [
-                  const Color(0xFF232427).withValues(alpha: 0.85),
-                  AppColors.colorff19191A,
-                ],
+          child: Container(
+            color: AppColors.colorff19191A,
+            child: const IgnorePointer(
+              child: ParticleAnimation(
+                particleCount: 20,
+                particleColors: [Color(0xFFFFFFFF)],
+                minSize: 4,
+                maxSize: 8,
+                minDistanceBetweenParticles: 70,
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.9),
+                  radius: 1.15,
+                  colors: [
+                    const Color(0xFF232427).withValues(alpha: 0.55),
+                    AppColors.colorff19191A.withValues(alpha: 0),
+                  ],
+                ),
               ),
             ),
           ),
@@ -269,10 +292,14 @@ class _SearchTopBar extends StatelessWidget {
             containerPadding: const EdgeInsets.symmetric(horizontal: 16),
             textStyle: TextStyles.bodyMain.copyWith(
               fontSize: 16,
+              fontFamily: 'Lora',
+              fontWeight: FontWeight.w400,
               color: AppColors.colorffffffff,
             ),
             hintStyle: TextStyles.bodyMain.copyWith(
               fontSize: 16,
+              fontFamily: 'Lora',
+              fontWeight: FontWeight.w400,
               color: const Color(0xFFBABABA),
             ),
             prefixIcon: Assets.icons.search.svg(
@@ -297,7 +324,9 @@ class _SearchTopBar extends StatelessWidget {
                       'Cancel',
                       style: TextStyles.bodyMain.copyWith(
                         fontSize: 16,
-                        color: const Color(0xFFBABABA),
+                        fontFamily: 'Lora',
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFFFFFFFF),
                       ),
                     ),
                   ),
@@ -438,6 +467,7 @@ class _SearchSectionHeader extends StatelessWidget {
           title,
           style: TextStyles.titleMain.copyWith(
             fontSize: 16,
+            fontFamily: 'Lora',
             color: AppColors.colorffffffff,
             fontWeight: FontWeight.w600,
           ),
@@ -450,6 +480,8 @@ class _SearchSectionHeader extends StatelessWidget {
               actionLabel!,
               style: TextStyles.bodyMain.copyWith(
                 fontSize: 16,
+                fontFamily: 'Lora',
+                fontWeight: FontWeight.w400,
                 color: const Color(0xFF74AFE3),
               ),
             ),
@@ -474,47 +506,51 @@ class _SearchUserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: [
-              const Color(0xFF223446).withValues(alpha: 0.24),
-              Colors.white.withValues(alpha: 0.02),
-              const Color(0xFF5B3D1E).withValues(alpha: 0.16),
-            ],
-          ),
-        ),
-        child: Row(
-          children: [
-            _SearchAvatar(profile: profile),
-            const Gap(12),
-            Expanded(
-              child: _SearchUserInfo(
-                profile: profile,
-                timeLabel: timeLabel,
-              ),
+    return Material(
+      color: Colors.transparent,
+      child: FeedInkWell(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: [
+                const Color(0xFF223446).withValues(alpha: 0.24),
+                Colors.white.withValues(alpha: 0.02),
+                const Color(0xFF5B3D1E).withValues(alpha: 0.16),
+              ],
             ),
-            if (onTrailingTap != null)
-              GestureDetector(
-                onTap: onTrailingTap,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
-                  child: Icon(
-                    Icons.close_rounded,
-                    size: 22,
-                    color: Colors.white.withValues(alpha: 0.72),
-                  ),
+          ),
+          child: Row(
+            children: [
+              _SearchAvatar(profile: profile),
+              const Gap(12),
+              Expanded(
+                child: _SearchUserInfo(
+                  profile: profile,
+                  timeLabel: timeLabel,
                 ),
               ),
-          ],
+              if (onTrailingTap != null)
+                GestureDetector(
+                  onTap: onTrailingTap,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 22,
+                      color: Colors.white.withValues(alpha: 0.72),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -534,7 +570,7 @@ class _SearchAvatar extends StatelessWidget {
         imageUrl: imageUrl,
         width: 40,
         height: 40,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       );
     }
 
@@ -543,7 +579,7 @@ class _SearchAvatar extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         color: AppColors.colorff2A2A2B,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: const Icon(
         Icons.person_outline,
@@ -565,6 +601,9 @@ class _SearchUserInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rankLine = profile.rankTier.trim().isEmpty
+        ? 'Moonstone · Intention · A'
+        : profile.rankTier;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -575,10 +614,12 @@ class _SearchUserInfo extends StatelessWidget {
                 profile.displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyles.bodyMain.copyWith(
+                style: TextStyles.titleHeadline.copyWith(
+                  fontFamily: 'CanelaDeckTrial',
+                  fontWeight: FontWeight.w400,
                   fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.colorffffffff,
+                  height: 20 / 16,
+                  color: const Color(0xFFCACACA),
                 ),
               ),
             ),
@@ -586,53 +627,18 @@ class _SearchUserInfo extends StatelessWidget {
               const Gap(8),
               Text(
                 timeLabel!,
-                style: TextStyles.bodySecondary.copyWith(
+                style: TextStyles.bodyMain.copyWith(
+                  fontFamily: 'Lora',
                   fontSize: 12,
-                  color: AppColors.colorffE5E5E5,
+                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFF838383),
                 ),
               ),
             ],
           ],
         ),
         const Gap(4),
-        Row(
-          children: [
-            Flexible(
-              child: Text(
-                profile.rankTier,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyles.bodySecondary.copyWith(
-                  fontSize: 12,
-                  color: const Color(0xFF74AFE3),
-                ),
-              ),
-            ),
-            const Gap(6),
-            Container(
-              width: 3,
-              height: 3,
-              decoration: const BoxDecoration(
-                color: Color(0xFF74AFE3),
-                shape: BoxShape.circle,
-              ),
-            ),
-            const Gap(6),
-            Text(
-              profile.reputationScore.toString(),
-              style: TextStyles.bodySecondary.copyWith(
-                fontSize: 12,
-                color: const Color(0xFF74AFE3),
-              ),
-            ),
-            const Gap(4),
-            const Icon(
-              Icons.auto_awesome_rounded,
-              size: 14,
-              color: Color(0xFF74AFE3),
-            ),
-          ],
-        ),
+        ProfileRankMetaLine(rankTier: rankLine),
       ],
     );
   }

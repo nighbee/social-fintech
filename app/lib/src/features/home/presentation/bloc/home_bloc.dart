@@ -211,6 +211,9 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       ),
       emit,
     );
+    if (_viewModel.postCommentsError.trim().isNotEmpty) {
+      return;
+    }
     _viewModel = _viewModel.copyWith(
       replyingToCommentId: null,
       postComposerPhotos: const [],
@@ -883,12 +886,24 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       return;
     }
 
+    _viewModel = _viewModel.copyWith(postCommentsError: '');
+    emit(HomeState.loaded(viewModel: _viewModel));
+
     final Either<DomainException, ThreadedCommentsEntity> result =
         await _repository.getPostComments(event.request);
     result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
+      (error) {
+        _viewModel = _viewModel.copyWith(
+          comments: const ThreadedCommentsEntity.empty(),
+          postCommentsError: error.message,
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
       (comments) {
-        _viewModel = _viewModel.copyWith(comments: comments);
+        _viewModel = _viewModel.copyWith(
+          comments: comments,
+          postCommentsError: '',
+        );
         emit(HomeState.loaded(viewModel: _viewModel));
       },
     );
@@ -909,7 +924,10 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       event.request,
     );
     result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
+      (error) {
+        _viewModel = _viewModel.copyWith(postCommentsError: error.message);
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
       (createdComment) {
         _applyCreatedCommentToViewModel(
           postId: event.postId,
@@ -965,6 +983,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
 
     _viewModel = _viewModel.copyWith(
       lastAction: const StatusResponseEntity(status: 'success'),
+      postCommentsError: '',
       comments: _viewModel.comments.copyWith(
         comments: updatedComments,
       ),
@@ -993,7 +1012,12 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     final Either<DomainException, InteractionListEntity> result =
         await _repository.getPostLikes(event.request);
     result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
+      (_) {
+        _viewModel = _viewModel.copyWith(
+          likes: const InteractionListEntity.empty(),
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
       (likes) {
         _viewModel = _viewModel.copyWith(likes: likes);
         emit(HomeState.loaded(viewModel: _viewModel));
@@ -1031,7 +1055,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       PostIdRequest(postId: event.postId),
     );
     result.fold(
-      (error) => emit(HomeState.loadingError(error.message)),
+      (_) => emit(HomeState.loaded(viewModel: _viewModel)),
       (updatedPost) {
         _profilePostsListCache = _replacePostInFeed(
           _profilePostsListCache,

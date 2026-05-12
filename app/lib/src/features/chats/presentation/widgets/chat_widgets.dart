@@ -1,10 +1,24 @@
+import 'dart:math' as math;
+
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/glass_container.dart';
 import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/features/chats/presentation/styles/chat_conversation_styles.dart';
+import 'package:app/src/features/chats/presentation/styles/chat_sapphire_styles.dart';
+import 'package:app/src/features/chats/presentation/utils/chat_day_separator_label.dart';
+import 'package:app/src/features/chats/presentation/widgets/chat_bubble_clipper.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+/// Фон под [ChatScaffold]: список чатов или лента сообщений.
+enum ChatBackgroundVariant {
+  list,
+  thread,
+}
 
 class ChatScaffold extends StatelessWidget {
   const ChatScaffold({
@@ -13,23 +27,39 @@ class ChatScaffold extends StatelessWidget {
     this.appBar,
     this.bottomNavigationBar,
     this.resizeToAvoidBottomInset = true,
+    this.backgroundVariant = ChatBackgroundVariant.list,
   });
 
   final Widget child;
   final PreferredSizeWidget? appBar;
   final Widget? bottomNavigationBar;
   final bool resizeToAvoidBottomInset;
+  final ChatBackgroundVariant backgroundVariant;
 
   @override
   Widget build(BuildContext context) {
+    final Widget scrollOrBody = bottomNavigationBar == null
+        ? child
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: child),
+              bottomNavigationBar!,
+            ],
+          );
+
     return Scaffold(
       backgroundColor: AppColors.colorff19191A,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       appBar: appBar,
-      bottomNavigationBar: bottomNavigationBar,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
-        child: ChatPageBackground(child: child),
+        child: switch (backgroundVariant) {
+          ChatBackgroundVariant.list =>
+            ChatPageBackground(child: scrollOrBody),
+          ChatBackgroundVariant.thread =>
+            ChatThreadViewportBackground(child: scrollOrBody),
+        },
       ),
     );
   }
@@ -56,32 +86,78 @@ class ChatPageBackground extends StatelessWidget {
           ],
         ),
       ),
-      child: Stack(
-        children: [
-          const Positioned(
-            top: -80,
-            left: -40,
-            child: _ChatBackgroundGlow(
-              size: 220,
-              colors: <Color>[
-                Color(0x33273466),
-                Color(0x0019191A),
-              ],
+      child: child,
+    );
+  }
+}
+
+/// Фон ленты сообщений: тёмная база + едва заметный двухцветный mesh (макет Figma).
+class ChatThreadViewportBackground extends StatelessWidget {
+  const ChatThreadViewportBackground({
+    required this.child,
+    super.key,
+  });
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: ChatConversationStyles.viewportGradient,
+      ),
+      child: SizedBox.expand(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Positioned(
+              top: -88,
+              left: -100,
+              child: _ConversationMeshBlob(
+                diameter: ChatConversationStyles.meshBlobLeftSize,
+                edge: ChatConversationStyles.meshBlobLeft,
+              ),
+            ),
+            const Positioned(
+              bottom: 32,
+              right: -72,
+              child: _ConversationMeshBlob(
+                diameter: ChatConversationStyles.meshBlobRightSize,
+                edge: ChatConversationStyles.meshBlobRight,
+              ),
+            ),
+            Positioned.fill(child: child),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConversationMeshBlob extends StatelessWidget {
+  const _ConversationMeshBlob({
+    required this.diameter,
+    required this.edge,
+  });
+
+  final double diameter;
+  final Color edge;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: SizedBox(
+        width: diameter,
+        height: diameter,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: <Color>[edge, Colors.transparent],
+              stops: const <double>[0.0, 0.62],
             ),
           ),
-          const Positioned(
-            top: 140,
-            right: -40,
-            child: _ChatBackgroundGlow(
-              size: 180,
-              colors: <Color>[
-                Color(0x223A5C5F),
-                Color(0x0019191A),
-              ],
-            ),
-          ),
-          Positioned.fill(child: child),
-        ],
+        ),
       ),
     );
   }
@@ -258,7 +334,9 @@ class ChatPageTitle extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyles.bodyMain.copyWith(
-              color: AppColors.textBrand.withValues(alpha: 0.56),
+              color: const Color(0xFF8B9099),
+              fontSize: 12,
+              height: 14 / 12,
             ),
           ),
       ],
@@ -285,8 +363,8 @@ class ChatSearchField extends StatelessWidget {
       onChanged: onChanged,
       showLabel: false,
       height: 48,
-      borderRadius: 18,
-      backgroundColor: const Color(0xFF212125),
+      borderRadius: ChatSapphireStyles.listCornerRadius,
+      backgroundColor: ChatSapphireStyles.searchFieldFill,
       customBorder: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       containerPadding: const EdgeInsets.symmetric(horizontal: 16),
       contentPadding: EdgeInsets.zero,
@@ -323,6 +401,41 @@ class ChatSectionLabel extends StatelessWidget {
   }
 }
 
+Widget _threadRankLineText(String rankLine) {
+  const prefix = 'Moonstone';
+  final baseStyle = TextStyles.bodyMain;
+  if (!rankLine.startsWith(prefix)) {
+    return Text(
+      rankLine,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: baseStyle.copyWith(
+        color: ChatSapphireStyles.rankLineMutedColor,
+      ),
+    );
+  }
+  return Text.rich(
+    TextSpan(
+      children: <InlineSpan>[
+        TextSpan(
+          text: prefix,
+          style: baseStyle.copyWith(
+            color: ChatSapphireStyles.rankLineColor,
+          ),
+        ),
+        TextSpan(
+          text: rankLine.substring(prefix.length),
+          style: baseStyle.copyWith(
+            color: ChatSapphireStyles.rankLineMutedColor,
+          ),
+        ),
+      ],
+    ),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
+}
+
 class ChatThreadCard extends StatelessWidget {
   const ChatThreadCard({
     required this.thread,
@@ -335,92 +448,136 @@ class ChatThreadCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: GlassContainer(
-        borderRadius: 24,
-        blurSigma: 24,
-        padding: const EdgeInsets.all(14),
-        backgroundColor: const Color(0x40222226),
-        borderColor: Colors.white.withValues(alpha: 0.08),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ChatAvatar(
-              displayName: thread.displayName,
-              avatarUrl: thread.avatarUrl,
-              radius: 24,
-            ),
-            const Gap(12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    thread.displayName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyles.titleHeadline.copyWith(
-                      color: AppColors.textBrand,
-                    ),
-                  ),
-                  const Gap(4),
-                  Text(
-                    thread.rankLine,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyles.bodyMain.copyWith(
-                      color: const Color(0xFFA3A3A3),
-                    ),
-                  ),
-                  if (thread.previewText.isNotEmpty) ...[
-                    const Gap(6),
-                    Text(
-                      thread.previewText,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyles.bodyMain.copyWith(
-                        color: AppColors.textBrand.withValues(alpha: 0.72),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const Gap(12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+    final r = ChatSapphireStyles.listCornerRadius;
+    final borderRadius = BorderRadius.circular(r);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: borderRadius,
+        splashColor: Colors.white.withValues(alpha: 0.06),
+        highlightColor: Colors.white.withValues(alpha: 0.03),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: borderRadius,
+            boxShadow: ChatSapphireStyles.threadCardShadows,
+          ),
+          child: ClipRRect(
+            borderRadius: borderRadius,
+            child: Stack(
+              fit: StackFit.passthrough,
               children: [
-                Text(
-                  thread.timeLabel,
-                  style: TextStyles.bodyMain.copyWith(
-                    color: AppColors.textBrand.withValues(alpha: 0.48),
+                const Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: ChatSapphireStyles.threadCardSapphireFill,
+                    ),
                   ),
                 ),
-                if (thread.unreadCount > 0) ...[
-                  const Gap(10),
-                  Container(
-                    constraints: const BoxConstraints(minWidth: 20),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
+                const Positioned.fill(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: const Color(0xFFC6A25C),
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      '${thread.unreadCount}',
-                      textAlign: TextAlign.center,
-                      style: TextStyles.bodyMain.copyWith(
-                        color: AppColors.colorff19191A,
-                      ),
+                      gradient: ChatSapphireStyles.threadCardGlassLightFill,
                     ),
                   ),
-                ],
+                ),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: borderRadius,
+                    border: Border.all(
+                      color: ChatSapphireStyles.threadCardBorderColor,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      ChatSapphireStyles.threadCardPaddingHorizontal,
+                      ChatSapphireStyles.threadCardPaddingTop,
+                      ChatSapphireStyles.threadCardPaddingHorizontal,
+                      ChatSapphireStyles.threadCardPaddingBottom,
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ChatAvatar(
+                          displayName: thread.displayName,
+                          avatarUrl: thread.avatarUrl,
+                          radius: ChatSapphireStyles.threadCardAvatarRadius,
+                          cornerRadius: ChatSapphireStyles.listCornerRadius,
+                        ),
+                        const Gap(ChatSapphireStyles.threadCardGapAfterAvatar),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                thread.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyles.titleHeadline.copyWith(
+                                  color: AppColors.textBrand,
+                                ),
+                              ),
+                              const Gap(4),
+                              _threadRankLineText(thread.rankLine),
+                              if (thread.previewText.isNotEmpty) ...[
+                                const Gap(6),
+                                Text(
+                                  thread.previewText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyles.bodyMain.copyWith(
+                                    color: AppColors.textBrand
+                                        .withValues(alpha: 0.82),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const Gap(12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              thread.timeLabel,
+                              style: TextStyles.bodyMain.copyWith(
+                                color:
+                                    AppColors.textBrand.withValues(alpha: 0.56),
+                              ),
+                            ),
+                            if (thread.unreadCount > 0) ...[
+                              const Gap(10),
+                              Container(
+                                constraints: const BoxConstraints(minWidth: 22),
+                                height: 22,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 6),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: AppColors.textBrand,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  '${thread.unreadCount}',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyles.bodyMain.copyWith(
+                                    color: AppColors.colorff19191A,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -433,38 +590,63 @@ class ChatAvatar extends StatelessWidget {
     required this.avatarUrl,
     super.key,
     this.radius = 22,
+
+    /// Если задан — аватар в списке чатов как в Figma (скруглённый квадрат).
+    this.cornerRadius,
   });
 
   final String displayName;
   final String avatarUrl;
   final double radius;
+  final double? cornerRadius;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: radius * 2,
-      height: radius * 2,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: <Color>[
-            Color(0xFFD8C18A),
-            Color(0xFF7C6135),
-          ],
+    final size = radius * 2;
+    final trimmed = avatarUrl.trim();
+    final r = cornerRadius;
+
+    Widget imageOrInitials() {
+      if (trimmed.isNotEmpty) {
+        return CustomNetworkImage(
+          imageUrl: trimmed,
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+        );
+      }
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: <Color>[
+              Color(0xFFD8C18A),
+              Color(0xFF7C6135),
+            ],
+          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         ),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        _buildInitials(displayName),
-        style: TextStyles.bodyMain.copyWith(
-          color: AppColors.colorff19191A,
-          fontWeight: FontWeight.w700,
+        alignment: Alignment.center,
+        child: Text(
+          _buildInitials(displayName),
+          style: TextStyles.bodyMain.copyWith(
+            color: AppColors.colorff19191A,
+            fontWeight: FontWeight.w700,
+          ),
         ),
-      ),
-    );
+      );
+    }
+
+    if (r != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(r),
+        child: imageOrInitials(),
+      );
+    }
+    return ClipOval(child: imageOrInitials());
   }
 
   String _buildInitials(String value) {
@@ -486,7 +668,6 @@ class ChatConversationMessageList extends StatelessWidget {
   const ChatConversationMessageList({
     required this.messages,
     super.key,
-    this.dateLabel = 'Yesterday',
     this.showSelectionControls = false,
     this.selectedMessageIds = const <String>{},
     this.onMessageTap,
@@ -495,7 +676,6 @@ class ChatConversationMessageList extends StatelessWidget {
   });
 
   final List<ChatMessageUiModel> messages;
-  final String dateLabel;
   final bool showSelectionControls;
   final Set<String> selectedMessageIds;
   final ValueChanged<ChatMessageUiModel>? onMessageTap;
@@ -508,21 +688,37 @@ class ChatConversationMessageList extends StatelessWidget {
       return emptyState ?? const SizedBox.shrink();
     }
 
+    final children = <Widget>[];
+    DateTime? lastDayKey;
+
+    for (var i = 0; i < messages.length; i++) {
+      final message = messages[i];
+      final local = message.createdAt;
+      final dayKey = DateTime(local.year, local.month, local.day);
+      if (lastDayKey == null || dayKey != lastDayKey) {
+        lastDayKey = dayKey;
+        if (children.isNotEmpty) {
+          children.add(const Gap(10));
+        }
+        children.add(
+          Center(child: ChatDateChip(label: chatDaySeparatorLabel(local))),
+        );
+        children.add(const Gap(18));
+      }
+      children.add(
+        ChatMessageBubble(
+          message: message,
+          showSelectionControls: showSelectionControls,
+          isSelected: selectedMessageIds.contains(message.id),
+          onTap: onMessageTap == null ? null : () => onMessageTap!(message),
+        ),
+      );
+      children.add(const Gap(14));
+    }
+
     return ListView(
       padding: padding ?? const EdgeInsets.fromLTRB(20, 20, 20, 24),
-      children: [
-        Center(child: ChatDateChip(label: dateLabel)),
-        const Gap(18),
-        for (final message in messages) ...[
-          ChatMessageBubble(
-            message: message,
-            showSelectionControls: showSelectionControls,
-            isSelected: selectedMessageIds.contains(message.id),
-            onTap: onMessageTap == null ? null : () => onMessageTap!(message),
-          ),
-          const Gap(14),
-        ],
-      ],
+      children: children,
     );
   }
 }
@@ -537,17 +733,57 @@ class ChatDateChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GlassContainer(
-      borderRadius: 999,
-      blurSigma: 18,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      backgroundColor: const Color(0x3327272B),
-      borderColor: Colors.white.withValues(alpha: 0.08),
-      child: Text(
-        label,
-        style: TextStyles.bodyMain.copyWith(
-          color: AppColors.textBrand.withValues(alpha: 0.72),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: ChatConversationStyles.dateChipFill,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: ChatConversationStyles.dateChipBorder,
         ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        child: Text(
+          label,
+          style: TextStyles.bodyMain.copyWith(
+            color: AppColors.textBrand.withValues(alpha: 0.66),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OutgoingReadReceipts extends StatelessWidget {
+  const _OutgoingReadReceipts({
+    required this.read,
+  });
+
+  final bool read;
+
+  static const Color _readBlue = Color(0xFF3A7AB8);
+  static const Color _sentGrey = Color(0xFF9AA1AC);
+
+  @override
+  Widget build(BuildContext context) {
+    final c = read ? _readBlue : _sentGrey;
+    return SizedBox(
+      width: 22,
+      height: 14,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: <Widget>[
+          Positioned(
+            left: 0,
+            top: 0,
+            child: Icon(Icons.check_rounded, size: 13, color: c),
+          ),
+          Positioned(
+            left: 6,
+            top: 0,
+            child: Icon(Icons.check_rounded, size: 13, color: c),
+          ),
+        ],
       ),
     );
   }
@@ -567,9 +803,65 @@ class ChatMessageBubble extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
 
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      return;
+    }
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!context.mounted || ok) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open link')),
+    );
+  }
+
+  EdgeInsets _bubblePadding(ChatMessageUiModel m) {
+    final hasMedia = m.media.isNotEmpty;
+    final plain = m.text.trim().isEmpty && m.forwardedSnippet == null;
+    if (hasMedia && plain) {
+      return const EdgeInsets.fromLTRB(2, 2, 2, 6);
+    }
+    return const EdgeInsets.fromLTRB(11, 9, 11, 8);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isOutgoing = message.direction == ChatMessageDirection.outgoing;
+    final isSystem = message.messageType == 'system';
+    final sr = ChatConversationStyles.systemBubbleRadius;
+
+    final Color fill;
+    final Color border;
+    final Color bodyColor;
+    final Color metaColor;
+
+    if (isSystem) {
+      fill = ChatConversationStyles.bubbleSystemFill;
+      border = ChatConversationStyles.bubbleSystemBorder;
+      bodyColor = ChatConversationStyles.bubbleSystemText;
+      metaColor = ChatConversationStyles.bubbleIncomingMeta;
+    } else if (isOutgoing) {
+      fill = ChatConversationStyles.bubbleOutgoingFill;
+      border = ChatConversationStyles.bubbleOutgoingBorder;
+      bodyColor = ChatConversationStyles.bubbleOutgoingText;
+      metaColor = ChatConversationStyles.bubbleOutgoingMeta;
+    } else {
+      fill = ChatConversationStyles.bubbleIncomingFill;
+      border = ChatConversationStyles.bubbleIncomingBorder;
+      bodyColor = AppColors.textBrand;
+      metaColor = ChatConversationStyles.bubbleIncomingMeta;
+    }
+
+    final dividerColor = isOutgoing
+        ? const Color(0x14000000)
+        : Colors.white.withValues(alpha: 0.1);
+
+    final imageItems =
+        message.media.where((ChatMessageMediaItem m) => m.isImage).toList();
+    final videoItems =
+        message.media.where((ChatMessageMediaItem m) => m.isVideo).toList();
 
     return Row(
       mainAxisAlignment:
@@ -584,115 +876,174 @@ class ChatMessageBubble extends StatelessWidget {
           const Gap(10),
         ],
         Flexible(
-          child: GestureDetector(
-            onTap: onTap,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.sizeOf(context).width * 0.72,
-              ),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: isOutgoing
-                      ? const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: <Color>[
-                            Color(0xFF7A6234),
-                            Color(0xFF4E3A1C),
-                          ],
-                        )
-                      : null,
-                  color: isOutgoing ? null : const Color(0xFF26262A),
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(22),
-                    topRight: const Radius.circular(22),
-                    bottomLeft: Radius.circular(isOutgoing ? 22 : 8),
-                    bottomRight: Radius.circular(isOutgoing ? 8 : 22),
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(
-                      alpha: isOutgoing ? 0.12 : 0.08,
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final maxBubble = constraints.maxWidth;
+              final mediaW = math.min(248.0, maxBubble);
+
+              final content = Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (message.forwardedSnippet != null) ...[
+                    Text(
+                      'Forwarded from',
+                      style: TextStyles.bodyMain.copyWith(
+                        color: metaColor.withValues(alpha: 0.95),
+                      ),
                     ),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (message.forwardedSnippet != null) ...[
-                        Text(
-                          'Forwarded from',
-                          style: TextStyles.bodyMain.copyWith(
-                            color: AppColors.textBrand.withValues(alpha: 0.64),
+                    const Gap(6),
+                    SizedBox(
+                      width: mediaW,
+                      child: Row(
+                        children: [
+                          ChatAvatar(
+                            displayName: message.forwardedSnippet!.senderName,
+                            avatarUrl:
+                                message.forwardedSnippet!.senderAvatarUrl,
+                            radius: 14,
+                          ),
+                          const Gap(8),
+                          Expanded(
+                            child: Text(
+                              message.forwardedSnippet!.senderName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyles.bodyMain.copyWith(
+                                color: bodyColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Gap(10),
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: dividerColor,
+                    ),
+                    const Gap(10),
+                  ],
+                  for (final item in imageItems) ...[
+                    if (item.url.trim().isNotEmpty) ...[
+                      SizedBox(
+                        width: mediaW,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: CustomNetworkImage(
+                            imageUrl: item.url,
+                            height: 220,
+                            width: mediaW,
+                            fit: BoxFit.contain,
                           ),
                         ),
-                        const Gap(6),
-                        Row(
-                          children: [
-                            ChatAvatar(
-                              displayName: message.forwardedSnippet!.senderName,
-                              avatarUrl:
-                                  message.forwardedSnippet!.senderAvatarUrl,
-                              radius: 14,
-                            ),
-                            const Gap(8),
-                            Expanded(
-                              child: Text(
-                                message.forwardedSnippet!.senderName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyles.bodyMain.copyWith(
-                                  color: AppColors.textBrand,
+                      ),
+                      const Gap(6),
+                    ],
+                  ],
+                  for (final item in videoItems) ...[
+                    Material(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      borderRadius: BorderRadius.circular(4),
+                      child: InkWell(
+                        onTap: () => _openUrl(context, item.url),
+                        borderRadius: BorderRadius.circular(4),
+                        child: SizedBox(
+                          height: 160,
+                          width: mediaW,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if ((item.thumbnailUrl ?? '').trim().isNotEmpty)
+                                CustomNetworkImage(
+                                  imageUrl: item.thumbnailUrl!.trim(),
+                                  fit: BoxFit.contain,
+                                )
+                              else
+                                const ColoredBox(color: Color(0xFF1A1A1E)),
+                              Center(
+                                child: Icon(
+                                  Icons.play_circle_fill_rounded,
+                                  size: 44,
+                                  color: Colors.white.withValues(alpha: 0.88),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const Gap(10),
-                        Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
-                        const Gap(10),
-                      ],
-                      Text(
-                        message.text,
-                        style: TextStyles.bodyLarge.copyWith(
-                          color: AppColors.textBrand,
-                          height: 1.35,
-                        ),
-                      ),
-                      const Gap(8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              message.timeLabel,
-                              style: TextStyles.bodyMain.copyWith(
-                                color:
-                                    AppColors.textBrand.withValues(alpha: 0.58),
-                              ),
-                            ),
-                            if (message.showSeenMark) ...[
-                              const Gap(4),
-                              const Icon(
-                                Icons.done_all_rounded,
-                                size: 15,
-                                color: AppColors.colorff74afe3,
-                              ),
                             ],
-                          ],
+                          ),
                         ),
                       ),
+                    ),
+                    const Gap(6),
+                  ],
+                  if (message.text.trim().isNotEmpty)
+                    Text(
+                      message.text,
+                      style: TextStyles.bodyLarge.copyWith(
+                        color: bodyColor,
+                        height: 1.35,
+                      ),
+                    ),
+                  const Gap(6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        message.timeLabel,
+                        style: TextStyles.bodyMain.copyWith(
+                          color: metaColor,
+                        ),
+                      ),
+                      if (isOutgoing &&
+                          message.outgoingReceipt !=
+                              ChatOutgoingReceipt.none) ...[
+                        const Gap(4),
+                        _OutgoingReadReceipts(
+                          read: message.outgoingReceipt ==
+                              ChatOutgoingReceipt.read,
+                        ),
+                      ],
                     ],
                   ),
+                ],
+              );
+
+              final wrapped = isSystem
+                  ? DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: fill,
+                        borderRadius: BorderRadius.circular(sr),
+                        border: Border.all(color: border),
+                      ),
+                      child: Padding(
+                        padding: _bubblePadding(message),
+                        child: content,
+                      ),
+                    )
+                  : ClipPath(
+                      clipper: ChatBubbleClipper(outgoing: isOutgoing),
+                      child: ColoredBox(
+                        color: fill,
+                        child: Padding(
+                          padding: _bubblePadding(message),
+                          child: IntrinsicWidth(child: content),
+                        ),
+                      ),
+                    );
+
+              return Align(
+                alignment:
+                    isOutgoing ? Alignment.centerRight : Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxBubble),
+                  child: GestureDetector(
+                    onTap: onTap,
+                    child: wrapped,
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ),
       ],
@@ -708,6 +1059,8 @@ class ChatComposerBar extends StatelessWidget {
     this.onAttachmentTap,
     this.onMicrophoneTap,
     this.hintText = 'Message',
+    this.sendEnabled = true,
+    this.hasPendingAttachment = false,
   });
 
   final TextEditingController controller;
@@ -715,18 +1068,21 @@ class ChatComposerBar extends StatelessWidget {
   final VoidCallback? onAttachmentTap;
   final VoidCallback? onMicrophoneTap;
   final String hintText;
+  final bool sendEnabled;
+  final bool hasPendingAttachment;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: AppColors.colorff19191A,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      color: AppColors.colorff19191A.withValues(alpha: 0.92),
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
       child: SafeArea(
         top: false,
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _ChatComposerActionButton(
-              icon: Icons.add_rounded,
+              icon: Icons.attach_file_rounded,
               onTap: onAttachmentTap,
             ),
             const Gap(10),
@@ -736,11 +1092,11 @@ class ChatComposerBar extends StatelessWidget {
                 labelText: hintText,
                 hintText: hintText,
                 showLabel: false,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: const Color(0xFF232327),
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: const Color(0x59232627),
                 customBorder: Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: Colors.white.withValues(alpha: 0.1),
                 ),
                 containerPadding: const EdgeInsets.symmetric(horizontal: 16),
                 contentPadding: EdgeInsets.zero,
@@ -761,9 +1117,13 @@ class ChatComposerBar extends StatelessWidget {
                 Widget? child,
               ) {
                 final hasText = value.text.trim().isNotEmpty;
+                final canSend =
+                    sendEnabled && (hasText || hasPendingAttachment);
                 return _ChatComposerActionButton(
-                  icon: hasText ? Icons.send_rounded : Icons.mic_none_rounded,
-                  onTap: hasText ? onSend : onMicrophoneTap,
+                  icon: hasText || hasPendingAttachment
+                      ? Icons.send_rounded
+                      : Icons.mic_none_rounded,
+                  onTap: canSend ? onSend : onMicrophoneTap,
                 );
               },
             ),
@@ -843,30 +1203,6 @@ class ChatFooterButton extends StatelessWidget {
   }
 }
 
-class _ChatBackgroundGlow extends StatelessWidget {
-  const _ChatBackgroundGlow({
-    required this.size,
-    required this.colors,
-  });
-
-  final double size;
-  final List<Color> colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return IgnorePointer(
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(colors: colors),
-        ),
-      ),
-    );
-  }
-}
-
 class _ChatSelectionIndicator extends StatelessWidget {
   const _ChatSelectionIndicator({
     required this.isSelected,
@@ -916,20 +1252,29 @@ class _ChatComposerActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: const Color(0xFF232327),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
-        child: Icon(
-          icon,
-          color: AppColors.textBrand,
-          size: 22,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
+          ),
+          child: Icon(
+            icon,
+            color: AppColors.textBrand.withValues(
+              alpha: onTap == null ? 0.28 : 0.82,
+            ),
+            size: 22,
+          ),
         ),
       ),
     );

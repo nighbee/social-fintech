@@ -35,6 +35,7 @@ class HomeViewModel with _$HomeViewModel {
     @Default(false) bool isProfileSearchLoading,
     @Default('') String profileSearchQuery,
     @Default('') String profileSearchError,
+    @Default('') String postCommentsError,
     @Default(<LocalMediaPayload>[]) List<LocalMediaPayload> localMediaPayloads,
     @Default([]) List<CommentComposerPhoto> postComposerPhotos,
     String? replyingToCommentId,

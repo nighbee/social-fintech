@@ -8,6 +8,7 @@ import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/domain/requests/get_my_profile_posts_request.dart';
+import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
@@ -287,6 +288,16 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                   ),
                   loaded: (ProfileViewModel viewmodel) {
                     final profile = viewmodel.profile;
+                    final authUser = getIt<AuthBloc>().state.maybeWhen(
+                          authenticated: (l) => l.user,
+                          orElse: () => null,
+                        );
+                    final usernameForCard = profile.username.trim().isNotEmpty
+                        ? profile.username
+                        : (authUser?.username ?? '');
+                    final userIdForCard = profile.userId.trim().isNotEmpty
+                        ? profile.userId
+                        : (authUser?.id ?? '');
 
                     return RefreshIndicator(
                       onRefresh: () => _loadMyPosts(force: true),
@@ -300,7 +311,8 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                               padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
                               child: ProfileHeaderCard(
                                 displayName: profile.displayName,
-                                userId: profile.userId,
+                                userId: userIdForCard,
+                                username: usernameForCard,
                                 firstName: profile.firstName,
                                 lastName: profile.lastName,
                                 avatarUrl: profile.avatarUrl,

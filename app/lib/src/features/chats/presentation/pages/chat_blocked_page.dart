@@ -16,6 +16,7 @@ class ChatBlockedPage extends StatelessWidget {
     final thread = ChatMockStore.threadById(chatId);
 
     return ChatScaffold(
+      backgroundVariant: ChatBackgroundVariant.thread,
       appBar: ChatDetailAppBar(thread: thread),
       bottomNavigationBar: ChatFooterButton(
         label: 'Unblock',

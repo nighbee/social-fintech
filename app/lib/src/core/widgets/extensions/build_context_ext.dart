@@ -21,8 +21,10 @@ extension BuildContextExt on BuildContext {
       isDismissible: isDismissible,
       enableDrag: enableDrag,
       shape: const RoundedRectangleBorder(
+        side: BorderSide.none,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      showDragHandle: false,
       constraints: BoxConstraints(
         maxHeight: maxHeightFactor != null
             ? MediaQuery.of(this).size.height * maxHeightFactor

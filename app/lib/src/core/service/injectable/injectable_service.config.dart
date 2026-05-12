@@ -22,6 +22,10 @@ import '../../../features/auth/data/sources/remote/auth_remote_impl.dart'
 import '../../../features/auth/data/sources/remote/i_auth_remote.dart' as _i387;
 import '../../../features/auth/domain/repositories/i_auth_repository.dart'
     as _i664;
+import '../../../features/chats/data/sources/remote/chats_remote_impl.dart'
+    as _i505;
+import '../../../features/chats/data/sources/remote/i_chats_remote.dart'
+    as _i901;
 import '../../../features/home/data/repositories/home_repository_impl.dart'
     as _i955;
 import '../../../features/home/data/sources/remote/home_remote_impl.dart'
@@ -94,6 +98,11 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i931.EnvironmentManager>(
         () => _i931.EnvironmentManager(gh<_i6.IAppStorage>()));
+    gh.lazySingleton<_i901.IChatsRemote>(
+      () => _i505.ChatsRemoteImpl(
+          gh<_i877.RestClient>(instanceName: 'DioClient')),
+      instanceName: 'ChatsRemoteImpl',
+    );
     gh.lazySingleton<_i387.IAuthRemote>(
       () =>
           _i974.AuthRemoteImpl(gh<_i877.RestClient>(instanceName: 'DioClient')),

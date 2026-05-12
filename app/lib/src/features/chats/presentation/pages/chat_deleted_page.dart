@@ -46,7 +46,8 @@ class _ChatDeletedPageState extends State<ChatDeletedPage> {
           direction: ChatMessageDirection.outgoing,
           text: text,
           timeLabel: _buildTimeLabel(),
-          showSeenMark: true,
+          createdAt: DateTime.now(),
+          outgoingReceipt: ChatOutgoingReceipt.read,
         ),
       ];
     });
@@ -64,6 +65,7 @@ class _ChatDeletedPageState extends State<ChatDeletedPage> {
   @override
   Widget build(BuildContext context) {
     return ChatScaffold(
+      backgroundVariant: ChatBackgroundVariant.thread,
       appBar: ChatDetailAppBar(thread: _thread),
       bottomNavigationBar: ChatComposerBar(
         controller: _messageController,
@@ -81,7 +83,6 @@ class _ChatDeletedPageState extends State<ChatDeletedPage> {
                 )
               : ChatConversationMessageList(
                   messages: _messages,
-                  dateLabel: 'Today',
                   padding: EdgeInsets.zero,
                 ),
         ),

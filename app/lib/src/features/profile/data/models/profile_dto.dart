@@ -11,6 +11,7 @@ class ProfileDto extends BaseDto with _$ProfileDto {
   const factory ProfileDto({
     @JsonKey(name: 'user_id') required String userId,
     @JsonKey(name: 'display_name') required String displayName,
+    @JsonKey(name: 'username', defaultValue: '') required String username,
     @JsonKey(name: 'first_name') required String firstName,
     @JsonKey(name: 'last_name') required String lastName,
     @JsonKey(name: 'date_of_birth') required String dateOfBirth,
@@ -32,6 +33,7 @@ class ProfileDto extends BaseDto with _$ProfileDto {
   ProfileEntity toEntity() => ProfileEntity(
     userId: userId,
     displayName: displayName,
+    username: username,
     firstName: firstName,
     lastName: lastName,
     dateOfBirth: dateOfBirth,

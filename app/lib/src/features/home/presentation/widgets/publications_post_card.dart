@@ -1,5 +1,6 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/widgets/feed_ink_well.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
@@ -250,7 +251,7 @@ class PublicationsPostCard extends StatelessWidget
               const Gap(12),
               Row(
                 children: [
-                  InkWell(
+                  FeedInkWell(
                     onTap: () {
                       bloc.add(HomeEvent.togglePostLike(postId: post.postId));
                     },
