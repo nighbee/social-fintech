@@ -24,6 +24,12 @@ type Conversation struct {
 	OtherUsername        *string    `db:"other_username" json:"other_username,omitempty"`
 	OtherDisplayName     *string    `db:"other_display_name" json:"other_display_name,omitempty"`
 	OtherAvatarURL       *string    `db:"other_avatar_url" json:"other_avatar_url,omitempty"`
+	// OtherReputationScore is the conversation partner's lifetime received Gold
+	// Seals (whole seals). OtherRankTier is the derived tier string. Both are
+	// populated at read time so callers don't need a follow-up /me/rank
+	// request per conversation row.
+	OtherReputationScore *int       `db:"other_reputation_score" json:"other_reputation_score,omitempty"`
+	OtherRankTier        *string    `db:"-" json:"other_rank_tier,omitempty"`
 	LastReadAt           *time.Time `db:"last_read_at" json:"last_read_at,omitempty"`
 	OtherParticipantRead *time.Time `db:"other_participant_read_at" json:"other_participant_read_at,omitempty"`
 	CreatedAt            time.Time  `db:"created_at" json:"created_at"`

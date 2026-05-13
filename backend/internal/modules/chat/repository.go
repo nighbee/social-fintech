@@ -144,6 +144,7 @@ func (r *PostgresRepository) GetConversation(ctx context.Context, conversationID
 			u.username AS other_username,
 			COALESCE(p.display_name, '') AS other_display_name,
 			COALESCE(p.avatar_url, '') AS other_avatar_url,
+			COALESCE(w.total_received_amount / 100, 0)::int AS other_reputation_score,
 			op.last_read_at AS other_participant_read_at
 		FROM chat_conversations c
 		JOIN chat_conversation_members cm
@@ -158,6 +159,7 @@ func (r *PostgresRepository) GetConversation(ctx context.Context, conversationID
 		) op ON TRUE
 		LEFT JOIN users u ON u.id = op.user_id
 		LEFT JOIN profiles p ON p.user_id = op.user_id
+		LEFT JOIN wallets w ON w.user_id = op.user_id AND w.currency = 'GOLD_SEAL'
 		WHERE c.id = $1
 		LIMIT 1
 	`
@@ -169,6 +171,7 @@ func (r *PostgresRepository) GetConversation(ctx context.Context, conversationID
 		}
 		return nil, err
 	}
+	fillOtherRankTier(&item)
 	return &item, nil
 }
 
@@ -187,6 +190,7 @@ func (r *PostgresRepository) ListConversations(ctx context.Context, userID strin
 			u.username AS other_username,
 			COALESCE(p.display_name, '') AS other_display_name,
 			COALESCE(p.avatar_url, '') AS other_avatar_url,
+			COALESCE(w.total_received_amount / 100, 0)::int AS other_reputation_score,
 			op.last_read_at AS other_participant_read_at
 		FROM chat_conversation_members cm
 		JOIN chat_conversations c ON c.id = cm.conversation_id
@@ -200,6 +204,7 @@ func (r *PostgresRepository) ListConversations(ctx context.Context, userID strin
 		) op ON TRUE
 		LEFT JOIN users u ON u.id = op.user_id
 		LEFT JOIN profiles p ON p.user_id = op.user_id
+		LEFT JOIN wallets w ON w.user_id = op.user_id AND w.currency = 'GOLD_SEAL'
 		WHERE cm.user_id = $1
 		  AND ($2::timestamptz IS NULL OR COALESCE(c.last_message_at, c.created_at) < $2)
 		ORDER BY COALESCE(c.last_message_at, c.created_at) DESC, c.id DESC
@@ -209,6 +214,9 @@ func (r *PostgresRepository) ListConversations(ctx context.Context, userID strin
 	items := make([]Conversation, 0, limit)
 	if err := r.db.SelectContext(ctx, &items, query, userID, cursor, limit); err != nil {
 		return nil, err
+	}
+	for i := range items {
+		fillOtherRankTier(&items[i])
 	}
 	return items, nil
 }

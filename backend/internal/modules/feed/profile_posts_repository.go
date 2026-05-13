@@ -121,6 +121,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 			COALESCE(u.username,    '')                                         AS username,
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')     AS full_name,
 			COALESCE(prof.avatar_url, '')                                       AS profile_pic_url,
+			COALESCE(w.total_received_amount, 0)                                AS author_received_centinels,
 			COALESCE(media.media_json, '[]'::json)                              AS media_json,
 			EXISTS (
 				SELECT 1 FROM post_interactions pi
@@ -131,6 +132,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		FROM posts p
 		JOIN users    u    ON u.id    = p.user_id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
+		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		LEFT JOIN LATERAL (
 			SELECT json_agg(json_build_object(
 				'type',              pm.media_type,
@@ -177,17 +179,20 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		var mediaJSON []byte
 		var createdAt sql.NullTime
 		var commentPerm string
+		var authorReceivedCentinels int64
 
 		if err := rows.Scan(
 			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.HideLikesCount,
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers,
 			&createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
+			&authorReceivedCentinels,
 			&mediaJSON,
 			&resp.ViewerHasLiked,
 		); err != nil {
 			return nil, "", err
 		}
+		fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		for i := range resp.MediaAttachments {

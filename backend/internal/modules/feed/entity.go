@@ -198,7 +198,14 @@ type AuthorInfo struct {
 	Username      string    `json:"username"`
 	FullName      string    `json:"full_name"`
 	ProfilePicURL string    `json:"profile_pic_url"`
-	Rank          string    `json:"rank"`
+	// Rank is the full human-readable tier string (e.g. "Moonstone | Intention | S").
+	// Computed at read time from ReputationScore so it never goes stale when
+	// rank thresholds change. See [feed.fillAuthorRank].
+	Rank string `json:"rank"`
+	// ReputationScore is the lifetime count of Gold Seals the author has
+	// *received* (whole seals). This is the single input that drives Rank —
+	// FE can re-derive the rank locally if it ever needs to.
+	ReputationScore int `json:"reputation_score"`
 	// RankSubLevel is the sub-level label within the rank tier (e.g. "Intention")
 	RankSubLevel string `json:"rank_sub_level,omitempty"`
 }

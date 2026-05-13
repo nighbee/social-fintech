@@ -116,6 +116,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			COALESCE(u.username, '') as username,
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name,
 			COALESCE(prof.avatar_url, '') as profile_picture_url,
+			COALESCE(w.total_received_amount, 0) as author_received_centinels,
 
 			-- Media as JSON array via LATERAL
 			COALESCE(media.media_json, '[]'::json) as media_json,
@@ -143,6 +144,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		FROM base_posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
+		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		LEFT JOIN LATERAL (
 			SELECT json_agg(json_build_object(
 				'type', pm.media_type,
@@ -180,12 +182,14 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		var isAlly, isLocal bool
 		var pLat, pLon sql.NullFloat64
 		var commentPerm string
+		var authorReceivedCentinels int64
 
 		err := rows.Scan(
 			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.HideLikesCount,
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers,
 			&createdAt, &pLat, &pLon,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
+			&authorReceivedCentinels,
 			&mediaJSON,
 			&resp.ViewerHasLiked,
 			&isAlly, &isLocal,
@@ -193,6 +197,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		if err != nil {
 			return nil, "", err
 		}
+		fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		for i := range resp.MediaAttachments {

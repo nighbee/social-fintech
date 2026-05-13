@@ -404,9 +404,10 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
+		       COALESCE(w.total_received_amount, 0) as author_received_centinels,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
-				       'type', media_type, 
+				       'type', media_type,
 				       'url', video_1080p_url,
 				       'image_url', video_1080p_url,
 				       'video_1080p_url', video_1080p_url,
@@ -420,6 +421,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
+		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE p.id = $1
 		  AND p.is_archived = false
 		  AND p.is_deleted = false
@@ -431,11 +433,13 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	var createdAt sql.NullTime
 	var avatarURL sql.NullString
 	var avatarUpdatedAt sql.NullTime
+	var authorReceivedCentinels int64
 
 	err := r.db.QueryRowContext(ctx, query, postID, viewerID).Scan(
 		&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.CommentPermission, &resp.Permissions.CanComment,
 		&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
+		&authorReceivedCentinels,
 		&mediaJSON, &resp.ViewerHasLiked,
 	)
 	if err != nil {
@@ -448,6 +452,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	if avatarURL.Valid {
 		resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
 	}
+	fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
 	_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 	for i := range resp.MediaAttachments {
@@ -471,13 +476,14 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
+		       COALESCE(w.total_received_amount, 0) as author_received_centinels,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
-				       'type', media_type, 
+				       'type', media_type,
 				       'url', video_1080p_url,
 				       'image_url', video_1080p_url,
-				       'video_1080p_url', video_1080p_url, 
-				       'video_480p_url', video_480p_url, 
+				       'video_1080p_url', video_1080p_url,
+				       'video_480p_url', video_480p_url,
 				       'thumbnail_url', thumbnail_url,
 				       'processing_status', processing_status
 				   ) ORDER BY media_order)
@@ -486,6 +492,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
+		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE p.is_archived = false AND p.is_deleted = false
 		  AND COALESCE(u.is_shadow_banned, false) = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
@@ -511,6 +518,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		var createdAt sql.NullTime
 		var avatarURL sql.NullString
 		var commentPerm string
+		var authorReceivedCentinels int64
 
 		// Added viewer_has_liked to the generic feed response if needed, but the original query does not select it.
 		// We missed it in the GetFeed query. Let's fix the query first or omit it here. We'll update the query in a follow up call.
@@ -518,6 +526,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.Permissions.CanComment,
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
+			&authorReceivedCentinels,
 			&mediaJSON,
 		)
 		if err != nil {
@@ -527,6 +536,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		if avatarURL.Valid {
 			resp.Author.ProfilePicURL = r.buildURL(avatarURL.String)
 		}
+		fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
 		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
 		for i := range resp.MediaAttachments {
@@ -573,11 +583,13 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		       c.created_at,
 		       c.likes_count,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
+		       COALESCE(w.total_received_amount, 0) as author_received_centinels,
 		       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 		FROM post_comments c
 		JOIN users u ON c.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
+		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE c.id = $1
 		  AND c.is_deleted = false
 		  AND c.is_hidden_by_reports = false
@@ -588,11 +600,13 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 	var createdAt sql.NullTime
 	var avatarURL sql.NullString
 	var avatarUpdatedAt sql.NullTime
+	var authorReceivedCentinels int64
 
 	err := r.db.QueryRowContext(ctx, query, commentID, viewerID).Scan(
 		&resp.CommentID, &resp.ParentCommentID, &resp.RootCommentID, &resp.ContentText, &mediaJSON, &createdAt,
 		&resp.LikesCount,
 		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
+		&authorReceivedCentinels,
 		&resp.ReplyCount,
 		&resp.ViewerHasLiked,
 	)
@@ -606,6 +620,7 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 	if avatarURL.Valid {
 		resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
 	}
+	fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
 	if createdAt.Valid {
 		resp.CreatedAt = createdAt.Time
@@ -671,11 +686,13 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
+			       COALESCE(w.total_received_amount, 0) as author_received_centinels,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
 			LEFT JOIN profiles prof ON prof.user_id = u.id
+			LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 			LEFT JOIN LATERAL (
 				SELECT COUNT(1) AS violations_30d
 				FROM author_policy_strikes aps
@@ -719,11 +736,13 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       c.created_at,
 				       c.likes_count,
 				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
+				       COALESCE(w.total_received_amount, 0) as author_received_centinels,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
 				JOIN users u ON c.user_id = u.id
 				LEFT JOIN profiles prof ON prof.user_id = u.id
+				LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 				LEFT JOIN LATERAL (
 					SELECT COUNT(1) AS violations_30d
 					FROM author_policy_strikes aps
@@ -772,11 +791,13 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
+			       COALESCE(w.total_received_amount, 0) as author_received_centinels,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
 			LEFT JOIN profiles prof ON prof.user_id = u.id
+			LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 			WHERE c.post_id = $1
 			  AND c.parent_comment_id = $3
 			  AND c.is_deleted = false
@@ -803,11 +824,13 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       c.created_at,
 				       c.likes_count,
 				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
+				       COALESCE(w.total_received_amount, 0) as author_received_centinels,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
 				JOIN users u ON c.user_id = u.id
 				LEFT JOIN profiles prof ON prof.user_id = u.id
+				LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 				WHERE c.post_id = $1
 				  AND c.parent_comment_id = $3
 				  AND c.is_deleted = false
@@ -834,11 +857,13 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		var createdAt sql.NullTime
 		var avatarURL sql.NullString
 		var avatarUpdatedAt sql.NullTime
+		var authorReceivedCentinels int64
 
 		err := rows.Scan(
 			&resp.CommentID, &resp.ParentCommentID, &resp.RootCommentID, &resp.ContentText, &mediaJSON, &createdAt,
 			&resp.LikesCount,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
+			&authorReceivedCentinels,
 			&resp.ReplyCount,
 			&resp.ViewerHasLiked,
 		)
@@ -849,6 +874,7 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 		if avatarURL.Valid {
 			resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
 		}
+		fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
 		if createdAt.Valid {
 			resp.CreatedAt = createdAt.Time
@@ -1460,11 +1486,12 @@ func (r *repository) GetInteractions(ctx context.Context, postID uuid.UUID, inte
 			COALESCE(u.username, '') AS username,
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') AS full_name,
 			COALESCE(p.avatar_url, '') AS profile_pic_url,
-			COALESCE(p.current_rank_tier, '') AS rank,
+			COALESCE(w.total_received_amount, 0) AS author_received_centinels,
 			pi.created_at
 		FROM post_interactions pi
 		JOIN users u ON u.id = pi.user_id
 		LEFT JOIN profiles p ON p.user_id = u.id
+		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE pi.post_id = $1
 		  AND pi.interaction_type = $2
 		  AND pi.created_at < $3
@@ -1484,14 +1511,14 @@ func (r *repository) GetInteractions(ctx context.Context, postID uuid.UUID, inte
 		var item InteractionResponse
 		var createdAt time.Time
 		var avatarURL sql.NullString
-		var rank sql.NullString
+		var authorReceivedCentinels int64
 
 		if err := rows.Scan(
 			&item.User.ID,
 			&item.User.Username,
 			&item.User.FullName,
 			&avatarURL,
-			&rank,
+			&authorReceivedCentinels,
 			&createdAt,
 		); err != nil {
 			return nil, "", err
@@ -1500,9 +1527,7 @@ func (r *repository) GetInteractions(ctx context.Context, postID uuid.UUID, inte
 		if avatarURL.Valid {
 			item.User.ProfilePicURL = r.buildURL(avatarURL.String)
 		}
-		if rank.Valid {
-			item.User.Rank = rank.String
-		}
+		fillAuthorRank(&item.User, authorReceivedCentinels)
 
 		item.CreatedAt = createdAt
 		items = append(items, item)
@@ -1538,11 +1563,12 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 			COALESCE(u.username, '') AS username,
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') AS full_name,
 			COALESCE(p.avatar_url, '') AS profile_pic_url,
-			COALESCE(p.current_rank_tier, '') AS rank
+			COALESCE(gw.total_received_amount, 0) AS author_received_centinels
 		FROM ledger_entries le
 		JOIN wallets sw ON sw.id = le.sender_wallet_id
 		JOIN users u ON u.id = sw.user_id
 		LEFT JOIN profiles p ON p.user_id = u.id
+		LEFT JOIN wallets gw ON gw.user_id = u.id AND gw.currency = 'GOLD_SEAL'
 		WHERE le.category = $1
 		  AND le.currency IN ($2, $3)
 		  AND le.metadata->>'post_id' = $4
@@ -1572,7 +1598,7 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 		var comment string
 		var createdAt time.Time
 		var avatarURL sql.NullString
-		var rank sql.NullString
+		var authorReceivedCentinels int64
 
 		if err := rows.Scan(
 			&amount,
@@ -1582,7 +1608,7 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 			&resp.User.Username,
 			&resp.User.FullName,
 			&avatarURL,
-			&rank,
+			&authorReceivedCentinels,
 		); err != nil {
 			return nil, "", err
 		}
@@ -1594,9 +1620,7 @@ func (r *repository) GetSeals(ctx context.Context, postID uuid.UUID, cursor stri
 		if avatarURL.Valid {
 			resp.User.ProfilePicURL = r.buildURL(avatarURL.String)
 		}
-		if rank.Valid {
-			resp.User.Rank = rank.String
-		}
+		fillAuthorRank(&resp.User, authorReceivedCentinels)
 
 		items = append(items, resp)
 		lastCreatedAt = createdAt
