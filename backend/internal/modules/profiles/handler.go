@@ -7,8 +7,24 @@ import (
 	"github.com/brightbund-backend/internal/platform/geolocation"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
+
+// parseTargetID extracts the :user_id path param and validates that it
+// is a UUID. On invalid input it writes a 400 invalid_user_id response
+// and returns a non-nil error so callers can `return err` directly.
+//
+// Without this guard Fiber would match e.g. /profiles/search against
+// the /profiles/:user_id route with target_id="search", which then
+// surfaces as a confusing 500 profile_error.
+func parseTargetID(c *fiber.Ctx) (string, error) {
+	raw := c.Params("user_id")
+	if _, err := uuid.Parse(raw); err != nil {
+		return "", c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	}
+	return raw, nil
+}
 
 type Handler struct {
 	service      *Service
@@ -121,9 +137,9 @@ func (h *Handler) UpdateMyProfile(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]string "Internal server error"
 // @Router /profiles/{user_id} [get]
 func (h *Handler) GetPublicProfile(c *fiber.Ctx) error {
-	targetID := c.Params("user_id")
-	if targetID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
 	}
 
 	p, err := h.service.GetPublicProfile(c.Context(), targetID)
@@ -246,9 +262,9 @@ func (h *Handler) GetMyStats(c *fiber.Ctx) error {
 // @Failure 500 {object} map[string]string "Failed to retrieve stats"
 // @Router /profiles/{user_id}/stats [get]
 func (h *Handler) GetPublicStats(c *fiber.Ctx) error {
-	targetID := c.Params("user_id")
-	if targetID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
 	}
 	stats, err := h.service.GetPublicStats(c.Context(), targetID)
 	if err != nil {
@@ -312,9 +328,9 @@ func (h *Handler) AddAlly(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
-	if targetID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
 	}
 
 	if err := h.service.AddAlly(c.Context(), userID.(string), targetID); err != nil {
@@ -342,9 +358,9 @@ func (h *Handler) RemoveAlly(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
-	if targetID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
 	}
 
 	if err := h.service.RemoveAlly(c.Context(), userID.(string), targetID); err != nil {
@@ -393,9 +409,9 @@ func (h *Handler) GetMyAllies(c *fiber.Ctx) error {
 // @Failure 500 "Internal error"
 // @Router /profiles/{user_id}/allies [get]
 func (h *Handler) GetAllies(c *fiber.Ctx) error {
-	targetID := c.Params("user_id")
-	if targetID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
 	}
 	searchQuery := c.Query("q")
 	limit := c.QueryInt("limit", 20)
@@ -436,7 +452,10 @@ func (h *Handler) BlockUser(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
+	}
 
 	if err := h.service.BlockUser(c.Context(), userID.(string), targetID); err != nil {
 		if err == ErrProfileNotFound {
@@ -463,7 +482,10 @@ func (h *Handler) UnblockUser(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
+	}
 
 	if err := h.service.UnblockUser(c.Context(), userID.(string), targetID); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "unblock_failed"})
@@ -488,7 +510,10 @@ func (h *Handler) RestrictUser(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
+	}
 
 	if err := h.service.RestrictUser(c.Context(), userID.(string), targetID); err != nil {
 		if err == ErrProfileNotFound {
@@ -515,7 +540,10 @@ func (h *Handler) UnrestrictUser(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
+	}
 
 	if err := h.service.UnrestrictUser(c.Context(), userID.(string), targetID); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "unrestrict_failed"})
@@ -540,9 +568,9 @@ func (h *Handler) GetRelationshipStatus(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
-	if targetID == "" {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid_user_id"})
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
 	}
 
 	if targetID == userID.(string) {
@@ -580,7 +608,10 @@ func (h *Handler) ReportUser(c *fiber.Ctx) error {
 	if userID == nil {
 		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
 	}
-	targetID := c.Params("user_id")
+	targetID, err := parseTargetID(c)
+	if err != nil {
+		return err
+	}
 
 	var req ReportRequest
 	if err := c.BodyParser(&req); err != nil {
