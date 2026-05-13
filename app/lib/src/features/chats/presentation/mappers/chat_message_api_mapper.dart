@@ -56,12 +56,33 @@ class ChatMessageApiMapper {
     if (dto.messageType == 'system') {
       return ChatMessageDirection.incoming;
     }
-    final sid = dto.senderId?.trim();
-    final me = currentUserId?.trim();
-    if (me != null && me.isNotEmpty && sid == me) {
+    if (_sameSender(dto.senderId, currentUserId)) {
       return ChatMessageDirection.outgoing;
     }
     return ChatMessageDirection.incoming;
+  }
+
+  /// Сопоставление с учётом регистра и опциональных дефисов в UUID.
+  static bool _sameSender(String? senderId, String? currentUserId) {
+    final s = senderId?.trim() ?? '';
+    final u = currentUserId?.trim() ?? '';
+    if (s.isEmpty || u.isEmpty) {
+      return false;
+    }
+    if (s == u) {
+      return true;
+    }
+    final ls = s.toLowerCase();
+    final lu = u.toLowerCase();
+    if (ls == lu) {
+      return true;
+    }
+    final ns = ls.replaceAll('-', '');
+    final nu = lu.replaceAll('-', '');
+    if (ns.isNotEmpty && ns == nu) {
+      return true;
+    }
+    return false;
   }
 
   static String _displayText(MessageDto dto) {

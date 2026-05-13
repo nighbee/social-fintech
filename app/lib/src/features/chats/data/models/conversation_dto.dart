@@ -14,6 +14,8 @@ class ConversationDto {
     this.otherUsername,
     this.otherDisplayName,
     this.otherAvatarUrl,
+    this.otherReputationScore,
+    this.otherRankTier,
     this.lastReadAt,
     this.otherParticipantReadAt,
     required this.createdAt,
@@ -33,6 +35,8 @@ class ConversationDto {
   final String? otherUsername;
   final String? otherDisplayName;
   final String? otherAvatarUrl;
+  final int? otherReputationScore;
+  final String? otherRankTier;
   final DateTime? lastReadAt;
   final DateTime? otherParticipantReadAt;
   final DateTime createdAt;
@@ -53,6 +57,8 @@ class ConversationDto {
       otherUsername: json['other_username'] as String?,
       otherDisplayName: json['other_display_name'] as String?,
       otherAvatarUrl: json['other_avatar_url'] as String?,
+      otherReputationScore: (json['other_reputation_score'] as num?)?.toInt(),
+      otherRankTier: json['other_rank_tier'] as String?,
       lastReadAt: _parseDate(json['last_read_at']),
       otherParticipantReadAt: _parseDate(json['other_participant_read_at']),
       createdAt: _parseDate(json['created_at']) ??

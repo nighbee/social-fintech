@@ -48,10 +48,14 @@ class MessageDto {
             .toList(growable: false)
         : <MessageMediaDto>[];
 
+    final senderRaw = json['sender_id'] ?? json['senderId'];
+    final senderTrimmed =
+        (senderRaw is String ? senderRaw : senderRaw?.toString())?.trim() ?? '';
+
     return MessageDto(
       id: json['id'] as String? ?? '',
       conversationId: json['conversation_id'] as String? ?? '',
-      senderId: json['sender_id'] as String?,
+      senderId: senderTrimmed.isEmpty ? null : senderTrimmed,
       messageType: json['message_type'] as String? ?? '',
       body: json['body'] as String? ?? '',
       media: mediaList,

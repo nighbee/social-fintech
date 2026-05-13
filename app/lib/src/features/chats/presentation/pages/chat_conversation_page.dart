@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui' show ImageFilter;
 
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/core/router/router.dart';
@@ -7,6 +8,7 @@ import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:app/src/features/chats/data/models/message_dto.dart';
 import 'package:app/src/features/chats/data/sources/remote/i_chats_remote.dart';
 import 'package:app/src/features/chats/presentation/mappers/chat_message_api_mapper.dart';
 import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
@@ -17,6 +19,7 @@ import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.da
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
@@ -45,6 +48,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   String? _remoteError;
   bool _sending = false;
   _PendingMedia? _pendingMedia;
+  List<MessageDto> _remoteMessageDtos = <MessageDto>[];
 
   IChatsRemote get _remote =>
       getIt<IChatsRemote>(instanceName: 'ChatsRemoteImpl');
@@ -59,19 +63,54 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       chatConversationIdLooksLikeUuid(widget.chatId.trim());
 
   String? _currentUserId() {
-    final fromAuth = getIt<AuthBloc>().state.maybeWhen(
+    final authId = getIt<AuthBloc>().state.maybeWhen(
           authenticated: (loginEntity) => loginEntity.user.id,
           orElse: () => null,
         );
-    final authId = fromAuth?.trim();
-    if (authId != null && authId.isNotEmpty) {
-      return authId;
+    final fromAuth = authId?.trim();
+    if (fromAuth != null && fromAuth.isNotEmpty) {
+      return fromAuth;
     }
-    return getIt<ProfileBloc>().state.maybeWhen(
-          loaded: (vm) => vm.profile.userId,
-          loading: (vm) => vm.profile.userId,
+    final profileId = getIt<ProfileBloc>().state.maybeWhen(
+          loaded: (ProfileViewModel vm) => vm.profile.userId,
+          loading: (ProfileViewModel vm) => vm.profile.userId,
           orElse: () => null,
-        )?.trim();
+        );
+    final fromProfile = profileId?.trim();
+    if (fromProfile != null && fromProfile.isNotEmpty) {
+      return fromProfile;
+    }
+    return null;
+  }
+
+  String _profileUserId(ProfileState s) => s.maybeWhen(
+        loaded: (ProfileViewModel vm) => vm.profile.userId.trim(),
+        loading: (ProfileViewModel vm) => vm.profile.userId.trim(),
+        orElse: () => '',
+      );
+
+  String _authUserId(AuthState s) => s.maybeWhen(
+        authenticated: (loginEntity) => loginEntity.user.id.trim(),
+        orElse: () => '',
+      );
+
+  void _remapMessagesFromRemoteDtos() {
+    if (!_useBackend || _remoteMessageDtos.isEmpty) {
+      return;
+    }
+    final uid = _currentUserId();
+    if (uid == null || uid.isEmpty) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _messages = ChatMessageApiMapper.toUiModels(
+        _remoteMessageDtos,
+        currentUserId: uid,
+      );
+    });
   }
 
   @override
@@ -116,12 +155,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     result.fold((_) {}, (dto) {
       final entity = dto.toEntity();
       final dn = entity.displayName.trim();
-      final rank = entity.rankTier.trim();
       final av = entity.avatarUrl.trim();
       setState(() {
         _thread = _thread.copyWith(
           displayName: dn.isNotEmpty ? dn : _thread.displayName,
-          rankLine: rank.isNotEmpty ? rank : _thread.rankLine,
           avatarUrl: av.isNotEmpty ? av : _thread.avatarUrl,
         );
       });
@@ -181,14 +218,16 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           _loadingRemote = false;
           _remoteError = error.message;
           _messages = <ChatMessageUiModel>[];
+          _remoteMessageDtos = <MessageDto>[];
         });
       },
       (data) {
         setState(() {
           _loadingRemote = false;
           _remoteError = null;
+          _remoteMessageDtos = List<MessageDto>.from(data.items);
           _messages = ChatMessageApiMapper.toUiModels(
-            data.items,
+            _remoteMessageDtos,
             currentUserId: _currentUserId(),
           );
         });
@@ -297,6 +336,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         _messageController.clear();
         setState(() {
           _pendingMedia = null;
+          _remoteMessageDtos = [..._remoteMessageDtos, dto];
           _messages = [
             ..._messages,
             ChatMessageApiMapper.toUiModel(
@@ -381,6 +421,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       (dto) {
         _messageController.clear();
         setState(() {
+          _remoteMessageDtos = [..._remoteMessageDtos, dto];
           _messages = [
             ..._messages,
             ChatMessageApiMapper.toUiModel(
@@ -402,37 +443,53 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return ChatScaffold(
+    final Widget scaffold = ChatScaffold(
       backgroundVariant: ChatBackgroundVariant.thread,
+      overlayBottomNavigationBar: true,
       appBar: ChatDetailAppBar(
         thread: _thread,
         actions: [
           ChatConversationOverflowButton(onSelected: _handleMenuSelection),
         ],
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_useBackend && _pendingMedia != null)
-            _ChatPendingMediaStrip(
-              data: _pendingMedia!,
-              onRemove: () {
-                if (_sending) {
-                  return;
-                }
-                setState(() => _pendingMedia = null);
-              },
+      bottomNavigationBar: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.02),
             ),
-          ChatComposerBar(
-            controller: _messageController,
-            onSend: _sendMessage,
-            sendEnabled: !_sending,
-            hasPendingAttachment: _useBackend && _pendingMedia != null,
-            onAttachmentTap: _useBackend ? _onPickAttachment : null,
-            onMicrophoneTap: _useBackend ? _onMicrophoneTap : null,
+            child: Material(
+              type: MaterialType.transparency,
+              color: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_useBackend && _pendingMedia != null)
+                    _ChatPendingMediaStrip(
+                      data: _pendingMedia!,
+                      onRemove: () {
+                        if (_sending) {
+                          return;
+                        }
+                        setState(() => _pendingMedia = null);
+                      },
+                    ),
+                  ChatComposerBar(
+                    controller: _messageController,
+                    onSend: _sendMessage,
+                    sendEnabled: !_sending,
+                    hasPendingAttachment: _useBackend && _pendingMedia != null,
+                    onAttachmentTap: _useBackend ? _onPickAttachment : null,
+                    onMicrophoneTap: _useBackend ? _onMicrophoneTap : null,
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -460,8 +517,39 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   )
                 : ChatConversationMessageList(
                     messages: _messages,
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      8,
+                      16,
+                      chatThreadComposerStackBottomPadding(
+                        context,
+                        hasPendingAttachment:
+                            _useBackend && _pendingMedia != null,
+                      ),
+                    ),
                   ),
+      ),
+    );
+
+    if (!_useBackend) {
+      return scaffold;
+    }
+
+    return BlocListener<ProfileBloc, ProfileState>(
+      listenWhen: (ProfileState previous, ProfileState current) =>
+          _remoteMessageDtos.isNotEmpty &&
+          _profileUserId(previous) != _profileUserId(current),
+      listener: (BuildContext context, ProfileState state) {
+        _remapMessagesFromRemoteDtos();
+      },
+      child: BlocListener<AuthBloc, AuthState>(
+        listenWhen: (AuthState previous, AuthState current) =>
+            _remoteMessageDtos.isNotEmpty &&
+            _authUserId(previous) != _authUserId(current),
+        listener: (BuildContext context, AuthState state) {
+          _remapMessagesFromRemoteDtos();
+        },
+        child: scaffold,
       ),
     );
   }
@@ -495,32 +583,41 @@ class _ChatPendingMediaStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = data.fileName.split(RegExp(r'[/\\]')).last;
     return Material(
-      color: Colors.black.withValues(alpha: 0.42),
+      color: Colors.transparent,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 4, 6),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: data.isVideo
-                  ? Container(
-                      width: 72,
-                      height: 72,
-                      color: const Color(0xFF252528),
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.videocam_outlined,
-                        color: AppColors.textBrand.withValues(alpha: 0.75),
-                        size: 32,
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.46),
+                  width: 3,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(5),
+                child: data.isVideo
+                    ? Container(
+                        width: 72,
+                        height: 72,
+                        color: const Color(0xFF252528),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.videocam_outlined,
+                          color: AppColors.textBrand.withValues(alpha: 0.75),
+                          size: 32,
+                        ),
+                      )
+                    : Image.memory(
+                        data.bytes,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
                       ),
-                    )
-                  : Image.memory(
-                      data.bytes,
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                    ),
+              ),
             ),
             const Gap(10),
             Expanded(

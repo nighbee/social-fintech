@@ -33,7 +33,7 @@ class ChatThreadPreviewMapper {
     );
   }
 
-  /// В API нет «last seen онлайн»; показываем время последнего просмотра переписки собеседником.
+  /// В API пока нет «last seen онлайн»; показываем время последнего просмотра переписки собеседником.
   static String _lastSeenLine(DateTime? otherReadAt) {
     if (otherReadAt == null) {
       return '';
@@ -42,7 +42,19 @@ class ChatThreadPreviewMapper {
     return 'Last read · $ago';
   }
 
+  /// Ранг приходит с бэка (`other_rank_tier`, из wallets + спека рангов) — без отдельного GET /me/rank.
+  static String _normalizeRankTier(String raw) {
+    return raw
+        .trim()
+        .replaceAll(RegExp(r'\s*\|\s*'), ' · ')
+        .replaceAll(RegExp(r'\s+'), ' ');
+  }
+
   static String _rankLine(ConversationDto dto, String title, String username) {
+    final tier = (dto.otherRankTier ?? '').trim();
+    if (tier.isNotEmpty) {
+      return _normalizeRankTier(tier);
+    }
     if (dto.kind == 'task') {
       return 'Task chat';
     }
