@@ -734,6 +734,7 @@ class ChatConversationMessageList extends StatelessWidget {
     this.showSelectionControls = false,
     this.selectedMessageIds = const <String>{},
     this.onMessageTap,
+    this.onMessageLongPress,
     this.emptyState,
     this.padding,
   });
@@ -742,6 +743,7 @@ class ChatConversationMessageList extends StatelessWidget {
   final bool showSelectionControls;
   final Set<String> selectedMessageIds;
   final ValueChanged<ChatMessageUiModel>? onMessageTap;
+  final ValueChanged<ChatMessageUiModel>? onMessageLongPress;
   final Widget? emptyState;
   final EdgeInsetsGeometry? padding;
 
@@ -774,6 +776,9 @@ class ChatConversationMessageList extends StatelessWidget {
           showSelectionControls: showSelectionControls,
           isSelected: selectedMessageIds.contains(message.id),
           onTap: onMessageTap == null ? null : () => onMessageTap!(message),
+          onLongPress: onMessageLongPress == null
+              ? null
+              : () => onMessageLongPress!(message),
         ),
       );
       children.add(const Gap(14));
@@ -861,12 +866,14 @@ class ChatMessageBubble extends StatelessWidget {
     this.showSelectionControls = false,
     this.isSelected = false,
     this.onTap,
+    this.onLongPress,
   });
 
   final ChatMessageUiModel message;
   final bool showSelectionControls;
   final bool isSelected;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
@@ -1176,6 +1183,7 @@ class ChatMessageBubble extends StatelessWidget {
                   constraints: BoxConstraints(maxWidth: maxBubble),
                   child: GestureDetector(
                     onTap: onTap,
+                    onLongPress: onLongPress,
                     child: wrapped,
                   ),
                 ),
@@ -1193,15 +1201,18 @@ class ChatMessageBubble extends StatelessWidget {
 double chatThreadComposerStackBottomPadding(
   BuildContext context, {
   required bool hasPendingAttachment,
+  bool hasReplyDraft = false,
 }) {
   final safeBottom = MediaQuery.paddingOf(context).bottom;
   const composerVertical = 8.0 + 44.0 + 10.0;
   const pendingVertical = 8.0 + 72.0 + 6.0;
+  const replyStrip = 56.0;
   const breathing = 24.0;
   return breathing +
       safeBottom +
       composerVertical +
-      (hasPendingAttachment ? pendingVertical : 0);
+      (hasPendingAttachment ? pendingVertical : 0) +
+      (hasReplyDraft ? replyStrip : 0);
 }
 
 class ChatComposerBar extends StatelessWidget {

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' show ImageFilter;
 
 import 'package:app/src/core/exceptions/domain_exception.dart';
@@ -19,6 +18,7 @@ import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.da
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
@@ -48,6 +48,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   String? _remoteError;
   bool _sending = false;
   _PendingMedia? _pendingMedia;
+  _ChatReplyDraft? _replyDraft;
   List<MessageDto> _remoteMessageDtos = <MessageDto>[];
 
   IChatsRemote get _remote =>
@@ -169,6 +170,204 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   void dispose() {
     _messageController.dispose();
     super.dispose();
+  }
+
+  String _replyLabelForMessage(ChatMessageUiModel m) {
+    if (m.direction == ChatMessageDirection.outgoing) {
+      return 'Вы';
+    }
+    final name = _thread.displayName.trim();
+    return name.isNotEmpty ? name : 'Собеседник';
+  }
+
+  String _messageExcerpt(ChatMessageUiModel m) {
+    final t = m.text.trim();
+    if (t.isNotEmpty) {
+      if (t.length > 120) {
+        return '${t.substring(0, 117)}…';
+      }
+      return t;
+    }
+    if (m.media.isNotEmpty) {
+      final first = m.media.first;
+      if (first.isImage) {
+        return 'Фото';
+      }
+      if (first.isVideo) {
+        return 'Видео';
+      }
+      if (first.isAudio) {
+        return 'Голосовое сообщение';
+      }
+      return 'Вложение';
+    }
+    if (m.forwardedSnippet != null) {
+      return 'Пересланное сообщение';
+    }
+    return 'Сообщение';
+  }
+
+  String _composeBodyWithOptionalReply(String userText) {
+    final d = _replyDraft;
+    if (d == null) {
+      return userText;
+    }
+    final ref = 'Ответ «${d.excerpt}» · ${d.authorLabel}';
+    final body = userText.trim();
+    if (body.isEmpty) {
+      return ref;
+    }
+    return '$ref\n\n$body';
+  }
+
+  void _onMessageLongPress(ChatMessageUiModel m) {
+    _openMessageActionsForModel(m);
+  }
+
+  void _openMessageActionsForModel(ChatMessageUiModel m) {
+    final isSystem = m.messageType == 'system';
+    final canCopy = _messageExcerpt(m).trim().isNotEmpty;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF252529),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (!isSystem)
+                ListTile(
+                  leading: Icon(
+                    Icons.reply_rounded,
+                    color: AppColors.textBrand.withValues(alpha: 0.9),
+                  ),
+                  title: Text(
+                    'Ответить',
+                    style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _replyDraft = _ChatReplyDraft(
+                        authorLabel: _replyLabelForMessage(m),
+                        excerpt: _messageExcerpt(m),
+                      );
+                    });
+                  },
+                ),
+              ListTile(
+                leading: Icon(
+                  Icons.forward_rounded,
+                  color: AppColors.textBrand.withValues(alpha: 0.9),
+                ),
+                title: Text(
+                  'Переслать',
+                  style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.pushNamed(
+                    RouteNames.chatConversationForward,
+                    pathParameters: <String, String>{'chatId': widget.chatId},
+                  );
+                },
+              ),
+              if (canCopy)
+                ListTile(
+                  leading: Icon(
+                    Icons.copy_rounded,
+                    color: AppColors.textBrand.withValues(alpha: 0.9),
+                  ),
+                  title: Text(
+                    'Копировать',
+                    style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+                  ),
+                  onTap: () {
+                    final clip = m.text.trim().isNotEmpty
+                        ? m.text
+                        : _messageExcerpt(m);
+                    Clipboard.setData(ClipboardData(text: clip));
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Скопировано')),
+                    );
+                  },
+                ),
+              ListTile(
+                leading: Icon(
+                  Icons.push_pin_outlined,
+                  color: AppColors.textBrand.withValues(alpha: 0.42),
+                ),
+                title: Text(
+                  'Закрепить',
+                  style: TextStyles.bodyLarge.copyWith(
+                    color: AppColors.textBrand.withValues(alpha: 0.52),
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Закрепление в API пока не поддерживается',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Color(0xFFEF4444),
+                ),
+                title: Text(
+                  'Удалить',
+                  style: TextStyles.bodyLarge.copyWith(
+                    color: const Color(0xFFEF4444),
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Удаление сообщений в API пока не поддерживается',
+                      ),
+                    ),
+                  );
+                },
+              ),
+              Divider(
+                height: 1,
+                thickness: 1,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.select_all_rounded,
+                  color: AppColors.textBrand.withValues(alpha: 0.9),
+                ),
+                title: Text(
+                  'Выбрать',
+                  style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.pushNamed(
+                    RouteNames.chatConversationSelect,
+                    pathParameters: <String, String>{'chatId': widget.chatId},
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void _handleMenuSelection(String value) {
@@ -309,10 +508,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       return;
     }
     final trimmedCaption = caption.trim();
+    final bodyForApi = _composeBodyWithOptionalReply(trimmedCaption);
     final idempotencyKey = const Uuid().v4();
     final result = await _remote.sendMessage(
       conversationId: widget.chatId.trim(),
-      body: trimmedCaption,
+      body: bodyForApi,
       idempotencyKey: idempotencyKey,
       media: _chatMediaPayload([
         (
@@ -336,6 +536,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         _messageController.clear();
         setState(() {
           _pendingMedia = null;
+          _replyDraft = null;
           _remoteMessageDtos = [..._remoteMessageDtos, dto];
           _messages = [
             ..._messages,
@@ -383,18 +584,20 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     }
 
     if (!_useBackend) {
+      final composed = _composeBodyWithOptionalReply(text);
       setState(() {
         _messages = [
           ..._messages,
           ChatMessageUiModel(
             id: ChatMockStore.newMessageId(widget.chatId, _messages.length + 1),
             direction: ChatMessageDirection.outgoing,
-            text: text,
+            text: composed,
             timeLabel: _buildTimeLabel(),
             createdAt: DateTime.now(),
             outgoingReceipt: ChatOutgoingReceipt.read,
           ),
         ];
+        _replyDraft = null;
       });
       _messageController.clear();
       return;
@@ -404,7 +607,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final idempotencyKey = const Uuid().v4();
     final result = await _remote.sendMessage(
       conversationId: widget.chatId.trim(),
-      body: text,
+      body: _composeBodyWithOptionalReply(text),
       idempotencyKey: idempotencyKey,
     );
     if (!mounted) {
@@ -421,6 +624,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       (dto) {
         _messageController.clear();
         setState(() {
+          _replyDraft = null;
           _remoteMessageDtos = [..._remoteMessageDtos, dto];
           _messages = [
             ..._messages,
@@ -467,6 +671,16 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (_replyDraft != null)
+                    _ChatReplyDraftStrip(
+                      draft: _replyDraft!,
+                      onClose: () {
+                        if (_sending) {
+                          return;
+                        }
+                        setState(() => _replyDraft = null);
+                      },
+                    ),
                   if (_useBackend && _pendingMedia != null)
                     _ChatPendingMediaStrip(
                       data: _pendingMedia!,
@@ -517,6 +731,31 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   )
                 : ChatConversationMessageList(
                     messages: _messages,
+                    onMessageLongPress: _onMessageLongPress,
+                    emptyState: _useBackend &&
+                            !_loadingRemote &&
+                            _remoteError == null &&
+                            _messages.isEmpty
+                        ? Padding(
+                            padding: EdgeInsets.fromLTRB(
+                              16,
+                              8,
+                              16,
+                              chatThreadComposerStackBottomPadding(
+                                context,
+                                hasPendingAttachment:
+                                    _useBackend && _pendingMedia != null,
+                                hasReplyDraft: _replyDraft != null,
+                              ),
+                            ),
+                            child: const Center(
+                              child: ChatCenteredStatusCard(
+                                message:
+                                    'Отправьте сообщение, чтобы начать чат',
+                              ),
+                            ),
+                          )
+                        : null,
                     padding: EdgeInsets.fromLTRB(
                       16,
                       8,
@@ -525,6 +764,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                         context,
                         hasPendingAttachment:
                             _useBackend && _pendingMedia != null,
+                        hasReplyDraft: _replyDraft != null,
                       ),
                     ),
                   ),
@@ -567,6 +807,103 @@ class _PendingMedia {
         n.endsWith('.mov') ||
         n.endsWith('.m4v') ||
         n.endsWith('.webm');
+  }
+}
+
+class _ChatReplyDraft {
+  _ChatReplyDraft({
+    required this.authorLabel,
+    required this.excerpt,
+  });
+
+  final String authorLabel;
+  final String excerpt;
+}
+
+class _ChatReplyDraftStrip extends StatelessWidget {
+  const _ChatReplyDraftStrip({
+    required this.draft,
+    required this.onClose,
+  });
+
+  final _ChatReplyDraft draft;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final excerpt = draft.excerpt.trim();
+    final shortExcerpt =
+        excerpt.length > 100 ? '${excerpt.substring(0, 97)}…' : excerpt;
+    return Material(
+      color: Colors.transparent,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 4, 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Container(
+              width: 3,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFC6A25C),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Gap(10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Text.rich(
+                    TextSpan(
+                      style: TextStyles.bodyMain.copyWith(
+                        color: AppColors.textBrand.withValues(alpha: 0.55),
+                        fontSize: 13,
+                      ),
+                      children: <InlineSpan>[
+                        TextSpan(
+                          text: 'Ответить',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: AppColors.textBrand.withValues(alpha: 0.72),
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        TextSpan(
+                          text: ' · ${draft.authorLabel}',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: AppColors.textBrand.withValues(alpha: 0.55),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Gap(4),
+                  Text(
+                    shortExcerpt,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyles.bodyLarge.copyWith(
+                      color: AppColors.textBrand,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onClose,
+              icon: Icon(
+                Icons.close_rounded,
+                color: AppColors.textBrand.withValues(alpha: 0.75),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
