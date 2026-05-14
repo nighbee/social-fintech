@@ -41,7 +41,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.AdminBanRequest"
+                            "$ref": "#/definitions/auth.AdminBanRequest"
                         }
                     }
                 ],
@@ -52,25 +52,25 @@
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -239,7 +239,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.ReportsListResponse"
+                            "$ref": "#/definitions/feed.ReportsListResponse"
                         }
                     },
                     "401": {
@@ -279,7 +279,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.ReviewReportsRequest"
+                            "$ref": "#/definitions/feed.ReviewReportsRequest"
                         }
                     }
                 ],
@@ -334,7 +334,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailRequest"
+                            "$ref": "#/definitions/auth.CheckEmailRequest"
                         }
                     }
                 ],
@@ -342,19 +342,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.CheckEmailResponse"
+                            "$ref": "#/definitions/auth.CheckEmailResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -380,7 +380,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailCodeRequest"
+                            "$ref": "#/definitions/auth.EmailCodeRequest"
                         }
                     }
                 ],
@@ -388,31 +388,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailCodeResponse"
+                            "$ref": "#/definitions/auth.EmailCodeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -438,7 +438,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailVerifyRequest"
+                            "$ref": "#/definitions/auth.EmailVerifyRequest"
                         }
                     }
                 ],
@@ -446,13 +446,13 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailVerifyResponse"
+                            "$ref": "#/definitions/auth.EmailVerifyResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -478,7 +478,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebaseEmailAuthRequest"
+                            "$ref": "#/definitions/auth.FirebaseEmailAuthRequest"
                         }
                     }
                 ],
@@ -486,31 +486,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -536,7 +536,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebaseEmailRegisterRequest"
+                            "$ref": "#/definitions/auth.FirebaseEmailRegisterRequest"
                         }
                     }
                 ],
@@ -544,31 +544,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -594,7 +594,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneAuthRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneAuthRequest"
                         }
                     }
                 ],
@@ -602,31 +602,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -652,7 +652,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.FirebasePhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.FirebasePhoneRegisterRequest"
                         }
                     }
                 ],
@@ -660,31 +660,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -710,7 +710,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginRequest"
+                            "$ref": "#/definitions/auth.LoginRequest"
                         }
                     }
                 ],
@@ -718,25 +718,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -762,7 +762,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailLoginRequest"
+                            "$ref": "#/definitions/auth.EmailLoginRequest"
                         }
                     }
                 ],
@@ -770,25 +770,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -819,13 +819,13 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -851,7 +851,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeRequest"
+                            "$ref": "#/definitions/auth.PhoneCodeRequest"
                         }
                     }
                 ],
@@ -859,31 +859,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneCodeResponse"
+                            "$ref": "#/definitions/auth.PhoneCodeResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -909,7 +909,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyRequest"
+                            "$ref": "#/definitions/auth.PhoneVerifyRequest"
                         }
                     }
                 ],
@@ -917,25 +917,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneVerifyResponse"
+                            "$ref": "#/definitions/auth.PhoneVerifyResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -961,7 +961,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.RefreshRequest"
+                            "$ref": "#/definitions/auth.RefreshRequest"
                         }
                     }
                 ],
@@ -969,25 +969,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -1013,7 +1013,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.EmailRegisterRequest"
+                            "$ref": "#/definitions/auth.EmailRegisterRequest"
                         }
                     }
                 ],
@@ -1021,25 +1021,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -1065,7 +1065,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.PhoneRegisterRequest"
+                            "$ref": "#/definitions/auth.PhoneRegisterRequest"
                         }
                     }
                 ],
@@ -1073,25 +1073,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.LoginResponse"
+                            "$ref": "#/definitions/auth.LoginResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "409": {
                         "description": "Conflict",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_auth.ErrorResponse"
+                            "$ref": "#/definitions/auth.ErrorResponse"
                         }
                     }
                 }
@@ -1130,7 +1130,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.ListConversationsResponse"
+                            "$ref": "#/definitions/chat.ListConversationsResponse"
                         }
                     },
                     "401": {
@@ -1170,7 +1170,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.CreateDirectConversationRequest"
+                            "$ref": "#/definitions/chat.CreateDirectConversationRequest"
                         }
                     }
                 ],
@@ -1178,7 +1178,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.Conversation"
+                            "$ref": "#/definitions/chat.Conversation"
                         }
                     },
                     "400": {
@@ -1201,6 +1201,81 @@
                     },
                     "404": {
                         "description": "Recipient not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes the conversation for the acting user only, or for both participants.\n\"Delete for me\" clears the chat history from the user's perspective.\n\"Delete for both\" clears the chat history for all participants.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Delete options",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/chat.DeleteConversationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1251,7 +1326,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.ListMessagesResponse"
+                            "$ref": "#/definitions/chat.ListMessagesResponse"
                         }
                     },
                     "401": {
@@ -1314,7 +1389,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.SendMessageRequest"
+                            "$ref": "#/definitions/chat.SendMessageRequest"
                         }
                     }
                 ],
@@ -1322,7 +1397,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.Message"
+                            "$ref": "#/definitions/chat.Message"
                         }
                     },
                     "400": {
@@ -1364,6 +1439,469 @@
                 }
             }
         },
+        "/chats/conversations/{conversation_id}/messages/{message_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes a message for the acting user only, or for both participants.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Delete a message",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Message ID",
+                        "name": "message_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Delete options",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/chat.DeleteMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}/mute": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Toggles mute status for the acting user in the specified conversation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Mute or unmute a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mute toggle",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.MuteConversationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not a member",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}/pin": {
+            "put": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Toggles pin status for the acting user so the conversation appears first in the list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Pin or unpin a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Pin toggle",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.PinConversationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Not a member",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}/pin-message": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Sets the pinned message for the conversation, visible to both participants.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Pin a message in a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Message ID to pin",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.PinMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Conversation not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Removes a specific message from the conversation's pin list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Unpin a specific message in a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Message ID to unpin",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/chat.UnpinMessageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid body",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}/pinned-messages": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns all pinned messages ordered by pin time (newest first).\nThe frontend shows the latest pin at the top of the chat window.\nTapping the pin banner scrolls to that message and cycles to the next pin.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "List all pinned messages in a conversation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pinned messages",
+                        "schema": {
+                            "$ref": "#/definitions/chat.ListPinnedMessagesResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/chats/conversations/{conversation_id}/read": {
             "post": {
                 "security": [
@@ -1395,7 +1933,7 @@
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_chat.MarkReadRequest"
+                            "$ref": "#/definitions/chat.MarkReadRequest"
                         }
                     }
                 ],
@@ -1505,7 +2043,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.CommentResponse"
+                            "$ref": "#/definitions/feed.CommentResponse"
                         }
                     },
                     "401": {
@@ -1544,7 +2082,7 @@
                         "name": "request",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ClaimDailyAccrualRequest"
+                            "$ref": "#/definitions/economy.ClaimDailyAccrualRequest"
                         }
                     }
                 ],
@@ -1552,25 +2090,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AccrualResponse"
+                            "$ref": "#/definitions/economy.AccrualResponse"
                         }
                     },
                     "400": {
                         "description": "Already claimed today or cap reached",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1601,7 +2139,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.AdjustBalanceRequest"
+                            "$ref": "#/definitions/economy.AdjustBalanceRequest"
                         }
                     }
                 ],
@@ -1609,31 +2147,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1684,31 +2222,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ViolationLogsResponse"
+                            "$ref": "#/definitions/economy.ViolationLogsResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1736,19 +2274,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.BalanceResponse"
+                            "$ref": "#/definitions/economy.BalanceResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1798,25 +2336,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransactionHistoryResponse"
+                            "$ref": "#/definitions/economy.TransactionHistoryResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1844,19 +2382,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.LimitsResponse"
+                            "$ref": "#/definitions/economy.LimitsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1894,7 +2432,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToPostRequest"
+                            "$ref": "#/definitions/economy.GiveSealToPostRequest"
                         }
                     }
                 ],
@@ -1902,25 +2440,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1948,19 +2486,19 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ReferralStatsResponse"
+                            "$ref": "#/definitions/economy.ReferralStatsResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -1991,7 +2529,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferRequest"
+                            "$ref": "#/definitions/economy.TransferRequest"
                         }
                     }
                 ],
@@ -1999,31 +2537,31 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "429": {
                         "description": "Transfer limit exceeded",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -2061,7 +2599,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.GiveSealToUserRequest"
+                            "$ref": "#/definitions/economy.GiveSealToUserRequest"
                         }
                     }
                 ],
@@ -2069,25 +2607,25 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.TransferResponse"
+                            "$ref": "#/definitions/economy.TransferResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "402": {
                         "description": "Insufficient funds",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_economy.ErrorResponse"
+                            "$ref": "#/definitions/economy.ErrorResponse"
                         }
                     }
                 }
@@ -2139,7 +2677,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedResponse"
+                            "$ref": "#/definitions/feed.FeedResponse"
                         }
                     },
                     "401": {
@@ -2185,7 +2723,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.PostResponse"
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "400": {
@@ -2271,7 +2809,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_profiles.ProfileSearchResult"
+                                "$ref": "#/definitions/profiles.ProfileSearchResult"
                             }
                         }
                     },
@@ -2315,7 +2853,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedStateResponse"
+                            "$ref": "#/definitions/feed.FeedStateResponse"
                         }
                     },
                     "401": {
@@ -2364,7 +2902,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.SyncFeedStateRequest"
+                            "$ref": "#/definitions/feed.SyncFeedStateRequest"
                         }
                     }
                 ],
@@ -2372,7 +2910,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedStateResponse"
+                            "$ref": "#/definitions/feed.FeedStateResponse"
                         }
                     },
                     "400": {
@@ -2454,7 +2992,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_map.ChampionPin"
+                                "$ref": "#/definitions/mapmodule.ChampionPin"
                             }
                         }
                     },
@@ -2516,7 +3054,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.H3AdminLookupResponse"
+                            "$ref": "#/definitions/mapmodule.H3AdminLookupResponse"
                         }
                     },
                     "400": {
@@ -2568,7 +3106,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.RankingTimerResponse"
+                            "$ref": "#/definitions/mapmodule.RankingTimerResponse"
                         }
                     },
                     "401": {
@@ -2608,7 +3146,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.RegionAssignmentRequest"
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentRequest"
                         }
                     }
                 ],
@@ -2616,7 +3154,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.RegionAssignmentResponse"
+                            "$ref": "#/definitions/mapmodule.RegionAssignmentResponse"
                         }
                     },
                     "400": {
@@ -2683,7 +3221,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_notifications.ListResponse"
+                            "$ref": "#/definitions/notifications.ListResponse"
                         }
                     },
                     "401": {
@@ -2723,7 +3261,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_notifications.RegisterDeviceRequest"
+                            "$ref": "#/definitions/notifications.RegisterDeviceRequest"
                         }
                     }
                 ],
@@ -2814,7 +3352,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_notifications.UnreadCountResponse"
+                            "$ref": "#/definitions/notifications.UnreadCountResponse"
                         }
                     }
                 }
@@ -2877,7 +3415,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_payment.RevenueCatWebhook"
+                            "$ref": "#/definitions/payment.RevenueCatWebhook"
                         }
                     }
                 ],
@@ -2937,7 +3475,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.CreatePostRequest"
+                            "$ref": "#/definitions/feed.CreatePostRequest"
                         }
                     }
                 ],
@@ -2945,7 +3483,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.PostResponse"
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "400": {
@@ -3063,7 +3601,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.UpdatePostRequest"
+                            "$ref": "#/definitions/feed.UpdatePostRequest"
                         }
                     }
                 ],
@@ -3071,7 +3609,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.PostResponse"
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "400": {
@@ -3160,7 +3698,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.ThreadedCommentsResponse"
+                            "$ref": "#/definitions/feed.ThreadedCommentsResponse"
                         }
                     },
                     "401": {
@@ -3205,7 +3743,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.CreateCommentRequest"
+                            "$ref": "#/definitions/feed.CreateCommentRequest"
                         }
                     }
                 ],
@@ -3213,7 +3751,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.CommentResponse"
+                            "$ref": "#/definitions/feed.CommentResponse"
                         }
                     },
                     "400": {
@@ -3347,7 +3885,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.ReportCommentRequest"
+                            "$ref": "#/definitions/feed.ReportCommentRequest"
                         }
                     }
                 ],
@@ -3405,7 +3943,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.InteractionListResponse"
+                            "$ref": "#/definitions/feed.InteractionListResponse"
                         }
                     }
                 }
@@ -3437,7 +3975,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.PostResponse"
+                            "$ref": "#/definitions/feed.PostResponse"
                         }
                     },
                     "401": {
@@ -3484,7 +4022,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.ReportPostRequest"
+                            "$ref": "#/definitions/feed.ReportPostRequest"
                         }
                     }
                 ],
@@ -3547,7 +4085,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.SealListResponse"
+                            "$ref": "#/definitions/feed.SealListResponse"
                         }
                     },
                     "401": {
@@ -3592,7 +4130,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.SendSealRequest"
+                            "$ref": "#/definitions/feed.SendSealRequest"
                         }
                     }
                 ],
@@ -3656,7 +4194,7 @@
                     "200": {
                         "description": "User profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "401": {
@@ -3744,7 +4282,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.UpdateProfileRequest"
+                            "$ref": "#/definitions/profiles.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -3752,7 +4290,7 @@
                     "200": {
                         "description": "Updated profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -3803,7 +4341,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -3847,7 +4385,7 @@
                     "200": {
                         "description": "Updated profile with new avatar URL",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.Profile"
+                            "$ref": "#/definitions/profiles.Profile"
                         }
                     },
                     "400": {
@@ -3914,7 +4452,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.UserPostsGridResponse"
+                            "$ref": "#/definitions/feed.UserPostsGridResponse"
                         }
                     },
                     "401": {
@@ -3978,7 +4516,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedResponse"
+                            "$ref": "#/definitions/feed.FeedResponse"
                         }
                     },
                     "401": {
@@ -4024,7 +4562,7 @@
                     "200": {
                         "description": "User's current rank",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse"
+                            "$ref": "#/definitions/ranks.CurrentRankResponse"
                         }
                     },
                     "401": {
@@ -4070,7 +4608,7 @@
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "401": {
@@ -4111,7 +4649,7 @@
                     "200": {
                         "description": "List of all ranks",
                         "schema": {
-                            "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankListResponse"
+                            "$ref": "#/definitions/ranks.RankListResponse"
                         }
                     },
                     "500": {
@@ -4157,7 +4695,7 @@
                     "200": {
                         "description": "Public profile",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.PublicProfileResponse"
+                            "$ref": "#/definitions/profiles.PublicProfileResponse"
                         }
                     },
                     "400": {
@@ -4226,7 +4764,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.AllyProfile"
+                                "$ref": "#/definitions/profiles.AllyProfile"
                             }
                         }
                     },
@@ -4434,7 +4972,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.UserPostsGridResponse"
+                            "$ref": "#/definitions/feed.UserPostsGridResponse"
                         }
                     },
                     "400": {
@@ -4514,7 +5052,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_feed.FeedResponse"
+                            "$ref": "#/definitions/feed.FeedResponse"
                         }
                     },
                     "400": {
@@ -4575,7 +5113,7 @@
                     "200": {
                         "description": "Relationship status",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.RelationshipStatus"
+                            "$ref": "#/definitions/profiles.RelationshipStatus"
                         }
                     },
                     "400": {
@@ -4634,7 +5172,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ReportRequest"
+                            "$ref": "#/definitions/profiles.ReportRequest"
                         }
                     }
                 ],
@@ -4763,7 +5301,7 @@
                     "200": {
                         "description": "Profile statistics",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_profiles.ProfileStats"
+                            "$ref": "#/definitions/profiles.ProfileStats"
                         }
                     },
                     "400": {
@@ -4822,7 +5360,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_ranks.RankListResponse"
+                            "$ref": "#/definitions/ranks.RankListResponse"
                         }
                     },
                     "500": {
@@ -4859,7 +5397,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_ranks.CurrentRankResponse"
+                            "$ref": "#/definitions/ranks.CurrentRankResponse"
                         }
                     },
                     "401": {
@@ -4902,7 +5440,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_seasons.CurrentSeasonResponse"
+                            "$ref": "#/definitions/seasons.CurrentSeasonResponse"
                         }
                     }
                 }
@@ -4935,7 +5473,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_seasons.ArchiveResponse"
+                            "$ref": "#/definitions/seasons.ArchiveResponse"
                         }
                     }
                 }
@@ -4975,7 +5513,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_seasons.ArchiveResponse"
+                            "$ref": "#/definitions/seasons.ArchiveResponse"
                         }
                     }
                 }
@@ -5006,7 +5544,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_settings.ContactRequest"
+                            "$ref": "#/definitions/settings.ContactRequest"
                         }
                     }
                 ],
@@ -5014,7 +5552,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_settings.ContactResponse"
+                            "$ref": "#/definitions/settings.ContactResponse"
                         }
                     },
                     "400": {
@@ -5063,7 +5601,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CreateTaskRequest"
+                            "$ref": "#/definitions/mapmodule.CreateTaskRequest"
                         }
                     }
                 ],
@@ -5071,7 +5609,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CreateTaskResponse"
+                            "$ref": "#/definitions/mapmodule.CreateTaskResponse"
                         }
                     },
                     "400": {
@@ -5141,7 +5679,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.AppliedTasksResponse"
+                            "$ref": "#/definitions/mapmodule.AppliedTasksResponse"
                         }
                     },
                     "401": {
@@ -5184,7 +5722,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.AppliedTasksResponse"
+                            "$ref": "#/definitions/mapmodule.AppliedTasksResponse"
                         }
                     },
                     "401": {
@@ -5257,7 +5795,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.NearbyTasksResponse"
+                            "$ref": "#/definitions/mapmodule.NearbyTasksResponse"
                         }
                     },
                     "400": {
@@ -5318,7 +5856,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.TaskResponse"
+                            "$ref": "#/definitions/mapmodule.TaskResponse"
                         }
                     },
                     "401": {
@@ -5377,7 +5915,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.CancelTaskResponse"
+                            "$ref": "#/definitions/mapmodule.CancelTaskResponse"
                         }
                     },
                     "401": {
@@ -5458,7 +5996,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_map.ApplicationResponse"
+                                "$ref": "#/definitions/mapmodule.ApplicationResponse"
                             }
                         }
                     },
@@ -5536,7 +6074,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.ApplicationResponse"
+                            "$ref": "#/definitions/mapmodule.ApplicationResponse"
                         }
                     },
                     "401": {
@@ -5798,7 +6336,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.ConfirmCompletionResponse"
+                            "$ref": "#/definitions/mapmodule.ConfirmCompletionResponse"
                         }
                     },
                     "400": {
@@ -5986,7 +6524,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.SubmitVerificationCodeRequest"
+                            "$ref": "#/definitions/mapmodule.SubmitVerificationCodeRequest"
                         }
                     }
                 ],
@@ -5994,7 +6532,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.VerifyCodeResponse"
+                            "$ref": "#/definitions/mapmodule.VerifyCodeResponse"
                         }
                     },
                     "400": {
@@ -6082,7 +6620,7 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_modules_map.ApplyToTaskResponse"
+                            "$ref": "#/definitions/mapmodule.ApplyToTaskResponse"
                         }
                     },
                     "400": {
@@ -6178,7 +6716,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_modules_profiles.UserSearchResult"
+                                "$ref": "#/definitions/profiles.UserSearchResult"
                             }
                         }
                     }
@@ -6187,148 +6725,7 @@
         }
     },
     "definitions": {
-        "github_com_brightbund-backend_internal_modules_profiles.ProfileSearchResult": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string",
-                    "example": "https://storage.example.com/avatars/u1.jpg"
-                },
-                "display_name": {
-                    "type": "string",
-                    "example": "John Doe"
-                },
-                "rank_tier": {
-                    "type": "string",
-                    "example": "Quartz"
-                },
-                "reputation_score": {
-                    "type": "integer",
-                    "example": 100
-                },
-                "user_id": {
-                    "type": "string",
-                    "example": "550e8400-e29b-41d4-a716-446655440000"
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse": {
-            "type": "object",
-            "properties": {
-                "current_seals": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "full_title": {
-                    "type": "string"
-                },
-                "icon_url": {
-                    "type": "string"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "level_max_seals": {
-                    "type": "integer"
-                },
-                "level_min_seals": {
-                    "type": "integer"
-                },
-                "next_level": {
-                    "type": "string"
-                },
-                "next_rank": {
-                    "type": "string"
-                },
-                "progress_in_rank": {
-                    "type": "number"
-                },
-                "progress_to_next_level": {
-                    "type": "number"
-                },
-                "quality_name": {
-                    "type": "string"
-                },
-                "rank_max_seals": {
-                    "type": "integer"
-                },
-                "rank_min_seals": {
-                    "type": "integer"
-                },
-                "rank_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.RankListResponse": {
-            "type": "object",
-            "properties": {
-                "ranks": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankWithLevels"
-                    }
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.RankWithLevels": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "icon_url": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "levels": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "max_seals": {
-                    "type": "integer"
-                },
-                "min_seals": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "order": {
-                    "type": "integer"
-                },
-                "quality": {
-                    "type": "string"
-                },
-                "sub_levels": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo"
-                    }
-                }
-            }
-        },
-        "github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo": {
-            "type": "object",
-            "properties": {
-                "level": {
-                    "type": "string"
-                },
-                "max_seals": {
-                    "type": "integer"
-                },
-                "min_seals": {
-                    "type": "integer"
-                }
-            }
-        },
-        "internal_modules_auth.AdminBanRequest": {
+        "auth.AdminBanRequest": {
             "type": "object",
             "required": [
                 "ban_type",
@@ -6343,7 +6740,7 @@
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_modules_auth.BanType"
+                            "$ref": "#/definitions/auth.BanType"
                         }
                     ]
                 },
@@ -6359,7 +6756,7 @@
                 }
             }
         },
-        "internal_modules_auth.BanType": {
+        "auth.BanType": {
             "type": "string",
             "enum": [
                 "temporary",
@@ -6370,7 +6767,7 @@
                 "BanTypePermanent"
             ]
         },
-        "internal_modules_auth.CheckEmailRequest": {
+        "auth.CheckEmailRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -6379,7 +6776,7 @@
                 }
             }
         },
-        "internal_modules_auth.CheckEmailResponse": {
+        "auth.CheckEmailResponse": {
             "type": "object",
             "properties": {
                 "exists": {
@@ -6388,7 +6785,7 @@
                 }
             }
         },
-        "internal_modules_auth.EmailCodeRequest": {
+        "auth.EmailCodeRequest": {
             "type": "object",
             "properties": {
                 "email": {
@@ -6401,7 +6798,7 @@
                 }
             }
         },
-        "internal_modules_auth.EmailCodeResponse": {
+        "auth.EmailCodeResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -6412,7 +6809,7 @@
                 }
             }
         },
-        "internal_modules_auth.EmailLoginRequest": {
+        "auth.EmailLoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -6437,7 +6834,7 @@
                 }
             }
         },
-        "internal_modules_auth.EmailRegisterRequest": {
+        "auth.EmailRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -6482,7 +6879,7 @@
                 }
             }
         },
-        "internal_modules_auth.EmailVerifyRequest": {
+        "auth.EmailVerifyRequest": {
             "type": "object",
             "properties": {
                 "code": {
@@ -6493,7 +6890,7 @@
                 }
             }
         },
-        "internal_modules_auth.EmailVerifyResponse": {
+        "auth.EmailVerifyResponse": {
             "type": "object",
             "properties": {
                 "verification_id": {
@@ -6504,7 +6901,7 @@
                 }
             }
         },
-        "internal_modules_auth.ErrorResponse": {
+        "auth.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -6517,7 +6914,7 @@
                 }
             }
         },
-        "internal_modules_auth.FirebaseEmailAuthRequest": {
+        "auth.FirebaseEmailAuthRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -6534,57 +6931,7 @@
                 }
             }
         },
-        "internal_modules_auth.FirebaseEmailRegisterRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string"
-                },
-                "captcha_token": {
-                    "type": "string"
-                },
-                "date_of_birth": {
-                    "description": "YYYY-MM-DD",
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "firebase_id_token": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string"
-                },
-                "referrer_user_id": {
-                    "type": "string"
-                },
-                "user_agent": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.FirebasePhoneAuthRequest": {
-            "type": "object",
-            "properties": {
-                "app_version": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "firebase_id_token": {
-                    "type": "string"
-                },
-                "user_agent": {
-                    "type": "string"
-                }
-            }
-        },
-        "internal_modules_auth.FirebasePhoneRegisterRequest": {
+        "auth.FirebaseEmailRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -6617,7 +6964,57 @@
                 }
             }
         },
-        "internal_modules_auth.LoginRequest": {
+        "auth.FirebasePhoneAuthRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "firebase_id_token": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.FirebasePhoneRegisterRequest": {
+            "type": "object",
+            "properties": {
+                "app_version": {
+                    "type": "string"
+                },
+                "captcha_token": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "description": "YYYY-MM-DD",
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "firebase_id_token": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "referrer_user_id": {
+                    "type": "string"
+                },
+                "user_agent": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.LoginRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -6630,14 +7027,14 @@
                     "type": "string"
                 },
                 "provider_type": {
-                    "$ref": "#/definitions/internal_modules_auth.ProviderType"
+                    "$ref": "#/definitions/auth.ProviderType"
                 },
                 "user_agent": {
                     "type": "string"
                 }
             }
         },
-        "internal_modules_auth.LoginResponse": {
+        "auth.LoginResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -6647,11 +7044,11 @@
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeRequest": {
+        "auth.PhoneCodeRequest": {
             "type": "object",
             "properties": {
                 "country_code": {
@@ -6669,7 +7066,7 @@
                 }
             }
         },
-        "internal_modules_auth.PhoneCodeResponse": {
+        "auth.PhoneCodeResponse": {
             "type": "object",
             "properties": {
                 "expires_at": {
@@ -6680,7 +7077,7 @@
                 }
             }
         },
-        "internal_modules_auth.PhoneRegisterRequest": {
+        "auth.PhoneRegisterRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -6713,7 +7110,7 @@
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyRequest": {
+        "auth.PhoneVerifyRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
@@ -6733,7 +7130,7 @@
                 }
             }
         },
-        "internal_modules_auth.PhoneVerifyResponse": {
+        "auth.PhoneVerifyResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
@@ -6743,7 +7140,7 @@
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_auth.User"
+                    "$ref": "#/definitions/auth.User"
                 },
                 "verification_id": {
                     "type": "string"
@@ -6753,7 +7150,7 @@
                 }
             }
         },
-        "internal_modules_auth.ProviderType": {
+        "auth.ProviderType": {
             "type": "string",
             "enum": [
                 "apple",
@@ -6768,7 +7165,7 @@
                 "ProviderPhone"
             ]
         },
-        "internal_modules_auth.RefreshRequest": {
+        "auth.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -6776,7 +7173,7 @@
                 }
             }
         },
-        "internal_modules_auth.User": {
+        "auth.User": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -6838,14 +7235,23 @@
                 }
             }
         },
-        "internal_modules_chat.Conversation": {
+        "chat.Conversation": {
             "type": "object",
             "properties": {
+                "cleared_at": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
+                },
+                "is_muted": {
+                    "type": "boolean"
+                },
+                "is_pinned": {
+                    "type": "boolean"
                 },
                 "kind": {
                     "type": "string"
@@ -6877,11 +7283,27 @@
                 "other_participant_read_at": {
                     "type": "string"
                 },
+                "other_rank_tier": {
+                    "type": "string"
+                },
+                "other_reputation_score": {
+                    "description": "OtherReputationScore is the conversation partner's lifetime received Gold\nSeals (whole seals). OtherRankTier is the derived tier string. Both are\npopulated at read time so callers don't need a follow-up /me/rank\nrequest per conversation row.",
+                    "type": "integer"
+                },
                 "other_user_id": {
                     "type": "string"
                 },
                 "other_username": {
                     "type": "string"
+                },
+                "pinned_count": {
+                    "type": "integer"
+                },
+                "pinned_messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.PinnedMessage"
+                    }
                 },
                 "task_id": {
                     "type": "string"
@@ -6894,7 +7316,7 @@
                 }
             }
         },
-        "internal_modules_chat.CreateDirectConversationRequest": {
+        "chat.CreateDirectConversationRequest": {
             "type": "object",
             "properties": {
                 "recipient_id": {
@@ -6902,13 +7324,29 @@
                 }
             }
         },
-        "internal_modules_chat.ListConversationsResponse": {
+        "chat.DeleteConversationRequest": {
+            "type": "object",
+            "properties": {
+                "for_both": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.DeleteMessageRequest": {
+            "type": "object",
+            "properties": {
+                "for_both": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.ListConversationsResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_chat.Conversation"
+                        "$ref": "#/definitions/chat.Conversation"
                     }
                 },
                 "next_cursor": {
@@ -6916,13 +7354,13 @@
                 }
             }
         },
-        "internal_modules_chat.ListMessagesResponse": {
+        "chat.ListMessagesResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_chat.Message"
+                        "$ref": "#/definitions/chat.Message"
                     }
                 },
                 "next_cursor": {
@@ -6930,7 +7368,18 @@
                 }
             }
         },
-        "internal_modules_chat.MarkReadRequest": {
+        "chat.ListPinnedMessagesResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/chat.PinnedMessage"
+                    }
+                }
+            }
+        },
+        "chat.MarkReadRequest": {
             "type": "object",
             "properties": {
                 "last_read_message_id": {
@@ -6938,7 +7387,7 @@
                 }
             }
         },
-        "internal_modules_chat.Message": {
+        "chat.Message": {
             "type": "object",
             "properties": {
                 "body": {
@@ -6950,16 +7399,28 @@
                 "created_at": {
                     "type": "string"
                 },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "deleted_by_user_id": {
+                    "type": "string"
+                },
+                "forwarded_from_user_id": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
                 "media": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_chat.MessageMedia"
+                        "$ref": "#/definitions/chat.MessageMedia"
                     }
                 },
                 "message_type": {
+                    "type": "string"
+                },
+                "reply_to_message_id": {
                     "type": "string"
                 },
                 "sender_id": {
@@ -6970,7 +7431,7 @@
                 }
             }
         },
-        "internal_modules_chat.MessageMedia": {
+        "chat.MessageMedia": {
             "type": "object",
             "properties": {
                 "thumbnail_url": {
@@ -6984,10 +7445,63 @@
                 }
             }
         },
-        "internal_modules_chat.SendMessageRequest": {
+        "chat.MuteConversationRequest": {
+            "type": "object",
+            "properties": {
+                "muted": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.PinConversationRequest": {
+            "type": "object",
+            "properties": {
+                "pinned": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "chat.PinMessageRequest": {
+            "type": "object",
+            "properties": {
+                "message_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.PinnedMessage": {
+            "type": "object",
+            "properties": {
+                "conversation_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message_body": {
+                    "type": "string"
+                },
+                "message_id": {
+                    "type": "string"
+                },
+                "pinned_at": {
+                    "type": "string"
+                },
+                "pinned_by": {
+                    "type": "string"
+                },
+                "sender_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "chat.SendMessageRequest": {
             "type": "object",
             "properties": {
                 "body": {
+                    "type": "string"
+                },
+                "forwarded_from_user_id": {
                     "type": "string"
                 },
                 "idempotency_key": {
@@ -6996,12 +7510,23 @@
                 "media": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_chat.MessageMedia"
+                        "$ref": "#/definitions/chat.MessageMedia"
                     }
+                },
+                "reply_to_message_id": {
+                    "type": "string"
                 }
             }
         },
-        "internal_modules_economy.AccrualResponse": {
+        "chat.UnpinMessageRequest": {
+            "type": "object",
+            "properties": {
+                "message_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "economy.AccrualResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -7018,7 +7543,7 @@
                 }
             }
         },
-        "internal_modules_economy.AdjustBalanceRequest": {
+        "economy.AdjustBalanceRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -7031,7 +7556,7 @@
                     "type": "integer"
                 },
                 "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
+                    "$ref": "#/definitions/economy.CurrencyCode"
                 },
                 "reason": {
                     "type": "string",
@@ -7042,7 +7567,7 @@
                 }
             }
         },
-        "internal_modules_economy.BalanceResponse": {
+        "economy.BalanceResponse": {
             "type": "object",
             "properties": {
                 "gold_balance": {
@@ -7062,7 +7587,7 @@
                 }
             }
         },
-        "internal_modules_economy.ClaimDailyAccrualRequest": {
+        "economy.ClaimDailyAccrualRequest": {
             "type": "object",
             "properties": {
                 "idempotency_key": {
@@ -7070,7 +7595,7 @@
                 }
             }
         },
-        "internal_modules_economy.CurrencyCode": {
+        "economy.CurrencyCode": {
             "type": "string",
             "enum": [
                 "SILVER_SEAL",
@@ -7081,7 +7606,7 @@
                 "CurrencyGoldSeal"
             ]
         },
-        "internal_modules_economy.ErrorResponse": {
+        "economy.ErrorResponse": {
             "type": "object",
             "properties": {
                 "code": {
@@ -7098,7 +7623,7 @@
                 }
             }
         },
-        "internal_modules_economy.GiveSealToPostRequest": {
+        "economy.GiveSealToPostRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -7130,7 +7655,7 @@
                 }
             }
         },
-        "internal_modules_economy.GiveSealToUserRequest": {
+        "economy.GiveSealToUserRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -7158,7 +7683,7 @@
                 }
             }
         },
-        "internal_modules_economy.LimitsResponse": {
+        "economy.LimitsResponse": {
             "type": "object",
             "properties": {
                 "daily_accrual_claimed": {
@@ -7181,7 +7706,7 @@
                 }
             }
         },
-        "internal_modules_economy.Referral": {
+        "economy.Referral": {
             "type": "object",
             "properties": {
                 "bonus_ledger_entry_id": {
@@ -7204,7 +7729,7 @@
                 }
             }
         },
-        "internal_modules_economy.ReferralStatsResponse": {
+        "economy.ReferralStatsResponse": {
             "type": "object",
             "properties": {
                 "active_referrals": {
@@ -7213,7 +7738,7 @@
                 "referrals": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.Referral"
+                        "$ref": "#/definitions/economy.Referral"
                     }
                 },
                 "total_earned": {
@@ -7224,7 +7749,7 @@
                 }
             }
         },
-        "internal_modules_economy.TransactionCategory": {
+        "economy.TransactionCategory": {
             "type": "string",
             "enum": [
                 "DAILY_ACCRUAL",
@@ -7253,7 +7778,7 @@
                 "CategoryTransfer"
             ]
         },
-        "internal_modules_economy.TransactionHistoryResponse": {
+        "economy.TransactionHistoryResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -7268,28 +7793,28 @@
                 "transactions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.TransactionItem"
+                        "$ref": "#/definitions/economy.TransactionItem"
                     }
                 }
             }
         },
-        "internal_modules_economy.TransactionItem": {
+        "economy.TransactionItem": {
             "type": "object",
             "properties": {
                 "amount": {
                     "type": "number"
                 },
                 "category": {
-                    "$ref": "#/definitions/internal_modules_economy.TransactionCategory"
+                    "$ref": "#/definitions/economy.TransactionCategory"
                 },
                 "currency": {
-                    "$ref": "#/definitions/internal_modules_economy.CurrencyCode"
+                    "$ref": "#/definitions/economy.CurrencyCode"
                 },
                 "id": {
                     "type": "string"
                 },
                 "other_user": {
-                    "$ref": "#/definitions/internal_modules_economy.UserInfo"
+                    "$ref": "#/definitions/economy.UserInfo"
                 },
                 "reference": {
                     "type": "string"
@@ -7302,7 +7827,7 @@
                 }
             }
         },
-        "internal_modules_economy.TransferRequest": {
+        "economy.TransferRequest": {
             "type": "object",
             "required": [
                 "amount",
@@ -7338,7 +7863,7 @@
                 }
             }
         },
-        "internal_modules_economy.TransferResponse": {
+        "economy.TransferResponse": {
             "type": "object",
             "properties": {
                 "created_new": {
@@ -7361,7 +7886,7 @@
                 }
             }
         },
-        "internal_modules_economy.UserInfo": {
+        "economy.UserInfo": {
             "type": "object",
             "properties": {
                 "avatar": {
@@ -7375,7 +7900,7 @@
                 }
             }
         },
-        "internal_modules_economy.ViolationLog": {
+        "economy.ViolationLog": {
             "type": "object",
             "properties": {
                 "amount_attempted": {
@@ -7400,11 +7925,11 @@
                     "type": "string"
                 },
                 "violation_type": {
-                    "$ref": "#/definitions/internal_modules_economy.ViolationType"
+                    "$ref": "#/definitions/economy.ViolationType"
                 }
             }
         },
-        "internal_modules_economy.ViolationLogsResponse": {
+        "economy.ViolationLogsResponse": {
             "type": "object",
             "properties": {
                 "page": {
@@ -7419,12 +7944,12 @@
                 "violations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_economy.ViolationLog"
+                        "$ref": "#/definitions/economy.ViolationLog"
                     }
                 }
             }
         },
-        "internal_modules_economy.ViolationType": {
+        "economy.ViolationType": {
             "type": "string",
             "enum": [
                 "COOLDOWN_BREACH",
@@ -7443,7 +7968,7 @@
                 "ViolationRepeatTransferPattern"
             ]
         },
-        "internal_modules_feed.AuthorInfo": {
+        "feed.AuthorInfo": {
             "type": "object",
             "properties": {
                 "full_name": {
@@ -7456,22 +7981,27 @@
                     "type": "string"
                 },
                 "rank": {
+                    "description": "Rank is the full human-readable tier string (e.g. \"Moonstone | Intention | S\").\nComputed at read time from ReputationScore so it never goes stale when\nrank thresholds change. See [feed.fillAuthorRank].",
                     "type": "string"
                 },
                 "rank_sub_level": {
                     "description": "RankSubLevel is the sub-level label within the rank tier (e.g. \"Intention\")",
                     "type": "string"
                 },
+                "reputation_score": {
+                    "description": "ReputationScore is the lifetime count of Gold Seals the author has\n*received* (whole seals). This is the single input that drives Rank —\nFE can re-derive the rank locally if it ever needs to.",
+                    "type": "integer"
+                },
                 "username": {
                     "type": "string"
                 }
             }
         },
-        "internal_modules_feed.CommentResponse": {
+        "feed.CommentResponse": {
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 },
                 "comment_id": {
                     "type": "string"
@@ -7488,7 +8018,7 @@
                 "media_attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                        "$ref": "#/definitions/feed.MediaAttachment"
                     }
                 },
                 "parent_comment_id": {
@@ -7509,7 +8039,7 @@
                 }
             }
         },
-        "internal_modules_feed.CreateCommentRequest": {
+        "feed.CreateCommentRequest": {
             "type": "object",
             "properties": {
                 "content_text": {
@@ -7518,7 +8048,7 @@
                 "media_attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                        "$ref": "#/definitions/feed.MediaAttachment"
                     }
                 },
                 "parent_id": {
@@ -7526,7 +8056,7 @@
                 }
             }
         },
-        "internal_modules_feed.CreatePostRequest": {
+        "feed.CreatePostRequest": {
             "type": "object",
             "properties": {
                 "caption": {
@@ -7556,7 +8086,7 @@
                 "media_attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                        "$ref": "#/definitions/feed.MediaAttachment"
                     }
                 },
                 "visibility": {
@@ -7564,7 +8094,7 @@
                 }
             }
         },
-        "internal_modules_feed.FeedResponse": {
+        "feed.FeedResponse": {
             "type": "object",
             "properties": {
                 "feed_degraded": {
@@ -7573,7 +8103,7 @@
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.PostResponse"
+                        "$ref": "#/definitions/feed.PostResponse"
                     }
                 },
                 "next_cursor": {
@@ -7581,7 +8111,7 @@
                 }
             }
         },
-        "internal_modules_feed.FeedStateResponse": {
+        "feed.FeedStateResponse": {
             "type": "object",
             "properties": {
                 "accumulated_active_seconds": {
@@ -7614,13 +8144,13 @@
                 }
             }
         },
-        "internal_modules_feed.InteractionListResponse": {
+        "feed.InteractionListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.InteractionResponse"
+                        "$ref": "#/definitions/feed.InteractionResponse"
                     }
                 },
                 "next_cursor": {
@@ -7628,18 +8158,18 @@
                 }
             }
         },
-        "internal_modules_feed.InteractionResponse": {
+        "feed.InteractionResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 }
             }
         },
-        "internal_modules_feed.MediaAttachment": {
+        "feed.MediaAttachment": {
             "type": "object",
             "properties": {
                 "duration_seconds": {
@@ -7674,7 +8204,7 @@
                 }
             }
         },
-        "internal_modules_feed.Permissions": {
+        "feed.Permissions": {
             "type": "object",
             "properties": {
                 "can_comment": {
@@ -7682,7 +8212,7 @@
                 }
             }
         },
-        "internal_modules_feed.PostGridItem": {
+        "feed.PostGridItem": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -7703,7 +8233,7 @@
                 }
             }
         },
-        "internal_modules_feed.PostMetrics": {
+        "feed.PostMetrics": {
             "type": "object",
             "properties": {
                 "comments": {
@@ -7720,11 +8250,11 @@
                 }
             }
         },
-        "internal_modules_feed.PostResponse": {
+        "feed.PostResponse": {
             "type": "object",
             "properties": {
                 "author": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 },
                 "comment_permission": {
                     "type": "string"
@@ -7742,14 +8272,14 @@
                 "media_attachments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.MediaAttachment"
+                        "$ref": "#/definitions/feed.MediaAttachment"
                     }
                 },
                 "metrics": {
-                    "$ref": "#/definitions/internal_modules_feed.PostMetrics"
+                    "$ref": "#/definitions/feed.PostMetrics"
                 },
                 "permissions": {
-                    "$ref": "#/definitions/internal_modules_feed.Permissions"
+                    "$ref": "#/definitions/feed.Permissions"
                 },
                 "post_id": {
                     "type": "string"
@@ -7767,7 +8297,7 @@
                 }
             }
         },
-        "internal_modules_feed.ReportCommentRequest": {
+        "feed.ReportCommentRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -7778,7 +8308,7 @@
                 }
             }
         },
-        "internal_modules_feed.ReportItem": {
+        "feed.ReportItem": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -7804,7 +8334,7 @@
                 }
             }
         },
-        "internal_modules_feed.ReportPostRequest": {
+        "feed.ReportPostRequest": {
             "type": "object",
             "properties": {
                 "description": {
@@ -7815,13 +8345,13 @@
                 }
             }
         },
-        "internal_modules_feed.ReportsListResponse": {
+        "feed.ReportsListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.ReportItem"
+                        "$ref": "#/definitions/feed.ReportItem"
                     }
                 },
                 "limit": {
@@ -7835,7 +8365,7 @@
                 }
             }
         },
-        "internal_modules_feed.ReviewReportsRequest": {
+        "feed.ReviewReportsRequest": {
             "type": "object",
             "properties": {
                 "decision": {
@@ -7849,13 +8379,13 @@
                 }
             }
         },
-        "internal_modules_feed.SealListResponse": {
+        "feed.SealListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.SealResponse"
+                        "$ref": "#/definitions/feed.SealResponse"
                     }
                 },
                 "next_cursor": {
@@ -7863,7 +8393,7 @@
                 }
             }
         },
-        "internal_modules_feed.SealResponse": {
+        "feed.SealResponse": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -7880,11 +8410,11 @@
                     "type": "string"
                 },
                 "user": {
-                    "$ref": "#/definitions/internal_modules_feed.AuthorInfo"
+                    "$ref": "#/definitions/feed.AuthorInfo"
                 }
             }
         },
-        "internal_modules_feed.SendSealRequest": {
+        "feed.SendSealRequest": {
             "type": "object",
             "properties": {
                 "amount": {
@@ -7902,7 +8432,7 @@
                 }
             }
         },
-        "internal_modules_feed.SyncFeedStateRequest": {
+        "feed.SyncFeedStateRequest": {
             "type": "object",
             "properties": {
                 "app_section": {
@@ -7920,13 +8450,13 @@
                 }
             }
         },
-        "internal_modules_feed.ThreadedCommentsResponse": {
+        "feed.ThreadedCommentsResponse": {
             "type": "object",
             "properties": {
                 "comments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.CommentResponse"
+                        "$ref": "#/definitions/feed.CommentResponse"
                     }
                 },
                 "next_cursor": {
@@ -7934,7 +8464,7 @@
                 }
             }
         },
-        "internal_modules_feed.UpdatePostRequest": {
+        "feed.UpdatePostRequest": {
             "type": "object",
             "properties": {
                 "comment_permission": {
@@ -7945,13 +8475,13 @@
                 }
             }
         },
-        "internal_modules_feed.UserPostsGridResponse": {
+        "feed.UserPostsGridResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_feed.PostGridItem"
+                        "$ref": "#/definitions/feed.PostGridItem"
                     }
                 },
                 "next_cursor": {
@@ -7959,7 +8489,7 @@
                 }
             }
         },
-        "internal_modules_map.ApplicationResponse": {
+        "mapmodule.ApplicationResponse": {
             "type": "object",
             "properties": {
                 "applicant_avatar_url": {
@@ -7985,18 +8515,18 @@
                 }
             }
         },
-        "internal_modules_map.AppliedTasksResponse": {
+        "mapmodule.AppliedTasksResponse": {
             "type": "object",
             "properties": {
                 "tasks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_map.TaskResponse"
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
                     }
                 }
             }
         },
-        "internal_modules_map.ApplyToTaskResponse": {
+        "mapmodule.ApplyToTaskResponse": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -8011,7 +8541,7 @@
                 }
             }
         },
-        "internal_modules_map.CancelTaskResponse": {
+        "mapmodule.CancelTaskResponse": {
             "type": "object",
             "properties": {
                 "status": {
@@ -8022,7 +8552,7 @@
                 }
             }
         },
-        "internal_modules_map.ChampionPin": {
+        "mapmodule.ChampionPin": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8057,7 +8587,7 @@
                 }
             }
         },
-        "internal_modules_map.ConfirmCompletionResponse": {
+        "mapmodule.ConfirmCompletionResponse": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -8075,7 +8605,7 @@
                 }
             }
         },
-        "internal_modules_map.CreateTaskRequest": {
+        "mapmodule.CreateTaskRequest": {
             "type": "object",
             "properties": {
                 "auto_shutdown": {
@@ -8108,7 +8638,7 @@
                 }
             }
         },
-        "internal_modules_map.CreateTaskResponse": {
+        "mapmodule.CreateTaskResponse": {
             "type": "object",
             "properties": {
                 "application_status": {
@@ -8160,7 +8690,7 @@
                 }
             }
         },
-        "internal_modules_map.H3AdminLookupResponse": {
+        "mapmodule.H3AdminLookupResponse": {
             "type": "object",
             "properties": {
                 "city_name": {
@@ -8189,18 +8719,18 @@
                 }
             }
         },
-        "internal_modules_map.NearbyTasksResponse": {
+        "mapmodule.NearbyTasksResponse": {
             "type": "object",
             "properties": {
                 "tasks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_map.TaskResponse"
+                        "$ref": "#/definitions/mapmodule.TaskResponse"
                     }
                 }
             }
         },
-        "internal_modules_map.RankingTimerResponse": {
+        "mapmodule.RankingTimerResponse": {
             "type": "object",
             "properties": {
                 "formatted": {
@@ -8214,7 +8744,7 @@
                 }
             }
         },
-        "internal_modules_map.RegionAssignmentRequest": {
+        "mapmodule.RegionAssignmentRequest": {
             "type": "object",
             "properties": {
                 "latitude": {
@@ -8235,7 +8765,7 @@
                 }
             }
         },
-        "internal_modules_map.RegionAssignmentResponse": {
+        "mapmodule.RegionAssignmentResponse": {
             "type": "object",
             "properties": {
                 "h3_res2": {
@@ -8255,7 +8785,7 @@
                 }
             }
         },
-        "internal_modules_map.SubmitVerificationCodeRequest": {
+        "mapmodule.SubmitVerificationCodeRequest": {
             "type": "object",
             "properties": {
                 "code": {
@@ -8264,7 +8794,7 @@
                 }
             }
         },
-        "internal_modules_map.TaskResponse": {
+        "mapmodule.TaskResponse": {
             "type": "object",
             "properties": {
                 "application_status": {
@@ -8313,7 +8843,7 @@
                 }
             }
         },
-        "internal_modules_map.VerifyCodeResponse": {
+        "mapmodule.VerifyCodeResponse": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -8325,7 +8855,7 @@
                 }
             }
         },
-        "internal_modules_notifications.DevicePlatform": {
+        "notifications.DevicePlatform": {
             "type": "string",
             "enum": [
                 "ios",
@@ -8338,7 +8868,7 @@
                 "PlatformHuawei"
             ]
         },
-        "internal_modules_notifications.Kind": {
+        "notifications.Kind": {
             "type": "string",
             "enum": [
                 "ranking_up",
@@ -8365,13 +8895,13 @@
                 "KindMessageReceived"
             ]
         },
-        "internal_modules_notifications.ListResponse": {
+        "notifications.ListResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_notifications.Notification"
+                        "$ref": "#/definitions/notifications.Notification"
                     }
                 },
                 "next_cursor": {
@@ -8382,7 +8912,7 @@
                 }
             }
         },
-        "internal_modules_notifications.Notification": {
+        "notifications.Notification": {
             "type": "object",
             "properties": {
                 "body": {
@@ -8395,7 +8925,7 @@
                     "type": "string"
                 },
                 "kind": {
-                    "$ref": "#/definitions/internal_modules_notifications.Kind"
+                    "$ref": "#/definitions/notifications.Kind"
                 },
                 "payload": {
                     "type": "object"
@@ -8411,7 +8941,7 @@
                 }
             }
         },
-        "internal_modules_notifications.RegisterDeviceRequest": {
+        "notifications.RegisterDeviceRequest": {
             "type": "object",
             "required": [
                 "platform",
@@ -8435,7 +8965,7 @@
                     ],
                     "allOf": [
                         {
-                            "$ref": "#/definitions/internal_modules_notifications.DevicePlatform"
+                            "$ref": "#/definitions/notifications.DevicePlatform"
                         }
                     ]
                 },
@@ -8444,7 +8974,7 @@
                 }
             }
         },
-        "internal_modules_notifications.UnreadCountResponse": {
+        "notifications.UnreadCountResponse": {
             "type": "object",
             "properties": {
                 "count": {
@@ -8452,7 +8982,7 @@
                 }
             }
         },
-        "internal_modules_payment.EventPayload": {
+        "payment.EventPayload": {
             "type": "object",
             "properties": {
                 "app_user_id": {
@@ -8496,15 +9026,15 @@
                 }
             }
         },
-        "internal_modules_payment.RevenueCatWebhook": {
+        "payment.RevenueCatWebhook": {
             "type": "object",
             "properties": {
                 "event": {
-                    "$ref": "#/definitions/internal_modules_payment.EventPayload"
+                    "$ref": "#/definitions/payment.EventPayload"
                 }
             }
         },
-        "internal_modules_profiles.AllyProfile": {
+        "profiles.AllyProfile": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8525,7 +9055,7 @@
                 }
             }
         },
-        "internal_modules_profiles.Profile": {
+        "profiles.Profile": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8595,7 +9125,32 @@
                 }
             }
         },
-        "internal_modules_profiles.ProfileStats": {
+        "profiles.ProfileSearchResult": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string",
+                    "example": "https://storage.example.com/avatars/u1.jpg"
+                },
+                "display_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "rank_tier": {
+                    "type": "string",
+                    "example": "Quartz"
+                },
+                "reputation_score": {
+                    "type": "integer",
+                    "example": 100
+                },
+                "user_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                }
+            }
+        },
+        "profiles.ProfileStats": {
             "type": "object",
             "properties": {
                 "gold_balance": {
@@ -8624,7 +9179,7 @@
                 }
             }
         },
-        "internal_modules_profiles.PublicProfileResponse": {
+        "profiles.PublicProfileResponse": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8673,7 +9228,7 @@
                 }
             }
         },
-        "internal_modules_profiles.RelationshipStatus": {
+        "profiles.RelationshipStatus": {
             "type": "object",
             "properties": {
                 "i_blocked_them": {
@@ -8702,7 +9257,7 @@
                 }
             }
         },
-        "internal_modules_profiles.ReportRequest": {
+        "profiles.ReportRequest": {
             "type": "object",
             "required": [
                 "reason"
@@ -8725,7 +9280,7 @@
                 }
             }
         },
-        "internal_modules_profiles.UpdateProfileRequest": {
+        "profiles.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8772,7 +9327,7 @@
                 }
             }
         },
-        "internal_modules_profiles.UserSearchResult": {
+        "profiles.UserSearchResult": {
             "type": "object",
             "properties": {
                 "avatar_url": {
@@ -8791,6 +9346,14 @@
                     "type": "string",
                     "example": "Doe"
                 },
+                "rank_tier": {
+                    "type": "string",
+                    "example": "Moonstone | Intention | S"
+                },
+                "reputation_score": {
+                    "type": "integer",
+                    "example": 42
+                },
                 "user_id": {
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440000"
@@ -8801,7 +9364,7 @@
                 }
             }
         },
-        "internal_modules_ranks.CurrentRankResponse": {
+        "ranks.CurrentRankResponse": {
             "type": "object",
             "properties": {
                 "current_seals": {
@@ -8851,18 +9414,18 @@
                 }
             }
         },
-        "internal_modules_ranks.RankListResponse": {
+        "ranks.RankListResponse": {
             "type": "object",
             "properties": {
                 "ranks": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_ranks.RankWithLevels"
+                        "$ref": "#/definitions/ranks.RankWithLevels"
                     }
                 }
             }
         },
-        "internal_modules_ranks.RankWithLevels": {
+        "ranks.RankWithLevels": {
             "type": "object",
             "properties": {
                 "description": {
@@ -8898,12 +9461,12 @@
                 "sub_levels": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_ranks.SubLevelInfo"
+                        "$ref": "#/definitions/ranks.SubLevelInfo"
                     }
                 }
             }
         },
-        "internal_modules_ranks.SubLevelInfo": {
+        "ranks.SubLevelInfo": {
             "type": "object",
             "properties": {
                 "level": {
@@ -8917,7 +9480,7 @@
                 }
             }
         },
-        "internal_modules_seasons.ArchiveItem": {
+        "seasons.ArchiveItem": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -8958,29 +9521,29 @@
                 }
             }
         },
-        "internal_modules_seasons.ArchiveResponse": {
+        "seasons.ArchiveResponse": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_modules_seasons.ArchiveItem"
+                        "$ref": "#/definitions/seasons.ArchiveItem"
                     }
                 }
             }
         },
-        "internal_modules_seasons.CurrentSeasonResponse": {
+        "seasons.CurrentSeasonResponse": {
             "type": "object",
             "properties": {
                 "season": {
-                    "$ref": "#/definitions/internal_modules_seasons.Season"
+                    "$ref": "#/definitions/seasons.Season"
                 },
                 "seconds_remaining": {
                     "type": "integer"
                 }
             }
         },
-        "internal_modules_seasons.Season": {
+        "seasons.Season": {
             "type": "object",
             "properties": {
                 "closed_at": {
@@ -9006,7 +9569,7 @@
                 }
             }
         },
-        "internal_modules_settings.ContactCategory": {
+        "settings.ContactCategory": {
             "type": "string",
             "enum": [
                 "bug",
@@ -9021,14 +9584,14 @@
                 "ContactCategoryOther"
             ]
         },
-        "internal_modules_settings.ContactRequest": {
+        "settings.ContactRequest": {
             "type": "object",
             "properties": {
                 "app_version": {
                     "type": "string"
                 },
                 "category": {
-                    "$ref": "#/definitions/internal_modules_settings.ContactCategory"
+                    "$ref": "#/definitions/settings.ContactCategory"
                 },
                 "device_os": {
                     "type": "string"
@@ -9044,7 +9607,7 @@
                 }
             }
         },
-        "internal_modules_settings.ContactResponse": {
+        "settings.ContactResponse": {
             "type": "object",
             "properties": {
                 "id": {

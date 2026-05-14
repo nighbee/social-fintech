@@ -32,6 +32,11 @@ type Conversation struct {
 	OtherRankTier        *string    `db:"-" json:"other_rank_tier,omitempty"`
 	LastReadAt           *time.Time `db:"last_read_at" json:"last_read_at,omitempty"`
 	OtherParticipantRead *time.Time `db:"other_participant_read_at" json:"other_participant_read_at,omitempty"`
+	PinnedCount          int        `db:"pinned_count" json:"pinned_count"`
+	PinnedMessages       []PinnedMessage `db:"-" json:"pinned_messages,omitempty"`
+	IsMuted              bool       `db:"is_muted" json:"is_muted"`
+	IsPinned             bool       `db:"is_pinned" json:"is_pinned"`
+	ClearedAt            *time.Time `db:"cleared_at" json:"cleared_at,omitempty"`
 	CreatedAt            time.Time  `db:"created_at" json:"created_at"`
 	UpdatedAt            time.Time  `db:"updated_at" json:"updated_at"`
 }
@@ -48,10 +53,14 @@ type Message struct {
 	SenderID          *string        `db:"sender_id" json:"sender_id,omitempty"`
 	MessageType       string         `db:"message_type" json:"message_type"`
 	Body              string         `db:"body" json:"body"`
-	MediaJSON         []byte         `db:"media" json:"-"`
-	Media             []MessageMedia `json:"media"`
-	CreatedAt         time.Time      `db:"created_at" json:"created_at"`
-	ViewerMessageRead bool           `json:"viewer_message_read"`
+	MediaJSON           []byte         `db:"media" json:"-"`
+	Media               []MessageMedia `json:"media"`
+	ReplyToMessageID    *string        `db:"reply_to_message_id" json:"reply_to_message_id,omitempty"`
+	ForwardedFromUserID *string        `db:"forwarded_from_user_id" json:"forwarded_from_user_id,omitempty"`
+	DeletedAt           *time.Time     `db:"deleted_at" json:"deleted_at,omitempty"`
+	DeletedByUserID     *string        `db:"deleted_by_user_id" json:"deleted_by_user_id,omitempty"`
+	CreatedAt           time.Time      `db:"created_at" json:"created_at"`
+	ViewerMessageRead   bool           `json:"viewer_message_read"`
 }
 
 type CreateDirectConversationRequest struct {
@@ -59,13 +68,53 @@ type CreateDirectConversationRequest struct {
 }
 
 type SendMessageRequest struct {
-	Body           string         `json:"body"`
-	Media          []MessageMedia `json:"media"`
-	IdempotencyKey string         `json:"idempotency_key"`
+	Body                string         `json:"body"`
+	Media               []MessageMedia `json:"media"`
+	IdempotencyKey      string         `json:"idempotency_key"`
+	ReplyToMessageID    *string        `json:"reply_to_message_id,omitempty"`
+	ForwardedFromUserID *string        `json:"forwarded_from_user_id,omitempty"`
 }
 
 type MarkReadRequest struct {
 	LastReadMessageID *string `json:"last_read_message_id,omitempty"`
+}
+
+type PinnedMessage struct {
+	ID             string    `db:"id" json:"id"`
+	ConversationID string    `db:"conversation_id" json:"conversation_id"`
+	MessageID      string    `db:"message_id" json:"message_id"`
+	PinnedBy       string    `db:"pinned_by" json:"pinned_by"`
+	PinnedAt       time.Time `db:"pinned_at" json:"pinned_at"`
+	MessageBody    string    `db:"message_body" json:"message_body"`
+	SenderID       *string   `db:"sender_id" json:"sender_id,omitempty"`
+}
+
+type PinMessageRequest struct {
+	MessageID string `json:"message_id"`
+}
+
+type UnpinMessageRequest struct {
+	MessageID string `json:"message_id"`
+}
+
+type ListPinnedMessagesResponse struct {
+	Items []PinnedMessage `json:"items"`
+}
+
+type DeleteMessageRequest struct {
+	ForBoth bool `json:"for_both"`
+}
+
+type MuteConversationRequest struct {
+	Muted bool `json:"muted"`
+}
+
+type PinConversationRequest struct {
+	Pinned bool `json:"pinned"`
+}
+
+type DeleteConversationRequest struct {
+	ForBoth bool `json:"for_both"`
 }
 
 type ListConversationsResponse struct {
@@ -82,6 +131,7 @@ type RealtimeEnvelope struct {
 	Type           string     `json:"type"`
 	ConversationID string     `json:"conversation_id,omitempty"`
 	Message        *Message   `json:"message,omitempty"`
+	MessageID      string     `json:"message_id,omitempty"`
 	ReadByUserID   string     `json:"read_by_user_id,omitempty"`
 	ReadAt         *time.Time `json:"read_at,omitempty"`
 }

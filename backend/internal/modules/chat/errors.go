@@ -12,4 +12,6 @@ var (
 	ErrIdempotencyConflict     = errors.New("idempotency_conflict")
 	ErrIdempotencyInProgress   = errors.New("idempotency_in_progress")
 	ErrNotConversationMember   = errors.New("not_conversation_member")
+	ErrMessageNotFound         = errors.New("message_not_found")
+	ErrDeletePermissionDenied  = errors.New("delete_permission_denied")
 )

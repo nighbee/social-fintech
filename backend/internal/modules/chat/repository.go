@@ -26,6 +26,16 @@ type Repository interface {
 	IsAlly(ctx context.Context, userID, targetID string) (bool, error)
 	GetMessageKeywords(ctx context.Context, userID string) ([]string, error)
 	GetOtherParticipantReadAt(ctx context.Context, conversationID, viewerID string) (*time.Time, error)
+	DeleteMessageForBoth(ctx context.Context, messageID, userID string) error
+	DeleteMessageForMe(ctx context.Context, messageID, userID string) error
+	ClearConversationForMe(ctx context.Context, conversationID, userID string) error
+	DeleteConversationForBoth(ctx context.Context, conversationID string) error
+	UpdateConversationPin(ctx context.Context, conversationID, userID string, isPinned bool) error
+	UpdateConversationMute(ctx context.Context, conversationID, userID string, isMuted bool) error
+	PinMessageInConversation(ctx context.Context, conversationID, messageID, pinnedByUserID string) error
+	UnpinMessageInConversation(ctx context.Context, conversationID, messageID string) error
+	ListPinnedMessages(ctx context.Context, conversationID string) ([]PinnedMessage, error)
+	CountPinnedMessages(ctx context.Context, conversationID string) (int, error)
 }
 
 type PostgresRepository struct {
@@ -42,8 +52,10 @@ type CreateMessageParams struct {
 	MessageType        string
 	Body               string
 	Media              []MessageMedia
-	IdempotencyKey     string
-	RequestFingerprint string
+	IdempotencyKey      string
+	RequestFingerprint  string
+	ReplyToMessageID    *string
+	ForwardedFromUserID *string
 }
 
 func (r *PostgresRepository) EnsureDirectConversation(ctx context.Context, actorID, recipientID string) (*Conversation, error) {
@@ -139,7 +151,8 @@ func (r *PostgresRepository) GetConversation(ctx context.Context, conversationID
 			c.id, c.kind, c.task_id, c.last_message_id, c.last_message_at,
 			c.last_message_preview, c.last_message_type, c.last_message_sender_id,
 			c.created_at, c.updated_at,
-			cm.unread_count, cm.last_read_at,
+			cm.unread_count, cm.last_read_at, cm.is_muted, cm.is_pinned, cm.cleared_at,
+			COALESCE((SELECT COUNT(*) FROM chat_pinned_messages pm WHERE pm.conversation_id = c.id), 0)::int AS pinned_count,
 			op.user_id AS other_user_id,
 			u.username AS other_username,
 			COALESCE(p.display_name, '') AS other_display_name,
@@ -185,7 +198,8 @@ func (r *PostgresRepository) ListConversations(ctx context.Context, userID strin
 			c.id, c.kind, c.task_id, c.last_message_id, c.last_message_at,
 			c.last_message_preview, c.last_message_type, c.last_message_sender_id,
 			c.created_at, c.updated_at,
-			cm.unread_count, cm.last_read_at,
+			cm.unread_count, cm.last_read_at, cm.is_muted, cm.is_pinned, cm.cleared_at,
+			COALESCE((SELECT COUNT(*) FROM chat_pinned_messages pm WHERE pm.conversation_id = c.id), 0)::int AS pinned_count,
 			op.user_id AS other_user_id,
 			u.username AS other_username,
 			COALESCE(p.display_name, '') AS other_display_name,
@@ -207,7 +221,8 @@ func (r *PostgresRepository) ListConversations(ctx context.Context, userID strin
 		LEFT JOIN wallets w ON w.user_id = op.user_id AND w.currency = 'GOLD_SEAL'
 		WHERE cm.user_id = $1
 		  AND ($2::timestamptz IS NULL OR COALESCE(c.last_message_at, c.created_at) < $2)
-		ORDER BY COALESCE(c.last_message_at, c.created_at) DESC, c.id DESC
+		  AND (cm.cleared_at IS NULL OR COALESCE(c.last_message_at, c.created_at) > cm.cleared_at OR cm.is_pinned = true)
+		ORDER BY cm.is_pinned DESC, COALESCE(c.last_message_at, c.created_at) DESC, c.id DESC
 		LIMIT $3
 	`
 
@@ -227,13 +242,18 @@ func (r *PostgresRepository) ListMessages(ctx context.Context, conversationID, u
 	}
 
 	const query = `
-		SELECT m.id, m.conversation_id, m.sender_id, m.message_type, m.body, m.media, m.created_at
+		SELECT m.id, m.conversation_id, m.sender_id, m.message_type, m.body, m.media,
+		       m.reply_to_message_id, m.forwarded_from_user_id, m.deleted_at, m.deleted_by_user_id, m.created_at
 		FROM chat_messages m
 		JOIN chat_conversation_members cm
 			ON cm.conversation_id = m.conversation_id
 		   AND cm.user_id = $2
+		LEFT JOIN chat_message_deletions md
+			ON md.message_id = m.id AND md.user_id = $2
 		WHERE m.conversation_id = $1
 		  AND ($3::timestamptz IS NULL OR m.created_at < $3)
+		  AND (cm.cleared_at IS NULL OR m.created_at > cm.cleared_at)
+		  AND md.message_id IS NULL
 		ORDER BY m.created_at DESC, m.id DESC
 		LIMIT $4
 	`
@@ -295,12 +315,12 @@ func (r *PostgresRepository) CreateMessage(ctx context.Context, params CreateMes
 	messageID := uuid.NewString()
 	var inserted Message
 	const insertMessageSQL = `
-		INSERT INTO chat_messages(id, conversation_id, sender_id, message_type, body, media, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6::jsonb, NOW())
-		RETURNING id, conversation_id, sender_id, message_type, body, media, created_at
+		INSERT INTO chat_messages(id, conversation_id, sender_id, message_type, body, media, reply_to_message_id, forwarded_from_user_id, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, NOW())
+		RETURNING id, conversation_id, sender_id, message_type, body, media, reply_to_message_id, forwarded_from_user_id, deleted_at, deleted_by_user_id, created_at
 	`
 	if err := tx.GetContext(ctx, &inserted, insertMessageSQL,
-		messageID, params.ConversationID, params.SenderID, params.MessageType, params.Body, string(mediaBytes),
+		messageID, params.ConversationID, params.SenderID, params.MessageType, params.Body, string(mediaBytes), params.ReplyToMessageID, params.ForwardedFromUserID,
 	); err != nil {
 		return nil, false, err
 	}
@@ -388,7 +408,7 @@ func (r *PostgresRepository) reserveIdempotencyTx(
 func (r *PostgresRepository) getMessageByIDTx(ctx context.Context, tx *sqlx.Tx, messageID string) (*Message, error) {
 	var m Message
 	if err := tx.GetContext(ctx, &m, `
-		SELECT id, conversation_id, sender_id, message_type, body, media, created_at
+		SELECT id, conversation_id, sender_id, message_type, body, media, reply_to_message_id, forwarded_from_user_id, deleted_at, deleted_by_user_id, created_at
 		FROM chat_messages
 		WHERE id = $1
 	`, messageID); err != nil {
@@ -570,4 +590,171 @@ func directPairKey(userA, userB string) string {
 	parts := []string{strings.ToLower(strings.TrimSpace(userA)), strings.ToLower(strings.TrimSpace(userB))}
 	sort.Strings(parts)
 	return fmt.Sprintf("%s:%s", parts[0], parts[1])
+}
+
+// ---------------------------------------------------------------------------
+// Advanced chat feature repository methods
+// ---------------------------------------------------------------------------
+
+// DeleteMessageForBoth soft-deletes a message globally so neither participant sees it.
+func (r *PostgresRepository) DeleteMessageForBoth(ctx context.Context, messageID, userID string) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE chat_messages
+		SET deleted_at = NOW(), deleted_by_user_id = $2
+		WHERE id = $1 AND deleted_at IS NULL
+	`, messageID, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrMessageNotFound
+	}
+	return nil
+}
+
+// DeleteMessageForMe hides a specific message only for the requesting user.
+func (r *PostgresRepository) DeleteMessageForMe(ctx context.Context, messageID, userID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO chat_message_deletions(message_id, user_id, deleted_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (message_id, user_id) DO NOTHING
+	`, messageID, userID)
+	return err
+}
+
+// ClearConversationForMe sets cleared_at so the user no longer sees messages before this point.
+func (r *PostgresRepository) ClearConversationForMe(ctx context.Context, conversationID, userID string) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE chat_conversation_members
+		SET cleared_at = NOW(), unread_count = 0
+		WHERE conversation_id = $1 AND user_id = $2
+	`, conversationID, userID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotConversationMember
+	}
+	return nil
+}
+
+// DeleteConversationForBoth sets cleared_at for ALL members, effectively wiping the conversation for everyone.
+func (r *PostgresRepository) DeleteConversationForBoth(ctx context.Context, conversationID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE chat_conversation_members
+		SET cleared_at = NOW(), unread_count = 0
+		WHERE conversation_id = $1
+	`, conversationID)
+	return err
+}
+
+// UpdateConversationPin toggles the is_pinned flag for a specific user in a conversation.
+func (r *PostgresRepository) UpdateConversationPin(ctx context.Context, conversationID, userID string, isPinned bool) error {
+	var pinnedAt interface{}
+	if isPinned {
+		pinnedAt = time.Now().UTC()
+	}
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE chat_conversation_members
+		SET is_pinned = $3, pinned_at = $4
+		WHERE conversation_id = $1 AND user_id = $2
+	`, conversationID, userID, isPinned, pinnedAt)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotConversationMember
+	}
+	return nil
+}
+
+// UpdateConversationMute toggles the is_muted flag for a specific user in a conversation.
+func (r *PostgresRepository) UpdateConversationMute(ctx context.Context, conversationID, userID string, isMuted bool) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE chat_conversation_members
+		SET is_muted = $3
+		WHERE conversation_id = $1 AND user_id = $2
+	`, conversationID, userID, isMuted)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotConversationMember
+	}
+	return nil
+}
+
+// PinMessageInConversation adds a pin to the conversation's pin list.
+func (r *PostgresRepository) PinMessageInConversation(ctx context.Context, conversationID, messageID, pinnedByUserID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO chat_pinned_messages(conversation_id, message_id, pinned_by, pinned_at)
+		VALUES ($1, $2, $3, NOW())
+		ON CONFLICT (conversation_id, message_id) DO NOTHING
+	`, conversationID, messageID, pinnedByUserID)
+	return err
+}
+
+// UnpinMessageInConversation removes a specific pin from the conversation.
+func (r *PostgresRepository) UnpinMessageInConversation(ctx context.Context, conversationID, messageID string) error {
+	result, err := r.db.ExecContext(ctx, `
+		DELETE FROM chat_pinned_messages
+		WHERE conversation_id = $1 AND message_id = $2
+	`, conversationID, messageID)
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrMessageNotFound
+	}
+	return nil
+}
+
+// ListPinnedMessages returns all pinned messages for a conversation, newest pin first.
+func (r *PostgresRepository) ListPinnedMessages(ctx context.Context, conversationID string) ([]PinnedMessage, error) {
+	items := make([]PinnedMessage, 0)
+	if err := r.db.SelectContext(ctx, &items, `
+		SELECT pm.id, pm.conversation_id, pm.message_id, pm.pinned_by, pm.pinned_at,
+		       COALESCE(m.body, '') AS message_body, m.sender_id
+		FROM chat_pinned_messages pm
+		JOIN chat_messages m ON m.id = pm.message_id
+		WHERE pm.conversation_id = $1
+		  AND m.deleted_at IS NULL
+		ORDER BY pm.pinned_at DESC
+	`, conversationID); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+// CountPinnedMessages returns the number of active pins in a conversation.
+func (r *PostgresRepository) CountPinnedMessages(ctx context.Context, conversationID string) (int, error) {
+	var count int
+	err := r.db.GetContext(ctx, &count, `
+		SELECT COUNT(*)
+		FROM chat_pinned_messages pm
+		JOIN chat_messages m ON m.id = pm.message_id
+		WHERE pm.conversation_id = $1
+		  AND m.deleted_at IS NULL
+	`, conversationID)
+	return count, err
 }

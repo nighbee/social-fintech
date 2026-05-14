@@ -210,13 +210,15 @@ func (s *Service) SendMessage(ctx context.Context, userID, conversationID string
 	}
 
 	message, created, err := s.repo.CreateMessage(ctx, CreateMessageParams{
-		ConversationID:     conversationID,
-		SenderID:           &userID,
-		MessageType:        MessageTypeUser,
-		Body:               trimmedBody,
-		Media:              req.Media,
-		IdempotencyKey:     idempotencyKey,
-		RequestFingerprint: messageFingerprint(conversationID, trimmedBody, req.Media),
+		ConversationID:      conversationID,
+		SenderID:            &userID,
+		MessageType:         MessageTypeUser,
+		Body:                trimmedBody,
+		Media:               req.Media,
+		IdempotencyKey:      idempotencyKey,
+		RequestFingerprint:  messageFingerprint(conversationID, trimmedBody, req.Media),
+		ReplyToMessageID:    req.ReplyToMessageID,
+		ForwardedFromUserID: req.ForwardedFromUserID,
 	})
 	if err != nil {
 		return nil, err
@@ -313,6 +315,140 @@ func (s *Service) OnTaskApplicationAccepted(ctx context.Context, taskID, creator
 		}
 	}
 
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Advanced chat feature service methods
+// ---------------------------------------------------------------------------
+
+// PinMessage adds a message to the conversation's pin list (visible to both users).
+// Multiple messages can be pinned; the frontend shows the latest pin at the top
+// and cycles through all pins when tapped.
+func (s *Service) PinMessage(ctx context.Context, userID, conversationID, messageID string) error {
+	if _, err := s.repo.GetConversation(ctx, conversationID, userID); err != nil {
+		return err
+	}
+
+	if err := s.repo.PinMessageInConversation(ctx, conversationID, messageID, userID); err != nil {
+		return err
+	}
+
+	participants, err := s.repo.ListConversationParticipants(ctx, conversationID)
+	if err == nil && s.realtime != nil {
+		_ = s.realtime.EmitToUsers(ctx, participants, RealtimeEnvelope{
+			Type:           "message.pinned",
+			ConversationID: conversationID,
+			MessageID:      messageID,
+		})
+	}
+	return nil
+}
+
+// UnpinMessage removes a specific pinned message from the conversation's pin list.
+func (s *Service) UnpinMessage(ctx context.Context, userID, conversationID, messageID string) error {
+	if _, err := s.repo.GetConversation(ctx, conversationID, userID); err != nil {
+		return err
+	}
+
+	if err := s.repo.UnpinMessageInConversation(ctx, conversationID, messageID); err != nil {
+		return err
+	}
+
+	participants, err := s.repo.ListConversationParticipants(ctx, conversationID)
+	if err == nil && s.realtime != nil {
+		_ = s.realtime.EmitToUsers(ctx, participants, RealtimeEnvelope{
+			Type:           "message.unpinned",
+			ConversationID: conversationID,
+			MessageID:      messageID,
+		})
+	}
+	return nil
+}
+
+// ListPinnedMessages returns all pinned messages for a conversation, newest first.
+func (s *Service) ListPinnedMessages(ctx context.Context, userID, conversationID string) ([]PinnedMessage, error) {
+	if _, err := s.repo.GetConversation(ctx, conversationID, userID); err != nil {
+		return nil, err
+	}
+	return s.repo.ListPinnedMessages(ctx, conversationID)
+}
+
+// DeleteMessage deletes a message either for the acting user only or for both participants.
+func (s *Service) DeleteMessage(ctx context.Context, userID, conversationID, messageID string, forBoth bool) error {
+	if _, err := s.repo.GetConversation(ctx, conversationID, userID); err != nil {
+		return err
+	}
+
+	if forBoth {
+		if err := s.repo.DeleteMessageForBoth(ctx, messageID, userID); err != nil {
+			return err
+		}
+		// Notify both participants so the message disappears in real time.
+		participants, err := s.repo.ListConversationParticipants(ctx, conversationID)
+		if err == nil && s.realtime != nil {
+			_ = s.realtime.EmitToUsers(ctx, participants, RealtimeEnvelope{
+				Type:           "message.deleted",
+				ConversationID: conversationID,
+				MessageID:      messageID,
+			})
+		}
+	} else {
+		if err := s.repo.DeleteMessageForMe(ctx, messageID, userID); err != nil {
+			return err
+		}
+		// Only the acting user needs the event (e.g. for multi-device sync).
+		if s.realtime != nil {
+			_ = s.realtime.EmitToUsers(ctx, []string{userID}, RealtimeEnvelope{
+				Type:           "message.deleted",
+				ConversationID: conversationID,
+				MessageID:      messageID,
+			})
+		}
+	}
+	return nil
+}
+
+// SetConversationPin toggles the pinned status of a conversation for the acting user.
+func (s *Service) SetConversationPin(ctx context.Context, userID, conversationID string, pinned bool) error {
+	return s.repo.UpdateConversationPin(ctx, conversationID, userID, pinned)
+}
+
+// SetConversationMute toggles the muted status of a conversation for the acting user.
+func (s *Service) SetConversationMute(ctx context.Context, userID, conversationID string, muted bool) error {
+	return s.repo.UpdateConversationMute(ctx, conversationID, userID, muted)
+}
+
+// DeleteConversation clears or deletes a conversation.
+// forBoth=false: sets cleared_at for the acting user only ("delete for me").
+// forBoth=true: sets cleared_at for all members ("delete for both").
+func (s *Service) DeleteConversation(ctx context.Context, userID, conversationID string, forBoth bool) error {
+	if _, err := s.repo.GetConversation(ctx, conversationID, userID); err != nil {
+		return err
+	}
+
+	if forBoth {
+		if err := s.repo.DeleteConversationForBoth(ctx, conversationID); err != nil {
+			return err
+		}
+		participants, err := s.repo.ListConversationParticipants(ctx, conversationID)
+		if err == nil && s.realtime != nil {
+			_ = s.realtime.EmitToUsers(ctx, participants, RealtimeEnvelope{
+				Type:           "conversation.deleted",
+				ConversationID: conversationID,
+			})
+		}
+	} else {
+		if err := s.repo.ClearConversationForMe(ctx, conversationID, userID); err != nil {
+			return err
+		}
+		if s.realtime != nil {
+			_ = s.realtime.EmitToUsers(ctx, []string{userID}, RealtimeEnvelope{
+				Type:           "conversation.cleared",
+				ConversationID: conversationID,
+			})
+		}
+	}
 	return nil
 }
 
@@ -458,9 +594,13 @@ func mapChatErrToHTTPStatus(err error) int {
 	switch {
 	case errors.Is(err, ErrConversationNotFound):
 		return 404
+	case errors.Is(err, ErrMessageNotFound):
+		return 404
 	case errors.Is(err, ErrNotConversationMember):
 		return 403
 	case errors.Is(err, ErrMessageNotAllowed), errors.Is(err, ErrBlockedRelationship):
+		return 403
+	case errors.Is(err, ErrDeletePermissionDenied):
 		return 403
 	case errors.Is(err, ErrIdempotencyConflict), errors.Is(err, ErrIdempotencyInProgress):
 		return 409

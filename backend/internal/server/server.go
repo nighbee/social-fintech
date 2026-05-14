@@ -320,6 +320,15 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	chatGroup.Post("/conversations/:conversation_id/messages", chatSendLimiter, chatHandler.SendMessage)
 	chatGroup.Post("/conversations/:conversation_id/read", chatHandler.MarkConversationRead)
 
+	// Advanced chat features
+	chatGroup.Post("/conversations/:conversation_id/pin-message", chatHandler.PinMessage)
+	chatGroup.Delete("/conversations/:conversation_id/pin-message", chatHandler.UnpinMessage)
+	chatGroup.Get("/conversations/:conversation_id/pinned-messages", chatHandler.ListPinnedMessages)
+	chatGroup.Delete("/conversations/:conversation_id/messages/:message_id", chatHandler.DeleteMessage)
+	chatGroup.Put("/conversations/:conversation_id/mute", chatHandler.MuteConversation)
+	chatGroup.Put("/conversations/:conversation_id/pin", chatHandler.PinConversation)
+	chatGroup.Delete("/conversations/:conversation_id", chatHandler.DeleteConversation)
+
 	// Map & Tasks routes
 	mapGroup := api.Group("/")
 	mapGroup.Use(middleware.RequireAuth(jwt, authRepo))

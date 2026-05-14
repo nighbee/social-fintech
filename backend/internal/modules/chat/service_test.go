@@ -89,6 +89,46 @@ func (s *stubRepo) GetOtherParticipantReadAt(ctx context.Context, conversationID
 	return nil, nil
 }
 
+func (s *stubRepo) DeleteMessageForBoth(ctx context.Context, messageID, userID string) error {
+	return nil
+}
+
+func (s *stubRepo) DeleteMessageForMe(ctx context.Context, messageID, userID string) error {
+	return nil
+}
+
+func (s *stubRepo) ClearConversationForMe(ctx context.Context, conversationID, userID string) error {
+	return nil
+}
+
+func (s *stubRepo) DeleteConversationForBoth(ctx context.Context, conversationID string) error {
+	return nil
+}
+
+func (s *stubRepo) UpdateConversationPin(ctx context.Context, conversationID, userID string, isPinned bool) error {
+	return nil
+}
+
+func (s *stubRepo) UpdateConversationMute(ctx context.Context, conversationID, userID string, isMuted bool) error {
+	return nil
+}
+
+func (s *stubRepo) PinMessageInConversation(ctx context.Context, conversationID, messageID, pinnedByUserID string) error {
+	return nil
+}
+
+func (s *stubRepo) UnpinMessageInConversation(ctx context.Context, conversationID, messageID string) error {
+	return nil
+}
+
+func (s *stubRepo) ListPinnedMessages(ctx context.Context, conversationID string) ([]PinnedMessage, error) {
+	return []PinnedMessage{}, nil
+}
+
+func (s *stubRepo) CountPinnedMessages(ctx context.Context, conversationID string) (int, error) {
+	return 0, nil
+}
+
 type stubSettings struct {
 	privacyByUser map[string]string
 	blocked       bool
@@ -164,5 +204,128 @@ func TestSendMessageStillBlockedForTaskConversation(t *testing.T) {
 	})
 	if err == nil || err != ErrBlockedRelationship {
 		t.Fatalf("expected ErrBlockedRelationship, got %v", err)
+	}
+}
+
+func TestPinMessageSuccess(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.PinMessage(context.Background(), "u1", "conv-1", "msg-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+func TestUnpinMessageSuccess(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.UnpinMessage(context.Background(), "u1", "conv-1", "msg-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+func TestListPinnedMessages(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	pins, err := service.ListPinnedMessages(context.Background(), "u1", "conv-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if pins == nil {
+		t.Fatal("expected non-nil slice, got nil")
+	}
+}
+
+func TestDeleteMessageForMe(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.DeleteMessage(context.Background(), "u1", "conv-1", "msg-1", false)
+	if err != nil {
+		t.Fatalf("expected no error for delete-for-me, got %v", err)
+	}
+}
+
+func TestDeleteMessageForBoth(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.DeleteMessage(context.Background(), "u1", "conv-1", "msg-1", true)
+	if err != nil {
+		t.Fatalf("expected no error for delete-for-both, got %v", err)
+	}
+}
+
+func TestSetConversationMute(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.SetConversationMute(context.Background(), "u1", "conv-1", true)
+	if err != nil {
+		t.Fatalf("expected no error for mute, got %v", err)
+	}
+
+	err = service.SetConversationMute(context.Background(), "u1", "conv-1", false)
+	if err != nil {
+		t.Fatalf("expected no error for unmute, got %v", err)
+	}
+}
+
+func TestSetConversationPin(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.SetConversationPin(context.Background(), "u1", "conv-1", true)
+	if err != nil {
+		t.Fatalf("expected no error for pin, got %v", err)
+	}
+
+	err = service.SetConversationPin(context.Background(), "u1", "conv-1", false)
+	if err != nil {
+		t.Fatalf("expected no error for unpin, got %v", err)
+	}
+}
+
+func TestDeleteConversationForMe(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.DeleteConversation(context.Background(), "u1", "conv-1", false)
+	if err != nil {
+		t.Fatalf("expected no error for delete-conversation-for-me, got %v", err)
+	}
+}
+
+func TestDeleteConversationForBoth(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	err := service.DeleteConversation(context.Background(), "u1", "conv-1", true)
+	if err != nil {
+		t.Fatalf("expected no error for delete-conversation-for-both, got %v", err)
+	}
+}
+
+func TestSendMessageWithReplyAndForward(t *testing.T) {
+	repo := &stubRepo{}
+	service := NewService(repo, &stubSettings{}, nil, nil)
+
+	replyID := "msg-original"
+	forwardUserID := "u-original-sender"
+
+	msg, err := service.SendMessage(context.Background(), "u1", "conv-1", &SendMessageRequest{
+		Body:                "forwarded text",
+		ReplyToMessageID:    &replyID,
+		ForwardedFromUserID: &forwardUserID,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if msg == nil {
+		t.Fatal("expected message, got nil")
 	}
 }

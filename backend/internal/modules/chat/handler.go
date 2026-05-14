@@ -269,6 +269,233 @@ func extractToken(c *fiber.Ctx) string {
 	return strings.TrimSpace(c.Query("token"))
 }
 
+// PinMessage godoc
+// @Summary Pin a message in a conversation
+// @Description Sets the pinned message for the conversation, visible to both participants.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param request body PinMessageRequest true "Message ID to pin"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 400 {object} map[string]string "Invalid body"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Conversation not found"
+// @Router /chats/conversations/{conversation_id}/pin-message [post]
+func (h *Handler) PinMessage(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	var req PinMessageRequest
+	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.MessageID) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if err := h.service.PinMessage(c.Context(), userID, conversationID, strings.TrimSpace(req.MessageID)); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// UnpinMessage godoc
+// @Summary Unpin a specific message in a conversation
+// @Description Removes a specific message from the conversation's pin list.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param request body UnpinMessageRequest true "Message ID to unpin"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 400 {object} map[string]string "Invalid body"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Not found"
+// @Router /chats/conversations/{conversation_id}/pin-message [delete]
+func (h *Handler) UnpinMessage(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	var req UnpinMessageRequest
+	if err := c.BodyParser(&req); err != nil || strings.TrimSpace(req.MessageID) == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if err := h.service.UnpinMessage(c.Context(), userID, conversationID, strings.TrimSpace(req.MessageID)); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// ListPinnedMessages godoc
+// @Summary List all pinned messages in a conversation
+// @Description Returns all pinned messages ordered by pin time (newest first).
+// @Description The frontend shows the latest pin at the top of the chat window.
+// @Description Tapping the pin banner scrolls to that message and cycles to the next pin.
+// @Tags Chat
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Success 200 {object} ListPinnedMessagesResponse "Pinned messages"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Not found"
+// @Router /chats/conversations/{conversation_id}/pinned-messages [get]
+func (h *Handler) ListPinnedMessages(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	items, err := h.service.ListPinnedMessages(c.Context(), userID, conversationID)
+	if err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(ListPinnedMessagesResponse{Items: items})
+}
+
+// DeleteMessage godoc
+// @Summary Delete a message
+// @Description Deletes a message for the acting user only, or for both participants.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param message_id path string true "Message ID"
+// @Param request body DeleteMessageRequest false "Delete options"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Not found"
+// @Router /chats/conversations/{conversation_id}/messages/{message_id} [delete]
+func (h *Handler) DeleteMessage(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	messageID := strings.TrimSpace(c.Params("message_id"))
+
+	var req DeleteMessageRequest
+	if len(c.Body()) > 0 {
+		_ = c.BodyParser(&req)
+	}
+
+	if err := h.service.DeleteMessage(c.Context(), userID, conversationID, messageID, req.ForBoth); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// MuteConversation godoc
+// @Summary Mute or unmute a conversation
+// @Description Toggles mute status for the acting user in the specified conversation.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param request body MuteConversationRequest true "Mute toggle"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 400 {object} map[string]string "Invalid body"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Not a member"
+// @Router /chats/conversations/{conversation_id}/mute [put]
+func (h *Handler) MuteConversation(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	var req MuteConversationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if err := h.service.SetConversationMute(c.Context(), userID, conversationID, req.Muted); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// PinConversation godoc
+// @Summary Pin or unpin a conversation
+// @Description Toggles pin status for the acting user so the conversation appears first in the list.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param request body PinConversationRequest true "Pin toggle"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 400 {object} map[string]string "Invalid body"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Not a member"
+// @Router /chats/conversations/{conversation_id}/pin [put]
+func (h *Handler) PinConversation(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	var req PinConversationRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	if err := h.service.SetConversationPin(c.Context(), userID, conversationID, req.Pinned); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// DeleteConversation godoc
+// @Summary Delete a conversation
+// @Description Deletes the conversation for the acting user only, or for both participants.
+// @Description "Delete for me" clears the chat history from the user's perspective.
+// @Description "Delete for both" clears the chat history for all participants.
+// @Tags Chat
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Param request body DeleteConversationRequest false "Delete options"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 403 {object} map[string]string "Forbidden"
+// @Failure 404 {object} map[string]string "Not found"
+// @Router /chats/conversations/{conversation_id} [delete]
+func (h *Handler) DeleteConversation(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	var req DeleteConversationRequest
+	if len(c.Body()) > 0 {
+		_ = c.BodyParser(&req)
+	}
+
+	if err := h.service.DeleteConversation(c.Context(), userID, conversationID, req.ForBoth); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
 func userIDFromContext(c *fiber.Ctx) (string, bool) {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || strings.TrimSpace(userID) == "" {
