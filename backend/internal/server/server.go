@@ -148,8 +148,12 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	profilesGroup.Get("/me/stats", profilesHandler.GetMyStats)
 	profilesGroup.Get("/me/allies", profilesHandler.GetMyAllies)
 	profilesGroup.Delete("/me", profilesHandler.DeleteMyProfile)
-	// Global profile search removed (not part of product scope).
-	// profilesGroup.Get("/search", profilesHandler.SearchProfilesForFeed)
+	// /profiles/search must be registered BEFORE /:user_id, otherwise Fiber
+	// matches the static segment as user_id="search" and the resulting UUID
+	// validation returns 400 — the request never reaches the search handler.
+	// Routes to the same SearchUsers handler as /users/search, but lives
+	// under /profiles for client UX consistency.
+	profilesGroup.Get("/search", profilesHandler.SearchUsers)
 	// Profile posts grid & list (must be before /:user_id to avoid Fiber routing ambiguity)
 	profilesGroup.Get("/me/posts", feedHandler.GetMyPostsGrid)
 	profilesGroup.Get("/me/posts/list", feedHandler.GetMyPostsList)

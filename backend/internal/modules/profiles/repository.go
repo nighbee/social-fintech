@@ -471,9 +471,11 @@ func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName 
 				COALESCE(u.first_name, '') as first_name,
 				COALESCE(u.last_name, '') as last_name,
 				COALESCE(p.display_name, '') as display_name,
-				COALESCE(p.avatar_url, '') as avatar_url
+				COALESCE(p.avatar_url, '') as avatar_url,
+				COALESCE(w.total_received_amount / 100, 0)::int as reputation_score
 			FROM users u
 			LEFT JOIN profiles p ON p.user_id = u.id
+			LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 			WHERE u.is_shadow_banned = false
 			  AND COALESCE(u.activation_status, 'active') = 'active'
 			  AND u.deleted_at IS NULL
@@ -510,9 +512,11 @@ func (r *Repository) SearchUsersByName(ctx context.Context, firstName, lastName 
 				COALESCE(u.first_name, '') as first_name,
 				COALESCE(u.last_name, '') as last_name,
 				COALESCE(p.display_name, '') as display_name,
-				COALESCE(p.avatar_url, '') as avatar_url
+				COALESCE(p.avatar_url, '') as avatar_url,
+				COALESCE(w.total_received_amount / 100, 0)::int as reputation_score
 			FROM users u
 			LEFT JOIN profiles p ON p.user_id = u.id
+			LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 			WHERE u.is_shadow_banned = false
 			  AND COALESCE(u.activation_status, 'active') = 'active'
 			  AND u.deleted_at IS NULL

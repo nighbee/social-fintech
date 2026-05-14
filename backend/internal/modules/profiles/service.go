@@ -384,7 +384,18 @@ func (s *Service) SearchUsers(ctx context.Context, firstName, lastName string, l
 		return []UserSearchResult{}, nil
 	}
 
-	return s.repo.SearchUsersByName(ctx, firstName, lastName, limit)
+	results, err := s.repo.SearchUsersByName(ctx, firstName, lastName, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	// Embed the rank tier so list-callers don't N+1 against /me/rank.
+	// RankTier is derived from received Gold Seals — see ranks module.
+	for i := range results {
+		results[i].RankTier = ranks.GetRankTierString(results[i].ReputationScore)
+	}
+
+	return results, nil
 }
 
 // SearchProfilesForFeed — поиск профилей для домашней страницы с учетом приватности
