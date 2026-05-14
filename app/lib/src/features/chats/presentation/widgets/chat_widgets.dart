@@ -552,93 +552,143 @@ class ChatThreadCard extends StatelessWidget {
                       color: ChatSapphireStyles.threadCardBorderColor,
                     ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      ChatSapphireStyles.threadCardPaddingHorizontal,
-                      ChatSapphireStyles.threadCardPaddingTop,
-                      ChatSapphireStyles.threadCardPaddingHorizontal,
-                      ChatSapphireStyles.threadCardPaddingBottom,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minHeight: ChatSapphireStyles.threadCardMinHeight,
                     ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ChatAvatar(
-                          displayName: thread.displayName,
-                          avatarUrl: thread.avatarUrl,
-                          radius: ChatSapphireStyles.threadCardAvatarRadius,
-                          cornerRadius: ChatSapphireStyles.listCornerRadius,
-                        ),
-                        const Gap(ChatSapphireStyles.threadCardGapAfterAvatar),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                thread.displayName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyles.titleHeadline.copyWith(
-                                  color: AppColors.textBrand,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        ChatSapphireStyles.threadCardPaddingHorizontal,
+                        ChatSapphireStyles.threadCardPaddingTop,
+                        ChatSapphireStyles.threadCardPaddingHorizontal,
+                        ChatSapphireStyles.threadCardPaddingBottom,
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(
+                              right: ChatSapphireStyles.threadCardRightContentReserve,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ChatAvatar(
+                                  displayName: thread.displayName,
+                                  avatarUrl: thread.avatarUrl,
+                                  radius: ChatSapphireStyles
+                                      .threadCardAvatarRadius,
+                                  cornerRadius:
+                                      ChatSapphireStyles.listCornerRadius,
                                 ),
-                              ),
-                              const Gap(4),
-                              _threadRankLineText(thread.rankLine),
-                              if (thread.previewText.isNotEmpty) ...[
-                                const Gap(6),
-                                Text(
-                                  thread.previewText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyles.bodyMain.copyWith(
-                                    color: AppColors.textBrand
-                                        .withValues(alpha: 0.82),
+                                const Gap(
+                                  ChatSapphireStyles.threadCardGapAfterAvatar,
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        thread.displayName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyles.titleHeadline.copyWith(
+                                          color: AppColors.textBrand,
+                                        ),
+                                      ),
+                                      const Gap(4),
+                                      _threadRankLineText(thread.rankLine),
+                                      if (thread.previewText.isNotEmpty) ...[
+                                        const Gap(6),
+                                        Text(
+                                          thread.previewText,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyles.bodyMain.copyWith(
+                                            color: AppColors.textBrand
+                                                .withValues(alpha: 0.82),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ],
-                            ],
-                          ),
-                        ),
-                        const Gap(12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              thread.timeLabel,
-                              style: TextStyles.bodyMain.copyWith(
-                                color:
-                                    AppColors.textBrand.withValues(alpha: 0.56),
-                              ),
                             ),
-                            if (thread.unreadCount > 0) ...[
-                              const Gap(10),
-                              Container(
-                                constraints: const BoxConstraints(minWidth: 22),
-                                height: 22,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6),
-                                alignment: Alignment.center,
-                                decoration: BoxDecoration(
-                                  color: AppColors.textBrand,
-                                  borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text(
-                                  '${thread.unreadCount}',
-                                  textAlign: TextAlign.center,
+                          ),
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            bottom: 0,
+                            width: ChatSapphireStyles.threadCardRightRailWidth,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  thread.timeLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.right,
                                   style: TextStyles.bodyMain.copyWith(
-                                    color: AppColors.colorff19191A,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 12,
+                                    color: AppColors.textBrand
+                                        .withValues(alpha: 0.92),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
+                                const Spacer(),
+                                if (thread.unreadCount > 0)
+                                  _ChatThreadUnreadDot(
+                                    count: thread.unreadCount,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      ),
                     ),
                   ),
-                ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatThreadUnreadDot extends StatelessWidget {
+  const _ChatThreadUnreadDot({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = count > 99 ? '99+' : '$count';
+    final double side = switch (label.length) {
+      1 => 22,
+      2 => 24,
+      _ => 30,
+    };
+    return SizedBox(
+      width: side,
+      height: side,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: AppColors.textBrand,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyles.bodyMain.copyWith(
+              color: AppColors.colorff19191A,
+              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              height: 1,
             ),
           ),
         ),

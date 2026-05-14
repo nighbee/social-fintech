@@ -73,6 +73,9 @@ class HomeEvent with _$HomeEvent {
   }) = _RemoveProfileSearchRecent;
   const factory HomeEvent.clearProfileSearchRecent() =
       _ClearProfileSearchRecent;
+  /// Восстановить недавний поиск профилей с диска (после перезапуска приложения).
+  const factory HomeEvent.hydrateProfileSearchRecent() =
+      _HydrateProfileSearchRecent;
   const factory HomeEvent.applyStoreSummary({
     required StoreSummaryEntity storeSummary,
   }) = _ApplyStoreSummary;

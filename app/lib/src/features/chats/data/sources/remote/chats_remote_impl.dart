@@ -16,6 +16,29 @@ class ChatsRemoteImpl implements IChatsRemote {
   final RestClient _restClient;
 
   @override
+  Future<Either<DomainException, ConversationDto>> openDirectConversation({
+    required String recipientId,
+  }) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.chatsConversationsDirect,
+        data: <String, dynamic>{'recipient_id': recipientId.trim()},
+      );
+      return response.fold((error) => Left(error), (result) {
+        final data = result.data;
+        if (data is! Map<String, dynamic>) {
+          return Left(
+            UnknownException(message: 'Invalid open direct conversation response'),
+          );
+        }
+        return Right(ConversationDto.fromJson(data));
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<DomainException, ListConversationsResponseDto>>
       listConversations({
     String? cursor,

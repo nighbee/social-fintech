@@ -10,6 +10,11 @@ abstract class IChatsRemote {
     int limit,
   });
 
+  /// POST `/chats/conversations/direct` — открыть или получить direct с собеседником.
+  Future<Either<DomainException, ConversationDto>> openDirectConversation({
+    required String recipientId,
+  });
+
   Future<Either<DomainException, ListMessagesResponseDto>> listMessages({
     required String conversationId,
     String? cursor,

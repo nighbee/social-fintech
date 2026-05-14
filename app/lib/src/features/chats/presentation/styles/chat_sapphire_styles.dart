@@ -3,16 +3,27 @@ import 'package:flutter/material.dart';
 abstract final class ChatSapphireStyles {
   static const double listCornerRadius = 6;
 
-  /// Сетка строки чата (Figma: сверху 12, снизу 44, аватар 48).
+  /// Сетка строки чата (Figma: сверху 12, снизу 44; аватар 48; hug-высота ряда 12+48+44=104).
   static const double threadCardPaddingTop = 12;
   static const double threadCardPaddingBottom = 44;
   static const double threadCardPaddingHorizontal = 14;
+
+  /// Минимальная высота карточки (Figma hug ≈ 104 для короткой строки).
+  /// Верхнюю границу 104 в макете не дублируем как `maxHeight`: при имени + ранге
+  /// + превью строка выше, иначе текст обрежется при отступах 12 / 44.
+  static const double threadCardMinHeight = 104;
 
   /// Горизонтально между правым краем аватарки и текстом.
   static const double threadCardGapAfterAvatar = 12;
   static const double threadCardAvatarSize = 48;
 
   static double get threadCardAvatarRadius => threadCardAvatarSize / 2;
+
+  /// Зона времени и бейджа справа (достаточно ширины для «Yesterday» в одну строку).
+  static const double threadCardRightRailWidth = 80;
+  static const double threadCardGapBeforeRightRail = 8;
+  static double get threadCardRightContentReserve =>
+      threadCardGapBeforeRightRail + threadCardRightRailWidth;
 
   /// Мягкий сапфир с лёгкой прозрачностью (фон страницы слегка просвечивает).
   static const LinearGradient threadCardSapphireFill = LinearGradient(

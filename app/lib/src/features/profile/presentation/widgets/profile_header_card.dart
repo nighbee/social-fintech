@@ -195,7 +195,7 @@ class ProfileHeaderCard extends StatelessWidget {
                   onFollow: onFollow,
                   onUnfollow: onUnfollow,
                   onUnblock: onUnblock,
-                  onMessage: () {},
+                  onMessage: onMessage,
                 )
               : const ProfileActionButtons(),
         ],

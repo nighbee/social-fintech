@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/gen/fonts.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
@@ -17,6 +18,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+
+/// Приглушённый акцент на экране поиска (Clear All, строка ранга) — меньше «электрического» синего.
+const Color _searchMutedAccent = Color(0xFF8FA8BD);
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -41,6 +45,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   void initState() {
     super.initState();
+    _bloc.add(const HomeEvent.hydrateProfileSearchRecent());
     _bloc.add(const HomeEvent.clearProfileSearch());
     _focusNode.addListener(_handleFocusChange);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -482,7 +487,7 @@ class _SearchSectionHeader extends StatelessWidget {
                 fontSize: 16,
                 fontFamily: 'Lora',
                 fontWeight: FontWeight.w400,
-                color: const Color(0xFF74AFE3),
+                color: _searchMutedAccent,
               ),
             ),
           ),
@@ -512,21 +517,23 @@ class _SearchUserCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                const Color(0xFF223446).withValues(alpha: 0.24),
-                Colors.white.withValues(alpha: 0.02),
-                const Color(0xFF5B3D1E).withValues(alpha: 0.16),
-              ],
+            color: const Color(0xFF28282C),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
             ),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.35),
+                blurRadius: 14,
+                offset: const Offset(0, 5),
+              ),
+            ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               _SearchAvatar(profile: profile),
               const Gap(12),
@@ -536,12 +543,13 @@ class _SearchUserCard extends StatelessWidget {
                   timeLabel: timeLabel,
                 ),
               ),
-              if (onTrailingTap != null)
+              if (onTrailingTap != null) ...[
+                const Gap(8),
                 GestureDetector(
                   onTap: onTrailingTap,
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 12),
+                    padding: const EdgeInsets.only(left: 4),
                     child: Icon(
                       Icons.close_rounded,
                       size: 22,
@@ -549,6 +557,7 @@ class _SearchUserCard extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
             ],
           ),
         ),
@@ -568,15 +577,15 @@ class _SearchAvatar extends StatelessWidget {
     if (imageUrl.isNotEmpty) {
       return CustomNetworkImage(
         imageUrl: imageUrl,
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         borderRadius: BorderRadius.circular(8),
       );
     }
 
     return Container(
-      width: 40,
-      height: 40,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: AppColors.colorff2A2A2B,
         borderRadius: BorderRadius.circular(8),
@@ -601,44 +610,48 @@ class _SearchUserInfo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rankLine = profile.rankTier.trim().isEmpty
-        ? 'Moonstone · Intention · A'
-        : profile.rankTier;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
           children: [
-            Expanded(
+            Flexible(
               child: Text(
                 profile.displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyles.titleHeadline.copyWith(
-                  fontFamily: 'CanelaDeckTrial',
-                  fontWeight: FontWeight.w400,
+                style: TextStyles.bodyLarge.copyWith(
+                  fontFamily: FontFamily.lora,
+                  fontWeight: FontWeight.w600,
                   fontSize: 16,
                   height: 20 / 16,
-                  color: const Color(0xFFCACACA),
+                  color: const Color(0xFFFFFFFF),
                 ),
               ),
             ),
             if (timeLabel != null) ...[
-              const Gap(8),
+              const Gap(6),
               Text(
                 timeLabel!,
                 style: TextStyles.bodyMain.copyWith(
-                  fontFamily: 'Lora',
+                  fontFamily: FontFamily.lora,
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
-                  color: const Color(0xFF838383),
+                  height: 16 / 12,
+                  color: const Color(0xFFFFFFFF),
                 ),
               ),
             ],
           ],
         ),
-        const Gap(4),
-        ProfileRankMetaLine(rankTier: rankLine),
+        const Gap(5),
+        ProfileRankMetaLine(
+          rankTier: profile.rankTier,
+          accentColor: _searchMutedAccent,
+        ),
       ],
     );
   }

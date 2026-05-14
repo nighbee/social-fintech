@@ -154,7 +154,12 @@ class _ChatsPageState extends State<ChatsPage> {
                   const Gap(12),
                   ChatThreadCard(
                     thread: visibleRequests.first,
-                    onTap: () => context.pushNamed(RouteNames.chatRequests),
+                    onTap: () async {
+                      await context.pushNamed(RouteNames.chatRequests);
+                      if (mounted) {
+                        await _loadConversations();
+                      }
+                    },
                   ),
                 ],
                 if (visibleChats.isNotEmpty) ...[
@@ -164,14 +169,17 @@ class _ChatsPageState extends State<ChatsPage> {
                   for (final thread in visibleChats) ...[
                     ChatThreadCard(
                       thread: thread,
-                      onTap: () {
-                        context.pushNamed(
+                      onTap: () async {
+                        await context.pushNamed(
                           RouteNames.chatConversation,
                           pathParameters: <String, String>{
                             'chatId': thread.id,
                           },
                           extra: thread,
                         );
+                        if (mounted) {
+                          await _loadConversations();
+                        }
                       },
                     ),
                     if (thread != visibleChats.last) const Gap(12),

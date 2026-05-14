@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:app/src/core/exceptions/domain_exception.dart';
@@ -7,6 +8,7 @@ import 'package:injectable/injectable.dart';
 import 'package:app/src/core/base/base_bloc/bloc/base_bloc.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
+import 'package:app/src/core/service/storage/app_storage/storage_service.dart';
 import 'package:app/src/features/home/data/repositories/home_repository_impl.dart';
 import 'package:app/src/features/profile/data/repositories/profile_repository_impl.dart';
 import 'package:app/src/features/home/domain/entities/claim_daily_accrual_result_entity.dart';
@@ -54,6 +56,9 @@ part 'home_state.dart';
 
 @injectable
 class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
+  static const String _kProfileSearchRecentPrefsKey =
+      'brightbund_profile_search_recent_v1';
+
   HomeBloc(
     @Named.from(HomeRepositoryImpl) this._repository,
     @Named.from(ProfileRepositoryImpl) this._profileRepository,
@@ -129,6 +134,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
         emit,
       ),
       clearProfileSearchRecent: () => _clearProfileSearchRecent(emit),
+      hydrateProfileSearchRecent: () => _hydrateProfileSearchRecent(emit),
       applyProfileSearchResults: (_) => _applyProfileSearchResults(
         event as _ApplyProfileSearchResults,
         emit,
@@ -728,6 +734,68 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     emit(HomeState.loaded(viewModel: _viewModel));
   }
 
+  Map<String, dynamic> _profileSearchRecentItemToJson(
+    ProfileSearchRecentItemEntity e,
+  ) {
+    return <String, dynamic>{
+      'searchedAt': e.searchedAt.toIso8601String(),
+      'profile': <String, dynamic>{
+        'userId': e.profile.userId,
+        'displayName': e.profile.displayName,
+        'avatarUrl': e.profile.avatarUrl,
+        'reputationScore': e.profile.reputationScore,
+        'rankTier': e.profile.rankTier,
+      },
+    };
+  }
+
+  Future<void> _persistProfileSearchRecent() async {
+    final prefs = KeyValueStorageImpl();
+    final encoded = jsonEncode(
+      _viewModel.profileSearchRecentItems
+          .map(_profileSearchRecentItemToJson)
+          .toList(growable: false),
+    );
+    await prefs.set<String>(_kProfileSearchRecentPrefsKey, encoded);
+  }
+
+  Future<List<ProfileSearchRecentItemEntity>>
+      _readProfileSearchRecentFromStorage() async {
+    final prefs = KeyValueStorageImpl();
+    final raw = prefs.get<String>(_kProfileSearchRecentPrefsKey);
+    if (raw == null || raw.trim().isEmpty) {
+      return const <ProfileSearchRecentItemEntity>[];
+    }
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .map(
+            (dynamic e) => ProfileSearchRecentItemEntity.fromJson(
+              e as Map<String, dynamic>,
+            ),
+          )
+          .toList(growable: false);
+    } catch (_) {
+      return const <ProfileSearchRecentItemEntity>[];
+    }
+  }
+
+  Future<void> _hydrateProfileSearchRecent(Emitter emit) async {
+    final fromDisk = await _readProfileSearchRecentFromStorage();
+    if (fromDisk.isEmpty) {
+      return;
+    }
+    _viewModel = _viewModel.copyWith(profileSearchRecentItems: fromDisk);
+    emit(
+      state.map(
+        initial: (_) => HomeState.loaded(viewModel: _viewModel),
+        loading: (_) => HomeState.loading(viewModel: _viewModel),
+        loadingError: (_) => HomeState.loaded(viewModel: _viewModel),
+        loaded: (_) => HomeState.loaded(viewModel: _viewModel),
+      ),
+    );
+  }
+
   Future<void> _addProfileSearchRecent(
     _AddProfileSearchRecent event,
     Emitter emit,
@@ -744,6 +812,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
 
     _viewModel = _viewModel.copyWith(profileSearchRecentItems: updatedItems);
     emit(HomeState.loaded(viewModel: _viewModel));
+    await _persistProfileSearchRecent();
   }
 
   Future<void> _removeProfileSearchRecent(
@@ -756,6 +825,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
           .toList(),
     );
     emit(HomeState.loaded(viewModel: _viewModel));
+    await _persistProfileSearchRecent();
   }
 
   Future<void> _clearProfileSearchRecent(Emitter emit) async {
@@ -763,6 +833,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       profileSearchRecentItems: const <ProfileSearchRecentItemEntity>[],
     );
     emit(HomeState.loaded(viewModel: _viewModel));
+    await _persistProfileSearchRecent();
   }
 
   Future<void> _applyProfileSearchResults(

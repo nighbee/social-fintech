@@ -438,6 +438,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
               lastReadMessageId: items.last.id,
             ),
           );
+        } else {
+          unawaited(
+            _remote.markConversationRead(
+              conversationId: widget.chatId.trim(),
+            ),
+          );
         }
       },
     );

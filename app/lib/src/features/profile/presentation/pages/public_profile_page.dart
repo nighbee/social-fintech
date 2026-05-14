@@ -3,10 +3,13 @@ import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/features/chats/data/sources/remote/i_chats_remote.dart';
+import 'package:app/src/features/chats/presentation/mappers/chat_thread_preview_mapper.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
 import 'package:app/src/features/home/domain/requests/get_profile_posts_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
+import 'package:app/src/features/profile/domain/entities/public_profile_entity.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/mixins/show_profile_actions_bottom_sheet.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
@@ -85,6 +88,31 @@ class _PublicProfilePageState extends State<PublicProfilePage>
       const SnackBar(
         content: Text('Profile link copied — paste it to share'),
       ),
+    );
+  }
+
+  Future<void> _openDirectMessageFromProfile(PublicProfileEntity profile) async {
+    final remote = getIt<IChatsRemote>(instanceName: 'ChatsRemoteImpl');
+    final result = await remote.openDirectConversation(
+      recipientId: profile.userId.trim(),
+    );
+    if (!mounted) {
+      return;
+    }
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      },
+      (dto) {
+        final preview = ChatThreadPreviewMapper.fromConversation(dto);
+        context.pushNamed(
+          RouteNames.chatConversation,
+          pathParameters: <String, String>{'chatId': dto.id},
+          extra: preview,
+        );
+      },
     );
   }
 
@@ -393,6 +421,8 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                               onUnblock: () => bloc.add(
                                 ProfileEvent.unblockUser(widget.userId),
                               ),
+                              onMessage: () =>
+                                  _openDirectMessageFromProfile(profile),
                             ),
                           ),
                         ),

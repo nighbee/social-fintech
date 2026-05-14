@@ -7,9 +7,12 @@ class ProfileRankMetaLine extends StatelessWidget {
   const ProfileRankMetaLine({
     required this.rankTier,
     super.key,
+    /// Если задан — подставляется вместо стандартного голубого акцента (например на карточках поиска).
+    this.accentColor,
   });
 
   final String rankTier;
+  final Color? accentColor;
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +26,13 @@ class ProfileRankMetaLine extends StatelessWidget {
         .toList();
     if (parts.isEmpty) return const SizedBox.shrink();
 
+    final color = accentColor ?? const Color(0xFF74AFE3);
     final textStyle = TextStyles.bodyMain.copyWith(
       fontFamily: 'CanelaDeckTrial',
       fontWeight: FontWeight.w400,
       fontSize: 12,
       height: 20 / 12,
-      color: const Color(0xFF74AFE3),
+      color: color,
     );
 
     const iconSize = 12.0;
@@ -50,8 +54,8 @@ class ProfileRankMetaLine extends StatelessWidget {
             child: Assets.icons.global.svg(
               width: iconSize,
               height: iconSize,
-              colorFilter: const ColorFilter.mode(
-                Color(0xFF74AFE3),
+              colorFilter: ColorFilter.mode(
+                color,
                 BlendMode.srcIn,
               ),
             ),
