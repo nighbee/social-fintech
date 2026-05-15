@@ -1,5 +1,5 @@
 import 'package:app/src/features/chats/data/models/conversation_dto.dart';
-import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 /// Maps API [ConversationDto] to UI [ChatThreadPreview] (Figma list row).
@@ -19,6 +19,18 @@ class ChatThreadPreviewMapper {
     final otherId = (dto.otherUserId ?? '').trim();
     final readAt = dto.otherParticipantReadAt;
 
+    String? pinPreview;
+    String? pinId;
+    final pins = dto.pinnedMessages;
+    if (pins.isNotEmpty) {
+      final head = pins.first;
+      final pb = head.messageBody.trim();
+      if (pb.isNotEmpty) {
+        pinPreview = pb.length > 160 ? '${pb.substring(0, 157)}…' : pb;
+        pinId = head.messageId.trim().isEmpty ? null : head.messageId.trim();
+      }
+    }
+
     return ChatThreadPreview(
       id: dto.id,
       displayName: title,
@@ -30,6 +42,8 @@ class ChatThreadPreviewMapper {
       unreadCount: dto.unreadCount,
       isRequest: false,
       otherUserId: otherId.isNotEmpty ? otherId : null,
+      pinnedMessagePreview: pinPreview,
+      pinnedMessageId: pinId,
     );
   }
 

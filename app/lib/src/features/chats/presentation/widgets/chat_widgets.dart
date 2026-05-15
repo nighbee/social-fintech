@@ -5,7 +5,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/glass_container.dart';
-import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/styles/chat_conversation_styles.dart';
 import 'package:app/src/features/chats/presentation/styles/chat_sapphire_styles.dart';
 import 'package:app/src/features/chats/presentation/utils/chat_day_separator_label.dart';
@@ -239,15 +239,18 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
   final ChatThreadPreview thread;
   final List<Widget>? actions;
 
+  static const double _pinnedBarHeight = 44;
+
   @override
   Widget build(BuildContext context) {
+    final pin = (thread.pinnedMessagePreview ?? '').trim();
     return AppBar(
       backgroundColor: AppColors.colorff19191A,
       elevation: 0,
       scrolledUnderElevation: 0,
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
-      toolbarHeight: preferredSize.height,
+      toolbarHeight: kChatDetailAppBarHeight,
       centerTitle: true,
       automaticallyImplyLeading: false,
       leading: IconButton(
@@ -266,11 +269,63 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
         caption: thread.lastSeenLabel,
       ),
       actions: actions,
+      bottom: pin.isEmpty
+          ? null
+          : PreferredSize(
+              preferredSize: const Size.fromHeight(_pinnedBarHeight),
+              child: Material(
+                color: AppColors.colorff19191A,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Закреплённое сообщение',
+                              style: TextStyles.bodyMain.copyWith(
+                                fontSize: 11,
+                                height: 1.2,
+                                color: AppColors.textBrand.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            Text(
+                              pin,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyles.titleHeadline.copyWith(
+                                fontSize: 14,
+                                height: 1.25,
+                                color: AppColors.textBrand,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.push_pin_outlined,
+                        size: 20,
+                        color: AppColors.textBrand.withValues(alpha: 0.72),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kChatDetailAppBarHeight);
+  Size get preferredSize {
+    final pinH =
+        (thread.pinnedMessagePreview ?? '').trim().isEmpty ? 0.0 : _pinnedBarHeight;
+    return Size.fromHeight(kChatDetailAppBarHeight + pinH);
+  }
 }
 
 class ChatConversationOverflowButton extends StatelessWidget {
@@ -294,28 +349,28 @@ class ChatConversationOverflowButton extends StatelessWidget {
         PopupMenuItem<String>(
           value: 'forward',
           child: Text(
-            'Forward message',
+            'Переслать сообщение',
             style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
           ),
         ),
         PopupMenuItem<String>(
           value: 'select',
           child: Text(
-            'Select message',
+            'Выбрать сообщение',
             style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
           ),
         ),
         PopupMenuItem<String>(
           value: 'block',
           child: Text(
-            'Block user',
+            'Заблокировать',
             style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
           ),
         ),
         PopupMenuItem<String>(
           value: 'delete',
           child: Text(
-            'Delete chat',
+            'Удалить чат',
             style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
           ),
         ),

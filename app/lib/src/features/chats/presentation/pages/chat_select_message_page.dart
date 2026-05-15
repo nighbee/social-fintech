@@ -1,37 +1,111 @@
+import 'dart:async';
+
+import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/core/router/router.dart';
-import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/features/chats/data/models/message_dto.dart';
+import 'package:app/src/features/chats/data/sources/remote/i_chats_remote.dart';
+import 'package:app/src/features/chats/presentation/mappers/chat_message_api_mapper.dart';
+import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/widgets/chat_widgets.dart';
+import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class ChatSelectMessagePage extends StatefulWidget {
   const ChatSelectMessagePage({
     required this.chatId,
+    this.threadPreview,
     super.key,
   });
 
   final String chatId;
+  final ChatThreadPreview? threadPreview;
 
   @override
   State<ChatSelectMessagePage> createState() => _ChatSelectMessagePageState();
 }
 
 class _ChatSelectMessagePageState extends State<ChatSelectMessagePage> {
-  late final ChatThreadPreview _thread;
+  late ChatThreadPreview _thread;
   late final TextEditingController _messageController;
-  late final List<ChatMessageUiModel> _messages;
+  List<ChatMessageUiModel> _messages = <ChatMessageUiModel>[];
   late Set<String> _selectedMessageIds;
+  bool _loading = true;
+  String? _error;
+
+  IChatsRemote get _remote =>
+      getIt<IChatsRemote>(instanceName: 'ChatsRemoteImpl');
+
+  String? _currentUserId() {
+    return getIt<AuthBloc>().state.maybeWhen(
+          authenticated: (e) => e.user.id.trim().isEmpty ? null : e.user.id.trim(),
+          orElse: () => null,
+        );
+  }
 
   @override
   void initState() {
     super.initState();
-    _thread = ChatMockStore.threadById(widget.chatId);
+    _thread = widget.threadPreview ??
+        ChatThreadPreview(
+          id: widget.chatId.trim(),
+          displayName: 'Чат',
+          rankLine: '',
+          lastSeenLabel: '',
+          timeLabel: '',
+          avatarUrl: '',
+        );
     _messageController = TextEditingController();
-    _messages = List<ChatMessageUiModel>.from(
-      ChatMockStore.baseMessages(widget.chatId),
+    _selectedMessageIds = <String>{};
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_load());
+    });
+  }
+
+  Future<void> _load() async {
+    if (!chatConversationIdLooksLikeUuid(widget.chatId.trim())) {
+      setState(() {
+        _loading = false;
+        _error = 'Некорректный идентификатор чата';
+      });
+      return;
+    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    final result = await _remote.listMessages(
+      conversationId: widget.chatId.trim(),
+      limit: 50,
     );
-    _selectedMessageIds =
-        _messages.isEmpty ? <String>{} : <String>{_messages.first.id};
+    if (!mounted) {
+      return;
+    }
+    result.fold(
+      (DomainException e) {
+        setState(() {
+          _loading = false;
+          _error = e.message;
+          _messages = <ChatMessageUiModel>[];
+        });
+      },
+      (data) {
+        final uid = _currentUserId();
+        setState(() {
+          _loading = false;
+          _error = null;
+          final list = List<MessageDto>.from(data.items);
+          _messages = uid == null || uid.isEmpty
+              ? <ChatMessageUiModel>[]
+              : ChatMessageApiMapper.toUiModels(list, currentUserId: uid);
+          if (_messages.isNotEmpty) {
+            _selectedMessageIds = <String>{_messages.first.id};
+          }
+        });
+      },
+    );
   }
 
   @override
@@ -46,6 +120,7 @@ class _ChatSelectMessagePageState extends State<ChatSelectMessagePage> {
         context.pushNamed(
           RouteNames.chatConversationForward,
           pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
         );
         return;
       case 'select':
@@ -54,12 +129,14 @@ class _ChatSelectMessagePageState extends State<ChatSelectMessagePage> {
         context.pushNamed(
           RouteNames.chatConversationBlocked,
           pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
         );
         return;
       case 'delete':
         context.pushNamed(
           RouteNames.chatConversationDeleted,
           pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
         );
         return;
     }
@@ -82,10 +159,6 @@ class _ChatSelectMessagePageState extends State<ChatSelectMessagePage> {
   }
 
   void _sendMessage() {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) {
-      return;
-    }
     _messageController.clear();
   }
 
@@ -105,12 +178,27 @@ class _ChatSelectMessagePageState extends State<ChatSelectMessagePage> {
       ),
       child: SafeArea(
         top: false,
-        child: ChatConversationMessageList(
-          messages: _messages,
-          showSelectionControls: true,
-          selectedMessageIds: _selectedMessageIds,
-          onMessageTap: _toggleMessage,
-        ),
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: TextStyles.bodyLarge.copyWith(
+                          color: AppColors.textBrand.withValues(alpha: 0.8),
+                        ),
+                      ),
+                    ),
+                  )
+                : ChatConversationMessageList(
+                    messages: _messages,
+                    showSelectionControls: true,
+                    selectedMessageIds: _selectedMessageIds,
+                    onMessageTap: _toggleMessage,
+                  ),
       ),
     );
   }

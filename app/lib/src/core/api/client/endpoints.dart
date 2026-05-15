@@ -93,6 +93,15 @@ class EndPoints {
   static String chatsConversationRead(String conversationId) =>
       '/chats/conversations/$conversationId/read';
   static const String chatsConversationsDirect = '/chats/conversations/direct';
+  static String chatsConversationPinMessage(String conversationId) =>
+      '/chats/conversations/$conversationId/pin-message';
+  static String chatsConversationPinnedMessages(String conversationId) =>
+      '/chats/conversations/$conversationId/pinned-messages';
+  static String chatsConversationMessage(
+    String conversationId,
+    String messageId,
+  ) =>
+      '/chats/conversations/$conversationId/messages/$messageId';
 
   //* Profile
   static const String profiles = '/profiles';

@@ -27,6 +27,10 @@ class MessageDto {
     required this.messageType,
     required this.body,
     required this.media,
+    this.replyToMessageId,
+    this.forwardedFromUserId,
+    this.deletedAt,
+    this.deletedByUserId,
     required this.createdAt,
     required this.viewerMessageRead,
   });
@@ -37,6 +41,10 @@ class MessageDto {
   final String messageType;
   final String body;
   final List<MessageMediaDto> media;
+  final String? replyToMessageId;
+  final String? forwardedFromUserId;
+  final DateTime? deletedAt;
+  final String? deletedByUserId;
   final DateTime createdAt;
   final bool viewerMessageRead;
 
@@ -52,6 +60,16 @@ class MessageDto {
     final senderTrimmed =
         (senderRaw is String ? senderRaw : senderRaw?.toString())?.trim() ?? '';
 
+    final replyRaw = json['reply_to_message_id'];
+    final replyTrimmed =
+        (replyRaw is String ? replyRaw : replyRaw?.toString())?.trim() ?? '';
+    final fwdRaw = json['forwarded_from_user_id'];
+    final fwdTrimmed =
+        (fwdRaw is String ? fwdRaw : fwdRaw?.toString())?.trim() ?? '';
+    final delByRaw = json['deleted_by_user_id'];
+    final delByTrimmed =
+        (delByRaw is String ? delByRaw : delByRaw?.toString())?.trim() ?? '';
+
     return MessageDto(
       id: json['id'] as String? ?? '',
       conversationId: json['conversation_id'] as String? ?? '',
@@ -59,6 +77,10 @@ class MessageDto {
       messageType: json['message_type'] as String? ?? '',
       body: json['body'] as String? ?? '',
       media: mediaList,
+      replyToMessageId: replyTrimmed.isEmpty ? null : replyTrimmed,
+      forwardedFromUserId: fwdTrimmed.isEmpty ? null : fwdTrimmed,
+      deletedAt: _parseDate(json['deleted_at']),
+      deletedByUserId: delByTrimmed.isEmpty ? null : delByTrimmed,
       createdAt: _parseDate(json['created_at']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       viewerMessageRead: json['viewer_message_read'] as bool? ?? false,

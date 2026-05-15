@@ -645,8 +645,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             redirect: AuthGuard,
             pageBuilder: (context, state) {
               final chatId = state.pathParameters['chatId'] ?? '';
+              final extra = state.extra;
+              final ChatThreadPreview? preview =
+                  extra is ChatThreadPreview ? extra : null;
               return NoTransitionPage(
-                child: ChatForwardMessagePage(chatId: chatId),
+                child: ChatForwardMessagePage(
+                  chatId: chatId,
+                  threadPreview: preview,
+                ),
               );
             },
           ),
@@ -657,8 +663,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             redirect: AuthGuard,
             pageBuilder: (context, state) {
               final chatId = state.pathParameters['chatId'] ?? '';
+              final extra = state.extra;
+              final ChatThreadPreview? preview =
+                  extra is ChatThreadPreview ? extra : null;
               return NoTransitionPage(
-                child: ChatSelectMessagePage(chatId: chatId),
+                child: ChatSelectMessagePage(
+                  chatId: chatId,
+                  threadPreview: preview,
+                ),
               );
             },
           ),
@@ -669,8 +681,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             redirect: AuthGuard,
             pageBuilder: (context, state) {
               final chatId = state.pathParameters['chatId'] ?? '';
+              final extra = state.extra;
+              final ChatThreadPreview? preview =
+                  extra is ChatThreadPreview ? extra : null;
               return NoTransitionPage(
-                child: ChatBlockedPage(chatId: chatId),
+                child: ChatBlockedPage(
+                  chatId: chatId,
+                  threadPreview: preview,
+                ),
               );
             },
           ),
@@ -681,8 +699,14 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             redirect: AuthGuard,
             pageBuilder: (context, state) {
               final chatId = state.pathParameters['chatId'] ?? '';
+              final extra = state.extra;
+              final ChatThreadPreview? preview =
+                  extra is ChatThreadPreview ? extra : null;
               return NoTransitionPage(
-                child: ChatDeletedPage(chatId: chatId),
+                child: ChatDeletedPage(
+                  chatId: chatId,
+                  threadPreview: preview,
+                ),
               );
             },
           ),

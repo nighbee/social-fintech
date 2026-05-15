@@ -5,7 +5,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/features/chats/data/sources/remote/i_chats_remote.dart';
 import 'package:app/src/features/chats/presentation/mappers/chat_thread_preview_mapper.dart';
-import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/widgets/chat_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
@@ -82,9 +82,8 @@ class _ChatsPageState extends State<ChatsPage> {
     }).toList();
   }
 
-  /// Заявки в переписку — отдельный API пока нет; оставляем блок по макету с моком (если есть).
-  List<ChatThreadPreview> get _visibleRequests =>
-      _filterThreads(ChatMockStore.requestThreads);
+  /// Заявки в переписку — отдельного эндпоинта пока нет.
+  List<ChatThreadPreview> get _visibleRequests => const <ChatThreadPreview>[];
 
   List<ChatThreadPreview> get _visibleChats => _filterThreads(_threads);
 

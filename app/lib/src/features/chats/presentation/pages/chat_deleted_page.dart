@@ -1,14 +1,17 @@
-import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/widgets/chat_widgets.dart';
 import 'package:flutter/material.dart';
 
 class ChatDeletedPage extends StatefulWidget {
   const ChatDeletedPage({
     required this.chatId,
+    this.threadPreview,
     super.key,
   });
 
   final String chatId;
+  final ChatThreadPreview? threadPreview;
 
   @override
   State<ChatDeletedPage> createState() => _ChatDeletedPageState();
@@ -17,12 +20,19 @@ class ChatDeletedPage extends StatefulWidget {
 class _ChatDeletedPageState extends State<ChatDeletedPage> {
   late final ChatThreadPreview _thread;
   late final TextEditingController _messageController;
-  List<ChatMessageUiModel> _messages = <ChatMessageUiModel>[];
 
   @override
   void initState() {
     super.initState();
-    _thread = ChatMockStore.threadById(widget.chatId);
+    _thread = widget.threadPreview ??
+        ChatThreadPreview(
+          id: widget.chatId.trim(),
+          displayName: 'Чат',
+          rankLine: '',
+          lastSeenLabel: '',
+          timeLabel: '',
+          avatarUrl: '',
+        );
     _messageController = TextEditingController();
   }
 
@@ -33,33 +43,7 @@ class _ChatDeletedPageState extends State<ChatDeletedPage> {
   }
 
   void _sendMessage() {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) {
-      return;
-    }
-
-    setState(() {
-      _messages = [
-        ..._messages,
-        ChatMessageUiModel(
-          id: ChatMockStore.newMessageId(widget.chatId, _messages.length + 1),
-          direction: ChatMessageDirection.outgoing,
-          text: text,
-          timeLabel: _buildTimeLabel(),
-          createdAt: DateTime.now(),
-          outgoingReceipt: ChatOutgoingReceipt.read,
-        ),
-      ];
-    });
-
     _messageController.clear();
-  }
-
-  String _buildTimeLabel() {
-    final now = DateTime.now();
-    final hours = now.hour.toString().padLeft(2, '0');
-    final minutes = now.minute.toString().padLeft(2, '0');
-    return '$hours:$minutes';
   }
 
   @override
@@ -75,16 +59,16 @@ class _ChatDeletedPageState extends State<ChatDeletedPage> {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-          child: _messages.isEmpty
-              ? const Center(
-                  child: ChatCenteredStatusCard(
-                    message: 'Send a message to start the chat',
-                  ),
-                )
-              : ChatConversationMessageList(
-                  messages: _messages,
-                  padding: EdgeInsets.zero,
-                ),
+          child: Center(
+            child: Text(
+              'Удаление чата из списка будет через API. Здесь пока заглушка.',
+              textAlign: TextAlign.center,
+              style: TextStyles.bodyLarge.copyWith(
+                color: AppColors.textBrand.withValues(alpha: 0.72),
+                height: 1.45,
+              ),
+            ),
+          ),
         ),
       ),
     );

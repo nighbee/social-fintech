@@ -10,7 +10,7 @@ import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/chats/data/models/message_dto.dart';
 import 'package:app/src/features/chats/data/sources/remote/i_chats_remote.dart';
 import 'package:app/src/features/chats/presentation/mappers/chat_message_api_mapper.dart';
-import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/widgets/chat_widgets.dart';
 import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
 import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
@@ -60,7 +60,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   IProfileRemote get _profileRemote =>
       getIt<IProfileRemote>(instanceName: 'ProfileRemoteImpl');
 
-  bool get _useBackend =>
+  bool get _isRealConversation =>
       chatConversationIdLooksLikeUuid(widget.chatId.trim());
 
   String? _currentUserId() {
@@ -96,7 +96,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       );
 
   void _remapMessagesFromRemoteDtos() {
-    if (!_useBackend || _remoteMessageDtos.isEmpty) {
+    if (!_isRealConversation || _remoteMessageDtos.isEmpty) {
       return;
     }
     final uid = _currentUserId();
@@ -118,26 +118,28 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   void initState() {
     super.initState();
     _thread = widget.threadPreview ??
-        (_useBackend
-            ? ChatThreadPreview(
-                id: widget.chatId,
-                displayName: 'Chat',
-                rankLine: '',
-                lastSeenLabel: '',
-                timeLabel: '',
-                avatarUrl: '',
-              )
-            : ChatMockStore.threadById(widget.chatId));
+        ChatThreadPreview(
+          id: widget.chatId.trim(),
+          displayName: 'Чат',
+          rankLine: '',
+          lastSeenLabel: '',
+          timeLabel: '',
+          avatarUrl: '',
+        );
     _messageController = TextEditingController();
-    _messages = _useBackend
-        ? <ChatMessageUiModel>[]
-        : List<ChatMessageUiModel>.from(
-            ChatMockStore.baseMessages(widget.chatId),
-          );
-    if (_useBackend) {
+    _messages = <ChatMessageUiModel>[];
+    if (_isRealConversation) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_loadRemoteMessages());
         unawaited(_enrichHeaderFromProfile());
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          setState(() {
+            _remoteError = 'Некорректный идентификатор чата';
+          });
+        }
       });
     }
   }
@@ -207,17 +209,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     return 'Сообщение';
   }
 
-  String _composeBodyWithOptionalReply(String userText) {
-    final d = _replyDraft;
-    if (d == null) {
-      return userText;
-    }
-    final ref = 'Ответ «${d.excerpt}» · ${d.authorLabel}';
-    final body = userText.trim();
-    if (body.isEmpty) {
-      return ref;
-    }
-    return '$ref\n\n$body';
+  /// Текст тела для API: без префикса в теле — ответ задаётся `reply_to_message_id`.
+  String _outgoingBodyForBackend(String userText) {
+    return userText.trim();
   }
 
   void _onMessageLongPress(ChatMessageUiModel m) {
@@ -227,6 +221,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   void _openMessageActionsForModel(ChatMessageUiModel m) {
     final isSystem = m.messageType == 'system';
     final canCopy = _messageExcerpt(m).trim().isNotEmpty;
+    final partner = _thread.displayName.trim().isEmpty
+        ? 'собеседника'
+        : _thread.displayName.trim();
 
     showModalBottomSheet<void>(
       context: context,
@@ -235,57 +232,70 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (BuildContext ctx) {
+        Widget row({
+          required String label,
+          required IconData icon,
+          Color? textColor,
+          Color? iconColor,
+          required VoidCallback onTap,
+        }) {
+          final tc = textColor ?? AppColors.textBrand;
+          final ic = iconColor ?? AppColors.textBrand.withValues(alpha: 0.9);
+          return InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyles.bodyLarge.copyWith(color: tc),
+                    ),
+                  ),
+                  Icon(icon, color: ic, size: 22),
+                ],
+              ),
+            ),
+          );
+        }
+
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               if (!isSystem)
-                ListTile(
-                  leading: Icon(
-                    Icons.reply_rounded,
-                    color: AppColors.textBrand.withValues(alpha: 0.9),
-                  ),
-                  title: Text(
-                    'Ответить',
-                    style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
-                  ),
+                row(
+                  label: 'Ответить',
+                  icon: Icons.reply_rounded,
                   onTap: () {
                     Navigator.pop(ctx);
                     setState(() {
                       _replyDraft = _ChatReplyDraft(
                         authorLabel: _replyLabelForMessage(m),
                         excerpt: _messageExcerpt(m),
+                        replyToMessageId:
+                            m.id.trim().isEmpty ? null : m.id.trim(),
                       );
                     });
                   },
                 ),
-              ListTile(
-                leading: Icon(
-                  Icons.forward_rounded,
-                  color: AppColors.textBrand.withValues(alpha: 0.9),
-                ),
-                title: Text(
-                  'Переслать',
-                  style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
-                ),
+              row(
+                label: 'Переслать',
+                icon: Icons.forward_rounded,
                 onTap: () {
                   Navigator.pop(ctx);
                   context.pushNamed(
                     RouteNames.chatConversationForward,
                     pathParameters: <String, String>{'chatId': widget.chatId},
+                    extra: _thread,
                   );
                 },
               ),
               if (canCopy)
-                ListTile(
-                  leading: Icon(
-                    Icons.copy_rounded,
-                    color: AppColors.textBrand.withValues(alpha: 0.9),
-                  ),
-                  title: Text(
-                    'Копировать',
-                    style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
-                  ),
+                row(
+                  label: 'Копировать',
+                  icon: Icons.copy_rounded,
                   onTap: () {
                     final clip = m.text.trim().isNotEmpty
                         ? m.text
@@ -297,69 +307,44 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     );
                   },
                 ),
-              ListTile(
-                leading: Icon(
-                  Icons.push_pin_outlined,
-                  color: AppColors.textBrand.withValues(alpha: 0.42),
+              if (!isSystem)
+                row(
+                  label: 'Закрепить',
+                  icon: Icons.push_pin_outlined,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    unawaited(_pinMessageFromMenu(m.id));
+                  },
                 ),
-                title: Text(
-                  'Закрепить',
-                  style: TextStyles.bodyLarge.copyWith(
-                    color: AppColors.textBrand.withValues(alpha: 0.52),
-                  ),
+              if (!isSystem)
+                row(
+                  label: 'Удалить',
+                  icon: Icons.delete_outline_rounded,
+                  textColor: const Color(0xFFEF4444),
+                  iconColor: const Color(0xFFEF4444),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _openDeleteMessageSheet(m, partner);
+                      }
+                    });
+                  },
                 ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Закрепление в API пока не поддерживается',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              ListTile(
-                leading: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: Color(0xFFEF4444),
-                ),
-                title: Text(
-                  'Удалить',
-                  style: TextStyles.bodyLarge.copyWith(
-                    color: const Color(0xFFEF4444),
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Удаление сообщений в API пока не поддерживается',
-                      ),
-                    ),
-                  );
-                },
-              ),
               Divider(
                 height: 1,
                 thickness: 1,
                 color: Colors.white.withValues(alpha: 0.08),
               ),
-              ListTile(
-                leading: Icon(
-                  Icons.select_all_rounded,
-                  color: AppColors.textBrand.withValues(alpha: 0.9),
-                ),
-                title: Text(
-                  'Выбрать',
-                  style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
-                ),
+              row(
+                label: 'Выбрать',
+                icon: Icons.check_circle_outline_rounded,
                 onTap: () {
                   Navigator.pop(ctx);
                   context.pushNamed(
                     RouteNames.chatConversationSelect,
                     pathParameters: <String, String>{'chatId': widget.chatId},
+                    extra: _thread,
                   );
                 },
               ),
@@ -370,30 +355,156 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
+  Future<void> _pinMessageFromMenu(String messageId) async {
+    if (!mounted || !_isRealConversation) {
+      return;
+    }
+    final res = await _remote.pinMessage(
+      conversationId: widget.chatId.trim(),
+      messageId: messageId,
+    );
+    if (!mounted) {
+      return;
+    }
+    res.fold(
+      (DomainException e) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message))),
+      (_) async {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Сообщение закреплено')),
+        );
+        await _loadPinnedMessages();
+      },
+    );
+  }
+
+  void _openDeleteMessageSheet(ChatMessageUiModel m, String partnerName) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF252529),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (BuildContext ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            ListTile(
+              title: Text(
+                'Удалить у $partnerName',
+                style: TextStyles.bodyLarge.copyWith(
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                unawaited(_deleteMessageApi(m.id, forBoth: true));
+              },
+            ),
+            ListTile(
+              title: Text(
+                'Удалить у меня',
+                style: TextStyles.bodyLarge.copyWith(
+                  color: const Color(0xFFEF4444),
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                unawaited(_deleteMessageApi(m.id, forBoth: false));
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteMessageApi(String messageId, {required bool forBoth}) async {
+    if (!mounted || !_isRealConversation) {
+      return;
+    }
+    final res = await _remote.deleteMessage(
+      conversationId: widget.chatId.trim(),
+      messageId: messageId,
+      forBoth: forBoth,
+    );
+    if (!mounted) {
+      return;
+    }
+    res.fold(
+      (DomainException e) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.message))),
+      (_) async {
+        await _loadRemoteMessages();
+        await _loadPinnedMessages();
+      },
+    );
+  }
+
+  Future<void> _loadPinnedMessages() async {
+    if (!_isRealConversation) {
+      return;
+    }
+    final r = await _remote.listPinnedMessages(
+      conversationId: widget.chatId.trim(),
+    );
+    if (!mounted) {
+      return;
+    }
+    r.fold((_) {}, (dto) {
+      if (dto.items.isEmpty) {
+        setState(() {
+          _thread = _thread.copyWith(
+            pinnedMessagePreview: null,
+            pinnedMessageId: null,
+          );
+        });
+        return;
+      }
+      final p = dto.items.first;
+      final text = p.messageBody.trim();
+      if (text.isEmpty) {
+        return;
+      }
+      setState(() {
+        _thread = _thread.copyWith(
+          pinnedMessagePreview:
+              text.length > 160 ? '${text.substring(0, 157)}…' : text,
+          pinnedMessageId:
+              p.messageId.trim().isEmpty ? null : p.messageId.trim(),
+        );
+      });
+    });
+  }
+
   void _handleMenuSelection(String value) {
     switch (value) {
       case 'forward':
         context.pushNamed(
           RouteNames.chatConversationForward,
           pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
         );
         return;
       case 'select':
         context.pushNamed(
           RouteNames.chatConversationSelect,
           pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
         );
         return;
       case 'block':
         context.pushNamed(
           RouteNames.chatConversationBlocked,
           pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
         );
         return;
       case 'delete':
         context.pushNamed(
           RouteNames.chatConversationDeleted,
           pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
         );
         return;
     }
@@ -445,6 +556,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
             ),
           );
         }
+        unawaited(_loadPinnedMessages());
       },
     );
   }
@@ -465,7 +577,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   Future<void> _onPickAttachment() async {
-    if (!_useBackend || _sending) {
+    if (!_isRealConversation || _sending) {
       return;
     }
     await ImagePickerHelper.showMediaPicker(
@@ -514,7 +626,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       return;
     }
     final trimmedCaption = caption.trim();
-    final bodyForApi = _composeBodyWithOptionalReply(trimmedCaption);
+    final bodyForApi = _outgoingBodyForBackend(trimmedCaption);
     final idempotencyKey = const Uuid().v4();
     final result = await _remote.sendMessage(
       conversationId: widget.chatId.trim(),
@@ -527,6 +639,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           thumbnailUrl: uploaded.thumbnailUrl,
         ),
       ]),
+      replyToMessageId: _replyDraft?.replyToMessageId,
     );
     if (!mounted) {
       return;
@@ -557,7 +670,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   }
 
   void _onMicrophoneTap() {
-    if (!_useBackend) {
+    if (!_isRealConversation) {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
@@ -576,7 +689,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       return;
     }
 
-    if (_useBackend && _pendingMedia != null) {
+    if (_isRealConversation && _pendingMedia != null) {
       await _uploadAndSend(
         _pendingMedia!.bytes,
         _pendingMedia!.fileName,
@@ -589,23 +702,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       return;
     }
 
-    if (!_useBackend) {
-      final composed = _composeBodyWithOptionalReply(text);
-      setState(() {
-        _messages = [
-          ..._messages,
-          ChatMessageUiModel(
-            id: ChatMockStore.newMessageId(widget.chatId, _messages.length + 1),
-            direction: ChatMessageDirection.outgoing,
-            text: composed,
-            timeLabel: _buildTimeLabel(),
-            createdAt: DateTime.now(),
-            outgoingReceipt: ChatOutgoingReceipt.read,
-          ),
-        ];
-        _replyDraft = null;
-      });
-      _messageController.clear();
+    if (!_isRealConversation) {
       return;
     }
 
@@ -613,8 +710,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     final idempotencyKey = const Uuid().v4();
     final result = await _remote.sendMessage(
       conversationId: widget.chatId.trim(),
-      body: _composeBodyWithOptionalReply(text),
+      body: _outgoingBodyForBackend(text),
       idempotencyKey: idempotencyKey,
+      replyToMessageId: _replyDraft?.replyToMessageId,
     );
     if (!mounted) {
       return;
@@ -642,13 +740,6 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         });
       },
     );
-  }
-
-  String _buildTimeLabel() {
-    final now = DateTime.now();
-    final hours = now.hour.toString().padLeft(2, '0');
-    final minutes = now.minute.toString().padLeft(2, '0');
-    return '$hours:$minutes';
   }
 
   @override
@@ -687,7 +778,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                         setState(() => _replyDraft = null);
                       },
                     ),
-                  if (_useBackend && _pendingMedia != null)
+                  if (_isRealConversation && _pendingMedia != null)
                     _ChatPendingMediaStrip(
                       data: _pendingMedia!,
                       onRemove: () {
@@ -701,9 +792,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     controller: _messageController,
                     onSend: _sendMessage,
                     sendEnabled: !_sending,
-                    hasPendingAttachment: _useBackend && _pendingMedia != null,
-                    onAttachmentTap: _useBackend ? _onPickAttachment : null,
-                    onMicrophoneTap: _useBackend ? _onMicrophoneTap : null,
+                    hasPendingAttachment: _isRealConversation && _pendingMedia != null,
+                    onAttachmentTap: _isRealConversation ? _onPickAttachment : null,
+                    onMicrophoneTap: _isRealConversation ? _onMicrophoneTap : null,
                   ),
                 ],
               ),
@@ -713,9 +804,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       ),
       child: SafeArea(
         top: false,
-        child: _useBackend && _loadingRemote
+        child: _isRealConversation && _loadingRemote
             ? const Center(child: CircularProgressIndicator())
-            : _useBackend && _remoteError != null && _messages.isEmpty
+            : _isRealConversation && _remoteError != null && _messages.isEmpty
                 ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
@@ -738,7 +829,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                 : ChatConversationMessageList(
                     messages: _messages,
                     onMessageLongPress: _onMessageLongPress,
-                    emptyState: _useBackend &&
+                    emptyState: _isRealConversation &&
                             !_loadingRemote &&
                             _remoteError == null &&
                             _messages.isEmpty
@@ -750,7 +841,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                               chatThreadComposerStackBottomPadding(
                                 context,
                                 hasPendingAttachment:
-                                    _useBackend && _pendingMedia != null,
+                                    _isRealConversation && _pendingMedia != null,
                                 hasReplyDraft: _replyDraft != null,
                               ),
                             ),
@@ -769,7 +860,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                       chatThreadComposerStackBottomPadding(
                         context,
                         hasPendingAttachment:
-                            _useBackend && _pendingMedia != null,
+                            _isRealConversation && _pendingMedia != null,
                         hasReplyDraft: _replyDraft != null,
                       ),
                     ),
@@ -777,7 +868,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       ),
     );
 
-    if (!_useBackend) {
+    if (!_isRealConversation) {
       return scaffold;
     }
 
@@ -820,10 +911,12 @@ class _ChatReplyDraft {
   _ChatReplyDraft({
     required this.authorLabel,
     required this.excerpt,
+    this.replyToMessageId,
   });
 
   final String authorLabel;
   final String excerpt;
+  final String? replyToMessageId;
 }
 
 class _ChatReplyDraftStrip extends StatelessWidget {
@@ -848,11 +941,11 @@ class _ChatReplyDraftStrip extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Container(
-              width: 3,
+              width: 2,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFFC6A25C),
-                borderRadius: BorderRadius.circular(2),
+                color: AppColors.textBrand.withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(1),
               ),
             ),
             const Gap(10),

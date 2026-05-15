@@ -1,5 +1,5 @@
 import 'package:app/src/features/chats/data/models/message_dto.dart';
-import 'package:app/src/features/chats/presentation/models/chat_mock_models.dart';
+import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 
 /// Backend: `message_type` `user` | `system` ([backend/internal/modules/chat/entity.go]).
 class ChatMessageApiMapper {
@@ -37,6 +37,14 @@ class ChatMessageApiMapper {
         )
         .toList(growable: false);
 
+    final fwd = dto.forwardedFromUserId?.trim() ?? '';
+    final ChatForwardedSnippet? forwarded = fwd.isEmpty
+        ? null
+        : const ChatForwardedSnippet(
+            senderName: 'Переслано',
+            senderAvatarUrl: '',
+          );
+
     return ChatMessageUiModel(
       id: dto.id,
       direction: direction,
@@ -45,6 +53,7 @@ class ChatMessageApiMapper {
       createdAt: dto.createdAt.toLocal(),
       messageType: dto.messageType,
       media: media,
+      forwardedSnippet: forwarded,
       outgoingReceipt: receipt,
     );
   }
@@ -86,6 +95,9 @@ class ChatMessageApiMapper {
   }
 
   static String _displayText(MessageDto dto) {
+    if (dto.deletedAt != null) {
+      return 'Сообщение удалено';
+    }
     final body = dto.body.trim();
     if (body.isNotEmpty) {
       return dto.body;

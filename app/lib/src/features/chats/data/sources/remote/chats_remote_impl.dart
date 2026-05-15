@@ -101,12 +101,19 @@ class ChatsRemoteImpl implements IChatsRemote {
     required String body,
     required String idempotencyKey,
     List<Map<String, dynamic>> media = const [],
+    String? replyToMessageId,
+    String? forwardedFromUserId,
   }) async {
     try {
       final payload = <String, dynamic>{
         'body': body,
         'media': media,
         'idempotency_key': idempotencyKey,
+        if (replyToMessageId != null && replyToMessageId.trim().isNotEmpty)
+          'reply_to_message_id': replyToMessageId.trim(),
+        if (forwardedFromUserId != null &&
+            forwardedFromUserId.trim().isNotEmpty)
+          'forwarded_from_user_id': forwardedFromUserId.trim(),
       };
       final response = await _restClient.post(
         EndPoints.chatsConversationMessages(conversationId),
@@ -137,6 +144,77 @@ class ChatsRemoteImpl implements IChatsRemote {
       final response = await _restClient.post(
         EndPoints.chatsConversationRead(conversationId),
         data: body.isEmpty ? <String, dynamic>{} : body,
+      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ListPinnedMessagesResponseDto>> listPinnedMessages({
+    required String conversationId,
+  }) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.chatsConversationPinnedMessages(conversationId),
+      );
+      return response.fold((error) => Left(error), (result) {
+        final data = result.data;
+        if (data is! Map<String, dynamic>) {
+          return Left(
+            UnknownException(message: 'Invalid pinned messages response'),
+          );
+        }
+        return Right(ListPinnedMessagesResponseDto.fromJson(data));
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> pinMessage({
+    required String conversationId,
+    required String messageId,
+  }) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.chatsConversationPinMessage(conversationId),
+        data: <String, dynamic>{'message_id': messageId.trim()},
+      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> unpinMessage({
+    required String conversationId,
+    required String messageId,
+  }) async {
+    try {
+      final response = await _restClient.delete(
+        EndPoints.chatsConversationPinMessage(conversationId),
+        data: <String, dynamic>{'message_id': messageId.trim()},
+      );
+      return response.fold((error) => Left(error), (_) => const Right(null));
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> deleteMessage({
+    required String conversationId,
+    required String messageId,
+    bool forBoth = false,
+  }) async {
+    try {
+      final response = await _restClient.delete(
+        EndPoints.chatsConversationMessage(conversationId, messageId),
+        data: forBoth ? <String, dynamic>{'for_both': true} : null,
       );
       return response.fold((error) => Left(error), (_) => const Right(null));
     } catch (e) {

@@ -26,11 +26,33 @@ abstract class IChatsRemote {
     required String body,
     required String idempotencyKey,
     List<Map<String, dynamic>> media = const [],
+    String? replyToMessageId,
+    String? forwardedFromUserId,
   });
 
   /// POST `/chats/conversations/{id}/read` — отметить прочитанным (тело опционально).
   Future<Either<DomainException, void>> markConversationRead({
     required String conversationId,
     String? lastReadMessageId,
+  });
+
+  Future<Either<DomainException, ListPinnedMessagesResponseDto>> listPinnedMessages({
+    required String conversationId,
+  });
+
+  Future<Either<DomainException, void>> pinMessage({
+    required String conversationId,
+    required String messageId,
+  });
+
+  Future<Either<DomainException, void>> unpinMessage({
+    required String conversationId,
+    required String messageId,
+  });
+
+  Future<Either<DomainException, void>> deleteMessage({
+    required String conversationId,
+    required String messageId,
+    bool forBoth = false,
   });
 }

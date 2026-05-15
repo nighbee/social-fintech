@@ -1,3 +1,45 @@
+/// Mirrors [backend/internal/modules/chat/entity.go] `PinnedMessage` JSON.
+class PinnedMessageDto {
+  const PinnedMessageDto({
+    required this.id,
+    required this.conversationId,
+    required this.messageId,
+    required this.pinnedBy,
+    required this.pinnedAt,
+    required this.messageBody,
+    this.senderId,
+  });
+
+  final String id;
+  final String conversationId;
+  final String messageId;
+  final String pinnedBy;
+  final DateTime pinnedAt;
+  final String messageBody;
+  final String? senderId;
+
+  factory PinnedMessageDto.fromJson(Map<String, dynamic> json) {
+    return PinnedMessageDto(
+      id: json['id'] as String? ?? '',
+      conversationId: json['conversation_id'] as String? ?? '',
+      messageId: json['message_id'] as String? ?? '',
+      pinnedBy: json['pinned_by'] as String? ?? '',
+      pinnedAt: _parseDate(json['pinned_at']) ??
+          DateTime.fromMillisecondsSinceEpoch(0),
+      messageBody: json['message_body'] as String? ?? '',
+      senderId: json['sender_id'] as String?,
+    );
+  }
+
+  static DateTime? _parseDate(Object? value) {
+    if (value == null) return null;
+    if (value is String && value.trim().isNotEmpty) {
+      return DateTime.tryParse(value.trim());
+    }
+    return null;
+  }
+}
+
 /// Mirrors [backend/internal/modules/chat/entity.go] `Conversation` JSON.
 class ConversationDto {
   const ConversationDto({
@@ -18,6 +60,11 @@ class ConversationDto {
     this.otherRankTier,
     this.lastReadAt,
     this.otherParticipantReadAt,
+    this.pinnedCount = 0,
+    this.pinnedMessages = const <PinnedMessageDto>[],
+    this.isMuted = false,
+    this.isPinned = false,
+    this.clearedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -39,10 +86,22 @@ class ConversationDto {
   final String? otherRankTier;
   final DateTime? lastReadAt;
   final DateTime? otherParticipantReadAt;
+  final int pinnedCount;
+  final List<PinnedMessageDto> pinnedMessages;
+  final bool isMuted;
+  final bool isPinned;
+  final DateTime? clearedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
   factory ConversationDto.fromJson(Map<String, dynamic> json) {
+    final rawPins = json['pinned_messages'];
+    final pins = rawPins is List<dynamic>
+        ? rawPins
+            .map((e) => PinnedMessageDto.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false)
+        : <PinnedMessageDto>[];
+
     return ConversationDto(
       id: json['id'] as String? ?? '',
       kind: json['kind'] as String? ?? '',
@@ -61,6 +120,11 @@ class ConversationDto {
       otherRankTier: json['other_rank_tier'] as String?,
       lastReadAt: _parseDate(json['last_read_at']),
       otherParticipantReadAt: _parseDate(json['other_participant_read_at']),
+      pinnedCount: (json['pinned_count'] as num?)?.toInt() ?? 0,
+      pinnedMessages: pins,
+      isMuted: json['is_muted'] as bool? ?? false,
+      isPinned: json['is_pinned'] as bool? ?? false,
+      clearedAt: _parseDate(json['cleared_at']),
       createdAt: _parseDate(json['created_at']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: _parseDate(json['updated_at']) ??
@@ -97,5 +161,22 @@ class ListConversationsResponseDto {
       items: list,
       nextCursor: json['next_cursor'] as String? ?? '',
     );
+  }
+}
+
+/// Ответ `GET /chats/conversations/{id}/pinned-messages`.
+class ListPinnedMessagesResponseDto {
+  const ListPinnedMessagesResponseDto({required this.items});
+
+  final List<PinnedMessageDto> items;
+
+  factory ListPinnedMessagesResponseDto.fromJson(Map<String, dynamic> json) {
+    final raw = json['items'];
+    final list = raw is List<dynamic>
+        ? raw
+            .map((e) => PinnedMessageDto.fromJson(e as Map<String, dynamic>))
+            .toList(growable: false)
+        : <PinnedMessageDto>[];
+    return ListPinnedMessagesResponseDto(items: list);
   }
 }
