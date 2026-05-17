@@ -41,6 +41,15 @@ const (
 	KindMessageReceived Kind = "message_received"
 )
 
+type UITab string 
+const(
+	UITabRecognition UITab = "RECOGNITION"
+	UITabActivity UITab = "ACTIVITY"
+	UITabTasks UITab = "TASKS"
+	UITabRank UITab = "RANK"
+	UITabSystem UITab = "SYSTEM"
+)
+
 // Notification is the durable inbox row backing the bell icon.
 type Notification struct {
 	ID        uuid.UUID       `db:"id" json:"id"`
@@ -51,6 +60,14 @@ type Notification struct {
 	Payload   json.RawMessage `db:"payload" json:"payload" swaggertype:"object"`
 	ReadAt    *time.Time      `db:"read_at" json:"read_at,omitempty"`
 	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+	UITab       UITab           `db:"ui_tab" json:"ui_tab"`
+	IsImportant bool            `db:"is_important" json:"is_important"`
+	BadgeStatus *string         `db:"badge_status" json:"badge_status,omitempty"`
+	DeepLink    string          `db:"deep_link" json:"deep_link"`
+	GroupKey    *string         `db:"group_key" json:"group_key,omitempty"`
+	ActorIDs    json.RawMessage `db:"actor_ids" json:"actor_ids"`
+	GroupCount  int             `db:"group_count" json:"group_count"`
+	UpdatedAt   time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 // ListResponse pages over the user's inbox.
@@ -68,11 +85,17 @@ type UnreadCountResponse struct {
 // Enqueue is the canonical helper input used by other modules to fire
 // a notification without dealing with JSON marshalling boilerplate.
 type Enqueue struct {
-	UserID  uuid.UUID
-	Kind    Kind
-	Title   string
-	Body    string
-	Payload map[string]any
+	UserID      uuid.UUID
+	Kind        Kind
+	Title       string
+	Body        string
+	Payload     map[string]any
+	UITab       UITab
+	IsImportant bool
+	BadgeStatus *string
+	DeepLink    string
+	GroupKey    *string
+	ActorIDs    []string
 }
 
 // DevicePlatform represents the mobile OS.

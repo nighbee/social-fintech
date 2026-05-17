@@ -11,7 +11,8 @@ import (
 
 type Repository interface {
 	Insert(ctx context.Context, n *Notification) error
-	List(ctx context.Context, userID uuid.UUID, cursor *time.Time, limit int) ([]Notification, *time.Time, error)
+	Upsert(ctx context.Context, n *Notification) error
+	List(ctx context.Context, userID uuid.UUID, tab *UITab, cursor *time.Time, limit int) ([]Notification, *time.Time, error)
 	UnreadCount(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkRead(ctx context.Context, userID, notificationID uuid.UUID, readAt time.Time) error
 	MarkAllRead(ctx context.Context, userID uuid.UUID, readAt time.Time) error
@@ -35,58 +36,143 @@ func (r *PostgresRepository) Insert(ctx context.Context, n *Notification) error 
 	if n.ID == uuid.Nil {
 		n.ID = uuid.New()
 	}
+	now := time.Now().UTC()
 	if n.CreatedAt.IsZero() {
-		n.CreatedAt = time.Now().UTC()
+		n.CreatedAt = now
 	}
+	n.UpdatedAt = now
+
 	payload := []byte(n.Payload)
 	if len(payload) == 0 {
 		payload = []byte("{}")
 	}
+	actorIDs := []byte(n.ActorIDs)
+	if len(actorIDs) == 0 {
+		actorIDs = []byte("[]")
+	}
+
 	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO notifications (id, user_id, kind, title, body, payload, created_at)
-		VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6::jsonb, $7)
+		INSERT INTO notifications
+			(id, user_id, kind, title, body, payload,
+			 ui_tab, is_important, badge_status, deep_link,
+			 group_key, actor_ids, group_count, created_at, updated_at)
+		VALUES
+			($1, $2, $3, $4, NULLIF($5,''), $6::jsonb,
+			 $7, $8, $9, $10,
+			 $11, $12::jsonb, 1, $13, $14)
 	`,
-		n.ID, n.UserID, string(n.Kind), n.Title, n.Body, string(payload), n.CreatedAt,
+		n.ID, n.UserID, string(n.Kind), n.Title, n.Body, string(payload),
+		string(n.UITab), n.IsImportant, n.BadgeStatus, n.DeepLink,
+		n.GroupKey, string(actorIDs), n.CreatedAt, n.UpdatedAt,
 	)
 	return err
 }
 
-func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, cursor *time.Time, limit int) ([]Notification, *time.Time, error) {
+// Upsert atomically merges grouped notifications (e.g. post likes).
+// If an unread row with the same (user_id, group_key) exists it merges;
+// otherwise it inserts a fresh row. Safe under concurrent writers.
+func (r *PostgresRepository) Upsert(ctx context.Context, n *Notification) error {
+	if n.ID == uuid.Nil {
+		n.ID = uuid.New()
+	}
+	now := time.Now().UTC()
+	if n.CreatedAt.IsZero() {
+		n.CreatedAt = now
+	}
+	n.UpdatedAt = now
+
+	payload := []byte(n.Payload)
+	if len(payload) == 0 {
+		payload = []byte("{}")
+	}
+	actorIDs := []byte(n.ActorIDs)
+	if len(actorIDs) == 0 {
+		actorIDs = []byte("[]")
+	}
+
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO notifications
+			(id, user_id, kind, title, body, payload,
+			 ui_tab, is_important, badge_status, deep_link,
+			 group_key, actor_ids, group_count, created_at, updated_at)
+		VALUES
+			($1, $2, $3, $4, NULLIF($5,''), $6::jsonb,
+			 $7, $8, $9, $10,
+			 $11, $12::jsonb, 1, $13, $14)
+		ON CONFLICT (user_id, group_key) WHERE read_at IS NULL
+		DO UPDATE SET
+			actor_ids   = notifications.actor_ids || EXCLUDED.actor_ids,
+			group_count = notifications.group_count + 1,
+			title       = EXCLUDED.title,
+			updated_at  = NOW()
+	`,
+		n.ID, n.UserID, string(n.Kind), n.Title, n.Body, string(payload),
+		string(n.UITab), n.IsImportant, n.BadgeStatus, n.DeepLink,
+		n.GroupKey, string(actorIDs), n.CreatedAt, n.UpdatedAt,
+	)
+	return err
+}
+
+func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, tab *UITab, cursor *time.Time, limit int) ([]Notification, *time.Time, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 30
 	}
 
-	const cursoredQuery = `
-		SELECT id, user_id, kind, title, COALESCE(body, '') AS body, payload, read_at, created_at
-		FROM notifications
-		WHERE user_id = $1 AND created_at < $2
-		ORDER BY created_at DESC
-		LIMIT $3
-	`
-	const firstPageQuery = `
-		SELECT id, user_id, kind, title, COALESCE(body, '') AS body, payload, read_at, created_at
-		FROM notifications
-		WHERE user_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2
-	`
-
-	var rows []struct {
-		ID        uuid.UUID       `db:"id"`
-		UserID    uuid.UUID       `db:"user_id"`
-		Kind      string          `db:"kind"`
-		Title     string          `db:"title"`
-		Body      string          `db:"body"`
-		Payload   json.RawMessage `db:"payload"`
-		ReadAt    *time.Time      `db:"read_at"`
-		CreatedAt time.Time       `db:"created_at"`
-	}
-
+	// All tab: no ui_tab filter, sort by is_important DESC then updated_at DESC.
+	// Specific tab: filter by ui_tab, sort by updated_at DESC.
+	var rows []Notification
 	var err error
-	if cursor != nil {
-		err = r.db.SelectContext(ctx, &rows, cursoredQuery, userID, *cursor, limit+1)
+
+	if tab == nil {
+		// All tab
+		if cursor != nil {
+			err = r.db.SelectContext(ctx, &rows, `
+				SELECT id, user_id, kind, title, COALESCE(body,'') AS body, payload,
+				       read_at, created_at, updated_at,
+				       ui_tab, is_important, badge_status, deep_link,
+				       group_key, actor_ids, group_count
+				FROM notifications
+				WHERE user_id = $1 AND updated_at < $2
+				ORDER BY is_important DESC, updated_at DESC
+				LIMIT $3
+			`, userID, *cursor, limit+1)
+		} else {
+			err = r.db.SelectContext(ctx, &rows, `
+				SELECT id, user_id, kind, title, COALESCE(body,'') AS body, payload,
+				       read_at, created_at, updated_at,
+				       ui_tab, is_important, badge_status, deep_link,
+				       group_key, actor_ids, group_count
+				FROM notifications
+				WHERE user_id = $1
+				ORDER BY is_important DESC, updated_at DESC
+				LIMIT $2
+			`, userID, limit+1)
+		}
 	} else {
-		err = r.db.SelectContext(ctx, &rows, firstPageQuery, userID, limit+1)
+		// Specific tab
+		if cursor != nil {
+			err = r.db.SelectContext(ctx, &rows, `
+				SELECT id, user_id, kind, title, COALESCE(body,'') AS body, payload,
+				       read_at, created_at, updated_at,
+				       ui_tab, is_important, badge_status, deep_link,
+				       group_key, actor_ids, group_count
+				FROM notifications
+				WHERE user_id = $1 AND ui_tab = $2 AND updated_at < $3
+				ORDER BY updated_at DESC
+				LIMIT $4
+			`, userID, string(*tab), *cursor, limit+1)
+		} else {
+			err = r.db.SelectContext(ctx, &rows, `
+				SELECT id, user_id, kind, title, COALESCE(body,'') AS body, payload,
+				       read_at, created_at, updated_at,
+				       ui_tab, is_important, badge_status, deep_link,
+				       group_key, actor_ids, group_count
+				FROM notifications
+				WHERE user_id = $1 AND ui_tab = $2
+				ORDER BY updated_at DESC
+				LIMIT $3
+			`, userID, string(*tab), limit+1)
+		}
 	}
 	if err != nil {
 		return nil, nil, err
@@ -94,25 +180,11 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, cursor 
 
 	var nextCursor *time.Time
 	if len(rows) > limit {
-		boundary := rows[limit-1].CreatedAt
+		boundary := rows[limit-1].UpdatedAt
 		nextCursor = &boundary
 		rows = rows[:limit]
 	}
-
-	out := make([]Notification, 0, len(rows))
-	for _, row := range rows {
-		out = append(out, Notification{
-			ID:        row.ID,
-			UserID:    row.UserID,
-			Kind:      Kind(row.Kind),
-			Title:     row.Title,
-			Body:      row.Body,
-			Payload:   row.Payload,
-			ReadAt:    row.ReadAt,
-			CreatedAt: row.CreatedAt,
-		})
-	}
-	return out, nextCursor, nil
+	return rows, nextCursor, nil
 }
 
 func (r *PostgresRepository) UnreadCount(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -134,8 +206,7 @@ func (r *PostgresRepository) MarkRead(ctx context.Context, userID, notificationI
 
 func (r *PostgresRepository) MarkAllRead(ctx context.Context, userID uuid.UUID, readAt time.Time) error {
 	_, err := r.db.ExecContext(ctx, `
-		UPDATE notifications
-		SET read_at = $2
+		UPDATE notifications SET read_at = $2
 		WHERE user_id = $1 AND read_at IS NULL
 	`, userID, readAt)
 	return err
@@ -146,10 +217,10 @@ func (r *PostgresRepository) UpsertDeviceToken(ctx context.Context, t *DeviceTok
 		INSERT INTO device_tokens (user_id, token, platform, device_id, app_version, locale, is_active, last_seen_at)
 		VALUES ($1, $2, $3, $4, $5, $6, TRUE, NOW())
 		ON CONFLICT (token) DO UPDATE SET
-			user_id = EXCLUDED.user_id,
-			app_version = COALESCE(NULLIF(EXCLUDED.app_version, ''), device_tokens.app_version),
-			locale = COALESCE(NULLIF(EXCLUDED.locale, ''), device_tokens.locale),
-			is_active = TRUE,
+			user_id     = EXCLUDED.user_id,
+			app_version = COALESCE(NULLIF(EXCLUDED.app_version,''), device_tokens.app_version),
+			locale      = COALESCE(NULLIF(EXCLUDED.locale,''), device_tokens.locale),
+			is_active   = TRUE,
 			last_seen_at = NOW()
 	`, t.UserID, t.Token, string(t.Platform), t.DeviceID, t.AppVersion, t.Locale)
 	return err
@@ -165,8 +236,10 @@ func (r *PostgresRepository) DeactivateDeviceToken(ctx context.Context, token st
 func (r *PostgresRepository) GetActiveTokensByUserID(ctx context.Context, userID uuid.UUID) ([]DeviceToken, error) {
 	var tokens []DeviceToken
 	err := r.db.SelectContext(ctx, &tokens, `
-		SELECT id, user_id, token, platform, COALESCE(device_id, '') as device_id, 
-		       COALESCE(app_version, '') as app_version, COALESCE(locale, '') as locale,
+		SELECT id, user_id, token, platform,
+		       COALESCE(device_id,'') AS device_id,
+		       COALESCE(app_version,'') AS app_version,
+		       COALESCE(locale,'') AS locale,
 		       is_active, last_seen_at, created_at
 		FROM device_tokens
 		WHERE user_id = $1 AND is_active = TRUE
@@ -185,9 +258,21 @@ func (r *PostgresRepository) LogSentNotification(ctx context.Context, sn *SentNo
 		INSERT INTO sent_notifications (id, idempotency_key, device_token, platform, sent_at, status, error_message)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (idempotency_key, device_token) DO UPDATE SET
-			status = EXCLUDED.status,
+			status        = EXCLUDED.status,
 			error_message = EXCLUDED.error_message,
-			sent_at = EXCLUDED.sent_at
+			sent_at       = EXCLUDED.sent_at
 	`, sn.ID, sn.IdempotencyKey, sn.DeviceToken, sn.Platform, sn.SentAt, sn.Status, sn.ErrorMessage)
 	return err
+}
+
+// ensure PostgresRepository implements Repository at compile time
+var _ Repository = (*PostgresRepository)(nil)
+
+// jsonRawOrEmpty is a helper so sqlx doesn't choke on nil json.RawMessage fields.
+func jsonRawOrEmpty(v any) json.RawMessage {
+	if v == nil {
+		return json.RawMessage("{}")
+	}
+	b, _ := json.Marshal(v)
+	return b
 }

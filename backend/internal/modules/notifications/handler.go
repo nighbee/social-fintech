@@ -30,13 +30,13 @@ func requireUserID(c *fiber.Ctx) (uuid.UUID, bool) {
 
 // List godoc
 // @Summary List notifications
-// @Description Returns notifications for the current user, newest first.
-// @Description Cursor is the RFC3339 nano timestamp of the last item from the previous page.
+// @Description Returns notifications for the current user. Omit tab for the All tab.
 // @Tags Notifications
 // @Produce json
 // @Security Bearer
+// @Param tab    query string false "Tab filter: RECOGNITION, ACTIVITY, TASKS, RANK, SYSTEM"
 // @Param cursor query string false "RFC3339 nano timestamp from previous page"
-// @Param limit query int false "Page size (1-100)" default(30)
+// @Param limit  query int    false "Page size (1-100)" default(30)
 // @Success 200 {object} ListResponse
 // @Failure 401 {object} map[string]string
 // @Router /notifications [get]
@@ -62,7 +62,13 @@ func (h *Handler) List(c *fiber.Ctx) error {
 		cursorPtr = &t
 	}
 
-	resp, err := h.service.List(c.Context(), userID, cursorPtr, limit)
+	var tabPtr *UITab
+	if v := c.Query("tab"); v != "" {
+		tab := UITab(v)
+		tabPtr = &tab
+	}
+
+	resp, err := h.service.List(c.Context(), userID, tabPtr, cursorPtr, limit)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "list_failed"})
 	}

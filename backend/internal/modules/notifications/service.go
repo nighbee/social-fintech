@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/cache"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"go.uber.org/zap"
 )
@@ -23,9 +23,8 @@ func NewService(repo Repository, producer *eventbus.Producer, cache *cache.Cache
 	return &Service{repo: repo, producer: producer, cache: cache}
 }
 
-// Enqueue persists a notification for the user. Other modules call this
-// instead of poking the table directly so we have a single place to add
-// future side-effects (push delivery, batching, dedupe) later.
+// Enqueue persists a notification. Uses Upsert when GroupKey is set (grouped events),
+// Insert otherwise. Other modules call this instead of poking the table directly.
 func (s *Service) Enqueue(ctx context.Context, in Enqueue) (*Notification, error) {
 	if in.UserID == uuid.Nil {
 		return nil, fmt.Errorf("notifications: user_id is required")
@@ -34,7 +33,7 @@ func (s *Service) Enqueue(ctx context.Context, in Enqueue) (*Notification, error
 		return nil, fmt.Errorf("notifications: kind and title are required")
 	}
 
-	payload := []byte("{}")
+	payload := json.RawMessage("{}")
 	if in.Payload != nil {
 		raw, err := json.Marshal(in.Payload)
 		if err != nil {
@@ -43,89 +42,111 @@ func (s *Service) Enqueue(ctx context.Context, in Enqueue) (*Notification, error
 		payload = raw
 	}
 
-	n := &Notification{
-		ID:        uuid.New(),
-		UserID:    in.UserID,
-		Kind:      in.Kind,
-		Title:     in.Title,
-		Body:      in.Body,
-		Payload:   payload,
-		CreatedAt: time.Now().UTC(),
-	}
-	if err := s.repo.Insert(ctx, n); err != nil {
-		return nil, err
+	actorIDs := json.RawMessage("[]")
+	if len(in.ActorIDs) > 0 {
+		raw, err := json.Marshal(in.ActorIDs)
+		if err != nil {
+			return nil, fmt.Errorf("notifications: marshal actor_ids: %w", err)
+		}
+		actorIDs = raw
 	}
 
-	// Emit push dispatch event if producer is configured
+	tab := in.UITab
+	if tab == "" {
+		tab = UITabSystem
+	}
+
+	n := &Notification{
+		ID:          uuid.New(),
+		UserID:      in.UserID,
+		Kind:        in.Kind,
+		Title:       in.Title,
+		Body:        in.Body,
+		Payload:     payload,
+		UITab:       tab,
+		IsImportant: in.IsImportant,
+		BadgeStatus: in.BadgeStatus,
+		DeepLink:    in.DeepLink,
+		GroupKey:    in.GroupKey,
+		ActorIDs:    actorIDs,
+		GroupCount:  1,
+		CreatedAt:   time.Now().UTC(),
+		UpdatedAt:   time.Now().UTC(),
+	}
+
+	var repoErr error
+	if in.GroupKey != nil {
+		repoErr = s.repo.Upsert(ctx, n)
+	} else {
+		repoErr = s.repo.Insert(ctx, n)
+	}
+	if repoErr != nil {
+		return nil, repoErr
+	}
+
 	if s.producer != nil {
-		event := eventbus.PushNotificationEvent{
+		_ = s.producer.Publish(ctx, eventbus.TypePushDispatch, eventbus.PushNotificationEvent{
 			UserID:  in.UserID.String(),
 			Title:   in.Title,
 			Body:    in.Body,
 			Payload: in.Payload,
-		}
-		// We use TypePushDispatch to trigger the fan-out dispatcher
-		_ = s.producer.Publish(ctx, eventbus.TypePushDispatch, event)
+		})
 	}
 
 	return n, nil
 }
 
-// NotifyRankingUp is a convenience wrapper for the most common event:
-// the user climbed the leaderboard. Other producers (map worker, season
-// rollover) call this instead of constructing the Enqueue payload by hand.
 func (s *Service) NotifyRankingUp(ctx context.Context, userID uuid.UUID, scope, region string, oldPos, newPos int) error {
 	if newPos <= 0 || newPos >= oldPos {
 		return nil
 	}
-
-	title := "You moved up in ranking."
 	body := ""
 	if region != "" {
 		body = fmt.Sprintf("New position: %d in %s.", newPos, region)
 	}
-
-	_, err := s.Enqueue(ctx, Enqueue{
-		UserID: userID,
-		Kind:   KindRankingUp,
-		Title:  title,
-		Body:   body,
-		Payload: map[string]any{
-			"new_position": newPos,
-			"old_position": oldPos,
-			"scope":        scope,
-			"region":       region,
-		},
-	})
+	payload := map[string]any{
+		"new_position": newPos,
+		"old_position": oldPos,
+		"scope":        scope,
+		"region":       region,
+	}
+	enq := Enqueue{
+		UserID:  userID,
+		Kind:    KindRankingUp,
+		Title:   "You moved up in ranking.",
+		Body:    body,
+		Payload: payload,
+	}
+	applyMapping("leaderboard.rank_advanced", &enq, payload)
+	_, err := s.Enqueue(ctx, enq)
 	return err
 }
 
-// NotifyMovedUser is fired when the *recipient*'s seal pushed someone
-// else up the leaderboard. Mirrors the founder spec's
-// "You moved [username] to position X in [city/country]." template.
 func (s *Service) NotifyMovedUser(ctx context.Context, actorID, movedID uuid.UUID, movedUsername, scope, region string, position int) error {
 	location := region
 	if location == "" {
 		location = scope
 	}
-	title := fmt.Sprintf("You moved %s to position %d in %s.", movedUsername, position, location)
-	_, err := s.Enqueue(ctx, Enqueue{
-		UserID: actorID,
-		Kind:   KindMovedUser,
-		Title:  title,
-		Payload: map[string]any{
-			"moved_user_id": movedID.String(),
-			"username":      movedUsername,
-			"position":      position,
-			"region":        region,
-			"scope":         scope,
-		},
-	})
+	payload := map[string]any{
+		"moved_user_id": movedID.String(),
+		"username":      movedUsername,
+		"position":      position,
+		"region":        region,
+		"scope":         scope,
+	}
+	enq := Enqueue{
+		UserID:  actorID,
+		Kind:    KindMovedUser,
+		Title:   fmt.Sprintf("You moved %s to position %d in %s.", movedUsername, position, location),
+		Payload: payload,
+		UITab:   UITabRank,
+	}
+	_, err := s.Enqueue(ctx, enq)
 	return err
 }
 
-func (s *Service) List(ctx context.Context, userID uuid.UUID, cursor *time.Time, limit int) (*ListResponse, error) {
-	items, nextCursor, err := s.repo.List(ctx, userID, cursor, limit)
+func (s *Service) List(ctx context.Context, userID uuid.UUID, tab *UITab, cursor *time.Time, limit int) (*ListResponse, error) {
+	items, nextCursor, err := s.repo.List(ctx, userID, tab, cursor, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -133,10 +154,7 @@ func (s *Service) List(ctx context.Context, userID uuid.UUID, cursor *time.Time,
 	if err != nil {
 		return nil, err
 	}
-	resp := &ListResponse{
-		Items:       items,
-		UnreadCount: unread,
-	}
+	resp := &ListResponse{Items: items, UnreadCount: unread}
 	if nextCursor != nil {
 		resp.NextCursor = nextCursor.UTC().Format(time.RFC3339Nano)
 	}
@@ -155,29 +173,31 @@ func (s *Service) MarkAllRead(ctx context.Context, userID uuid.UUID) error {
 	return s.repo.MarkAllRead(ctx, userID, time.Now().UTC())
 }
 
-// HandleSystemEvent takes a raw event from the bus and translates it into
-// a durable notification for the appropriate user.
+// HandleSystemEvent translates a Kafka envelope into a durable inbox row.
+// UI metadata (tab, importance, badge, deep link) comes from TopicMappings.
 func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envelope) error {
+	topic := string(envelope.Type)
+
 	switch envelope.Type {
 	case eventbus.TypePostLiked:
 		var ev eventbus.SocialEvent
 		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
 			return err
 		}
-		// Don't notify if user liked their own post
 		if ev.ActorID == ev.PostAuthorID {
 			return nil
 		}
 		authorUUID, _ := uuid.Parse(ev.PostAuthorID)
-		_, err := s.Enqueue(ctx, Enqueue{
-			UserID: authorUUID,
-			Kind:   KindPostLiked,
-			Title:  "Someone liked your post",
-			Payload: map[string]any{
-				"post_id":  ev.PostID,
-				"actor_id": ev.ActorID,
-			},
-		})
+		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID}
+		enq := Enqueue{
+			UserID:   authorUUID,
+			Kind:     KindPostLiked,
+			Title:    "Someone liked your post",
+			Payload:  payload,
+			ActorIDs: []string{ev.ActorID},
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
 		return err
 
 	case eventbus.TypePostCommented:
@@ -189,17 +209,17 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return nil
 		}
 		authorUUID, _ := uuid.Parse(ev.PostAuthorID)
-		_, err := s.Enqueue(ctx, Enqueue{
-			UserID: authorUUID,
-			Kind:   KindPostCommented,
-			Title:  "Someone commented on your post",
-			Body:   ev.CommentText,
-			Payload: map[string]any{
-				"post_id":    ev.PostID,
-				"actor_id":   ev.ActorID,
-				"comment_id": ev.CommentID,
-			},
-		})
+		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID, "comment_id": ev.CommentID}
+		enq := Enqueue{
+			UserID:   authorUUID,
+			Kind:     KindPostCommented,
+			Title:    "Someone commented on your post",
+			Body:     ev.CommentText,
+			Payload:  payload,
+			ActorIDs: []string{ev.ActorID},
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
 		return err
 
 	case eventbus.TypeSealReceived:
@@ -208,16 +228,16 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		recipientUUID, _ := uuid.Parse(ev.RecipientID)
-		_, err := s.Enqueue(ctx, Enqueue{
-			UserID: recipientUUID,
-			Kind:   KindSealReceived,
-			Title:  fmt.Sprintf("You received %d seals!", ev.Amount),
-			Payload: map[string]any{
-				"actor_id": ev.ActorID,
-				"amount":   ev.Amount,
-				"post_id":  ev.PostID,
-			},
-		})
+		payload := map[string]any{"actor_id": ev.ActorID, "amount": ev.Amount, "post_id": ev.PostID}
+		enq := Enqueue{
+			UserID:   recipientUUID,
+			Kind:     KindSealReceived,
+			Title:    fmt.Sprintf("You received %d seals!", ev.Amount),
+			Payload:  payload,
+			ActorIDs: []string{ev.ActorID},
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
 		return err
 
 	case eventbus.TypeTaskAccepted:
@@ -226,15 +246,15 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		helperUUID, _ := uuid.Parse(ev.HelperID)
-		_, err := s.Enqueue(ctx, Enqueue{
-			UserID: helperUUID,
-			Kind:   KindTaskAccepted,
-			Title:  "Your task application was accepted!",
-			Payload: map[string]any{
-				"task_id":    ev.TaskID,
-				"creator_id": ev.CreatorID,
-			},
-		})
+		payload := map[string]any{"task_id": ev.TaskID, "creator_id": ev.CreatorID}
+		enq := Enqueue{
+			UserID:  helperUUID,
+			Kind:    KindTaskAccepted,
+			Title:   "Your task application was accepted!",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
 		return err
 
 	case eventbus.TypeTaskCompleted:
@@ -243,16 +263,16 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		helperUUID, _ := uuid.Parse(ev.HelperID)
-		_, err := s.Enqueue(ctx, Enqueue{
-			UserID: helperUUID,
-			Kind:   KindTaskCompleted,
-			Title:  "Task completed! Reward received.",
-			Body:   fmt.Sprintf("You earned %d seals.", ev.Reward),
-			Payload: map[string]any{
-				"task_id": ev.TaskID,
-				"reward":  ev.Reward,
-			},
-		})
+		payload := map[string]any{"task_id": ev.TaskID, "reward": ev.Reward}
+		enq := Enqueue{
+			UserID:  helperUUID,
+			Kind:    KindTaskCompleted,
+			Title:   "Task completed! Reward received.",
+			Body:    fmt.Sprintf("You earned %d seals.", ev.Reward),
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
 		return err
 
 	case eventbus.TypeMessageReceived:
@@ -261,22 +281,24 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		recipientUUID, _ := uuid.Parse(ev.RecipientID)
-		_, err := s.Enqueue(ctx, Enqueue{
-			UserID: recipientUUID,
-			Kind:   KindMessageReceived,
-			Title:  "New message",
-			Body:   ev.Preview,
-			Payload: map[string]any{
-				"actor_id":        ev.ActorID,
-				"conversation_id": ev.ConversationID,
-			},
-		})
+		payload := map[string]any{"actor_id": ev.ActorID, "conversation_id": ev.ConversationID}
+		enq := Enqueue{
+			UserID:  recipientUUID,
+			Kind:    KindMessageReceived,
+			Title:   "New message",
+			Body:    ev.Preview,
+			Payload: payload,
+			UITab:   UITabActivity,
+			DeepLink: fmt.Sprintf("app://chat/%s", ev.ConversationID),
+		}
+		_, err := s.Enqueue(ctx, enq)
 		return err
 
 	default:
-		return nil // Ignore unknown events
+		return nil
 	}
 }
+
 func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req RegisterDeviceRequest) error {
 	token := &DeviceToken{
 		UserID:     userID,
@@ -294,13 +316,9 @@ func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req Regi
 }
 
 func (s *Service) UnregisterDevice(ctx context.Context, token string) error {
-	// We need to find the user_id first to invalidate their cache
-	// (Alternatively, we could accept userID in the interface, but for now we'll just deactivate)
 	if err := s.repo.DeactivateDeviceToken(ctx, token); err != nil {
 		return err
 	}
-	// Best-effort cache wipe would require token-to-user lookup. 
-	// For now, the 5m TTL will handle the cleanup if user_id is unknown.
 	return nil
 }
 
