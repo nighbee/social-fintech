@@ -3,6 +3,9 @@ import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
+import 'package:app/src/core/base/base_bloc/bloc/base_bloc_widget.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/features/rating/presentation/bloc/rating_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
@@ -23,139 +26,162 @@ class _RatingPageState extends State<RatingPage> {
     super.dispose();
   }
 
-  List<_RatingEntry> get _entries =>
-      _ratingEntriesByScope[_selectedScope] ?? const <_RatingEntry>[];
+  List<_RatingEntry> _mapItemsToEntries(List<Map<String, dynamic>> items) {
+    return items.map((item) {
+      final name = item['name']?.toString() ?? item['username']?.toString() ?? 'Unknown';
+      final rank = (item['rank'] is int)
+          ? item['rank'] as int
+          : int.tryParse(item['rank']?.toString() ?? '') ?? 0;
+      final honor = (item['honor'] is int)
+          ? item['honor'] as int
+          : int.tryParse(item['honor']?.toString() ?? '') ?? 0;
+      final rankName = item['rank_name']?.toString() ?? item['rankName']?.toString() ?? '';
+      final rankTier = item['rank_tier']?.toString() ?? item['rankTier']?.toString() ?? '';
+      final rankGrade = item['rank_grade']?.toString() ?? item['rankGrade']?.toString() ?? '';
+      final isCurrent = (item['is_current_user'] == true) || (item['isCurrentUser'] == true);
 
-  List<_RatingEntry> get _filteredEntries {
-    final query = _searchController.text.trim().toLowerCase();
-    if (query.isEmpty) return _entries;
-    return _entries.where((entry) => entry.matches(query)).toList();
+      return _RatingEntry(
+        rank: rank,
+        name: name,
+        avatar: Assets.images.image,
+        rankName: rankName,
+        rankTier: rankTier,
+        rankGrade: rankGrade,
+        honorCount: honor,
+        isCurrentUser: isCurrent,
+      );
+    }).toList();
   }
 
-  List<_RatingEntry> get _podiumEntries => _filteredEntries
-      .where((entry) => !entry.isCurrentUser)
-      .take(3)
-      .toList();
-
-  List<_RatingEntry> get _rankedEntries => _filteredEntries
-      .where((entry) => !entry.isCurrentUser)
-      .skip(3)
-      .toList();
-
-  _RatingEntry? get _currentUserEntry {
-    for (final entry in _filteredEntries) {
-      if (entry.isCurrentUser) return entry;
-    }
-    return null;
+  List<_RatingEntry> _filterEntries(List<_RatingEntry> entries) {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return entries;
+    return entries.where((entry) => entry.matches(query)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final hasVisibleContent =
-        _podiumEntries.isNotEmpty ||
-        _rankedEntries.isNotEmpty ||
-        _currentUserEntry != null;
-
     return Scaffold(
       backgroundColor: AppColors.colorff19191A,
       bottomNavigationBar: const CustomNavBar(currentTab: RoutePaths.rating),
       body: SafeArea(
         bottom: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: CustomTextField(
-                controller: _searchController,
-                labelText: 'Search',
-                hintText: 'Search',
-                onChanged: (_) => setState(() {}),
-                prefixIcon: Assets.icons.search.svg(
-                  width: 20,
-                  height: 20,
-                  colorFilter: const ColorFilter.mode(
-                    AppColors.colorffffffff,
-                    BlendMode.srcIn,
+        child: BaseBlocWidget<RatingBloc, RatingEvent, RatingState>(
+          bloc: getIt<RatingBloc>(),
+          starterEvent: RatingEventLoad(),
+          builder: (context, state, bloc) {
+            List<_RatingEntry> entries = [];
+            if (state is RatingStateLoaded) {
+              entries = _mapItemsToEntries(state.items);
+            }
+
+            final filtered = _filterEntries(entries);
+            final podium = filtered.where((e) => !e.isCurrentUser).take(3).toList();
+            final ranked = filtered.where((e) => !e.isCurrentUser).skip(3).toList();
+            _RatingEntry? current;
+            for (final entry in filtered) {
+              if (entry.isCurrentUser) {
+                current = entry;
+                break;
+              }
+            }
+
+            final hasVisibleContent = podium.isNotEmpty || ranked.isNotEmpty || current != null;
+
+            return Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  child: CustomTextField(
+                    controller: _searchController,
+                    labelText: 'Search',
+                    hintText: 'Search',
+                    onChanged: (_) => setState(() {}),
+                    prefixIcon: Assets.icons.search.svg(
+                      width: 20,
+                      height: 20,
+                      colorFilter: const ColorFilter.mode(
+                        AppColors.colorffffffff,
+                        BlendMode.srcIn,
+                      ),
+                    ),
+                    showBorder: false,
+                    showLabel: false,
+                    backgroundColor: const Color(0xFF1E1E1E),
+                    height: 48,
+                    borderRadius: 10,
+                    containerPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                    textStyle: TextStyles.bodyLarge.copyWith(
+                      color: AppColors.colorffE5E5E5,
+                    ),
+                    hintStyle: TextStyles.bodyLarge.copyWith(
+                      color: const Color(0xFFBABABA),
+                    ),
                   ),
                 ),
-                showBorder: false,
-                showLabel: false,
-                backgroundColor: const Color(0xFF1E1E1E),
-                height: 48,
-                borderRadius: 10,
-                containerPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                contentPadding: EdgeInsets.zero,
-                textStyle: TextStyles.bodyLarge.copyWith(
-                  color: AppColors.colorffE5E5E5,
-                ),
-                hintStyle: TextStyles.bodyLarge.copyWith(
-                  color: const Color(0xFFBABABA),
-                ),
-              ),
-            ),
-            Expanded(
-              child: hasVisibleContent
-                  ? SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _RatingPodium(entries: _podiumEntries),
-                          const Gap(26),
-                          Text(
-                            'Rating',
-                            style: TextStyles.titleMain.copyWith(
-                              fontSize: 24,
-                              height: 26 / 24,
-                              color: AppColors.colorffffffff,
-                            ),
+                Expanded(
+                  child: hasVisibleContent
+                      ? SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _RatingPodium(entries: podium),
+                              const Gap(26),
+                              Text(
+                                'Rating',
+                                style: TextStyles.titleMain.copyWith(
+                                  fontSize: 24,
+                                  height: 26 / 24,
+                                  color: AppColors.colorffffffff,
+                                ),
+                              ),
+                              const Gap(12),
+                              _RatingSegmentedControl(
+                                selectedScope: _selectedScope,
+                                onSelected: (scope) {
+                                  setState(() {
+                                    _selectedScope = scope;
+                                  });
+                                },
+                              ),
+                              const Gap(12),
+                              if (ranked.isEmpty)
+                                _EmptyListState(query: _searchController.text)
+                              else
+                                Column(
+                                  children: [
+                                    for (var i = 0; i < ranked.length; i++)
+                                      Padding(
+                                        padding: EdgeInsets.only(
+                                          bottom: i == ranked.length - 1 ? 0 : 10,
+                                        ),
+                                        child: _RatingListItem(
+                                          entry: ranked[i],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                            ],
                           ),
-                          const Gap(12),
-                          _RatingSegmentedControl(
-                            selectedScope: _selectedScope,
-                            onSelected: (scope) {
-                              setState(() {
-                                _selectedScope = scope;
-                              });
-                            },
-                          ),
-                          const Gap(12),
-                          if (_rankedEntries.isEmpty)
-                            _EmptyListState(query: _searchController.text)
-                          else
-                            Column(
-                              children: [
-                                for (var i = 0; i < _rankedEntries.length; i++)
-                                  Padding(
-                                    padding: EdgeInsets.only(
-                                      bottom:
-                                          i == _rankedEntries.length - 1
-                                              ? 0
-                                              : 10,
-                                    ),
-                                    child: _RatingListItem(
-                                      entry: _rankedEntries[i],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    )
-                  : _EmptyResultsState(query: _searchController.text),
-            ),
-            if (_currentUserEntry != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(15, 0, 15, 12),
-                child: _RatingListItem(
-                  entry: _currentUserEntry!,
-                  isPinned: true,
+                        )
+                      : _EmptyResultsState(query: _searchController.text),
                 ),
-              ),
-          ],
+                if (current != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(15, 0, 15, 12),
+                    child: _RatingListItem(
+                      entry: current,
+                      isPinned: true,
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -175,7 +201,7 @@ class _RatingPodium extends StatelessWidget {
       height: 344,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final centerEntry = entries.length > 0 ? entries[0] : null;
+          final centerEntry = entries.isNotEmpty ? entries[0] : null;
           final leftEntry = entries.length > 1 ? entries[1] : null;
           final rightEntry = entries.length > 2 ? entries[2] : null;
 
@@ -251,7 +277,7 @@ class _RatingPodiumCard extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFFC98A28).withOpacity(0.14),
+                  color: const Color(0xFFC98A28).withValues(alpha: 0.14),
                   blurRadius: 18,
                   spreadRadius: 0,
                 ),
@@ -369,7 +395,7 @@ class _RatingListItem extends StatelessWidget {
         boxShadow: isPinned
             ? [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.22),
+                  color: Colors.black.withValues(alpha: 0.22),
                   blurRadius: 10,
                   offset: const Offset(0, -1),
                 ),
@@ -649,177 +675,3 @@ class _RatingEntry {
     return haystack.contains(normalizedQuery);
   }
 }
-
-final Map<_RatingScope, List<_RatingEntry>> _ratingEntriesByScope = {
-  _RatingScope.district: [
-    _RatingEntry(
-      rank: 1,
-      name: 'Zhandos Berik',
-      avatar: Assets.images.image,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 950,
-    ),
-    _RatingEntry(
-      rank: 2,
-      name: 'Auelkhanova Amina',
-      avatar: Assets.images.jade,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 900,
-    ),
-    _RatingEntry(
-      rank: 3,
-      name: 'Zhannsa Berik',
-      avatar: Assets.images.lapislazuli,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 800,
-    ),
-    _RatingEntry(
-      rank: 4,
-      name: 'Kundyz Akzhan',
-      avatar: Assets.images.moonstone,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 75,
-    ),
-    _RatingEntry(
-      rank: 5,
-      name: 'Kundyz Akzhan',
-      avatar: Assets.images.pearl,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 29,
-    ),
-    _RatingEntry(
-      rank: 10,
-      name: 'Kundyz Akzhan',
-      avatar: Assets.images.onyx,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 26,
-      isCurrentUser: true,
-    ),
-  ],
-  _RatingScope.city: [
-    _RatingEntry(
-      rank: 1,
-      name: 'Dana Mukan',
-      avatar: Assets.images.supernova,
-      rankName: 'Jade',
-      rankTier: 'Integrity',
-      rankGrade: 'S',
-      honorCount: 1260,
-    ),
-    _RatingEntry(
-      rank: 2,
-      name: 'Arman Tulegen',
-      avatar: Assets.images.image,
-      rankName: 'Moonstone',
-      rankTier: 'Clarity',
-      rankGrade: 'A',
-      honorCount: 1100,
-    ),
-    _RatingEntry(
-      rank: 3,
-      name: 'Saniya Omar',
-      avatar: Assets.images.ammolite,
-      rankName: 'Jade',
-      rankTier: 'Integrity',
-      rankGrade: 'A',
-      honorCount: 980,
-    ),
-    _RatingEntry(
-      rank: 4,
-      name: 'Ilyas Kairat',
-      avatar: Assets.images.jade,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'B',
-      honorCount: 220,
-    ),
-    _RatingEntry(
-      rank: 7,
-      name: 'Madi Sarsen',
-      avatar: Assets.images.lapislazuli,
-      rankName: 'Moonstone',
-      rankTier: 'Clarity',
-      rankGrade: 'A',
-      honorCount: 180,
-    ),
-    _RatingEntry(
-      rank: 11,
-      name: 'You',
-      avatar: Assets.images.moonstone,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 54,
-      isCurrentUser: true,
-    ),
-  ],
-  _RatingScope.country: [
-    _RatingEntry(
-      rank: 1,
-      name: 'Aruzhan S.',
-      avatar: Assets.images.onyx,
-      rankName: 'Onyx',
-      rankTier: 'Resilience',
-      rankGrade: 'S',
-      honorCount: 2400,
-    ),
-    _RatingEntry(
-      rank: 2,
-      name: 'Timur B.',
-      avatar: Assets.images.supernova,
-      rankName: 'Sunstone',
-      rankTier: 'Radiance',
-      rankGrade: 'A',
-      honorCount: 2110,
-    ),
-    _RatingEntry(
-      rank: 3,
-      name: 'Assel N.',
-      avatar: Assets.images.ammolite,
-      rankName: 'Ammolite',
-      rankTier: 'Fortitude',
-      rankGrade: 'A',
-      honorCount: 1890,
-    ),
-    _RatingEntry(
-      rank: 6,
-      name: 'Zhanel R.',
-      avatar: Assets.images.image,
-      rankName: 'Jade',
-      rankTier: 'Integrity',
-      rankGrade: 'A',
-      honorCount: 460,
-    ),
-    _RatingEntry(
-      rank: 8,
-      name: 'Dias A.',
-      avatar: Assets.images.pearl,
-      rankName: 'Moonstone',
-      rankTier: 'Clarity',
-      rankGrade: 'B',
-      honorCount: 405,
-    ),
-    _RatingEntry(
-      rank: 19,
-      name: 'You',
-      avatar: Assets.images.moonstone,
-      rankName: 'Moonstone',
-      rankTier: 'Intention',
-      rankGrade: 'A',
-      honorCount: 102,
-      isCurrentUser: true,
-    ),
-  ],
-};

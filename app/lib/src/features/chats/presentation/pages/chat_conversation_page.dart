@@ -936,70 +936,90 @@ class _ChatReplyDraftStrip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 4, 6),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Container(
-              width: 2,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.textBrand.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(1),
+        padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.textBrand.withValues(alpha: 0.06),
+            border: Border(
+              left: BorderSide(
+                color: AppColors.textBrand.withValues(alpha: 0.4),
+                width: 3,
+              ),
+              top: BorderSide(
+                color: AppColors.textBrand.withValues(alpha: 0.1),
+                width: 0.5,
+              ),
+              bottom: BorderSide(
+                color: AppColors.textBrand.withValues(alpha: 0.1),
+                width: 0.5,
               ),
             ),
-            const Gap(10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text.rich(
-                    TextSpan(
-                      style: TextStyles.bodyMain.copyWith(
-                        color: AppColors.textBrand.withValues(alpha: 0.55),
-                        fontSize: 13,
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(8),
+              bottomRight: Radius.circular(8),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Text.rich(
+                        TextSpan(
+                          style: TextStyles.bodyMain.copyWith(
+                            color: AppColors.textBrand.withValues(alpha: 0.6),
+                            fontSize: 12,
+                          ),
+                          children: <InlineSpan>[
+                            TextSpan(
+                              text: 'Ответить',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: AppColors.textBrand.withValues(alpha: 0.75),
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12,
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' · ${draft.authorLabel}',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: AppColors.textBrand.withValues(alpha: 0.6),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      children: <InlineSpan>[
-                        TextSpan(
-                          text: 'Ответить',
-                          style: TextStyles.bodyMain.copyWith(
-                            color: AppColors.textBrand.withValues(alpha: 0.72),
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                      const Gap(3),
+                      Text(
+                        shortExcerpt,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyles.bodyLarge.copyWith(
+                          color: AppColors.textBrand,
+                          fontSize: 13,
+                          height: 1.3,
                         ),
-                        TextSpan(
-                          text: ' · ${draft.authorLabel}',
-                          style: TextStyles.bodyMain.copyWith(
-                            color: AppColors.textBrand.withValues(alpha: 0.55),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  const Gap(4),
-                  Text(
-                    shortExcerpt,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyles.bodyLarge.copyWith(
-                      color: AppColors.textBrand,
-                      height: 1.25,
-                    ),
+                ),
+                IconButton(
+                  onPressed: onClose,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textBrand.withValues(alpha: 0.7),
+                    size: 20,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            IconButton(
-              onPressed: onClose,
-              icon: Icon(
-                Icons.close_rounded,
-                color: AppColors.textBrand.withValues(alpha: 0.75),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1021,71 +1041,100 @@ class _ChatPendingMediaStrip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 8, 4, 6),
-        child: Row(
-          children: [
-            DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.46),
-                  width: 3,
+        padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.textBrand.withValues(alpha: 0.05),
+            border: Border(
+              left: BorderSide(
+                color: AppColors.textBrand.withValues(alpha: 0.3),
+                width: 3,
+              ),
+              top: BorderSide(
+                color: AppColors.textBrand.withValues(alpha: 0.1),
+                width: 0.5,
+              ),
+              bottom: BorderSide(
+                color: AppColors.textBrand.withValues(alpha: 0.1),
+                width: 0.5,
+              ),
+            ),
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(8),
+              bottomRight: Radius.circular(8),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
+          child: Row(
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.4),
+                    width: 1.5,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: data.isVideo
+                      ? Container(
+                          width: 64,
+                          height: 64,
+                          color: const Color(0xFF252528),
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.videocam_outlined,
+                            color: AppColors.textBrand.withValues(alpha: 0.7),
+                            size: 28,
+                          ),
+                        )
+                      : Image.memory(
+                          data.bytes,
+                          width: 64,
+                          height: 64,
+                          fit: BoxFit.cover,
+                          gaplessPlayback: true,
+                        ),
                 ),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(5),
-                child: data.isVideo
-                    ? Container(
-                        width: 72,
-                        height: 72,
-                        color: const Color(0xFF252528),
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.videocam_outlined,
-                          color: AppColors.textBrand.withValues(alpha: 0.75),
-                          size: 32,
-                        ),
-                      )
-                    : Image.memory(
-                        data.bytes,
-                        width: 72,
-                        height: 72,
-                        fit: BoxFit.cover,
-                        gaplessPlayback: true,
+              const Gap(10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Добавить подпись',
+                      style: TextStyles.bodyMain.copyWith(
+                        color: AppColors.textBrand.withValues(alpha: 0.55),
+                        fontSize: 12,
                       ),
-              ),
-            ),
-            const Gap(10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Add a caption',
-                    style: TextStyles.bodyMain.copyWith(
-                      color: AppColors.textBrand.withValues(alpha: 0.52),
                     ),
-                  ),
-                  Text(
-                    name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyles.bodyLarge.copyWith(
-                      color: AppColors.textBrand,
+                    const Gap(2),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyles.bodyLarge.copyWith(
+                        color: AppColors.textBrand,
+                        fontSize: 13,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            IconButton(
-              onPressed: onRemove,
-              icon: Icon(
-                Icons.close_rounded,
-                color: AppColors.textBrand.withValues(alpha: 0.75),
+              IconButton(
+                onPressed: onRemove,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                icon: Icon(
+                  Icons.close_rounded,
+                  color: AppColors.textBrand.withValues(alpha: 0.7),
+                  size: 20,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

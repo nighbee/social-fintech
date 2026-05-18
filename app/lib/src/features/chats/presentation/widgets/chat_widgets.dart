@@ -239,7 +239,7 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
   final ChatThreadPreview thread;
   final List<Widget>? actions;
 
-  static const double _pinnedBarHeight = 44;
+  static const double _pinnedBarHeight = 42;
 
   @override
   Widget build(BuildContext context) {
@@ -275,11 +275,30 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
               preferredSize: const Size.fromHeight(_pinnedBarHeight),
               child: Material(
                 color: AppColors.colorff19191A,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 12, 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.textBrand.withValues(alpha: 0.04),
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.textBrand.withValues(alpha: 0.1),
+                        width: 0.5,
+                      ),
+                      bottom: BorderSide(
+                        color: AppColors.textBrand.withValues(alpha: 0.08),
+                        width: 0.5,
+                      ),
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
+                      Icon(
+                        Icons.push_pin_outlined,
+                        size: 18,
+                        color: AppColors.textBrand.withValues(alpha: 0.65),
+                      ),
+                      const Gap(8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,30 +306,26 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Закреплённое сообщение',
+                              'Закреплённое',
                               style: TextStyles.bodyMain.copyWith(
-                                fontSize: 11,
+                                fontSize: 10,
                                 height: 1.2,
-                                color: AppColors.textBrand.withValues(alpha: 0.5),
+                                color: AppColors.textBrand.withValues(alpha: 0.55),
+                                letterSpacing: -0.1,
                               ),
                             ),
                             Text(
                               pin,
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyles.titleHeadline.copyWith(
-                                fontSize: 14,
-                                height: 1.25,
+                              style: TextStyles.bodyLarge.copyWith(
+                                fontSize: 13,
+                                height: 1.2,
                                 color: AppColors.textBrand,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      Icon(
-                        Icons.push_pin_outlined,
-                        size: 20,
-                        color: AppColors.textBrand.withValues(alpha: 0.72),
                       ),
                     ],
                   ),
@@ -1310,8 +1325,8 @@ double chatThreadComposerStackBottomPadding(
 }) {
   final safeBottom = MediaQuery.paddingOf(context).bottom;
   const composerVertical = 8.0 + 44.0 + 10.0;
-  const pendingVertical = 8.0 + 72.0 + 6.0;
-  const replyStrip = 56.0;
+  const pendingVertical = 6.0 + 64.0 + 6.0;
+  const replyStrip = 50.0;
   const breathing = 24.0;
   return breathing +
       safeBottom +

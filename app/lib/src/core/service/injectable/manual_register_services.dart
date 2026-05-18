@@ -11,6 +11,11 @@ import 'package:app/src/features/map/domain/repositories/i_map_repository.dart';
 import 'package:app/src/features/map/presentation/bloc/map_bloc.dart';
 import 'package:app/src/features/profile/domain/repositories/i_profile_repository.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
+import 'package:app/src/features/rating/presentation/bloc/rating_bloc.dart';
+import 'package:app/src/features/rating/data/repositories/rating_repository_impl.dart';
+import 'package:app/src/features/rating/data/sources/remote/rating_remote_impl.dart';
+import 'package:app/src/features/rating/domain/usecases/get_leaderboard_usecase.dart';
+import 'package:app/src/features/rating/data/sources/remote/i_rating_remote.dart';
 
 Future<void> manualRegisterServices() async {
   getIt.registerBloc<AuthBloc>(
@@ -42,6 +47,34 @@ Future<void> manualRegisterServices() async {
     () => MapBloc(
       getIt<IMapRepository>(instanceName: 'MapRepositoryImpl'),
     ),
+  );
+
+  // Rating feature
+  if (getIt.isRegistered<RatingBloc>()) {
+    getIt.unregister<RatingBloc>();
+  }
+  getIt.registerBloc<RatingBloc>(
+    () => RatingBloc(
+      GetLeaderboardUseCase(
+        getIt<IRatingRepository>(instanceName: 'RatingRepositoryImpl'),
+      ),
+    ),
+  );
+
+  if (getIt.isRegistered<IRatingRepository>(instanceName: 'RatingRepositoryImpl')) {
+    getIt.unregister<IRatingRepository>(instanceName: 'RatingRepositoryImpl');
+  }
+  getIt.registerLazySingleton<IRatingRepository>(
+    () => RatingRepositoryImpl(getIt<IRatingRemote>(instanceName: 'RatingRemoteImpl')),
+    instanceName: 'RatingRepositoryImpl',
+  );
+
+  if (getIt.isRegistered<IRatingRemote>(instanceName: 'RatingRemoteImpl')) {
+    getIt.unregister<IRatingRemote>(instanceName: 'RatingRemoteImpl');
+  }
+  getIt.registerLazySingleton<IRatingRemote>(
+    RatingRemoteImpl.new,
+    instanceName: 'RatingRemoteImpl',
   );
 
   if (getIt.isRegistered<ILocationService>(
