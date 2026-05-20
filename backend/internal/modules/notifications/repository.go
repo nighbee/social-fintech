@@ -99,7 +99,7 @@ func (r *PostgresRepository) Upsert(ctx context.Context, n *Notification) error 
 			($1, $2, $3, $4, NULLIF($5,''), $6::jsonb,
 			 $7, $8, $9, $10,
 			 $11, $12::jsonb, 1, $13, $14)
-		ON CONFLICT (user_id, group_key) WHERE read_at IS NULL
+		ON CONFLICT (user_id, group_key) WHERE read_at IS NULL AND group_key IS NOT NULL
 		DO UPDATE SET
 			actor_ids   = notifications.actor_ids || EXCLUDED.actor_ids,
 			group_count = notifications.group_count + 1,
