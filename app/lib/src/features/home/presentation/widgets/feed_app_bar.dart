@@ -12,6 +12,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onCreatePostTap,
     this.onNotificationsTap,
     this.onSearchTap,
+    this.onTimerTap,
     this.silverCount = 0,
     this.timerLabel = '20 min',
     this.timerTone = FeedTimerTone.normal,
@@ -20,6 +21,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onCreatePostTap;
   final VoidCallback? onNotificationsTap;
   final VoidCallback? onSearchTap;
+  final VoidCallback? onTimerTap;
   final int silverCount;
   final String timerLabel;
   final FeedTimerTone timerTone;
@@ -72,31 +74,35 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
         children: [
           SilverBalanceChip(count: silverCount),
           const Gap(12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ShaderMask(
-                  shaderCallback: (bounds) =>
-                      _timerGradient().createShader(bounds),
-                  blendMode: BlendMode.srcIn,
-                  child: Assets.icons.timer.svg(width: 24, height: 24),
-                ),
-                const Gap(4),
-                ShaderMask(
-                  shaderCallback: (bounds) =>
-                      _timerGradient().createShader(bounds),
-                  blendMode: BlendMode.srcIn,
-                  child: Text(
-                    timerLabel,
-                    style: TextStyles.titleHeadline.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTimerTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ShaderMask(
+                    shaderCallback: (bounds) =>
+                        _timerGradient().createShader(bounds),
+                    blendMode: BlendMode.srcIn,
+                    child: Assets.icons.timer.svg(width: 24, height: 24),
+                  ),
+                  const Gap(4),
+                  ShaderMask(
+                    shaderCallback: (bounds) =>
+                        _timerGradient().createShader(bounds),
+                    blendMode: BlendMode.srcIn,
+                    child: Text(
+                      timerLabel,
+                      style: TextStyles.titleHeadline.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
