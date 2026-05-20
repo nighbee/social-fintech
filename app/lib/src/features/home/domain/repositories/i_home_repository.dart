@@ -85,7 +85,9 @@ abstract class IHomeRepository {
     CommentIdRequest request,
   );
 
-  Future<Either<DomainException, List<NotificationEntity>>> getNotifications();
+  Future<Either<DomainException, List<NotificationEntity>>> getNotifications({
+    String? tab,
+  });
   Future<Either<DomainException, FeedStateEntity>> getFeedState();
   Future<Either<DomainException, FeedStateEntity>> syncFeedState(
     FeedStateSyncRequest request,

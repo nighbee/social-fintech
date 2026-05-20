@@ -9,14 +9,25 @@ class ChatMessageApiMapper {
     List<MessageDto> dtos, {
     required String? currentUserId,
   }) {
+    final byId = <String, MessageDto>{
+      for (final dto in dtos)
+        if (dto.id.trim().isNotEmpty) dto.id.trim(): dto,
+    };
     return dtos
-        .map((dto) => toUiModel(dto, currentUserId: currentUserId))
+        .map(
+          (dto) => toUiModel(
+            dto,
+            currentUserId: currentUserId,
+            replyLookup: byId,
+          ),
+        )
         .toList(growable: false);
   }
 
   static ChatMessageUiModel toUiModel(
     MessageDto dto, {
     required String? currentUserId,
+    Map<String, MessageDto>? replyLookup,
   }) {
     final direction = _direction(dto, currentUserId);
     final timeLabel = _timeLabel(dto.createdAt);
@@ -53,9 +64,55 @@ class ChatMessageApiMapper {
       createdAt: dto.createdAt.toLocal(),
       messageType: dto.messageType,
       media: media,
+      replyPreview: _replyPreview(dto, replyLookup, currentUserId),
       forwardedSnippet: forwarded,
       outgoingReceipt: receipt,
     );
+  }
+
+  static ChatReplyPreview? _replyPreview(
+    MessageDto dto,
+    Map<String, MessageDto>? replyLookup,
+    String? currentUserId,
+  ) {
+    final replyId = dto.replyToMessageId?.trim() ?? '';
+    if (replyId.isEmpty || replyLookup == null) {
+      return null;
+    }
+    final original = replyLookup[replyId];
+    if (original == null) {
+      return null;
+    }
+    final author = _sameSender(original.senderId, currentUserId)
+        ? 'You'
+        : 'Original message';
+    return ChatReplyPreview(
+      authorLabel: author,
+      excerpt: _excerpt(original),
+    );
+  }
+
+  static String _excerpt(MessageDto dto) {
+    if (dto.deletedAt != null) {
+      return 'Deleted message';
+    }
+    final body = dto.body.trim();
+    if (body.isNotEmpty) {
+      return body.length > 80 ? '${body.substring(0, 77)}...' : body;
+    }
+    if (dto.media.any((m) {
+      final t = m.type.trim().toLowerCase();
+      return t == 'image' || t.startsWith('image/');
+    })) {
+      return 'Photo';
+    }
+    if (dto.media.any((m) {
+      final t = m.type.trim().toLowerCase();
+      return t == 'video' || t.startsWith('video/');
+    })) {
+      return 'Video';
+    }
+    return 'Message';
   }
 
   static ChatMessageDirection _direction(

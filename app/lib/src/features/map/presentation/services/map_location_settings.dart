@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:geolocator/geolocator.dart';
 
 /// Настройки под iOS: Core Location при [LocationAccuracy.medium] чаще отдаёт
@@ -21,7 +21,8 @@ class MapGeo {
     Future<Position?> tryGet(LocationSettings settings) async {
       try {
         return await Geolocator.getCurrentPosition(locationSettings: settings);
-      } catch (_) {
+      } catch (error) {
+        debugPrint('[MapGeo] getCurrentPosition failed: $error');
         return null;
       }
     }
@@ -115,7 +116,8 @@ class MapGeo {
     );
   }
 
-  static bool _isFresh(Position p, {Duration maxAge = const Duration(minutes: 20)}) {
+  static bool _isFresh(Position p,
+      {Duration maxAge = const Duration(minutes: 20)}) {
     final age = DateTime.now().toUtc().difference(p.timestamp.toUtc());
     return !age.isNegative && age <= maxAge;
   }

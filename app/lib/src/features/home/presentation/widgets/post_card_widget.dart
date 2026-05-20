@@ -45,7 +45,8 @@ class PostCardWidget extends StatelessWidget
         .where((item) => item.type.toLowerCase() == 'image')
         .map((item) => item.url)
         .toList(growable: false);
-    final rankMeta = _resolveRankMeta(post.author.rank, post.author.rankSubLevel);
+    final rankMeta =
+        _resolveRankMeta(post.author.rank, post.author.rankSubLevel);
     final avatarUrl = post.author.profilePicUrl.trim().isNotEmpty
         ? post.author.profilePicUrl
         : '';
@@ -179,6 +180,8 @@ class PostCardWidget extends StatelessWidget
                 postId: post.postId,
                 isLiked: post.viewerHasLiked,
                 count: post.metrics.likes,
+                hideLikesCount: post.hideLikesCount,
+                isOwnPost: post.isOwnPost,
               ),
               const Gap(16),
               PostActionButton(
@@ -316,12 +319,16 @@ class PostLikeButton extends StatelessWidget {
     required this.postId,
     required this.isLiked,
     required this.count,
+    required this.hideLikesCount,
+    required this.isOwnPost,
   });
 
   final HomeBloc bloc;
   final String postId;
   final bool isLiked;
   final int count;
+  final bool hideLikesCount;
+  final bool isOwnPost;
 
   @override
   Widget build(BuildContext context) {
@@ -341,6 +348,9 @@ class PostLikeButton extends StatelessWidget {
 
             final currentlyLiked = currentPost?.viewerHasLiked ?? isLiked;
             final currentCount = currentPost?.metrics.likes ?? count;
+            final shouldShowCount =
+                !(currentPost?.hideLikesCount ?? hideLikesCount) ||
+                    (currentPost?.isOwnPost ?? isOwnPost);
 
             return FeedInkWell(
               onTap: () {
@@ -360,16 +370,18 @@ class PostLikeButton extends StatelessWidget {
                       BlendMode.srcIn,
                     ),
                   ),
-                  const Gap(4),
-                  Text(
-                    currentCount.toString(),
-                    style: TextStyles.bodyMain.copyWith(
-                      color: currentlyLiked
-                          ? const Color(0xFFF38AA1)
-                          : AppColors.textPrimary,
-                      fontSize: 12,
+                  if (shouldShowCount) ...[
+                    const Gap(4),
+                    Text(
+                      currentCount.toString(),
+                      style: TextStyles.bodyMain.copyWith(
+                        color: currentlyLiked
+                            ? const Color(0xFFF38AA1)
+                            : AppColors.textPrimary,
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             );
@@ -529,6 +541,7 @@ class PostImageGrid extends StatefulWidget {
   const PostImageGrid({
     super.key,
     required this.attachments,
+
     /// Edge-to-edge tiles inside the outer clip (e.g. publications / Figma-style block).
     this.flushInnerMedia = false,
   });
@@ -800,7 +813,8 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
                     bottom: 12,
                     child: Text(
                       'Видео пока недоступно',
-                      style: TextStyles.bodyMain.copyWith(color: Colors.white70),
+                      style:
+                          TextStyles.bodyMain.copyWith(color: Colors.white70),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -809,7 +823,8 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
                     color: Colors.white54,
                     strokeWidth: 2,
                   ),
-                if (_initError == null && (!canShowVideo || !controller.value.isPlaying))
+                if (_initError == null &&
+                    (!canShowVideo || !controller.value.isPlaying))
                   Container(
                     width: 52,
                     height: 52,

@@ -1,5 +1,9 @@
-import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/enums/notification_type.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/features/home/domain/entities/notification_entity.dart';
+import 'package:app/src/features/home/domain/repositories/i_home_repository.dart';
+import 'package:app/src/features/home/presentation/widgets/notification_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
@@ -22,6 +26,39 @@ extension _NotificationFilterLabel on NotificationFilter {
         return 'Post';
     }
   }
+
+  String? get backendTab {
+    switch (this) {
+      case NotificationFilter.all:
+        return null;
+      case NotificationFilter.like:
+      case NotificationFilter.comment:
+        return 'ACTIVITY';
+      case NotificationFilter.help:
+        return 'TASKS';
+      case NotificationFilter.subscriptions:
+        return 'RECOGNITION';
+      case NotificationFilter.post:
+        return 'SYSTEM';
+    }
+  }
+
+  NotificationType? get localType {
+    switch (this) {
+      case NotificationFilter.all:
+        return null;
+      case NotificationFilter.like:
+        return NotificationType.like;
+      case NotificationFilter.comment:
+        return NotificationType.comment;
+      case NotificationFilter.help:
+        return NotificationType.help;
+      case NotificationFilter.subscriptions:
+        return NotificationType.subscriptions;
+      case NotificationFilter.post:
+        return NotificationType.post;
+    }
+  }
 }
 
 class NotificationsPage extends StatefulWidget {
@@ -32,73 +69,59 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  NotificationFilter _selectedFilter = NotificationFilter.all;
+  final IHomeRepository _repository =
+      getIt<IHomeRepository>(instanceName: 'HomeRepositoryImpl');
 
-  static final List<_NotificationItemData> _items = <_NotificationItemData>[
-    _NotificationItemData(
-      category: NotificationFilter.help,
-      avatarUrl:
-          'https://images.unsplash.com/photo-1516302752625-fcc3c50ae61f?w=240&h=240&fit=crop',
-      title:
-          'You earned the Founder medal for being among our first 3000 members.',
-      timeAgo: '3 day ago',
-    ),
-    _NotificationItemData(
-      category: NotificationFilter.post,
-      avatarUrl:
-          'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?w=240&h=240&fit=crop',
-      title: 'Your post has been successfully published.',
-      timeAgo: '3 day ago',
-      trailingImage: Assets.images.image.path,
-    ),
-    _NotificationItemData(
-      category: NotificationFilter.post,
-      avatarUrl:
-          'https://images.unsplash.com/photo-1545239351-1141bd82e8a6?w=240&h=240&fit=crop',
-      title: 'Your post was not verified',
-      highlightText: 'reason',
-      timeAgo: '3 day ago',
-      trailingImage: Assets.images.image.path,
-    ),
-    _NotificationItemData(
-      category: NotificationFilter.subscriptions,
-      avatarUrl:
-          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=240&h=240&fit=crop',
-      title: '@Isabbekov',
-      subtitle: 'Moonstone - Intention - A',
-      body: 'I sent you a honor for your post “If f...”',
-      timeAgo: '3 day ago',
-      trailingImage:
-          'https://images.unsplash.com/photo-1472162072942-cd5147eb3902?w=220&h=220&fit=crop',
-    ),
-    _NotificationItemData(
-      category: NotificationFilter.like,
-      avatarUrl:
-          'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=240&h=240&fit=crop',
-      title: '@Ahanov',
-      subtitle: 'Moonstone - Intention - A',
-      body: 'I sent you a honor for your post “If f...”',
-      timeAgo: '3 day ago',
-      trailingImage:
-          'https://images.unsplash.com/photo-1472162072942-cd5147eb3902?w=220&h=220&fit=crop',
-    ),
-    _NotificationItemData(
-      category: NotificationFilter.help,
-      avatarUrl:
-          'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=240&h=240&fit=crop',
-      title: '@Ahanov',
-      subtitle: 'Ammolite - Intention - A',
-      body: 'Request “Son\'s birthday”',
-      timeAgo: '3 day ago',
-      trailingCta: 'View',
-    ),
-  ];
+  NotificationFilter _selectedFilter = NotificationFilter.all;
+  List<NotificationEntity> _notifications = const <NotificationEntity>[];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await _repository.getNotifications(
+      tab: _selectedFilter.backendTab,
+    );
+
+    if (!mounted) return;
+
+    result.fold(
+      (error) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = error.message;
+        });
+      },
+      (items) {
+        setState(() {
+          _isLoading = false;
+          _notifications = items;
+        });
+      },
+    );
+  }
+
+  List<NotificationEntity> get _visibleNotifications {
+    final localType = _selectedFilter.localType;
+    if (localType == null) return _notifications;
+    return _notifications
+        .where((item) => item.notificationType == localType)
+        .toList(growable: false);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final visibleItems = _selectedFilter == NotificationFilter.all
-        ? _items
-        : _items.where((item) => item.category == _selectedFilter).toList();
+    final visibleItems = _visibleNotifications;
 
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
@@ -108,19 +131,23 @@ class _NotificationsPageState extends State<NotificationsPage> {
             _NotificationsHeader(
               selectedFilter: _selectedFilter,
               onFilterChanged: (filter) {
+                if (filter == _selectedFilter) return;
                 setState(() {
                   _selectedFilter = filter;
                 });
+                _loadNotifications();
               },
             ),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-                itemCount: visibleItems.length,
-                separatorBuilder: (_, __) => const Gap(14),
-                itemBuilder: (context, index) {
-                  return _NotificationTile(item: visibleItems[index]);
-                },
+              child: RefreshIndicator(
+                color: Colors.white,
+                backgroundColor: const Color(0xFF17191F),
+                onRefresh: _loadNotifications,
+                child: _NotificationsBody(
+                  isLoading: _isLoading,
+                  errorMessage: _errorMessage,
+                  items: visibleItems,
+                ),
               ),
             ),
           ],
@@ -205,153 +232,64 @@ class _NotificationsHeader extends StatelessWidget {
   }
 }
 
-class _NotificationTile extends StatelessWidget {
-  const _NotificationTile({required this.item});
+class _NotificationsBody extends StatelessWidget {
+  const _NotificationsBody({
+    required this.isLoading,
+    required this.errorMessage,
+    required this.items,
+  });
 
-  final _NotificationItemData item;
+  final bool isLoading;
+  final String? errorMessage;
+  final List<NotificationEntity> items;
 
   @override
   Widget build(BuildContext context) {
-    final hasTrailingImage = item.trailingImage != null;
-    final hasTrailingCta = item.trailingCta != null;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(
-            item.avatarUrl,
-            width: 42,
-            height: 42,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
-              width: 42,
-              height: 42,
-              color: AppColors.surface,
-              alignment: Alignment.center,
-              child: Text(
-                item.title.isNotEmpty ? item.title[0] : '?',
-                style: TextStyles.bodyMain.copyWith(color: Colors.white),
-              ),
-            ),
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    if (errorMessage != null) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(24, 120, 24, 24),
+        children: [
+          Text(
+            'Failed to load notifications',
+            textAlign: TextAlign.center,
+            style: TextStyles.titleBig.copyWith(color: Colors.white),
           ),
-        ),
-        const Gap(12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: item.title,
-                      style: TextStyles.bodyLarge.copyWith(
-                        color: Colors.white,
-                        height: 1.2,
-                      ),
-                    ),
-                    if (item.highlightText != null)
-                      TextSpan(
-                        text: ' ${item.highlightText!}',
-                        style: TextStyles.bodyLarge.copyWith(
-                          color: AppColors.blueText1,
-                          height: 1.2,
-                        ),
-                      ),
-                  ],
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (item.subtitle != null) ...[
-                const Gap(2),
-                Text(
-                  item.subtitle!,
-                  style: TextStyles.bodyMain.copyWith(
-                    color: const Color(0xFF8E95A8),
-                  ),
-                ),
-              ],
-              if (item.body != null) ...[
-                const Gap(2),
-                Text(
-                  item.body!,
-                  style: TextStyles.bodyLarge.copyWith(
-                    color: Colors.white70,
-                    height: 1.2,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-              const Gap(2),
-              Text(
-                item.timeAgo,
-                style: TextStyles.bodyMain.copyWith(
-                  color: const Color(0xFF8C8C8C),
-                ),
-              ),
-            ],
+          const Gap(8),
+          Text(
+            errorMessage!,
+            textAlign: TextAlign.center,
+            style: TextStyles.bodyLarge.copyWith(color: Colors.white60),
           ),
-        ),
-        if (hasTrailingImage)
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: item.trailingImage!.startsWith('http')
-                ? Image.network(
-                    item.trailingImage!,
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.cover,
-                  )
-                : Image.asset(
-                    item.trailingImage!,
-                    width: 52,
-                    height: 52,
-                    fit: BoxFit.cover,
-                  ),
+        ],
+      );
+    }
+
+    if (items.isEmpty) {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(24, 120, 24, 24),
+        children: [
+          Text(
+            'No notifications yet',
+            textAlign: TextAlign.center,
+            style: TextStyles.titleBig.copyWith(color: Colors.white),
           ),
-        if (hasTrailingCta)
-          Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF23242A),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0x33FFFFFF)),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              item.trailingCta!,
-              style: TextStyles.bodyLarge.copyWith(color: Colors.white),
-            ),
-          ),
-      ],
+        ],
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      itemCount: items.length,
+      separatorBuilder: (_, __) => const Gap(14),
+      itemBuilder: (context, index) {
+        return NotificationItemWidget(notification: items[index]);
+      },
     );
   }
-}
-
-class _NotificationItemData {
-  const _NotificationItemData({
-    required this.category,
-    required this.avatarUrl,
-    required this.title,
-    required this.timeAgo,
-    this.highlightText,
-    this.subtitle,
-    this.body,
-    this.trailingImage,
-    this.trailingCta,
-  });
-
-  final NotificationFilter category;
-  final String avatarUrl;
-  final String title;
-  final String timeAgo;
-  final String? highlightText;
-  final String? subtitle;
-  final String? body;
-  final String? trailingImage;
-  final String? trailingCta;
 }

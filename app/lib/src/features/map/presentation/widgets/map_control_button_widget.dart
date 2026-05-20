@@ -22,6 +22,12 @@ class _MapControlButton extends StatelessWidget {
             child: InkWell(
               onTap: onTap,
               borderRadius: BorderRadius.circular(6),
+              splashFactory: NoSplash.splashFactory,
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+              focusColor: Colors.transparent,
+              overlayColor: WidgetStateProperty.all(Colors.transparent),
               child: Container(
                 width: 44,
                 height: 44,
