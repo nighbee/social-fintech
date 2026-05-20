@@ -120,7 +120,7 @@ func (r *PostgresRepository) List(ctx context.Context, userID uuid.UUID, tab *UI
 
 	// All tab: no ui_tab filter, sort by is_important DESC then updated_at DESC.
 	// Specific tab: filter by ui_tab, sort by updated_at DESC.
-	var rows []Notification
+	rows := make([]Notification, 0)
 	var err error
 
 	if tab == nil {

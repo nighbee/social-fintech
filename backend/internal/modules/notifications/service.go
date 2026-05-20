@@ -154,6 +154,9 @@ func (s *Service) List(ctx context.Context, userID uuid.UUID, tab *UITab, cursor
 	if err != nil {
 		return nil, err
 	}
+	if items == nil {
+		items = make([]Notification, 0)
+	}
 	resp := &ListResponse{Items: items, UnreadCount: unread}
 	if nextCursor != nil {
 		resp.NextCursor = nextCursor.UTC().Format(time.RFC3339Nano)
