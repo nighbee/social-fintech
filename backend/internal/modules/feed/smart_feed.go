@@ -53,25 +53,17 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				p.created_at, p.location_lat, p.location_lon,
 				COALESCE(p.report_control_level, 0) AS report_control_level,
 				COALESCE(p.distribution_multiplier, 1.0) AS distribution_multiplier,
-				COALESCE(aps.post_removed_30d, 0) AS author_post_removed_30d,
 				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
 			FROM posts p
-			LEFT JOIN LATERAL (
-				SELECT COUNT(1) AS post_removed_30d
-				FROM author_policy_strikes aps
-				WHERE aps.author_id = p.user_id
-				  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-				  AND aps.created_at >= NOW() - INTERVAL '30 days'
-			) aps ON true
 			WHERE p.is_archived = false
 			  AND p.is_deleted = false
 			  AND (
 				p.user_id = $1
-				OR EXISTS (
+				OR NOT EXISTS (
 					SELECT 1
 					FROM users au
 					WHERE au.id = p.user_id
-					  AND COALESCE(au.is_shadow_banned, false) = false
+					  AND au.is_shadow_banned = true
 				)
 			  )
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
@@ -90,8 +82,20 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				OR random() <= (
 					COALESCE(p.distribution_multiplier, 1.0) *
 					CASE
-						WHEN COALESCE(aps.post_removed_30d, 0) >= 5 THEN 0.4
-						WHEN COALESCE(aps.post_removed_30d, 0) >= 3 THEN 0.7
+						WHEN (
+							SELECT COUNT(1)
+							FROM author_policy_strikes aps
+							WHERE aps.author_id = p.user_id
+							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+							  AND aps.created_at >= NOW() - INTERVAL '30 days'
+						) >= 5 THEN 0.4
+						WHEN (
+							SELECT COUNT(1)
+							FROM author_policy_strikes aps
+							WHERE aps.author_id = p.user_id
+							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+							  AND aps.created_at >= NOW() - INTERVAL '30 days'
+						) >= 3 THEN 0.7
 						ELSE 1.0
 					END
 				)
@@ -116,7 +120,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			COALESCE(u.username, '') as username,
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name,
 			COALESCE(prof.avatar_url, '') as profile_picture_url,
-			COALESCE(w.total_received_amount, 0) as author_received_centinels,
+			COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 
 			-- Media as JSON array via LATERAL
 			COALESCE(media.media_json, '[]'::json) as media_json,
@@ -144,7 +148,6 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		FROM base_posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
-		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		LEFT JOIN LATERAL (
 			SELECT json_agg(json_build_object(
 				'type', pm.media_type,

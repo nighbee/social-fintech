@@ -404,7 +404,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-		       COALESCE(w.total_received_amount, 0) as author_received_centinels,
+		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
 				       'type', media_type,
@@ -421,7 +421,6 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
-		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE p.id = $1
 		  AND p.is_archived = false
 		  AND p.is_deleted = false
@@ -476,7 +475,7 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
-		       COALESCE(w.total_received_amount, 0) as author_received_centinels,
+		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 		       COALESCE(
 			       (SELECT json_agg(json_build_object(
 				       'type', media_type,
@@ -492,7 +491,6 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
-		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE p.is_archived = false AND p.is_deleted = false
 		  AND COALESCE(u.is_shadow_banned, false) = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
@@ -583,13 +581,12 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		       c.created_at,
 		       c.likes_count,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-		       COALESCE(w.total_received_amount, 0) as author_received_centinels,
+		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 		       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 		FROM post_comments c
 		JOIN users u ON c.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
-		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE c.id = $1
 		  AND c.is_deleted = false
 		  AND c.is_hidden_by_reports = false
@@ -686,20 +683,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-			       COALESCE(w.total_received_amount, 0) as author_received_centinels,
+			       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
 			LEFT JOIN profiles prof ON prof.user_id = u.id
-			LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
-			LEFT JOIN LATERAL (
-				SELECT COUNT(1) AS violations_30d
-				FROM author_policy_strikes aps
-				WHERE aps.author_id = c.user_id
-				  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-				  AND aps.created_at >= NOW() - INTERVAL '30 days'
-			) aps ON true
 			WHERE c.post_id = $1
 			  AND c.parent_comment_id IS NULL
 			  AND c.is_deleted = false
@@ -709,8 +698,20 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				c.user_id = $2 OR
 				random() <= (
 					CASE
-						WHEN COALESCE(aps.violations_30d, 0) >= 5 THEN 0.4
-						WHEN COALESCE(aps.violations_30d, 0) >= 3 THEN 0.7
+						WHEN (
+							SELECT COUNT(1)
+							FROM author_policy_strikes aps
+							WHERE aps.author_id = c.user_id
+							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+							  AND aps.created_at >= NOW() - INTERVAL '30 days'
+						) >= 5 THEN 0.4
+						WHEN (
+							SELECT COUNT(1)
+							FROM author_policy_strikes aps
+							WHERE aps.author_id = c.user_id
+							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+							  AND aps.created_at >= NOW() - INTERVAL '30 days'
+						) >= 3 THEN 0.7
 						ELSE 1.0
 					END
 				)
@@ -736,20 +737,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       c.created_at,
 				       c.likes_count,
 				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-				       COALESCE(w.total_received_amount, 0) as author_received_centinels,
+				       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
 				JOIN users u ON c.user_id = u.id
 				LEFT JOIN profiles prof ON prof.user_id = u.id
-				LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
-				LEFT JOIN LATERAL (
-					SELECT COUNT(1) AS violations_30d
-					FROM author_policy_strikes aps
-					WHERE aps.author_id = c.user_id
-					  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-					  AND aps.created_at >= NOW() - INTERVAL '30 days'
-				) aps ON true
 				WHERE c.post_id = $1
 				  AND c.parent_comment_id IS NULL
 				  AND c.is_deleted = false
@@ -759,8 +752,20 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 					c.user_id = $2 OR
 					random() <= (
 						CASE
-							WHEN COALESCE(aps.violations_30d, 0) >= 5 THEN 0.4
-							WHEN COALESCE(aps.violations_30d, 0) >= 3 THEN 0.7
+							WHEN (
+								SELECT COUNT(1)
+								FROM author_policy_strikes aps
+								WHERE aps.author_id = c.user_id
+								  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+								  AND aps.created_at >= NOW() - INTERVAL '30 days'
+							) >= 5 THEN 0.4
+							WHEN (
+								SELECT COUNT(1)
+								FROM author_policy_strikes aps
+								WHERE aps.author_id = c.user_id
+								  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
+								  AND aps.created_at >= NOW() - INTERVAL '30 days'
+							) >= 3 THEN 0.7
 							ELSE 1.0
 						END
 					)
@@ -791,13 +796,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			       c.created_at,
 			       c.likes_count,
 			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-			       COALESCE(w.total_received_amount, 0) as author_received_centinels,
+			       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 			FROM post_comments c
 			JOIN users u ON c.user_id = u.id
 			LEFT JOIN profiles prof ON prof.user_id = u.id
-			LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 			WHERE c.post_id = $1
 			  AND c.parent_comment_id = $3
 			  AND c.is_deleted = false
@@ -824,13 +828,12 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 				       c.created_at,
 				       c.likes_count,
 				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-				       COALESCE(w.total_received_amount, 0) as author_received_centinels,
+				       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
 				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 				FROM post_comments c
 				JOIN users u ON c.user_id = u.id
 				LEFT JOIN profiles prof ON prof.user_id = u.id
-				LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 				WHERE c.post_id = $1
 				  AND c.parent_comment_id = $3
 				  AND c.is_deleted = false
