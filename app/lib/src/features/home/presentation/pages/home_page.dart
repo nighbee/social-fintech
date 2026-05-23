@@ -435,6 +435,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       context.push(RoutePaths.notifications),
                   onSearchTap: () => context.push(RoutePaths.search),
                   onTimerTap: () => _openFeedTimeLimitPage(state),
+                  onSilverTap: () => context.push(RoutePaths.store),
                   silverCount: _silverCountFromState(state),
                   timerLabel: _timerLabelFromState(state),
                   timerTone: _timerToneFromState(state),

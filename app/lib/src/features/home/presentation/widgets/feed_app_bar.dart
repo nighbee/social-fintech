@@ -13,6 +13,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onNotificationsTap,
     this.onSearchTap,
     this.onTimerTap,
+    this.onSilverTap,
     this.silverCount = 0,
     this.timerLabel = '20 min',
     this.timerTone = FeedTimerTone.normal,
@@ -22,6 +23,7 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onNotificationsTap;
   final VoidCallback? onSearchTap;
   final VoidCallback? onTimerTap;
+  final VoidCallback? onSilverTap;
   final int silverCount;
   final String timerLabel;
   final FeedTimerTone timerTone;
@@ -72,7 +74,11 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       title: Row(
         children: [
-          SilverBalanceChip(count: silverCount),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onSilverTap,
+            child: SilverBalanceChip(count: silverCount),
+          ),
           const Gap(12),
           GestureDetector(
             behavior: HitTestBehavior.opaque,

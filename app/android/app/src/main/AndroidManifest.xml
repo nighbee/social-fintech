@@ -2,6 +2,7 @@
     <!-- Internet permission for Firebase Auth -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    <uses-permission android:name="com.android.vending.BILLING"/>
     
     <!-- Optional: For automatic SMS retrieval (recommended for better UX) -->
     <uses-permission android:name="android.permission.RECEIVE_SMS"/>
