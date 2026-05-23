@@ -42,7 +42,6 @@ services:
       --maxmemory-policy allkeys-lru
       --save ""
       --appendonly no
-    # PORTS REMOVED: Redis is internal only. Access via SSH tunnel if needed.
     volumes:
       - redis_data:/data
     mem_limit: 128m
@@ -173,7 +172,6 @@ services:
     container_name: brightbund-minio
     restart: unless-stopped
     ports:
-      # Restricted to localhost only — access via SSH tunnel: ssh -L 9001:localhost:9001 user@your-vm
       - "127.0.0.1:9001:9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -200,7 +198,6 @@ services:
     image: apache/kafka:latest
     container_name: brightbund-kafka
     restart: unless-stopped
-    # PORTS REMOVED: Kafka is internal only. Not accessible from outside.
     environment:
       - KAFKA_NODE_ID=1
       - KAFKA_PROCESS_ROLES=controller,broker
@@ -225,7 +222,9 @@ services:
         max-size: "20m"
         max-file: "3"
     networks:
-      - brightbund-network
+      brightbund-network:
+        aliases:
+          - kafka
 
   kafka-setup:
     image: apache/kafka:latest
