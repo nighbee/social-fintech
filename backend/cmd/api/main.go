@@ -20,6 +20,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/seasons"
+	"github.com/brightbund-backend/internal/modules/leaderboard"
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/modules/payment"
 	"github.com/brightbund-backend/internal/modules/settings"
@@ -345,7 +346,12 @@ func main() {
 	paymentHandler := payment.NewHandler(paymentService)
 	logger.Info("payment module initialized")
 
-	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, notificationsHandler, seasonsHandler, ranksHandler, paymentHandler, jwtManager, authRepo, logger.Get())
+	leaderboardRepo := leaderboard.NewRepository(db.DB)
+	leaderboardService := leaderboard.NewService(leaderboardRepo, redisCache)
+	leaderboardHandler := leaderboard.NewHandler(leaderboardService)
+	logger.Info("leaderboard module initialized")
+
+	app := server.New(cfg, authHandler, economyHandler, profilesHandler, mapHandler, feedHandler, settingsHandler, chatHandler, notificationsHandler, seasonsHandler, ranksHandler, paymentHandler, leaderboardHandler, jwtManager, authRepo, logger.Get())
 
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
