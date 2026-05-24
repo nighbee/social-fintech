@@ -35,25 +35,28 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 	const query = `
 		SELECT
 			p.id AS post_id,
-			COALESCE(
-				(SELECT COALESCE(pm.thumbnail_url, pm.video_1080p_url) FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order ASC LIMIT 1),
-				''
-			) AS thumbnail_url,
-			COALESCE(
-				(SELECT pm.media_type FROM post_media pm WHERE pm.post_id = p.id ORDER BY pm.media_order ASC LIMIT 1),
-				''
-			) AS media_type,
-			(SELECT COUNT(*) FROM post_media pm WHERE pm.post_id = p.id) > 1 AS has_multiple_media,
+			COALESCE(first_media.thumbnail_url, first_media.video_1080p_url, '') AS thumbnail_url,
+			COALESCE(first_media.media_type, '') AS media_type,
+			COALESCE(media_stats.media_count, 0) > 1 AS has_multiple_media,
 			p.created_at
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
+		JOIN LATERAL (
+			SELECT pm.thumbnail_url, pm.video_1080p_url, pm.media_type
+			FROM post_media pm
+			WHERE pm.post_id = p.id
+			ORDER BY pm.media_order ASC
+			LIMIT 1
+		) first_media ON true
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*) AS media_count
+			FROM post_media pm
+			WHERE pm.post_id = p.id
+		) media_stats ON true
 		WHERE p.user_id    = $1
 		  AND p.is_archived = false
 		  AND p.is_deleted = false
 		  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
-		  AND EXISTS (
-		        SELECT 1 FROM post_media pm WHERE pm.post_id = p.id
-		      )
 		  AND p.created_at  < $3
 		  AND (
 		        $1 = $2
@@ -121,7 +124,7 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 			COALESCE(u.username,    '')                                         AS username,
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')     AS full_name,
 			COALESCE(prof.avatar_url, '')                                       AS profile_pic_url,
-			COALESCE(w.total_received_amount, 0)                                AS author_received_centinels,
+			COALESCE(prof.total_gold_seals_received, 0) * 100                   AS author_received_centinels,
 			COALESCE(media.media_json, '[]'::json)                              AS media_json,
 			EXISTS (
 				SELECT 1 FROM post_interactions pi
@@ -132,7 +135,6 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		FROM posts p
 		JOIN users    u    ON u.id    = p.user_id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
-		LEFT JOIN wallets w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		LEFT JOIN LATERAL (
 			SELECT json_agg(json_build_object(
 				'type',              pm.media_type,

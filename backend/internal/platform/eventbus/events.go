@@ -9,15 +9,31 @@ import (
 type EventType string
 
 const (
-	TypePostLiked       EventType = "social.post_liked"
-	TypePostCommented   EventType = "social.post_commented"
-	TypeSealReceived    EventType = "economy.seal_received"
-	TypeTaskApplied     EventType = "task.applied"
-	TypeTaskAccepted    EventType = "task.accepted"
-	TypeTaskCompleted   EventType = "task.completed"
-	TypeMessageReceived EventType = "chat.message_received"
-	TypeIAPReceived     EventType = "payment.iap_received"
-	TypePushDispatch    EventType = "push.dispatch"
+	TypePostLiked            EventType = "social.post_liked"
+	TypePostCommented        EventType = "social.post_commented"
+	TypePostReplied          EventType = "social.post_replied"
+	TypeSealReceived         EventType = "economy.seal_received"
+	TypeSilverReceived       EventType = "economy.silver_received"
+	TypeTaskApplied          EventType = "task.applied"
+	TypeTaskAccepted         EventType = "task.accepted"
+	TypeTaskCompleted        EventType = "task.completed"
+	TypeProofSubmitted       EventType = "task.proof_submitted"
+	TypeTaskExpired          EventType = "task.expired"
+	TypeVerificationRequired EventType = "task.verification_required"
+	TypeRewardDelivered      EventType = "task.reward_delivered"
+	TypeMedalIssued          EventType = "achievement.medal_issued"
+	TypeRankAdvanced         EventType = "leaderboard.rank_advanced"
+	TypeDistrictLeader       EventType = "leaderboard.district_leader"
+	TypeTop50                EventType = "leaderboard.top_50"
+	TypeSeasonWarning        EventType = "leaderboard.season_warning"
+	TypeSeasonResult         EventType = "leaderboard.season_result"
+	TypeMessageReceived      EventType = "chat.message_received"
+	TypeIAPReceived          EventType = "payment.iap_received"
+	TypePaymentConfirmed     EventType = "system.payment_confirmed"
+	TypeSecuritySignin       EventType = "system.security_signin"
+	TypeProfileVerified      EventType = "system.profile_verified"
+	TypePostRejected         EventType = "moderation.post_rejected"
+	TypePushDispatch         EventType = "push.dispatch"
 )
 
 // PushNotificationEvent is emitted when a push needs to be fanned out.
@@ -81,6 +97,38 @@ type PaymentEvent struct {
 	Amount    int64   `json:"amount"` // Seals amount
 	Price     float64 `json:"price"`
 	Currency  string  `json:"currency"`
+}
+
+// LeaderboardEvent is used for ranking, district, top-50, season events.
+type LeaderboardEvent struct {
+	BaseEvent
+	Scope      string `json:"scope"`
+	Region     string `json:"region,omitempty"`
+	OldPos     int    `json:"old_position,omitempty"`
+	NewPos     int    `json:"new_position,omitempty"`
+	SeasonID   string `json:"season_id,omitempty"`
+	Tier       string `json:"tier,omitempty"`
+	Position   int    `json:"position,omitempty"`
+	Seals      int    `json:"seals,omitempty"`
+	SilverSent int    `json:"silver_sent,omitempty"`
+	GoldHonors int    `json:"gold_honors,omitempty"`
+	DaysLeft   int    `json:"days_left,omitempty"`
+}
+
+// MedalEvent is used for achievement medal issuance.
+type MedalEvent struct {
+	BaseEvent
+	RecipientID string `json:"recipient_id"`
+	MedalName   string `json:"medal_name"`
+	MedalDesc   string `json:"medal_desc,omitempty"`
+}
+
+// SystemEvent is used for moderation, payment, security, verification.
+type SystemEvent struct {
+	BaseEvent
+	UserID  string `json:"user_id"`
+	Details string `json:"details,omitempty"`
+	PostID  string `json:"post_id,omitempty"`
 }
 
 // Envelope wraps any event with its metadata for Kafka transport.

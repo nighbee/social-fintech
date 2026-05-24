@@ -214,145 +214,212 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     return userText.trim();
   }
 
-  void _onMessageLongPress(ChatMessageUiModel m) {
-    _openMessageActionsForModel(m);
+  void _onMessageLongPressAt(ChatMessageUiModel m, Offset globalPosition) {
+    _openMessageActionsForModelAt(m, globalPosition);
   }
 
-  void _openMessageActionsForModel(ChatMessageUiModel m) {
-    final isSystem = m.messageType == 'system';
-    final canCopy = _messageExcerpt(m).trim().isNotEmpty;
-    final partner = _thread.displayName.trim().isEmpty
-        ? 'собеседника'
-        : _thread.displayName.trim();
+  RelativeRect _menuPositionFor(Offset globalPosition) {
+    final overlay =
+        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final size = overlay?.size ?? MediaQuery.sizeOf(context);
+    return RelativeRect.fromLTRB(
+      globalPosition.dx,
+      globalPosition.dy,
+      size.width - globalPosition.dx,
+      size.height - globalPosition.dy,
+    );
+  }
 
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF252529),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (BuildContext ctx) {
-        Widget row({
-          required String label,
-          required IconData icon,
-          Color? textColor,
-          Color? iconColor,
-          required VoidCallback onTap,
-        }) {
-          final tc = textColor ?? AppColors.textBrand;
-          final ic = iconColor ?? AppColors.textBrand.withValues(alpha: 0.9);
-          return InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyles.bodyLarge.copyWith(color: tc),
-                    ),
-                  ),
-                  Icon(icon, color: ic, size: 22),
-                ],
+  PopupMenuItem<String> _messagePopupItem({
+    required String value,
+    required String label,
+    required IconData icon,
+    Color? color,
+  }) {
+    final c = color ?? AppColors.textBrand;
+    return PopupMenuItem<String>(
+      value: value,
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: SizedBox(
+        width: 130,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyles.bodyMain.copyWith(
+                  color: c,
+                  fontSize: 12,
+                  height: 1.1,
+                ),
               ),
             ),
-          );
-        }
-
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              if (!isSystem)
-                row(
-                  label: 'Ответить',
-                  icon: Icons.reply_rounded,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    setState(() {
-                      _replyDraft = _ChatReplyDraft(
-                        authorLabel: _replyLabelForMessage(m),
-                        excerpt: _messageExcerpt(m),
-                        replyToMessageId:
-                            m.id.trim().isEmpty ? null : m.id.trim(),
-                      );
-                    });
-                  },
-                ),
-              row(
-                label: 'Переслать',
-                icon: Icons.forward_rounded,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.pushNamed(
-                    RouteNames.chatConversationForward,
-                    pathParameters: <String, String>{'chatId': widget.chatId},
-                    extra: _thread,
-                  );
-                },
-              ),
-              if (canCopy)
-                row(
-                  label: 'Копировать',
-                  icon: Icons.copy_rounded,
-                  onTap: () {
-                    final clip = m.text.trim().isNotEmpty
-                        ? m.text
-                        : _messageExcerpt(m);
-                    Clipboard.setData(ClipboardData(text: clip));
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Скопировано')),
-                    );
-                  },
-                ),
-              if (!isSystem)
-                row(
-                  label: 'Закрепить',
-                  icon: Icons.push_pin_outlined,
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    unawaited(_pinMessageFromMenu(m.id));
-                  },
-                ),
-              if (!isSystem)
-                row(
-                  label: 'Удалить',
-                  icon: Icons.delete_outline_rounded,
-                  textColor: const Color(0xFFEF4444),
-                  iconColor: const Color(0xFFEF4444),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        _openDeleteMessageSheet(m, partner);
-                      }
-                    });
-                  },
-                ),
-              Divider(
-                height: 1,
-                thickness: 1,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-              row(
-                label: 'Выбрать',
-                icon: Icons.check_circle_outline_rounded,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.pushNamed(
-                    RouteNames.chatConversationSelect,
-                    pathParameters: <String, String>{'chatId': widget.chatId},
-                    extra: _thread,
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
+            Icon(icon, color: c, size: 15),
+          ],
+        ),
+      ),
     );
+  }
+
+  Future<void> _openMessageActionsForModelAt(
+    ChatMessageUiModel m,
+    Offset globalPosition,
+  ) async {
+    final isSystem = m.messageType == 'system';
+    final canCopy = _messageExcerpt(m).trim().isNotEmpty;
+
+    final selected = await showMenu<String>(
+      context: context,
+      position: _menuPositionFor(globalPosition),
+      color: const Color(0xFF2D2D31),
+      surfaceTintColor: Colors.transparent,
+      elevation: 10,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(2),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      items: <PopupMenuEntry<String>>[
+        if (!isSystem)
+          _messagePopupItem(
+            value: 'reply',
+            label: 'Reply',
+            icon: Icons.reply_rounded,
+          ),
+        _messagePopupItem(
+          value: 'forward',
+          label: 'Forward',
+          icon: Icons.forward_rounded,
+        ),
+        if (canCopy)
+          _messagePopupItem(
+            value: 'copy',
+            label: 'Copy',
+            icon: Icons.copy_rounded,
+          ),
+        if (!isSystem)
+          _messagePopupItem(
+            value: 'pin',
+            label: 'Pin',
+            icon: Icons.push_pin_outlined,
+          ),
+        if (!isSystem)
+          _messagePopupItem(
+            value: 'delete',
+            label: 'Delete',
+            icon: Icons.delete_outline_rounded,
+            color: const Color(0xFFFF3B45),
+          ),
+        const PopupMenuDivider(height: 1),
+        _messagePopupItem(
+          value: 'select',
+          label: 'Select',
+          icon: Icons.check_circle_outline_rounded,
+        ),
+      ],
+    );
+
+    if (!mounted || selected == null) {
+      return;
+    }
+
+    switch (selected) {
+      case 'reply':
+        setState(() {
+          _replyDraft = _ChatReplyDraft(
+            authorLabel: _replyLabelForMessage(m),
+            excerpt: _messageExcerpt(m),
+            replyToMessageId: m.id.trim().isEmpty ? null : m.id.trim(),
+          );
+        });
+        return;
+      case 'forward':
+        context.pushNamed(
+          RouteNames.chatConversationForward,
+          pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
+        );
+        return;
+      case 'copy':
+        final clip = m.text.trim().isNotEmpty ? m.text : _messageExcerpt(m);
+        Clipboard.setData(ClipboardData(text: clip));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Copied')),
+        );
+        return;
+      case 'pin':
+        unawaited(_pinMessageFromMenu(m.id));
+        return;
+      case 'delete':
+        await _openDeleteMessageMenu(m, globalPosition);
+        return;
+      case 'select':
+        context.pushNamed(
+          RouteNames.chatConversationSelect,
+          pathParameters: <String, String>{'chatId': widget.chatId},
+          extra: _thread,
+        );
+        return;
+    }
+  }
+
+  Future<void> _openDeleteMessageMenu(
+    ChatMessageUiModel m,
+    Offset globalPosition,
+  ) async {
+    final partner = _thread.displayName.trim().isEmpty
+        ? 'partner'
+        : _thread.displayName.trim();
+    final selected = await showMenu<String>(
+      context: context,
+      position: _menuPositionFor(globalPosition + const Offset(118, 98)),
+      color: const Color(0xFF252529),
+      surfaceTintColor: Colors.transparent,
+      elevation: 10,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(2),
+        side: BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      items: <PopupMenuEntry<String>>[
+        PopupMenuItem<String>(
+          value: 'both',
+          height: 34,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: SizedBox(
+            width: 122,
+            child: Text(
+              'Delete for\n$partner',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyles.bodyMain.copyWith(
+                color: const Color(0xFFFF3B45),
+                fontSize: 11,
+                height: 1.15,
+              ),
+            ),
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'me',
+          height: 30,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            'Delete for me',
+            style: TextStyles.bodyMain.copyWith(
+              color: const Color(0xFFFF3B45),
+              fontSize: 11,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ],
+    );
+    if (!mounted || selected == null) {
+      return;
+    }
+    unawaited(_deleteMessageApi(m.id, forBoth: selected == 'both'));
   }
 
   Future<void> _pinMessageFromMenu(String messageId) async {
@@ -378,48 +445,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
     );
   }
 
-  void _openDeleteMessageSheet(ChatMessageUiModel m, String partnerName) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: const Color(0xFF252529),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (BuildContext ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            ListTile(
-              title: Text(
-                'Удалить у $partnerName',
-                style: TextStyles.bodyLarge.copyWith(
-                  color: const Color(0xFFEF4444),
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(ctx);
-                unawaited(_deleteMessageApi(m.id, forBoth: true));
-              },
-            ),
-            ListTile(
-              title: Text(
-                'Удалить у меня',
-                style: TextStyles.bodyLarge.copyWith(
-                  color: const Color(0xFFEF4444),
-                ),
-              ),
-              onTap: () {
-                Navigator.pop(ctx);
-                unawaited(_deleteMessageApi(m.id, forBoth: false));
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _deleteMessageApi(String messageId, {required bool forBoth}) async {
+  Future<void> _deleteMessageApi(String messageId,
+      {required bool forBoth}) async {
     if (!mounted || !_isRealConversation) {
       return;
     }
@@ -586,7 +613,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         if (!mounted) {
           return;
         }
-        setState(() => _pendingMedia = _PendingMedia(bytes: bytes, fileName: fileName));
+        setState(() =>
+            _pendingMedia = _PendingMedia(bytes: bytes, fileName: fileName));
       },
       onError: (String message) {
         if (!mounted) {
@@ -657,13 +685,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           _pendingMedia = null;
           _replyDraft = null;
           _remoteMessageDtos = [..._remoteMessageDtos, dto];
-          _messages = [
-            ..._messages,
-            ChatMessageApiMapper.toUiModel(
-              dto,
-              currentUserId: _currentUserId(),
-            ),
-          ];
+          _messages = ChatMessageApiMapper.toUiModels(
+            _remoteMessageDtos,
+            currentUserId: _currentUserId(),
+          );
         });
       },
     );
@@ -730,13 +755,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         setState(() {
           _replyDraft = null;
           _remoteMessageDtos = [..._remoteMessageDtos, dto];
-          _messages = [
-            ..._messages,
-            ChatMessageApiMapper.toUiModel(
-              dto,
-              currentUserId: _currentUserId(),
-            ),
-          ];
+          _messages = ChatMessageApiMapper.toUiModels(
+            _remoteMessageDtos,
+            currentUserId: _currentUserId(),
+          );
         });
       },
     );
@@ -792,9 +814,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                     controller: _messageController,
                     onSend: _sendMessage,
                     sendEnabled: !_sending,
-                    hasPendingAttachment: _isRealConversation && _pendingMedia != null,
-                    onAttachmentTap: _isRealConversation ? _onPickAttachment : null,
-                    onMicrophoneTap: _isRealConversation ? _onMicrophoneTap : null,
+                    hasPendingAttachment:
+                        _isRealConversation && _pendingMedia != null,
+                    onAttachmentTap:
+                        _isRealConversation ? _onPickAttachment : null,
+                    onMicrophoneTap:
+                        _isRealConversation ? _onMicrophoneTap : null,
                   ),
                 ],
               ),
@@ -828,7 +853,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                   )
                 : ChatConversationMessageList(
                     messages: _messages,
-                    onMessageLongPress: _onMessageLongPress,
+                    onMessageLongPressAt: _onMessageLongPressAt,
                     emptyState: _isRealConversation &&
                             !_loadingRemote &&
                             _remoteError == null &&
@@ -840,8 +865,8 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
                               16,
                               chatThreadComposerStackBottomPadding(
                                 context,
-                                hasPendingAttachment:
-                                    _isRealConversation && _pendingMedia != null,
+                                hasPendingAttachment: _isRealConversation &&
+                                    _pendingMedia != null,
                                 hasReplyDraft: _replyDraft != null,
                               ),
                             ),
@@ -936,85 +961,74 @@ class _ChatReplyDraftStrip extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 6, 4, 6),
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppColors.textBrand.withValues(alpha: 0.06),
-            border: Border(
-              left: BorderSide(
-                color: AppColors.textBrand.withValues(alpha: 0.4),
-                width: 3,
-              ),
-              top: BorderSide(
-                color: AppColors.textBrand.withValues(alpha: 0.1),
-                width: 0.5,
-              ),
-              bottom: BorderSide(
-                color: AppColors.textBrand.withValues(alpha: 0.1),
-                width: 0.5,
+        padding: const EdgeInsets.fromLTRB(68, 8, 68, 0),
+        child: SizedBox(
+          height: 54,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A2E),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.055),
+                width: 1,
               ),
             ),
-            borderRadius: const BorderRadius.only(
-              topRight: Radius.circular(8),
-              bottomRight: Radius.circular(8),
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 4, 6),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: <Widget>[
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF74AFE3),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const Gap(9),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Text.rich(
-                        TextSpan(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 7),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          'Reply to ${draft.authorLabel}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyles.bodyMain.copyWith(
-                            color: AppColors.textBrand.withValues(alpha: 0.6),
+                            color: const Color(0xFFB9BEC7),
+                            fontWeight: FontWeight.w600,
                             fontSize: 12,
+                            height: 1.15,
                           ),
-                          children: <InlineSpan>[
-                            TextSpan(
-                              text: 'Ответить',
-                              style: TextStyles.bodyMain.copyWith(
-                                color: AppColors.textBrand.withValues(alpha: 0.75),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                            TextSpan(
-                              text: ' · ${draft.authorLabel}',
-                              style: TextStyles.bodyMain.copyWith(
-                                color: AppColors.textBrand.withValues(alpha: 0.6),
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
                         ),
-                      ),
-                      const Gap(3),
-                      Text(
-                        shortExcerpt,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyles.bodyLarge.copyWith(
-                          color: AppColors.textBrand,
-                          fontSize: 13,
-                          height: 1.3,
+                        const Gap(3),
+                        Text(
+                          shortExcerpt,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyles.bodyMain.copyWith(
+                            color: AppColors.textBrand,
+                            fontSize: 13,
+                            height: 1.2,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 IconButton(
                   onPressed: onClose,
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
+                  ),
+                  padding: EdgeInsets.zero,
                   icon: Icon(
                     Icons.close_rounded,
-                    color: AppColors.textBrand.withValues(alpha: 0.7),
-                    size: 20,
+                    color: AppColors.textBrand.withValues(alpha: 0.68),
+                    size: 18,
                   ),
                 ),
               ],

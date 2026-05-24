@@ -20,7 +20,6 @@ func NewProducer(brokers []string, topic string, logger *zap.Logger) *Producer {
 	return &Producer{
 		writer: &kafka.Writer{
 			Addr:     kafka.TCP(brokers...),
-			Topic:    topic,
 			Balancer: &kafka.LeastBytes{},
 			// Async by default for performance, but we can configure batching
 			BatchSize: 10,

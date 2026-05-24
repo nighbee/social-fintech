@@ -118,9 +118,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     final id = authorId.trim();
     if (id.isEmpty) return;
     final myId = getIt<ProfileBloc>().state.maybeWhen(
-      loaded: (vm) => vm.profile.userId.trim(),
-      orElse: () => '',
-    );
+          loaded: (vm) => vm.profile.userId.trim(),
+          orElse: () => '',
+        );
     if (id == myId && myId.isNotEmpty) {
       context.go(RoutePaths.profile);
       return;
@@ -246,7 +246,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   }
 
   void _syncFeedVisibilityFromContext(BuildContext context) {
-    final isFeedTabVisibleNow = TickerMode.of(context);
+    final isFeedTabVisibleNow = TickerMode.valuesOf(context).enabled;
     if (_isFeedTabVisible == isFeedTabVisibleNow) {
       return;
     }
@@ -261,10 +261,10 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     }
 
     if (_isCooldownActiveFromState(HomeState.loaded(viewModel: viewModel))) {
-      final breakMinutes =
-          (_effectiveBreakSecondsFromState(HomeState.loaded(viewModel: viewModel)) /
-                  60)
-              .ceil();
+      final breakMinutes = (_effectiveBreakSecondsFromState(
+                  HomeState.loaded(viewModel: viewModel)) /
+              60)
+          .ceil();
       return '$breakMinutes min break';
     }
 
@@ -321,6 +321,39 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       loaded: _timerToneFromViewModel,
       orElse: () => FeedTimerTone.normal,
     );
+  }
+
+  String _feedLimitSelectionLabelFromState(HomeState state) {
+    final feedState = _feedStateFromState(state);
+    final maxAllowedSeconds = feedState.maxAllowedSeconds;
+    if (maxAllowedSeconds == 0 && feedState.serverTimestamp.isNotEmpty) {
+      return 'No limit';
+    }
+    switch ((maxAllowedSeconds / 60).round()) {
+      case 20:
+        return '20 min';
+      case 40:
+        return '40 min';
+      case 60:
+        return '60 min';
+      default:
+        return '20 min';
+    }
+  }
+
+  Future<void> _openFeedTimeLimitPage(HomeState state) async {
+    final result = await context.pushNamed(
+      RouteNames.profileFeedTimeLimit,
+      extra: {
+        'initialSelectionLabel': _feedLimitSelectionLabelFromState(state),
+      },
+    );
+    if (!mounted) {
+      return;
+    }
+    if (result is String && result.isNotEmpty) {
+      _homeBloc.add(const HomeEvent.loadFeedState());
+    }
   }
 
   int _silverCountFromState(HomeState state) {
@@ -401,6 +434,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   onNotificationsTap: () =>
                       context.push(RoutePaths.notifications),
                   onSearchTap: () => context.push(RoutePaths.search),
+                  onTimerTap: () => _openFeedTimeLimitPage(state),
+                  onSilverTap: () => context.push(RoutePaths.store),
                   silverCount: _silverCountFromState(state),
                   timerLabel: _timerLabelFromState(state),
                   timerTone: _timerToneFromState(state),
@@ -460,7 +495,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                             isInCooldown: _isCooldownActiveFromState(
                               HomeState.loaded(viewModel: viewModel),
                             ),
-                            breakSecondsRemaining: _effectiveBreakSecondsFromState(
+                            breakSecondsRemaining:
+                                _effectiveBreakSecondsFromState(
                               HomeState.loaded(viewModel: viewModel),
                             ),
                             freezeBreakCountdown:
@@ -478,7 +514,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                               post: post,
                               bloc: _homeBloc,
                               onReported: _onPostReported,
-                              onAuthorTap: () => _onFeedAuthorTap(post.author.id),
+                              onAuthorTap: () =>
+                                  _onFeedAuthorTap(post.author.id),
                             );
                           },
                         ),

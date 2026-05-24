@@ -59,7 +59,7 @@ import (
 // @description Type "Bearer" followed by a space and your JWT Access Token (not UUID). Example: "Bearer eyJhbGci..."
 
 func main() {
-	// загружает конфиг, подключает бд и инит OAuth jwt
+	// Р·Р°РіСЂСѓР¶Р°РµС‚ РєРѕРЅС„РёРі, РїРѕРґРєР»СЋС‡Р°РµС‚ Р±Рґ Рё РёРЅРёС‚ OAuth jwt
 	_ = godotenv.Load(".env")
 
 	configPath := os.Getenv("CONFIG_PATH")
@@ -72,7 +72,7 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	// Инициализация структурированного логирования (Zap)
+	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃС‚СЂСѓРєС‚СѓСЂРёСЂРѕРІР°РЅРЅРѕРіРѕ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ (Zap)
 	if err := logger.Initialize(cfg.Logging); err != nil {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
@@ -219,6 +219,7 @@ func main() {
 		UseImplicitTLS: cfg.SMTP.UseImplicitTLS,
 	})
 	authService.SetEmailSender(authEmailAdapter{sender: emailSender})
+	authService.SetEventBus(eventProducer)
 
 	authHandler := auth.NewHandler(authService)
 
@@ -320,6 +321,7 @@ func main() {
 
 	notificationsRepo := notifications.NewRepository(db.DB)
 	notificationsService := notifications.NewService(notificationsRepo, eventProducer, redisCache)
+	notificationsService.SetSettingsService(settingsService)
 	notificationsHandler := notifications.NewHandler(notificationsService)
 	logger.Info("notifications module initialized")
 
@@ -335,6 +337,7 @@ func main() {
 
 	seasonsRepo := seasons.NewRepository(db.DB)
 	seasonsService := seasons.NewService(seasonsRepo)
+	seasonsService.SetEventBus(eventProducer)
 	seasonsHandler := seasons.NewHandler(seasonsService)
 	seasonsSnapshot := seasons.NewSnapshotProvider(db.DB)
 	seasonsWorker := seasons.NewCloseWorker(seasonsService, seasonsSnapshot, time.Hour, logger.Get())
@@ -448,7 +451,7 @@ func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipi
 		return nil
 	}
 
-	// Recipient profile — needed for the username string in the title.
+	// Recipient profile вЂ” needed for the username string in the title.
 	recipientUser, err := p.authRepo.GetUserByID(ctx, recipientID.String())
 	if err != nil || recipientUser == nil {
 		return nil
@@ -461,8 +464,8 @@ func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipi
 		username = "your ally"
 	}
 
-	// Recipient region — pick the most granular H3 cell available so we
-	// resolve to the smallest meaningful place name (city → region → country).
+	// Recipient region вЂ” pick the most granular H3 cell available so we
+	// resolve to the smallest meaningful place name (city в†’ region в†’ country).
 	regionState, _ := p.mapRepo.GetUserRegionState(ctx, recipientID.String())
 	scope := "region"
 	leaderboardKey := ""
@@ -512,7 +515,7 @@ func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipi
 	}
 
 	// If we couldn't infer a position the message would read "to position 0",
-	// which is worse than no notification — skip it instead.
+	// which is worse than no notification вЂ” skip it instead.
 	if position == 0 {
 		return nil
 	}

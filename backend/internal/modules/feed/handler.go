@@ -14,6 +14,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/platform/logger"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/vision"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -208,6 +209,13 @@ func (h *Handler) UploadMedia(c *fiber.Ctx) error {
 				"content_type": contentType,
 				"size":         file.Size,
 			})
+
+			if h.service.eventBus != nil {
+				_ = h.service.eventBus.Publish(c.Context(), eventbus.TypePostRejected, eventbus.SystemEvent{
+					UserID:  userID.String(),
+					Details: "Your post was rejected: " + reason,
+				})
+			}
 
 			return c.Status(403).JSON(fiber.Map{
 				"error":   "content_rejected",

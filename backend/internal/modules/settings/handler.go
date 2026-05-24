@@ -462,6 +462,33 @@ func (h *Handler) ReportBug(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusCreated)
 }
 
+func (h *Handler) GetNotificationSettings(c *fiber.Ctx) error {
+	userID, _, err := getUserAndSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	resp, err := h.service.GetNotificationSettings(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "notification_settings_fetch_failed"})
+	}
+	return c.JSON(resp)
+}
+
+func (h *Handler) PatchNotificationSettings(c *fiber.Ctx) error {
+	userID, _, err := getUserAndSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	var req PatchNotificationsSettingsRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+	if err := h.service.PatchNotificationSettings(c.Context(), userID, req); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "notification_settings_update_failed"})
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 // Contact godoc
 // @Summary Send a Contact Us message to support
 // @Description In-app "Contact us" form. Persists the submission and forwards

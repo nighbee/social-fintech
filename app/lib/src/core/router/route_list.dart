@@ -102,7 +102,8 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                     password: extra?['password'] as String?,
                     phoneNumber: extra?['phoneNumber'] as String?,
                     firebaseIdToken: extra?['firebaseIdToken'] as String?,
-                    firebaseAuthProvider: extra?['firebaseAuthProvider'] as String?,
+                    firebaseAuthProvider:
+                        extra?['firebaseAuthProvider'] as String?,
                   );
                 },
               ),
@@ -116,7 +117,8 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                     password: extra?['password'] as String?,
                     phoneNumber: extra?['phoneNumber'] as String?,
                     firebaseIdToken: extra?['firebaseIdToken'] as String?,
-                    firebaseAuthProvider: extra?['firebaseAuthProvider'] as String?,
+                    firebaseAuthProvider:
+                        extra?['firebaseAuthProvider'] as String?,
                     firstName: extra?['firstName'] as String?,
                     lastName: extra?['lastName'] as String?,
                     dateOfBirth: extra?['dateOfBirth'] as String?,
@@ -209,6 +211,12 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 name: RouteNames.search,
                 redirect: AuthGuard,
                 builder: (context, state) => const SearchPage(),
+              ),
+              GoRoute(
+                path: RoutePaths.store,
+                name: RouteNames.store,
+                redirect: AuthGuard,
+                builder: (context, state) => const StorePage(),
               ),
               GoRoute(
                 path: RoutePaths.publicProfile,
@@ -351,7 +359,8 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                               ? extra
                               : <String, dynamic>{};
                           final initialLabel =
-                              map['initialSelectionLabel'] as String? ?? 'Never';
+                              map['initialSelectionLabel'] as String? ??
+                                  'Never';
                           final initialPrecise =
                               map['initialPreciseLocationEnabled'] as bool? ??
                                   false;
@@ -422,11 +431,11 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                               final map = extra is Map<String, dynamic>
                                   ? extra
                                   : <String, dynamic>{};
-                              final ids = (map['selectedMethodIds']
-                                          as List<dynamic>?)
-                                      ?.whereType<String>()
-                                      .toList() ??
-                                  <String>[];
+                              final ids =
+                                  (map['selectedMethodIds'] as List<dynamic>?)
+                                          ?.whereType<String>()
+                                          .toList() ??
+                                      <String>[];
                               return TwoFactorAuthenticationPage(
                                 initialSelectedMethodIds: ids,
                               );
@@ -460,10 +469,10 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                             parentNavigatorKey: rootNavigatorKey,
                             builder: (context, state) =>
                                 DeleteAccountReasonPage(
-                                  flowData: DeleteAccountFlowData.fromExtra(
-                                    state.extra,
-                                  ),
-                                ),
+                              flowData: DeleteAccountFlowData.fromExtra(
+                                state.extra,
+                              ),
+                            ),
                             routes: [
                               GoRoute(
                                 path: 'verify-password',
@@ -472,17 +481,18 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                                 parentNavigatorKey: rootNavigatorKey,
                                 builder: (context, state) =>
                                     DeleteAccountPasswordPage(
-                                      flowData: DeleteAccountFlowData.fromExtra(
-                                        state.extra,
-                                      ),
-                                    ),
+                                  flowData: DeleteAccountFlowData.fromExtra(
+                                    state.extra,
+                                  ),
+                                ),
                               ),
                               GoRoute(
                                 path: 'verify-otp',
                                 name:
                                     RouteNames.profileSecurityDeleteAccountOtp,
                                 parentNavigatorKey: rootNavigatorKey,
-                                builder: (context, state) => DeleteAccountOtpPage(
+                                builder: (context, state) =>
+                                    DeleteAccountOtpPage(
                                   flowData: DeleteAccountFlowData.fromExtra(
                                     state.extra,
                                   ),
@@ -495,10 +505,10 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                                 parentNavigatorKey: rootNavigatorKey,
                                 builder: (context, state) =>
                                     DeleteAccountConfirmationPage(
-                                      flowData: DeleteAccountFlowData.fromExtra(
-                                        state.extra,
-                                      ),
-                                    ),
+                                  flowData: DeleteAccountFlowData.fromExtra(
+                                    state.extra,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -595,7 +605,8 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                           ? extra
                           : <String, dynamic>{};
                       final displayName = map['displayName'] as String? ?? '';
-                      final initialPostId = map['initialPostId'] as String? ?? '';
+                      final initialPostId =
+                          map['initialPostId'] as String? ?? '';
                       final isCurrentUser =
                           map['isCurrentUser'] as bool? ?? true;
                       final userId = map['userId'] as String?;

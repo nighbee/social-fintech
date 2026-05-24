@@ -60,6 +60,21 @@ class NotificationItemWidget extends StatelessWidget {
     }
   }
 
+  Widget _buildImage({
+    required String url,
+    required double size,
+    required Widget fallback,
+  }) {
+    if (url.isEmpty) return fallback;
+    return Image.network(
+      url,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => fallback,
+    );
+  }
+
   void _showReasonDialog(BuildContext context) {
     if (notification.ctaValue.isEmpty) return;
 
@@ -124,6 +139,8 @@ class NotificationItemWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasAccent = notification.accentText.isNotEmpty;
     final hasRightImage = notification.rightImageUrl.isNotEmpty;
+    final hasUserName = notification.userName.isNotEmpty;
+    final hasUserMeta = notification.userMeta.isNotEmpty;
     final showViewButton = notification.ctaLabel.toLowerCase() == 'view';
     final showReasonLink = notification.accentText.toLowerCase() == 'reason';
 
@@ -135,10 +152,14 @@ class NotificationItemWidget extends StatelessWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: Assets.images.moonstone.image(
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
+              child: _buildImage(
+                url: notification.userAvatarUrl,
+                size: 44,
+                fallback: Assets.images.moonstone.image(
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
             Positioned(
@@ -160,12 +181,13 @@ class NotificationItemWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '@${notification.userName}',
-                style: TextStyles.titleTag
-                    .copyWith(color: AppColors.colorffcacaca),
-              ),
-              if (notification.userMeta.isNotEmpty) ...[
+              if (hasUserName)
+                Text(
+                  '@${notification.userName}',
+                  style: TextStyles.titleTag
+                      .copyWith(color: AppColors.colorffcacaca),
+                ),
+              if (hasUserMeta) ...[
                 const Gap(2),
                 Text(
                   notification.userMeta,
@@ -174,7 +196,7 @@ class NotificationItemWidget extends StatelessWidget {
                   ),
                 ),
               ],
-              const Gap(4),
+              if (hasUserName || hasUserMeta) const Gap(4),
               RichText(
                 text: TextSpan(
                   style: TextStyles.bodyLarge.copyWith(
@@ -235,10 +257,14 @@ class NotificationItemWidget extends StatelessWidget {
             padding: const EdgeInsets.only(left: 12),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: Assets.images.jade.image(
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
+              child: _buildImage(
+                url: notification.rightImageUrl,
+                size: 44,
+                fallback: Assets.images.jade.image(
+                  width: 44,
+                  height: 44,
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
           ),

@@ -73,12 +73,12 @@ class ChatScaffold extends StatelessWidget {
       extendBodyBehindAppBar: extendBodyBehindAppBar,
       extendBody: useScaffoldOverlayComposer,
       appBar: appBar,
-      bottomNavigationBar: useScaffoldOverlayComposer ? bottomNavigationBar : null,
+      bottomNavigationBar:
+          useScaffoldOverlayComposer ? bottomNavigationBar : null,
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: switch (backgroundVariant) {
-          ChatBackgroundVariant.list =>
-            ChatPageBackground(child: scrollOrBody),
+          ChatBackgroundVariant.list => ChatPageBackground(child: scrollOrBody),
           ChatBackgroundVariant.thread =>
             ChatThreadViewportBackground(child: scrollOrBody),
         },
@@ -239,7 +239,7 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
   final ChatThreadPreview thread;
   final List<Widget>? actions;
 
-  static const double _pinnedBarHeight = 42;
+  static const double _pinnedBarHeight = 44;
 
   @override
   Widget build(BuildContext context) {
@@ -289,13 +289,13 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                     ),
                   ),
-                  padding: const EdgeInsets.fromLTRB(16, 6, 12, 6),
+                  padding: const EdgeInsets.fromLTRB(16, 5, 12, 6),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.push_pin_outlined,
-                        size: 18,
+                        size: 17,
                         color: AppColors.textBrand.withValues(alpha: 0.65),
                       ),
                       const Gap(8),
@@ -306,12 +306,12 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'Закреплённое',
+                              'Pinned Message',
                               style: TextStyles.bodyMain.copyWith(
-                                fontSize: 10,
+                                fontSize: 10.5,
                                 height: 1.2,
-                                color: AppColors.textBrand.withValues(alpha: 0.55),
-                                letterSpacing: -0.1,
+                                color:
+                                    AppColors.textBrand.withValues(alpha: 0.55),
                               ),
                             ),
                             Text(
@@ -337,8 +337,9 @@ class ChatDetailAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize {
-    final pinH =
-        (thread.pinnedMessagePreview ?? '').trim().isEmpty ? 0.0 : _pinnedBarHeight;
+    final pinH = (thread.pinnedMessagePreview ?? '').trim().isEmpty
+        ? 0.0
+        : _pinnedBarHeight;
     return Size.fromHeight(kChatDetailAppBarHeight + pinH);
   }
 }
@@ -459,8 +460,7 @@ class ChatPageTitle extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: TextStyles.titleHeadline.copyWith(color: AppColors.textBrand),
         ),
-        if ((subtitle ?? '').isNotEmpty)
-          _ChatHeaderSubtitle(text: subtitle!),
+        if ((subtitle ?? '').isNotEmpty) _ChatHeaderSubtitle(text: subtitle!),
         if ((caption ?? '').isNotEmpty)
           Text(
             caption!,
@@ -638,7 +638,8 @@ class ChatThreadCard extends StatelessWidget {
                         children: [
                           Padding(
                             padding: EdgeInsets.only(
-                              right: ChatSapphireStyles.threadCardRightContentReserve,
+                              right: ChatSapphireStyles
+                                  .threadCardRightContentReserve,
                             ),
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -646,8 +647,8 @@ class ChatThreadCard extends StatelessWidget {
                                 ChatAvatar(
                                   displayName: thread.displayName,
                                   avatarUrl: thread.avatarUrl,
-                                  radius: ChatSapphireStyles
-                                      .threadCardAvatarRadius,
+                                  radius:
+                                      ChatSapphireStyles.threadCardAvatarRadius,
                                   cornerRadius:
                                       ChatSapphireStyles.listCornerRadius,
                                 ),
@@ -664,7 +665,8 @@ class ChatThreadCard extends StatelessWidget {
                                         thread.displayName,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: TextStyles.titleHeadline.copyWith(
+                                        style:
+                                            TextStyles.titleHeadline.copyWith(
                                           color: AppColors.textBrand,
                                         ),
                                       ),
@@ -716,9 +718,9 @@ class ChatThreadCard extends StatelessWidget {
                           ),
                         ],
                       ),
-                      ),
                     ),
                   ),
+                ),
               ],
             ),
           ),
@@ -855,6 +857,7 @@ class ChatConversationMessageList extends StatelessWidget {
     this.selectedMessageIds = const <String>{},
     this.onMessageTap,
     this.onMessageLongPress,
+    this.onMessageLongPressAt,
     this.emptyState,
     this.padding,
   });
@@ -864,6 +867,8 @@ class ChatConversationMessageList extends StatelessWidget {
   final Set<String> selectedMessageIds;
   final ValueChanged<ChatMessageUiModel>? onMessageTap;
   final ValueChanged<ChatMessageUiModel>? onMessageLongPress;
+  final void Function(ChatMessageUiModel message, Offset globalPosition)?
+      onMessageLongPressAt;
   final Widget? emptyState;
   final EdgeInsetsGeometry? padding;
 
@@ -899,6 +904,12 @@ class ChatConversationMessageList extends StatelessWidget {
           onLongPress: onMessageLongPress == null
               ? null
               : () => onMessageLongPress!(message),
+          onLongPressStart: onMessageLongPressAt == null
+              ? null
+              : (details) => onMessageLongPressAt!(
+                    message,
+                    details.globalPosition,
+                  ),
         ),
       );
       children.add(const Gap(14));
@@ -987,6 +998,7 @@ class ChatMessageBubble extends StatelessWidget {
     this.isSelected = false,
     this.onTap,
     this.onLongPress,
+    this.onLongPressStart,
   });
 
   final ChatMessageUiModel message;
@@ -994,6 +1006,7 @@ class ChatMessageBubble extends StatelessWidget {
   final bool isSelected;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
+  final GestureLongPressStartCallback? onLongPressStart;
 
   Future<void> _openUrl(BuildContext context, String url) async {
     final uri = Uri.tryParse(url);
@@ -1131,8 +1144,8 @@ class ChatMessageBubble extends StatelessWidget {
                             ChatOutgoingReceipt.none) ...[
                       const Gap(4),
                       _OutgoingReadReceipts(
-                        read: message.outgoingReceipt ==
-                            ChatOutgoingReceipt.read,
+                        read:
+                            message.outgoingReceipt == ChatOutgoingReceipt.read,
                         iconColor: receiptColor,
                       ),
                     ],
@@ -1189,6 +1202,55 @@ class ChatMessageBubble extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (message.replyPreview != null) ...[
+                    Container(
+                      constraints: BoxConstraints(maxWidth: mediaW),
+                      decoration: BoxDecoration(
+                        color: isOutgoing
+                            ? Colors.black.withValues(alpha: 0.07)
+                            : Colors.white.withValues(alpha: 0.055),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border(
+                          left: BorderSide(
+                            color: isOutgoing
+                                ? const Color(0xFF4C6A8C)
+                                : const Color(0xFF7C8796),
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      padding: const EdgeInsets.fromLTRB(8, 5, 7, 6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Reply to ${message.replyPreview!.authorLabel}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyles.bodyMain.copyWith(
+                              fontSize: 10,
+                              height: 1.15,
+                              color: metaColor.withValues(alpha: 0.95),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const Gap(2),
+                          Text(
+                            message.replyPreview!.excerpt,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyles.bodyMain.copyWith(
+                              fontSize: 11,
+                              height: 1.2,
+                              color: bodyColor.withValues(alpha: 0.86),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Gap(7),
+                  ],
                   if (message.forwardedSnippet != null) ...[
                     Text(
                       'Forwarded from',
@@ -1255,8 +1317,7 @@ class ChatMessageBubble extends StatelessWidget {
                                   child: Icon(
                                     Icons.play_circle_fill_rounded,
                                     size: 44,
-                                    color:
-                                        Colors.white.withValues(alpha: 0.88),
+                                    color: Colors.white.withValues(alpha: 0.88),
                                   ),
                                 ),
                               ],
@@ -1304,6 +1365,7 @@ class ChatMessageBubble extends StatelessWidget {
                   child: GestureDetector(
                     onTap: onTap,
                     onLongPress: onLongPress,
+                    onLongPressStart: onLongPressStart,
                     child: wrapped,
                   ),
                 ),

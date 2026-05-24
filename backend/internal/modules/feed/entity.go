@@ -1,4 +1,4 @@
-package feed
+﻿package feed
 
 import (
 	"time"
@@ -203,7 +203,7 @@ type AuthorInfo struct {
 	// rank thresholds change. See [feed.fillAuthorRank].
 	Rank string `json:"rank"`
 	// ReputationScore is the lifetime count of Gold Seals the author has
-	// *received* (whole seals). This is the single input that drives Rank —
+	// *received* (whole seals). This is the single input that drives Rank вЂ”
 	// FE can re-derive the rank locally if it ever needs to.
 	ReputationScore int `json:"reputation_score"`
 	// RankSubLevel is the sub-level label within the rank tier (e.g. "Intention")
@@ -225,16 +225,16 @@ type PostResponse struct {
 	PostID  uuid.UUID  `json:"post_id"`
 	Author  AuthorInfo `json:"author"`
 	TimeAgo string     `json:"time_ago"`
-	// Visibility is returned so the client can show the globe 🌐 or allies 👥 icon
+	// Visibility is returned so the client can show the globe рџЊђ or allies рџ‘Ґ icon
 	Visibility        string            `json:"visibility"`
 	CommentPermission string            `json:"comment_permission"`
 	ContentText       string            `json:"content_text"`
 	MediaAttachments  []MediaAttachment `json:"media_attachments"`
 	Metrics           PostMetrics       `json:"metrics"`
 	Permissions       Permissions       `json:"permissions"`
-	// IsOwnPost lets the client show/hide the ··· edit/delete options menu
+	// IsOwnPost lets the client show/hide the В·В·В· edit/delete options menu
 	IsOwnPost bool `json:"is_own_post"`
-	// ViewerHasLiked lets the client render the ❤️ heart as filled immediately
+	// ViewerHasLiked lets the client render the вќ¤пёЏ heart as filled immediately
 	ViewerHasLiked bool `json:"viewer_has_liked"`
 	HideLikesCount bool `json:"hide_likes_count"`
 }
@@ -245,7 +245,7 @@ type FeedResponse struct {
 	FeedDegraded bool           `json:"feed_degraded"`
 }
 
-// PostGridItem is a lightweight thumbnail entry for the 3×3 profile grid.
+// PostGridItem is a lightweight thumbnail entry for the 3Г—3 profile grid.
 type PostGridItem struct {
 	PostID           uuid.UUID `json:"post_id"`
 	ThumbnailURL     string    `json:"thumbnail_url,omitempty"`
@@ -262,6 +262,7 @@ type UserPostsGridResponse struct {
 
 type CommentResponse struct {
 	CommentID        uuid.UUID         `json:"comment_id"`
+	UserID        uuid.UUID
 	ParentCommentID  *uuid.UUID        `json:"parent_comment_id"`
 	RootCommentID    *uuid.UUID        `json:"root_comment_id"`
 	Author           AuthorInfo        `json:"author"`
@@ -276,6 +277,7 @@ type CommentResponse struct {
 
 type CommentThreadParent struct {
 	CommentID     uuid.UUID
+	UserID        uuid.UUID
 	PostID        uuid.UUID
 	ParentID      *uuid.UUID
 	RootCommentID *uuid.UUID

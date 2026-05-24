@@ -43,6 +43,11 @@ class EndPoints {
   static String commentLikes(String commentId) =>
       '/feed/comments/$commentId/likes';
 
+  //* Notifications
+  static const String notifications = '/notifications';
+  static String notificationRead(String notificationId) =>
+      '/notifications/$notificationId/read';
+
   //* Gamification
   static const String gamificationRank = '/gamification/rank';
   static const String gamificationRanks = '/gamification/ranks';

@@ -1,7 +1,5 @@
 import 'package:app/src/features/home/data/models/economy_balance_dto.dart';
 import 'package:app/src/features/home/data/models/economy_limits_dto.dart';
-import 'package:app/src/features/home/data/models/notification_dto.dart';
-import 'package:app/src/features/home/data/models/feed_state_dto.dart';
 import 'package:app/src/features/home/domain/entities/feed_entity.dart';
 import 'package:app/src/features/home/domain/entities/feed_state_entity.dart';
 import 'package:app/src/features/home/domain/entities/interaction_list_entity.dart';
@@ -228,9 +226,10 @@ class HomeRepositoryImpl implements IHomeRepository {
   }
 
   @override
-  Future<Either<DomainException, List<NotificationEntity>>>
-      getNotifications() async {
-    final result = await _remote.getNotifications();
+  Future<Either<DomainException, List<NotificationEntity>>> getNotifications({
+    String? tab,
+  }) async {
+    final result = await _remote.getNotifications(tab: tab);
     return result.fold(
       (error) => Left(error),
       (dtoList) {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/brightbund-backend/internal/modules/settings"
 	"github.com/brightbund-backend/internal/platform/cache"
 	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/logger"
@@ -14,13 +15,18 @@ import (
 )
 
 type Service struct {
-	repo     Repository
-	producer *eventbus.Producer
-	cache    *cache.Cache
+	repo            Repository
+	producer        *eventbus.Producer
+	cache           *cache.Cache
+	settingsService settings.PublicService
 }
 
 func NewService(repo Repository, producer *eventbus.Producer, cache *cache.Cache) *Service {
 	return &Service{repo: repo, producer: producer, cache: cache}
+}
+
+func (s *Service) SetSettingsService(svc settings.PublicService) {
+	s.settingsService = svc
 }
 
 // Enqueue persists a notification. Uses Upsert when GroupKey is set (grouped events),
@@ -94,6 +100,41 @@ func (s *Service) Enqueue(ctx context.Context, in Enqueue) (*Notification, error
 	}
 
 	return n, nil
+}
+
+func (s *Service) shouldSendNotification(ctx context.Context, userID uuid.UUID, kind Kind) bool {
+	if s.settingsService == nil {
+		return true
+	}
+	prefs, err := s.settingsService.GetNotificationPreferences(ctx, userID.String())
+	if err != nil {
+		logger.Warn("failed to check notification preferences, defaulting to send", zap.String("user_id", userID.String()), zap.Error(err))
+		return true
+	}
+	enabled, ok := prefs[prefKeyForKind(kind)]
+	if !ok {
+		return true
+	}
+	return enabled
+}
+
+func prefKeyForKind(k Kind) string {
+	switch k {
+	case KindSealReceived, KindSilverReceived:
+		return "notify_gold_honor"
+	case KindMedalIssued:
+		return "notify_medal_unlocked"
+	case KindRankingUp, KindRankAdvanced, KindDistrictLeader, KindTop50:
+		return "notify_rank_increased"
+	case KindTaskApplied, KindTaskAccepted, KindTaskCompleted, KindTaskProofSubmitted, KindTaskExpired, KindTaskVerificationNeeded, KindTaskRewardDelivered:
+		return "notify_task_updates"
+	case KindPostCommented, KindPostReplied:
+		return "notify_comments_replies"
+	case KindPostLiked:
+		return "notify_likes_reactions"
+	default:
+		return ""
+	}
 }
 
 func (s *Service) NotifyRankingUp(ctx context.Context, userID uuid.UUID, scope, region string, oldPos, newPos int) error {
@@ -191,11 +232,19 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return nil
 		}
 		authorUUID, _ := uuid.Parse(ev.PostAuthorID)
+		if !s.shouldSendNotification(ctx, authorUUID, KindPostLiked) {
+			return nil
+		}
+		actorName := s.resolveUsername(ctx, ev.ActorID)
+		title := "Someone liked your post"
+		if actorName != "" {
+			title = fmt.Sprintf("%s liked your post", actorName)
+		}
 		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID}
 		enq := Enqueue{
 			UserID:   authorUUID,
 			Kind:     KindPostLiked,
-			Title:    "Someone liked your post",
+			Title:    title,
 			Payload:  payload,
 			ActorIDs: []string{ev.ActorID},
 		}
@@ -212,11 +261,49 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return nil
 		}
 		authorUUID, _ := uuid.Parse(ev.PostAuthorID)
+		if !s.shouldSendNotification(ctx, authorUUID, KindPostCommented) {
+			return nil
+		}
+		actorName := s.resolveUsername(ctx, ev.ActorID)
+		title := "Someone commented on your post"
+		if actorName != "" {
+			title = fmt.Sprintf("%s commented on your post", actorName)
+		}
 		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID, "comment_id": ev.CommentID}
 		enq := Enqueue{
 			UserID:   authorUUID,
 			Kind:     KindPostCommented,
-			Title:    "Someone commented on your post",
+			Title:    title,
+			Body:     ev.CommentText,
+			Payload:  payload,
+			ActorIDs: []string{ev.ActorID},
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypePostReplied:
+		var ev eventbus.SocialEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		if ev.ActorID == ev.PostAuthorID {
+			return nil
+		}
+		authorUUID, _ := uuid.Parse(ev.PostAuthorID)
+		if !s.shouldSendNotification(ctx, authorUUID, KindPostReplied) {
+			return nil
+		}
+		actorName := s.resolveUsername(ctx, ev.ActorID)
+		title := "Someone replied to your comment"
+		if actorName != "" {
+			title = fmt.Sprintf("%s replied to your comment", actorName)
+		}
+		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID, "comment_id": ev.CommentID}
+		enq := Enqueue{
+			UserID:   authorUUID,
+			Kind:     KindPostReplied,
+			Title:    title,
 			Body:     ev.CommentText,
 			Payload:  payload,
 			ActorIDs: []string{ev.ActorID},
@@ -231,13 +318,78 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		recipientUUID, _ := uuid.Parse(ev.RecipientID)
+		if !s.shouldSendNotification(ctx, recipientUUID, KindSealReceived) {
+			return nil
+		}
+		actorName := s.resolveUsername(ctx, ev.ActorID)
+		title := fmt.Sprintf("You received %d seals!", ev.Amount)
+		if actorName != "" {
+			title = fmt.Sprintf("%s recognized your post", actorName)
+		}
 		payload := map[string]any{"actor_id": ev.ActorID, "amount": ev.Amount, "post_id": ev.PostID}
 		enq := Enqueue{
 			UserID:   recipientUUID,
 			Kind:     KindSealReceived,
-			Title:    fmt.Sprintf("You received %d seals!", ev.Amount),
+			Title:    title,
 			Payload:  payload,
 			ActorIDs: []string{ev.ActorID},
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeSilverReceived:
+		var ev eventbus.EconomyEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		recipientUUID, _ := uuid.Parse(ev.RecipientID)
+		if !s.shouldSendNotification(ctx, recipientUUID, KindSilverReceived) {
+			return nil
+		}
+		actorName := s.resolveUsername(ctx, ev.ActorID)
+		title := fmt.Sprintf("You received %d silver seals!", ev.Amount)
+		if actorName != "" {
+			title = fmt.Sprintf("%s sent you silver", actorName)
+		}
+		payload := map[string]any{"actor_id": ev.ActorID, "amount": ev.Amount, "post_id": ev.PostID}
+		enq := Enqueue{
+			UserID:   recipientUUID,
+			Kind:     KindSilverReceived,
+			Title:    title,
+			Payload:  payload,
+			ActorIDs: []string{ev.ActorID},
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeTaskApplied:
+		var ev eventbus.TaskEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		creatorUUID, _ := uuid.Parse(ev.CreatorID)
+		if !s.shouldSendNotification(ctx, creatorUUID, KindTaskApplied) {
+			return nil
+		}
+		actorName := s.resolveUsername(ctx, ev.ActorID)
+		taskTitle := s.resolveTaskTitle(ctx, ev.TaskID)
+		title := "Someone applied to your task"
+		if actorName != "" {
+			title = fmt.Sprintf("%s applied to your task", actorName)
+		}
+		body := "You have a new application."
+		if taskTitle != "" {
+			body = fmt.Sprintf("Task: %s", taskTitle)
+		}
+		payload := map[string]any{"task_id": ev.TaskID, "actor_id": ev.ActorID}
+		enq := Enqueue{
+			UserID:  creatorUUID,
+			Kind:    KindTaskApplied,
+			Title:   title,
+			Body:    body,
+			Payload: payload,
 		}
 		applyMapping(topic, &enq, payload)
 		_, err := s.Enqueue(ctx, enq)
@@ -249,14 +401,24 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		helperUUID, _ := uuid.Parse(ev.HelperID)
+		if !s.shouldSendNotification(ctx, helperUUID, KindTaskAccepted) {
+			return nil
+		}
+		taskTitle := s.resolveTaskTitle(ctx, ev.TaskID)
+		title := "Your task application was accepted!"
+		body := "You earned reward seals."
+		if taskTitle != "" {
+			body = fmt.Sprintf("\"%s\" — someone is on the way.", taskTitle)
+		}
 		payload := map[string]any{"task_id": ev.TaskID, "creator_id": ev.CreatorID}
 		enq := Enqueue{
 			UserID:  helperUUID,
 			Kind:    KindTaskAccepted,
-			Title:   "Your task application was accepted!",
+			Title:   title,
+			Body:    body,
 			Payload: payload,
 		}
-		applyMapping(topic, &enq, payload)
+		applyMapping("task.accepted", &enq, payload)
 		_, err := s.Enqueue(ctx, enq)
 		return err
 
@@ -266,12 +428,345 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		helperUUID, _ := uuid.Parse(ev.HelperID)
+		if !s.shouldSendNotification(ctx, helperUUID, KindTaskCompleted) {
+			return nil
+		}
 		payload := map[string]any{"task_id": ev.TaskID, "reward": ev.Reward}
 		enq := Enqueue{
 			UserID:  helperUUID,
 			Kind:    KindTaskCompleted,
-			Title:   "Task completed! Reward received.",
+			Title:   "Task approved! Reward received.",
 			Body:    fmt.Sprintf("You earned %d seals.", ev.Reward),
+			Payload: payload,
+		}
+		applyMapping("task.completed", &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeProofSubmitted:
+		var ev eventbus.TaskEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		creatorUUID, _ := uuid.Parse(ev.CreatorID)
+		if !s.shouldSendNotification(ctx, creatorUUID, KindTaskProofSubmitted) {
+			return nil
+		}
+		actorName := s.resolveUsername(ctx, ev.HelperID)
+		taskTitle := s.resolveTaskTitle(ctx, ev.TaskID)
+		title := "Proof submitted for review"
+		if actorName != "" && taskTitle != "" {
+			title = fmt.Sprintf("%s submitted proof for \"%s\"", actorName, taskTitle)
+		} else if actorName != "" {
+			title = fmt.Sprintf("%s submitted proof for review", actorName)
+		}
+		payload := map[string]any{"task_id": ev.TaskID, "helper_id": ev.HelperID}
+		enq := Enqueue{
+			UserID:  creatorUUID,
+			Kind:    KindTaskProofSubmitted,
+			Title:   title,
+			Payload: payload,
+		}
+		applyMapping("task.proof_submitted", &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeTaskExpired:
+		var ev eventbus.TaskEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		creatorUUID, _ := uuid.Parse(ev.CreatorID)
+		if !s.shouldSendNotification(ctx, creatorUUID, KindTaskExpired) {
+			return nil
+		}
+		taskTitle := s.resolveTaskTitle(ctx, ev.TaskID)
+		title := "This request expired without a response"
+		body := ""
+		if taskTitle != "" {
+			body = fmt.Sprintf("\"%s\" expired.", taskTitle)
+		}
+		payload := map[string]any{"task_id": ev.TaskID}
+		enq := Enqueue{
+			UserID:  creatorUUID,
+			Kind:    KindTaskExpired,
+			Title:   title,
+			Body:    body,
+			Payload: payload,
+		}
+		applyMapping("task.expired", &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeVerificationRequired:
+		var ev eventbus.TaskEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		helperUUID, _ := uuid.Parse(ev.HelperID)
+		if !s.shouldSendNotification(ctx, helperUUID, KindTaskVerificationNeeded) {
+			return nil
+		}
+		taskTitle := s.resolveTaskTitle(ctx, ev.TaskID)
+		title := "Additional verification required"
+		body := ""
+		if taskTitle != "" {
+			body = fmt.Sprintf("Your proof for \"%s\" needs verification.", taskTitle)
+		}
+		payload := map[string]any{"task_id": ev.TaskID}
+		enq := Enqueue{
+			UserID:  helperUUID,
+			Kind:    KindTaskVerificationNeeded,
+			Title:   title,
+			Body:    body,
+			Payload: payload,
+		}
+		applyMapping("task.verification_required", &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeRewardDelivered:
+		var ev eventbus.TaskEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		helperUUID, _ := uuid.Parse(ev.HelperID)
+		if !s.shouldSendNotification(ctx, helperUUID, KindTaskRewardDelivered) {
+			return nil
+		}
+		payload := map[string]any{"task_id": ev.TaskID, "reward": ev.Reward}
+		enq := Enqueue{
+			UserID:  helperUUID,
+			Kind:    KindTaskRewardDelivered,
+			Title:   "Reward delivered",
+			Body:    fmt.Sprintf("Your task reward of %d seals has been sent.", ev.Reward),
+			Payload: payload,
+		}
+		applyMapping("task.reward_delivered", &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeMedalIssued:
+		var ev eventbus.MedalEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		recipientUUID, _ := uuid.Parse(ev.RecipientID)
+		if !s.shouldSendNotification(ctx, recipientUUID, KindMedalIssued) {
+			return nil
+		}
+		body := ev.MedalDesc
+		if body == "" {
+			body = "Issued to the first 3,000 members."
+		}
+		payload := map[string]any{"medal_name": ev.MedalName}
+		enq := Enqueue{
+			UserID:  recipientUUID,
+			Kind:    KindMedalIssued,
+			Title:   fmt.Sprintf("You received the %s", ev.MedalName),
+			Body:    body,
+			Payload: payload,
+		}
+		applyMapping("achievement.medal_issued", &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeRankAdvanced:
+		var ev eventbus.LeaderboardEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.ActorID)
+		if !s.shouldSendNotification(ctx, userUUID, KindRankAdvanced) {
+			return nil
+		}
+		title := "You moved up in ranking."
+		body := ""
+		if ev.Tier != "" {
+			title = fmt.Sprintf("You advanced to %s rank", ev.Tier)
+			body = "Your actions are making a difference."
+		}
+		if ev.Region != "" && ev.NewPos > 0 {
+			body = fmt.Sprintf("New position: %d in %s.", ev.NewPos, ev.Region)
+		}
+		payload := map[string]any{
+			"new_position": ev.NewPos,
+			"old_position": ev.OldPos,
+			"tier":         ev.Tier,
+			"region":       ev.Region,
+			"scope":        ev.Scope,
+		}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindRankAdvanced,
+			Title:   title,
+			Body:    body,
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeDistrictLeader:
+		var ev eventbus.LeaderboardEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.ActorID)
+		if !s.shouldSendNotification(ctx, userUUID, KindDistrictLeader) {
+			return nil
+		}
+		payload := map[string]any{"region": ev.Region, "position": ev.Position}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindDistrictLeader,
+			Title:   "You became the leader of your district",
+			Body:    "People in your area recognize you.",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeTop50:
+		var ev eventbus.LeaderboardEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.ActorID)
+		if !s.shouldSendNotification(ctx, userUUID, KindTop50) {
+			return nil
+		}
+		payload := map[string]any{"region": ev.Region, "position": ev.Position}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindTop50,
+			Title:   "You entered the top 50 in your area",
+			Body:    "Keep going — the top is closer than you think.",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeSeasonWarning:
+		var ev eventbus.LeaderboardEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.ActorID)
+		if !s.shouldSendNotification(ctx, userUUID, KindSeasonWarning) {
+			return nil
+		}
+		daysLeft := ev.DaysLeft
+		if daysLeft <= 0 {
+			daysLeft = 3
+		}
+		payload := map[string]any{"days_left": daysLeft, "season_id": ev.SeasonID}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindSeasonWarning,
+			Title:   fmt.Sprintf("Season ends in %d days", daysLeft),
+			Body:    "Your current rank will be locked in.",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeSeasonResult:
+		var ev eventbus.LeaderboardEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.ActorID)
+		if !s.shouldSendNotification(ctx, userUUID, KindSeasonResult) {
+			return nil
+		}
+		payload := map[string]any{
+			"season_id":   ev.SeasonID,
+			"position":    ev.Position,
+			"seals":       ev.Seals,
+			"tier":        ev.Tier,
+			"gold_honors": ev.GoldHonors,
+			"silver_sent": ev.SilverSent,
+		}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindSeasonResult,
+			Title:   "Your season results are ready",
+			Body:    "See how you ranked this season.",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypePaymentConfirmed:
+		var ev eventbus.SystemEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.UserID)
+		payload := map[string]any{"details": ev.Details}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindPaymentConfirmed,
+			Title:   "Payment confirmed. Reward delivered.",
+			Body:    "Your transaction was processed successfully.",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeSecuritySignin:
+		var ev eventbus.SystemEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.UserID)
+		payload := map[string]any{"details": ev.Details}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindSecuritySignin,
+			Title:   "New sign-in detected",
+			Body:    "If this wasn't you, secure your account.",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypeProfileVerified:
+		var ev eventbus.SystemEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.UserID)
+		payload := map[string]any{"details": ev.Details}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindProfileVerified,
+			Title:   "Your profile has been verified",
+			Payload: payload,
+		}
+		applyMapping(topic, &enq, payload)
+		_, err := s.Enqueue(ctx, enq)
+		return err
+
+	case eventbus.TypePostRejected:
+		var ev eventbus.SystemEvent
+		if err := json.Unmarshal(envelope.Payload, &ev); err != nil {
+			return err
+		}
+		userUUID, _ := uuid.Parse(ev.UserID)
+		payload := map[string]any{"post_id": ev.PostID, "details": ev.Details}
+		enq := Enqueue{
+			UserID:  userUUID,
+			Kind:    KindPostRejected,
+			Title:   "This post could not be published",
+			Body:    ev.Details,
 			Payload: payload,
 		}
 		applyMapping(topic, &enq, payload)
@@ -300,6 +795,36 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 	default:
 		return nil
 	}
+}
+
+func (s *Service) resolveUsername(ctx context.Context, rawID string) string {
+	if rawID == "" || s.settingsService == nil {
+		return ""
+	}
+	userID, err := uuid.Parse(rawID)
+	if err != nil {
+		return ""
+	}
+	username, err := s.repo.GetUsernameByID(ctx, userID)
+	if err != nil {
+		return ""
+	}
+	return username
+}
+
+func (s *Service) resolveTaskTitle(ctx context.Context, rawID string) string {
+	if rawID == "" {
+		return ""
+	}
+	taskID, err := uuid.Parse(rawID)
+	if err != nil {
+		return ""
+	}
+	title, err := s.repo.GetTaskTitleByID(ctx, taskID)
+	if err != nil {
+		return ""
+	}
+	return title
 }
 
 func (s *Service) RegisterDevice(ctx context.Context, userID uuid.UUID, req RegisterDeviceRequest) error {

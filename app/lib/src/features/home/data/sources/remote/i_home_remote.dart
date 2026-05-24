@@ -86,8 +86,7 @@ abstract class IHomeRemote {
     PostIdRequest requestId,
     SendPostSealRequest request,
   );
-  Future<Either<DomainException, ClaimDailyAccrualResultDto>>
-      claimDailyAccrual(
+  Future<Either<DomainException, ClaimDailyAccrualResultDto>> claimDailyAccrual(
     ClaimDailyAccrualRequest request,
   );
   Future<Either<DomainException, CommentResponseDto>> toggleCommentLike(
@@ -95,7 +94,9 @@ abstract class IHomeRemote {
   );
 
   // Notifications
-  Future<Either<DomainException, List<NotificationDto>>> getNotifications();
+  Future<Either<DomainException, List<NotificationDto>>> getNotifications({
+    String? tab,
+  });
 
   // Feed state
   Future<Either<DomainException, FeedStateDto>> getFeedState();

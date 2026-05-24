@@ -582,6 +582,27 @@ func (s *Service) PatchMentionsSettings(ctx context.Context, userID string, req 
 	return s.repo.UpdateMentionsSettings(ctx, userID, req.WhoCanMention)
 }
 
+func (s *Service) GetNotificationSettings(ctx context.Context, userID string) (*NotificationsSettingsResponse, error) {
+	settings, err := s.repo.GetUserSettings(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &NotificationsSettingsResponse{
+		NotifyGoldHonor: settings.NotifyGoldHonorReceived,
+		NotifyMedal:     settings.NotifyMedalUnlocked,
+		NotifyRank:      settings.NotifyRankIncreased,
+		NotifyTasks:     settings.NotifyTaskUpdates,
+		NotifyComments:  settings.NotifyCommentsReplies,
+		NotifyLikes:     settings.NotifyLikesReactions,
+		QuietHoursStart: settings.QuietHoursStart,
+		QuietHoursEnd:   settings.QuietHoursEnd,
+	}, nil
+}
+
+func (s *Service) PatchNotificationSettings(ctx context.Context, userID string, req PatchNotificationsSettingsRequest) error {
+	return s.repo.UpdateNotificationSettings(ctx, userID, req)
+}
+
 func (s *Service) ListBlockedUsers(ctx context.Context, userID, cursor string, limit int) (*BlockedUsersResponse, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -760,6 +781,10 @@ func (s *Service) GetMessagePrivacy(ctx context.Context, userID string) (string,
 
 func (s *Service) GetMentionsPrivacy(ctx context.Context, userID string) (string, error) {
 	return s.repo.GetMentionsPrivacy(ctx, userID)
+}
+
+func (s *Service) GetNotificationPreferences(ctx context.Context, userID string) (map[string]bool, error) {
+	return s.repo.GetNotificationPreferences(ctx, userID)
 }
 
 func (s *Service) IsBlockedBetween(ctx context.Context, actorID, targetID string) (bool, error) {

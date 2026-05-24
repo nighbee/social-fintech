@@ -22,6 +22,9 @@ type Repository interface {
 	DeactivateDeviceToken(ctx context.Context, token string) error
 	GetActiveTokensByUserID(ctx context.Context, userID uuid.UUID) ([]DeviceToken, error)
 	LogSentNotification(ctx context.Context, sn *SentNotification) error
+
+	GetUsernameByID(ctx context.Context, userID uuid.UUID) (string, error)
+	GetTaskTitleByID(ctx context.Context, taskID uuid.UUID) (string, error)
 }
 
 type PostgresRepository struct {
@@ -263,6 +266,18 @@ func (r *PostgresRepository) LogSentNotification(ctx context.Context, sn *SentNo
 			sent_at       = EXCLUDED.sent_at
 	`, sn.ID, sn.IdempotencyKey, sn.DeviceToken, sn.Platform, sn.SentAt, sn.Status, sn.ErrorMessage)
 	return err
+}
+
+func (r *PostgresRepository) GetUsernameByID(ctx context.Context, userID uuid.UUID) (string, error) {
+	var username string
+	err := r.db.QueryRowContext(ctx, `SELECT username FROM users WHERE id = $1`, userID).Scan(&username)
+	return username, err
+}
+
+func (r *PostgresRepository) GetTaskTitleByID(ctx context.Context, taskID uuid.UUID) (string, error) {
+	var title string
+	err := r.db.QueryRowContext(ctx, `SELECT title FROM tasks WHERE id = $1`, taskID).Scan(&title)
+	return title, err
 }
 
 // ensure PostgresRepository implements Repository at compile time

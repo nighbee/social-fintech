@@ -71,8 +71,7 @@ class ChatThreadPreview {
       unreadCount: unreadCount ?? this.unreadCount,
       isRequest: isRequest ?? this.isRequest,
       otherUserId: otherUserId ?? this.otherUserId,
-      pinnedMessagePreview:
-          pinnedMessagePreview ?? this.pinnedMessagePreview,
+      pinnedMessagePreview: pinnedMessagePreview ?? this.pinnedMessagePreview,
       pinnedMessageId: pinnedMessageId ?? this.pinnedMessageId,
     );
   }
@@ -87,6 +86,17 @@ class ChatForwardedSnippet {
 
   final String senderName;
   final String senderAvatarUrl;
+}
+
+@immutable
+class ChatReplyPreview {
+  const ChatReplyPreview({
+    required this.authorLabel,
+    required this.excerpt,
+  });
+
+  final String authorLabel;
+  final String excerpt;
 }
 
 @immutable
@@ -127,6 +137,7 @@ class ChatMessageUiModel {
     required this.createdAt,
     this.messageType = 'user',
     this.media = const <ChatMessageMediaItem>[],
+    this.replyPreview,
     this.forwardedSnippet,
     this.outgoingReceipt = ChatOutgoingReceipt.none,
   });
@@ -138,6 +149,7 @@ class ChatMessageUiModel {
   final DateTime createdAt;
   final String messageType;
   final List<ChatMessageMediaItem> media;
+  final ChatReplyPreview? replyPreview;
   final ChatForwardedSnippet? forwardedSnippet;
   final ChatOutgoingReceipt outgoingReceipt;
 }

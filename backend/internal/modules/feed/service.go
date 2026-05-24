@@ -701,9 +701,13 @@ func (s *Service) CreateComment(ctx context.Context, userID, postID uuid.UUID, r
 
 	// Publish event
 	if s.eventBus != nil {
-		_ = s.eventBus.Publish(ctx, eventbus.TypePostCommented, eventbus.SocialEvent{
+		eventType := eventbus.TypePostCommented
+		if req.ParentID != nil {
+			eventType = eventbus.TypePostReplied
+		}
+		_ = s.eventBus.Publish(ctx, eventType, eventbus.SocialEvent{
 			BaseEvent: eventbus.BaseEvent{
-				Type:      eventbus.TypePostCommented,
+				Type:      eventType,
 				ActorID:   userID.String(),
 				Timestamp: time.Now(),
 			},

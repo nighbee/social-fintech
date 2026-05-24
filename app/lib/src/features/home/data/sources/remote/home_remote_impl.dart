@@ -482,10 +482,16 @@ class HomeRemoteImpl implements IHomeRemote {
   }
 
   @override
-  Future<Either<DomainException, List<NotificationDto>>>
-      getNotifications() async {
+  Future<Either<DomainException, List<NotificationDto>>> getNotifications({
+    String? tab,
+  }) async {
     try {
-      final response = await _restClient.get('/notifications');
+      final response = await _restClient.get(
+        EndPoints.notifications,
+        queryParameters: <String, dynamic>{
+          if (tab != null && tab.isNotEmpty) 'tab': tab,
+        },
+      );
       return response.fold((error) => Left(error), (result) {
         final payload = _extractListPayload(result.data);
         final items = payload

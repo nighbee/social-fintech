@@ -2,21 +2,26 @@ package seasons
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	repo Repository
+	repo     Repository
+	eventBus *eventbus.Producer
 }
 
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
 
-// GetCurrentSeason returns the currently-active season, creating it on
-// the fly if no row exists yet (e.g. first cold start of the year).
+func (s *Service) SetEventBus(eb *eventbus.Producer) {
+	s.eventBus = eb
+}
+
 func (s *Service) GetCurrentSeason(ctx context.Context, now time.Time) (*CurrentSeasonResponse, error) {
 	year, half := SeasonForTime(now)
 	season, err := s.repo.GetOrCreateSeason(ctx, year, half)
@@ -33,9 +38,6 @@ func (s *Service) GetCurrentSeason(ctx context.Context, now time.Time) (*Current
 	}, nil
 }
 
-// GetUserArchive returns the user's archived season summaries, newest
-// first. Empty result means the user has not lived through a closed
-// season yet.
 func (s *Service) GetUserArchive(ctx context.Context, userID uuid.UUID, limit int) (*ArchiveResponse, error) {
 	items, err := s.repo.ListArchiveByUser(ctx, userID, limit)
 	if err != nil {
@@ -44,9 +46,6 @@ func (s *Service) GetUserArchive(ctx context.Context, userID uuid.UUID, limit in
 	return &ArchiveResponse{Items: items}, nil
 }
 
-// CloseDueSeasons is the idempotent close-out worker. It is safe to run
-// repeatedly: seasons already marked closed are skipped, and archive
-// rows use ON CONFLICT updates so re-runs converge on the same state.
 func (s *Service) CloseDueSeasons(ctx context.Context, now time.Time, snap SnapshotProvider) error {
 	due, err := s.repo.ListUnclosedDueSeasons(ctx, now)
 	if err != nil {
@@ -69,6 +68,17 @@ func (s *Service) CloseDueSeasons(ctx context.Context, now time.Time, snap Snaps
 		}
 		if err := s.repo.MarkClosed(ctx, season.ID, time.Now().UTC()); err != nil {
 			return err
+		}
+
+		if s.eventBus != nil {
+			_ = s.eventBus.Publish(ctx, eventbus.TypeSeasonResult, eventbus.LeaderboardEvent{
+				BaseEvent: eventbus.BaseEvent{
+					Type:      eventbus.TypeSeasonResult,
+					Timestamp: time.Now(),
+				},
+				SeasonID: season.ID.String(),
+				Scope:    fmt.Sprintf("season_%d_%d", season.SeasonYear, season.SeasonHalf),
+			})
 		}
 	}
 	return nil

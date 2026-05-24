@@ -140,5 +140,18 @@ func (s *service) ProcessIAPEvent(ctx context.Context, event *eventbus.PaymentEv
 		return fmt.Errorf("failed to create payment log: %w", err)
 	}
 
+	// Publish payment confirmation notification event
+	if s.producer != nil {
+		_ = s.producer.Publish(ctx, eventbus.TypePaymentConfirmed, eventbus.SystemEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypePaymentConfirmed,
+				ActorID:   event.ActorID,
+				Timestamp: time.Now(),
+			},
+			UserID:  event.ActorID,
+			Details: fmt.Sprintf("Product: %s, Amount: %d seals", event.ProductID, event.Amount),
+		})
+	}
+
 	return nil
 }
