@@ -13,6 +13,7 @@ import (
 	"github.com/brightbund-backend/internal/modules/notifications"
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/seasons"
+	"github.com/brightbund-backend/internal/modules/leaderboard"
 	"github.com/brightbund-backend/internal/modules/ranks"
 	"github.com/brightbund-backend/internal/modules/payment"
 	"github.com/brightbund-backend/internal/modules/settings"
@@ -29,7 +30,7 @@ import (
 	swagger "github.com/swaggo/fiber-swagger"
 )
 
-func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, notificationsHandler *notifications.Handler, seasonsHandler *seasons.Handler, ranksHandler *ranks.Handler, paymentHandler *payment.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
+func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.Handler, profilesHandler *profiles.Handler, mapHandler *mapmodule.Handler, feedHandler *feed.Handler, settingsHandler *settings.Handler, chatHandler *chat.Handler, notificationsHandler *notifications.Handler, seasonsHandler *seasons.Handler, ranksHandler *ranks.Handler, paymentHandler *payment.Handler, leaderboardHandler *leaderboard.Handler, jwt *auth.JWTManager, authRepo auth.Repository, logger *zap.Logger) *fiber.App {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:     cfg.Server.ReadTimeout,
 		WriteTimeout:    cfg.Server.WriteTimeout,
@@ -181,6 +182,12 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	ranksGroup.Use(middleware.RequireAuth(jwt, authRepo))
 	ranksGroup.Use(middleware.TouchSession(authRepo))
 	ranksGroup.Get("/me", ranksHandler.GetMyRank)
+
+	// Leaderboard
+	leaderboardGroup := api.Group("/leaderboard")
+	leaderboardGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	leaderboardGroup.Use(middleware.TouchSession(authRepo))
+	leaderboardGroup.Get("", leaderboardHandler.Get)
 
 	// Feed & Interactions (Note: Feed router actually manages its own sub-routing in routes.go
 	// but for consistency we can call a Feed register wrapper here or just inject the handler)

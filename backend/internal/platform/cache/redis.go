@@ -77,6 +77,10 @@ func (c *Cache) ZRevRange(ctx context.Context, key string, start, stop int64) ([
 	return c.Client.ZRevRange(ctx, key, start, stop).Result()
 }
 
+func (c *Cache) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) ([]redis.Z, error) {
+	return c.Client.ZRevRangeWithScores(ctx, key, start, stop).Result()
+}
+
 func (c *Cache) ZRank(ctx context.Context, key, member string) (int64, error) {
 	return c.Client.ZRank(ctx, key, member).Result()
 }
