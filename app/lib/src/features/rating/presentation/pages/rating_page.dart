@@ -28,22 +28,28 @@ class _RatingPageState extends State<RatingPage> {
 
   List<_RatingEntry> _mapItemsToEntries(List<Map<String, dynamic>> items) {
     return items.map((item) {
-      final name = item['name']?.toString() ?? item['username']?.toString() ?? 'Unknown';
+      final name =
+          item['name']?.toString() ?? item['username']?.toString() ?? 'Unknown';
       final rank = (item['rank'] is int)
           ? item['rank'] as int
           : int.tryParse(item['rank']?.toString() ?? '') ?? 0;
       final honor = (item['honor'] is int)
           ? item['honor'] as int
           : int.tryParse(item['honor']?.toString() ?? '') ?? 0;
-      final rankName = item['rank_name']?.toString() ?? item['rankName']?.toString() ?? '';
-      final rankTier = item['rank_tier']?.toString() ?? item['rankTier']?.toString() ?? '';
-      final rankGrade = item['rank_grade']?.toString() ?? item['rankGrade']?.toString() ?? '';
-      final isCurrent = (item['is_current_user'] == true) || (item['isCurrentUser'] == true);
+      final rankName =
+          item['rank_name']?.toString() ?? item['rankName']?.toString() ?? '';
+      final rankTier =
+          item['rank_tier']?.toString() ?? item['rankTier']?.toString() ?? '';
+      final rankGrade =
+          item['rank_grade']?.toString() ?? item['rankGrade']?.toString() ?? '';
+      final isCurrent =
+          (item['is_current_user'] == true) || (item['isCurrentUser'] == true);
 
       return _RatingEntry(
         rank: rank,
         name: name,
         avatar: Assets.images.image,
+        avatarUrl: item['avatar_url']?.toString(),
         rankName: rankName,
         rankTier: rankTier,
         rankGrade: rankGrade,
@@ -68,7 +74,7 @@ class _RatingPageState extends State<RatingPage> {
         bottom: false,
         child: BaseBlocWidget<RatingBloc, RatingEvent, RatingState>(
           bloc: getIt<RatingBloc>(),
-          starterEvent: RatingEventLoad(),
+          starterEvent: RatingEventLoad(scope: _selectedScope.apiValue),
           builder: (context, state, bloc) {
             List<_RatingEntry> entries = [];
             if (state is RatingStateLoaded) {
@@ -76,8 +82,10 @@ class _RatingPageState extends State<RatingPage> {
             }
 
             final filtered = _filterEntries(entries);
-            final podium = filtered.where((e) => !e.isCurrentUser).take(3).toList();
-            final ranked = filtered.where((e) => !e.isCurrentUser).skip(3).toList();
+            final podium =
+                filtered.where((e) => !e.isCurrentUser).take(3).toList();
+            final ranked =
+                filtered.where((e) => !e.isCurrentUser).skip(3).toList();
             _RatingEntry? current;
             for (final entry in filtered) {
               if (entry.isCurrentUser) {
@@ -86,7 +94,8 @@ class _RatingPageState extends State<RatingPage> {
               }
             }
 
-            final hasVisibleContent = podium.isNotEmpty || ranked.isNotEmpty || current != null;
+            final hasVisibleContent =
+                podium.isNotEmpty || ranked.isNotEmpty || current != null;
 
             return Column(
               children: [
@@ -144,9 +153,13 @@ class _RatingPageState extends State<RatingPage> {
                               _RatingSegmentedControl(
                                 selectedScope: _selectedScope,
                                 onSelected: (scope) {
+                                  if (_selectedScope == scope) return;
                                   setState(() {
                                     _selectedScope = scope;
                                   });
+                                  bloc.add(
+                                    RatingEventLoad(scope: scope.apiValue),
+                                  );
                                 },
                               ),
                               const Gap(12),
@@ -158,7 +171,8 @@ class _RatingPageState extends State<RatingPage> {
                                     for (var i = 0; i < ranked.length; i++)
                                       Padding(
                                         padding: EdgeInsets.only(
-                                          bottom: i == ranked.length - 1 ? 0 : 10,
+                                          bottom:
+                                              i == ranked.length - 1 ? 0 : 10,
                                         ),
                                         child: _RatingListItem(
                                           entry: ranked[i],
@@ -285,7 +299,7 @@ class _RatingPodiumCard extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(7),
-              child: entry.avatar.image(fit: BoxFit.cover),
+              child: _RatingAvatarImage(entry: entry),
             ),
           ),
           const Gap(8),
@@ -420,10 +434,10 @@ class _RatingListItem extends StatelessWidget {
           const Gap(12),
           ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: entry.avatar.image(
+            child: _RatingAvatarImage(
+              entry: entry,
               width: 32,
               height: 32,
-              fit: BoxFit.cover,
             ),
           ),
           const Gap(12),
@@ -479,6 +493,11 @@ class _RankMetaLine extends StatelessWidget {
     );
 
     final iconSize = compact ? 10.0 : 12.0;
+    final parts = [
+      entry.rankName,
+      entry.rankTier,
+      entry.rankGrade,
+    ].where((part) => part.trim().isNotEmpty).toList();
 
     return Wrap(
       alignment: centered ? WrapAlignment.center : WrapAlignment.start,
@@ -486,11 +505,10 @@ class _RankMetaLine extends StatelessWidget {
       spacing: compact ? 4 : 5,
       runSpacing: 2,
       children: [
-        Text(entry.rankName, style: textStyle),
-        _MetaDot(size: compact ? 2 : 2.5),
-        Text(entry.rankTier, style: textStyle),
-        _MetaDot(size: compact ? 2 : 2.5),
-        Text(entry.rankGrade, style: textStyle),
+        for (var i = 0; i < parts.length; i++) ...[
+          if (i > 0) _MetaDot(size: compact ? 2 : 2.5),
+          Text(parts[i], style: textStyle),
+        ],
         Assets.icons.global.svg(
           width: iconSize,
           height: iconSize,
@@ -638,12 +656,13 @@ class _EmptyListState extends StatelessWidget {
 }
 
 enum _RatingScope {
-  district('District'),
-  city('City'),
-  country('Country');
+  district('District', 'district'),
+  city('City', 'city'),
+  country('Country', 'country');
 
-  const _RatingScope(this.label);
+  const _RatingScope(this.label, this.apiValue);
   final String label;
+  final String apiValue;
 }
 
 class _RatingEntry {
@@ -651,6 +670,7 @@ class _RatingEntry {
     required this.rank,
     required this.name,
     required this.avatar,
+    this.avatarUrl,
     required this.rankName,
     required this.rankTier,
     required this.rankGrade,
@@ -661,6 +681,7 @@ class _RatingEntry {
   final int rank;
   final String name;
   final AssetGenImage avatar;
+  final String? avatarUrl;
   final String rankName;
   final String rankTier;
   final String rankGrade;
@@ -673,5 +694,43 @@ class _RatingEntry {
     final haystack =
         '$name $rankName $rankTier $rankGrade $rank $honorCount'.toLowerCase();
     return haystack.contains(normalizedQuery);
+  }
+}
+
+class _RatingAvatarImage extends StatelessWidget {
+  const _RatingAvatarImage({
+    required this.entry,
+    this.width,
+    this.height,
+  });
+
+  final _RatingEntry entry;
+  final double? width;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = entry.avatarUrl?.trim();
+    if (url == null || url.isEmpty) {
+      return entry.avatar.image(
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+      );
+    }
+
+    return Image.network(
+      url,
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) {
+        return entry.avatar.image(
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+        );
+      },
+    );
   }
 }

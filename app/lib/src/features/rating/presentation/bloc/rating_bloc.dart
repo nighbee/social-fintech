@@ -16,8 +16,12 @@ class RatingBloc extends BaseBloc<RatingEvent, RatingState> {
   Future<void> onEventHandler(RatingEvent event, Emitter emit) async {
     if (event is RatingEventLoad) {
       emit(const RatingStateLoading());
-      final res = await _getLeaderboard.execute(limit: event.limit);
-      res.fold((DomainException e) => emit(RatingStateError(e.message)), (items) {
+      final res = await _getLeaderboard.execute(
+        scope: event.scope,
+        limit: event.limit,
+      );
+      res.fold((DomainException e) => emit(RatingStateError(e.message)),
+          (items) {
         emit(RatingStateLoaded(items));
       });
     }

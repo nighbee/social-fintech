@@ -1,3 +1,4 @@
+import 'package:app/src/core/api/client/dio/rest_client.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/injectable/service_register_proxy.dart';
 import 'package:app/src/core/service/feed/feed_state_sync_service.dart';
@@ -59,13 +60,16 @@ Future<void> manualRegisterServices() async {
         getIt<IRatingRepository>(instanceName: 'RatingRepositoryImpl'),
       ),
     ),
+    factory: true,
   );
 
-  if (getIt.isRegistered<IRatingRepository>(instanceName: 'RatingRepositoryImpl')) {
+  if (getIt.isRegistered<IRatingRepository>(
+      instanceName: 'RatingRepositoryImpl')) {
     getIt.unregister<IRatingRepository>(instanceName: 'RatingRepositoryImpl');
   }
   getIt.registerLazySingleton<IRatingRepository>(
-    () => RatingRepositoryImpl(getIt<IRatingRemote>(instanceName: 'RatingRemoteImpl')),
+    () => RatingRepositoryImpl(
+        getIt<IRatingRemote>(instanceName: 'RatingRemoteImpl')),
     instanceName: 'RatingRepositoryImpl',
   );
 
@@ -73,7 +77,7 @@ Future<void> manualRegisterServices() async {
     getIt.unregister<IRatingRemote>(instanceName: 'RatingRemoteImpl');
   }
   getIt.registerLazySingleton<IRatingRemote>(
-    RatingRemoteImpl.new,
+    () => RatingRemoteImpl(getIt<RestClient>(instanceName: 'DioClient')),
     instanceName: 'RatingRemoteImpl',
   );
 

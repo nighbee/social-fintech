@@ -53,6 +53,7 @@ class EndPoints {
   static const String gamificationRanks = '/gamification/ranks';
 
   //* Leaderboard
+  static const String leaderboard = '/leaderboard';
   static const String leaderboardGlobal = '/leaderboards/global';
   static String leaderboardLocal(String regionId) =>
       '/leaderboards/local/$regionId';

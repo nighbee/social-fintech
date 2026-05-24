@@ -5,7 +5,7 @@ import 'package:injectable/injectable.dart';
 
 abstract class IRatingRepository {
   Future<Either<DomainException, List<Map<String, dynamic>>>>
-      fetchGlobalLeaderboard({int limit, String? cursor});
+      fetchGlobalLeaderboard({String scope, int limit, String? cursor});
 }
 
 @named
@@ -17,9 +17,17 @@ class RatingRepositoryImpl implements IRatingRepository {
 
   @override
   Future<Either<DomainException, List<Map<String, dynamic>>>>
-      fetchGlobalLeaderboard({int limit = 50, String? cursor}) async {
+      fetchGlobalLeaderboard({
+    String scope = 'district',
+    int limit = 50,
+    String? cursor,
+  }) async {
     try {
-      return await _remote.getGlobalLeaderboard(limit: limit, cursor: cursor);
+      return await _remote.getGlobalLeaderboard(
+        scope: scope,
+        limit: limit,
+        cursor: cursor,
+      );
     } catch (e) {
       return Left(UnknownException(message: e.toString()));
     }
