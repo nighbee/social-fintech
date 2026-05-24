@@ -242,6 +242,14 @@ func (r *testRepo) GetMentionsPrivacy(ctx context.Context, userID string) (strin
 	return MessagePrivacyEveryone, nil
 }
 
+func (r *testRepo) GetNotificationPreferences(ctx context.Context, userID string) (map[string]bool, error) {
+	return map[string]bool{}, nil
+}
+
+func (r *testRepo) UpdateNotificationSettings(ctx context.Context, userID string, req PatchNotificationsSettingsRequest) error {
+	return nil
+}
+
 type testSMSSender struct {
 	to      string
 	message string

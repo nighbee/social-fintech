@@ -157,6 +157,10 @@ func (s *stubSettings) IsBlockedBetween(ctx context.Context, actorID, targetID s
 	return s.blocked, nil
 }
 
+func (s *stubSettings) GetNotificationPreferences(ctx context.Context, userID string) (map[string]bool, error) {
+	return map[string]bool{}, nil
+}
+
 func TestOpenDirectConversationHonorsNoOnePrivacy(t *testing.T) {
 	repo := &stubRepo{}
 	settingsStub := &stubSettings{
