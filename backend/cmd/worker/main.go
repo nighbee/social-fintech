@@ -119,18 +119,19 @@ func main() {
 	mapWorker := mapmodule.NewWorker(redisCache, mapRepo, economyRepo, mapService)
 
 	profilesRepo := profiles.NewRepository(db.DB)
+	settingsRepo := settings.NewRepository(db.DB)
+	settingsService := settings.NewService(settingsRepo, nil)
+	settingsHardDeleteWorker := settings.NewHardDeleteWorker(settingsService)
+
 	notificationsRepo := notifications.NewRepository(db.DB)
 	notificationsService := notifications.NewService(notificationsRepo, eventProducer, redisCache)
+	notificationsService.SetSettingsService(settingsService)
 	mapWorker.SetChampionNotifier(notificationsService)
 
 	feedRepo := feed.NewRepository(db.DB, cfg.Storage.PublicURL)
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
 
 	videoWorker := feed.NewVideoWorker(feedRepo, storageClient, cfg.Storage.FFmpegPath, cfg.Storage.TempBucket)
-
-	settingsRepo := settings.NewRepository(db.DB)
-	settingsService := settings.NewService(settingsRepo, nil)
-	settingsHardDeleteWorker := settings.NewHardDeleteWorker(settingsService)
 
 	var notificationConsumer *notifications.EventConsumer
 	if cfg.EventBus.Enabled {

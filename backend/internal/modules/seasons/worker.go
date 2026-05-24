@@ -5,14 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"go.uber.org/zap"
 )
 
-// CloseWorker periodically materializes the current and previous season
-// rows (so close-out has something to close), then runs the idempotent
-// CloseDueSeasons pass. It is safe to start exactly one of these per
-// API process; the close pass uses ON CONFLICT upserts so concurrent
-// runs across replicas converge on the same archive state.
 type CloseWorker struct {
 	service  *Service
 	snap     SnapshotProvider
@@ -22,11 +18,10 @@ type CloseWorker struct {
 	stopOnce sync.Once
 	stopCh   chan struct{}
 	doneCh   chan struct{}
+
+	lastWarning map[string]bool
 }
 
-// NewCloseWorker wires the worker. Interval ≤ 0 falls back to one hour
-// — frequent ticks are cheap because there is nothing to do until the
-// season actually ends.
 func NewCloseWorker(service *Service, snap SnapshotProvider, interval time.Duration, logger *zap.Logger) *CloseWorker {
 	if interval <= 0 {
 		interval = time.Hour
@@ -35,24 +30,20 @@ func NewCloseWorker(service *Service, snap SnapshotProvider, interval time.Durat
 		logger = zap.NewNop()
 	}
 	return &CloseWorker{
-		service:  service,
-		snap:     snap,
-		interval: interval,
-		logger:   logger,
-		stopCh:   make(chan struct{}),
-		doneCh:   make(chan struct{}),
+		service:     service,
+		snap:        snap,
+		interval:    interval,
+		logger:      logger,
+		stopCh:      make(chan struct{}),
+		doneCh:      make(chan struct{}),
+		lastWarning: make(map[string]bool),
 	}
 }
 
-// Start runs the worker in a background goroutine. The first tick runs
-// immediately so a freshly-deployed binary closes overdue seasons
-// without waiting `interval`.
 func (w *CloseWorker) Start() {
 	go w.run()
 }
 
-// Stop signals the worker to exit and waits for the active tick to
-// finish. Safe to call multiple times.
 func (w *CloseWorker) Stop() {
 	w.stopOnce.Do(func() { close(w.stopCh) })
 	<-w.doneCh
@@ -82,13 +73,30 @@ func (w *CloseWorker) tick() {
 
 	now := time.Now().UTC()
 
-	// Make sure both the current and the immediately-previous season
-	// have rows. Without this, a season that was never observed by
-	// /seasons/current (e.g. low-traffic period) would have nothing for
-	// the close pass to find.
-	if _, err := w.service.GetCurrentSeason(ctx, now); err != nil {
+	current, err := w.service.GetCurrentSeason(ctx, now)
+	if err != nil {
 		w.logger.Warn("seasons worker: ensure current season failed", zap.Error(err))
+	} else {
+		daysLeft := current.SecondsRemaining / 86400
+		if daysLeft <= 7 && w.service.eventBus != nil {
+			seasonKey := current.Season.ID.String()
+			if !w.lastWarning[seasonKey] {
+				w.lastWarning[seasonKey] = true
+				w.logger.Info("seasons worker: firing season warning",
+					zap.String("season_id", current.Season.ID.String()),
+					zap.Int64("days_left", daysLeft))
+				_ = w.service.eventBus.Publish(ctx, eventbus.TypeSeasonWarning, eventbus.LeaderboardEvent{
+					BaseEvent: eventbus.BaseEvent{
+						Type:      eventbus.TypeSeasonWarning,
+						Timestamp: time.Now(),
+					},
+					SeasonID: current.Season.ID.String(),
+					DaysLeft: int(daysLeft),
+				})
+			}
+		}
 	}
+
 	prevYear, prevHalf := previousSeason(now)
 	if _, err := w.service.repo.GetOrCreateSeason(ctx, prevYear, prevHalf); err != nil {
 		w.logger.Warn("seasons worker: ensure previous season failed",
@@ -101,8 +109,6 @@ func (w *CloseWorker) tick() {
 	}
 }
 
-// previousSeason returns the (year, half) immediately before the season
-// containing `now`. Half=1 wraps back to the prior year's half=2.
 func previousSeason(now time.Time) (year, half int) {
 	curYear, curHalf := SeasonForTime(now)
 	if curHalf == 1 {

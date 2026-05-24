@@ -1206,6 +1206,20 @@ func (s *service) RewardForTaskCompletion(ctx context.Context, userID, taskID st
 		// Invalidate stats cache for user (fire-and-forget)
 		_ = s.cacheInvalidator.InvalidateStats(ctx, userID)
 
+		// Publish event
+		if s.eventBus != nil {
+			_ = s.eventBus.Publish(ctx, eventbus.TypeRewardDelivered, eventbus.TaskEvent{
+				BaseEvent: eventbus.BaseEvent{
+					Type:      eventbus.TypeRewardDelivered,
+					ActorID:   userID,
+					Timestamp: time.Now(),
+				},
+				TaskID:   taskID,
+				HelperID: userID,
+				Reward:   int(reward),
+			})
+		}
+
 		return nil
 	})
 

@@ -19,6 +19,15 @@ type UserSettings struct {
 	CommentsFilterUnwanted     bool   `db:"comments_filter_unwanted_enabled" json:"comments_filter_unwanted_enabled"`
 	MentionsWhoCanMention      string `db:"mentions_who_can_mention" json:"mentions_who_can_mention"`
 	ParticipateDistrictRanking bool   `db:"participate_district_ranking" json:"participate_district_ranking"`
+
+	NotifyGoldHonorReceived bool    `db:"notify_gold_honor" json:"notify_gold_honor"`
+	NotifyMedalUnlocked     bool    `db:"notify_medal_unlocked" json:"notify_medal_unlocked"`
+	NotifyRankIncreased     bool    `db:"notify_rank_increased" json:"notify_rank_increased"`
+	NotifyTaskUpdates       bool    `db:"notify_task_updates" json:"notify_task_updates"`
+	NotifyCommentsReplies   bool    `db:"notify_comments_replies" json:"notify_comments_replies"`
+	NotifyLikesReactions    bool    `db:"notify_likes_reactions" json:"notify_likes_reactions"`
+	QuietHoursStart         *string `db:"quiet_hours_start" json:"quiet_hours_start,omitempty"`
+	QuietHoursEnd           *string `db:"quiet_hours_end" json:"quiet_hours_end,omitempty"`
 }
 
 // MarshalJSON emits the canonical Region key
@@ -108,6 +117,31 @@ type PatchCommentsSettingsRequest struct {
 
 type PatchMentionsSettingsRequest struct {
 	WhoCanMention string `json:"who_can_mention"`
+}
+
+// PatchNotificationsSettingsRequest is used for PATCH /settings/notifications.
+// All fields are optional — only provided fields are updated.
+type PatchNotificationsSettingsRequest struct {
+	NotifyGoldHonor *bool   `json:"notify_gold_honor,omitempty"`
+	NotifyMedal     *bool   `json:"notify_medal,omitempty"`
+	NotifyRank      *bool   `json:"notify_rank,omitempty"`
+	NotifyTasks     *bool   `json:"notify_tasks,omitempty"`
+	NotifyComments  *bool   `json:"notify_comments,omitempty"`
+	NotifyLikes     *bool   `json:"notify_likes,omitempty"`
+	QuietHoursStart *string `json:"quiet_hours_start,omitempty"`
+	QuietHoursEnd   *string `json:"quiet_hours_end,omitempty"`
+}
+
+// NotificationsSettingsResponse is returned by GET /settings/notifications.
+type NotificationsSettingsResponse struct {
+	NotifyGoldHonor bool    `json:"notify_gold_honor"`
+	NotifyMedal     bool    `json:"notify_medal_unlocked"`
+	NotifyRank      bool    `json:"notify_rank_increased"`
+	NotifyTasks     bool    `json:"notify_task_updates"`
+	NotifyComments  bool    `json:"notify_comments_replies"`
+	NotifyLikes     bool    `json:"notify_likes_reactions"`
+	QuietHoursStart *string `json:"quiet_hours_start,omitempty"`
+	QuietHoursEnd   *string `json:"quiet_hours_end,omitempty"`
 }
 
 type AddKeywordRequest struct {
@@ -264,4 +298,5 @@ type PublicService interface {
 	GetMessagePrivacy(ctx context.Context, userID string) (string, bool, bool, error)
 	GetMentionsPrivacy(ctx context.Context, userID string) (string, error)
 	IsBlockedBetween(ctx context.Context, actorID, targetID string) (bool, error)
+	GetNotificationPreferences(ctx context.Context, userID string) (map[string]bool, error)
 }

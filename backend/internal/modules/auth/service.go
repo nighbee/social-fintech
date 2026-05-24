@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/brightbund-backend/internal/platform/observability"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -40,6 +41,7 @@ type Service struct {
 	sms            SMSSender
 	email          EmailSender
 	logger         *zap.Logger
+	eventBus       *eventbus.Producer
 	economyService EconomyService
 }
 
@@ -69,6 +71,10 @@ func (s *Service) SetEmailSender(sender EmailSender) {
 		return
 	}
 	s.email = sender
+}
+
+func (s *Service) SetEventBus(eb *eventbus.Producer) {
+	s.eventBus = eb
 }
 
 // OAuth логин или регистриация, сразу создается новая сесси яи выдача токенов
@@ -215,6 +221,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				zap.String("new_device", req.DeviceID),
 				zap.String("old_device", last.DeviceID),
 			)
+			_ = s.eventBus.Publish(ctx, eventbus.TypeSecuritySignin, eventbus.SystemEvent{UserID: user.ID, Details: "New sign-in from a new device"})
 		}
 		if last.IP != "" && last.IP != ip {
 			s.logger.Warn("suspicious_login_new_ip",
@@ -222,6 +229,7 @@ func (s *Service) Login(ctx context.Context, req LoginRequest, ip string) (*Logi
 				zap.String("new_ip", ip),
 				zap.String("old_ip", last.IP),
 			)
+			_ = s.eventBus.Publish(ctx, eventbus.TypeSecuritySignin, eventbus.SystemEvent{UserID: user.ID, Details: "New sign-in from a new IP address"})
 		}
 	}
 

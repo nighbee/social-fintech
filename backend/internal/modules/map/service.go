@@ -468,6 +468,19 @@ func (s *Service) SubmitVerificationCode(ctx context.Context, userID, taskID, ap
 		return nil, ErrAlreadyVerified
 	}
 
+	if s.eventBus != nil {
+		_ = s.eventBus.Publish(ctx, eventbus.TypeProofSubmitted, eventbus.TaskEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeProofSubmitted,
+				ActorID:   userID,
+				Timestamp: time.Now(),
+			},
+			TaskID:    taskID,
+			CreatorID: task.CreatorID,
+			HelperID:  userID,
+		})
+	}
+
 	return &VerifyCodeResponse{
 		ApplicationID: applicationID,
 		Status:        "code_verified",

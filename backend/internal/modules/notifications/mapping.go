@@ -83,6 +83,13 @@ var TopicMappings = map[string]TopicMapping{
 	},
 
 	// TASKS
+	"task.applied": {
+		UITab:       UITabTasks,
+		IsImportant: false,
+		BadgeStatus: nil,
+		DeepLinkFn:  func(p map[string]any) string { return "app://tasks/" + strVal(p, "task_id") },
+		GroupKeyFn:  nil,
+	},
 	"task.accepted": {
 		UITab:       UITabTasks,
 		IsImportant: false,
@@ -114,7 +121,7 @@ var TopicMappings = map[string]TopicMapping{
 	"task.completed": {
 		UITab:       UITabTasks,
 		IsImportant: false,
-		BadgeStatus: strPtr("ACCEPTED"),
+		BadgeStatus: strPtr("COMPLETED"),
 		DeepLinkFn:  func(p map[string]any) string { return "app://tasks/" + strVal(p, "task_id") },
 		GroupKeyFn:  nil,
 	},

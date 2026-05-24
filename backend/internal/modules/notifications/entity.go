@@ -28,14 +28,36 @@ const (
 	// Social
 	KindPostLiked     Kind = "post_liked"
 	KindPostCommented Kind = "post_commented"
+	KindPostReplied   Kind = "post_replied"
 
 	// Economy
-	KindSealReceived Kind = "seal_received"
+	KindSealReceived   Kind = "seal_received"
+	KindSilverReceived Kind = "silver_received"
 
 	// Tasks
-	KindTaskApplied  Kind = "task_applied"
-	KindTaskAccepted Kind = "task_accepted"
-	KindTaskCompleted Kind = "task_completed"
+	KindTaskApplied            Kind = "task_applied"
+	KindTaskAccepted           Kind = "task_accepted"
+	KindTaskCompleted          Kind = "task_completed"
+	KindTaskProofSubmitted     Kind = "proof_submitted"
+	KindTaskExpired            Kind = "task_expired"
+	KindTaskVerificationNeeded Kind = "verification_required"
+	KindTaskRewardDelivered    Kind = "reward_delivered"
+
+	// Achievements
+	KindMedalIssued Kind = "medal_issued"
+
+	// Leaderboard
+	KindRankAdvanced   Kind = "rank_advanced"
+	KindDistrictLeader Kind = "district_leader"
+	KindTop50          Kind = "top_50"
+	KindSeasonWarning  Kind = "season_warning"
+	KindSeasonResult   Kind = "season_result"
+
+	// System
+	KindPaymentConfirmed Kind = "payment_confirmed"
+	KindSecuritySignin   Kind = "security_signin"
+	KindProfileVerified  Kind = "profile_verified"
+	KindPostRejected     Kind = "post_rejected"
 
 	// Chat
 	KindMessageReceived Kind = "message_received"

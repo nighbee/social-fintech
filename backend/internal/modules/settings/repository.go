@@ -45,6 +45,7 @@ type Repository interface {
 	UpdateMessagesSettings(ctx context.Context, userID, whoCanMessage string, readStatus, safeMode *bool) error
 	UpdateCommentsSettings(ctx context.Context, userID, whoCanComment string, filterUnwanted *bool) error
 	UpdateMentionsSettings(ctx context.Context, userID, whoCanMention string) error
+	UpdateNotificationSettings(ctx context.Context, userID string, req PatchNotificationsSettingsRequest) error
 	ListMessageKeywords(ctx context.Context, userID string) ([]KeywordItem, error)
 	AddMessageKeyword(ctx context.Context, userID, keyword string) (string, error)
 	DeleteMessageKeyword(ctx context.Context, userID, keywordID string) error
@@ -85,6 +86,7 @@ type Repository interface {
 	GetCommentPrivacy(ctx context.Context, userID string) (string, bool, error)
 	GetMessagePrivacy(ctx context.Context, userID string) (string, bool, bool, error)
 	GetMentionsPrivacy(ctx context.Context, userID string) (string, error)
+	GetNotificationPreferences(ctx context.Context, userID string) (map[string]bool, error)
 }
 
 type PostgresRepository struct {
@@ -109,7 +111,15 @@ func (r *PostgresRepository) GetUserSettings(ctx context.Context, userID string)
 			comments_who_can_comment,
 			comments_filter_unwanted_enabled,
 			mentions_who_can_mention,
-			participate_district_ranking
+			participate_district_ranking,
+			notify_gold_honor,
+			notify_medal_unlocked,
+			notify_rank_increased,
+			notify_task_updates,
+			notify_comments_replies,
+			notify_likes_reactions,
+			quiet_hours_start,
+			quiet_hours_end
 		FROM user_settings
 		WHERE user_id = $1
 	`
@@ -117,6 +127,13 @@ func (r *PostgresRepository) GetUserSettings(ctx context.Context, userID string)
 		if isUndefinedTable(err) {
 			defaults := defaultUserSettings(userID)
 			return &defaults, nil
+		}
+		if isUndefinedColumn(err, "notify_gold_honor") {
+			legacy, legacyErr := r.getUserSettingsLegacy(ctx, userID)
+			if legacyErr != nil {
+				return nil, legacyErr
+			}
+			return legacy, nil
 		}
 		if isUndefinedColumn(err, "participate_district_ranking") {
 			legacy, legacyErr := r.getUserSettingsLegacy(ctx, userID)
@@ -128,7 +145,7 @@ func (r *PostgresRepository) GetUserSettings(ctx context.Context, userID string)
 		if err == sql.ErrNoRows {
 			_, _ = r.db.ExecContext(ctx, `INSERT INTO user_settings(user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, userID)
 			if retryErr := r.db.GetContext(ctx, &s, query, userID); retryErr != nil {
-				if isUndefinedColumn(retryErr, "participate_district_ranking") {
+				if isUndefinedColumn(retryErr, "notify_gold_honor") || isUndefinedColumn(retryErr, "participate_district_ranking") {
 					legacy, legacyErr := r.getUserSettingsLegacy(ctx, userID)
 					if legacyErr != nil {
 						return nil, legacyErr
@@ -176,8 +193,13 @@ func (r *PostgresRepository) getUserSettingsLegacy(ctx context.Context, userID s
 		}
 		return nil, err
 	}
-	// This column was introduced later; default to true for backward compatibility.
 	s.ParticipateDistrictRanking = true
+	s.NotifyGoldHonorReceived = true
+	s.NotifyMedalUnlocked = true
+	s.NotifyRankIncreased = true
+	s.NotifyTaskUpdates = true
+	s.NotifyCommentsReplies = true
+	s.NotifyLikesReactions = false
 	return &s, nil
 }
 
@@ -192,6 +214,12 @@ func defaultUserSettings(userID string) UserSettings {
 		CommentsFilterUnwanted:     false,
 		MentionsWhoCanMention:      MessagePrivacyEveryone,
 		ParticipateDistrictRanking: true,
+		NotifyGoldHonorReceived:    true,
+		NotifyMedalUnlocked:        true,
+		NotifyRankIncreased:        true,
+		NotifyTaskUpdates:          true,
+		NotifyCommentsReplies:      true,
+		NotifyLikesReactions:       false,
 	}
 }
 
@@ -286,6 +314,24 @@ func (r *PostgresRepository) UpdateMentionsSettings(ctx context.Context, userID,
 			updated_at = NOW()
 		WHERE user_id = $1
 	`, userID, whoCanMention)
+	return err
+}
+
+func (r *PostgresRepository) UpdateNotificationSettings(ctx context.Context, userID string, req PatchNotificationsSettingsRequest) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE user_settings
+		SET notify_gold_honor = COALESCE($2, notify_gold_honor),
+			notify_medal_unlocked = COALESCE($3, notify_medal_unlocked),
+			notify_rank_increased = COALESCE($4, notify_rank_increased),
+			notify_task_updates = COALESCE($5, notify_task_updates),
+			notify_comments_replies = COALESCE($6, notify_comments_replies),
+			notify_likes_reactions = COALESCE($7, notify_likes_reactions),
+			quiet_hours_start = COALESCE($8, quiet_hours_start),
+			quiet_hours_end = COALESCE($9, quiet_hours_end),
+			updated_at = NOW()
+		WHERE user_id = $1
+	`, userID, req.NotifyGoldHonor, req.NotifyMedal, req.NotifyRank, req.NotifyTasks,
+		req.NotifyComments, req.NotifyLikes, req.QuietHoursStart, req.QuietHoursEnd)
 	return err
 }
 
@@ -548,7 +594,6 @@ func (r *PostgresRepository) SoftDeleteUser(ctx context.Context, userID string, 
 		_ = tx.Rollback()
 	}()
 
-	// 1. Get current credentials to rename them
 	var user struct {
 		Email        *string `db:"email"`
 		Username     string  `db:"username"`
@@ -560,7 +605,6 @@ func (r *PostgresRepository) SoftDeleteUser(ctx context.Context, userID string, 
 
 	suffix := fmt.Sprintf("_del_%d", deletedAt.Unix())
 
-	// 2. Update users table with renamed credentials
 	query := `
 		UPDATE users
 		SET deleted_at = $2,
@@ -576,7 +620,6 @@ func (r *PostgresRepository) SoftDeleteUser(ctx context.Context, userID string, 
 		return err
 	}
 
-	// 3. Update user_identities to free up subjects
 	if _, err = tx.ExecContext(ctx, `
 		UPDATE user_identities
 		SET subject = subject || $2,
@@ -810,4 +853,34 @@ func (r *PostgresRepository) GetMentionsPrivacy(ctx context.Context, userID stri
 		return MessagePrivacyEveryone, nil
 	}
 	return who, err
+}
+
+func (r *PostgresRepository) GetNotificationPreferences(ctx context.Context, userID string) (map[string]bool, error) {
+	prefs := map[string]bool{
+		"gold_honor":       true,
+		"medal_unlocked":   true,
+		"rank_increased":   true,
+		"task_updates":     true,
+		"comments_replies": true,
+		"likes_reactions":  false,
+	}
+	var gold, medal, rank, tasks, comments, likes bool
+	err := r.db.QueryRowxContext(ctx, `
+		SELECT notify_gold_honor, notify_medal_unlocked, notify_rank_increased,
+		       notify_task_updates, notify_comments_replies, notify_likes_reactions
+		FROM user_settings WHERE user_id = $1
+	`, userID).Scan(&gold, &medal, &rank, &tasks, &comments, &likes)
+	if err == sql.ErrNoRows {
+		return prefs, nil
+	}
+	if err != nil {
+		return prefs, err
+	}
+	prefs["gold_honor"] = gold
+	prefs["medal_unlocked"] = medal
+	prefs["rank_increased"] = rank
+	prefs["task_updates"] = tasks
+	prefs["comments_replies"] = comments
+	prefs["likes_reactions"] = likes
+	return prefs, nil
 }

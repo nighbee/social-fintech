@@ -641,13 +641,14 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 
 func (r *repository) GetCommentThreadParent(ctx context.Context, commentID uuid.UUID) (*CommentThreadParent, error) {
 	query := `
-		SELECT id, post_id, parent_comment_id, root_comment_id
+		SELECT id, user_id, post_id, parent_comment_id, root_comment_id
 		FROM post_comments
 		WHERE id = $1 AND is_deleted = false
 	`
 	var info CommentThreadParent
 	err := r.db.QueryRowContext(ctx, query, commentID).Scan(
 		&info.CommentID,
+		&info.UserID,
 		&info.PostID,
 		&info.ParentID,
 		&info.RootCommentID,

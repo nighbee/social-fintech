@@ -2,6 +2,7 @@ package mapmodule
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/brightbund-backend/internal/modules/economy"
 	"github.com/brightbund-backend/internal/platform/cache"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -72,16 +74,14 @@ func (w *Worker) Start() {
 
 		championTicker := time.NewTicker(1 * time.Hour)
 		sweepTicker := time.NewTicker(5 * time.Minute)
+		top50Ticker := time.NewTicker(2 * time.Hour)
 		defer championTicker.Stop()
 		defer sweepTicker.Stop()
+		defer top50Ticker.Stop()
 
-		// Run both jobs immediately on startup so state is consistent
-		// from the first moment the service is healthy:
-		//  - sweep catches tasks that expired during a downtime window
-		//  - snapshot rebuilds champion pins so they are visible immediately
-		//    rather than blank for up to 1 hour until the first ticker tick.
 		w.sweepExpiredTasks(ctx)
 		w.snapshotChampions(ctx)
+		w.sweepTop50(ctx)
 
 		for {
 			select {
@@ -89,6 +89,8 @@ func (w *Worker) Start() {
 				w.snapshotChampions(ctx)
 			case <-sweepTicker.C:
 				w.sweepExpiredTasks(ctx)
+			case <-top50Ticker.C:
+				w.sweepTop50(ctx)
 			case <-ctx.Done():
 				return
 			}
@@ -170,15 +172,12 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 			UpdatedAt:  time.Now(),
 		}
 
-		// Try to resolve location names for the champion
 		if meta, err := w.service.ResolveH3ToLocation(ctx, h3Index); err == nil && meta != nil {
 			champion.CityName = meta.CityName
 			champion.RegionName = meta.RegionName
 			champion.CountryName = meta.CountryName
 		}
 
-		// Capture the previous champion (if any) before the upsert so we
-		// can detect a champion *change* and fire a "ranking up" event.
 		previousChampionID := uuid.Nil
 		if existing, lookupErr := w.repo.GetRegionChampions(ctx, []string{h3Index}, resolution, year, week); lookupErr == nil && len(existing) > 0 {
 			previousChampionID = existing[0].UserID
@@ -199,13 +198,7 @@ func (w *Worker) snapshotByPattern(ctx context.Context, pattern string, resoluti
 	}
 }
 
-// fireChampionChange notifies the new champion when their user_id is
-// different from the previous champion. Best-effort: notification
-// failures are logged but never fail the snapshot loop.
 func (w *Worker) fireChampionChange(ctx context.Context, champion *RegionChampion, previousChampionID uuid.UUID, scope string) {
-	if w.notifier == nil {
-		return
-	}
 	if champion.UserID == uuid.Nil || champion.UserID == previousChampionID {
 		return
 	}
@@ -218,19 +211,30 @@ func (w *Worker) fireChampionChange(ctx context.Context, champion *RegionChampio
 		region = champion.CountryName
 	}
 
-	// We don't track exact previous-position numbers in this snapshot,
-	// so we model the transition as "moved into 1st place" with old=2.
-	if err := w.notifier.NotifyRankingUp(ctx, champion.UserID, scope, region, 2, 1); err != nil {
-		logger.Warn("failed to fire ranking_up notification",
-			zap.String("user_id", champion.UserID.String()),
-			zap.String("scope", scope),
-			zap.Error(err),
-		)
+	if w.notifier != nil {
+		if err := w.notifier.NotifyRankingUp(ctx, champion.UserID, scope, region, 2, 1); err != nil {
+			logger.Warn("failed to fire ranking_up notification",
+				zap.String("user_id", champion.UserID.String()),
+				zap.String("scope", scope),
+				zap.Error(err),
+			)
+		}
+	}
+
+	if scope == "region" && w.service.eventBus != nil {
+		_ = w.service.eventBus.Publish(ctx, eventbus.TypeDistrictLeader, eventbus.LeaderboardEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeDistrictLeader,
+				ActorID:   champion.UserID.String(),
+				Timestamp: time.Now(),
+			},
+			Scope:  scope,
+			Region: region,
+			NewPos: 1,
+		})
 	}
 }
 
-// scopeLabel maps the H3 resolution used by the snapshot worker to the
-// human-readable scope strings exposed in notification payloads.
 func scopeLabel(resolution int) string {
 	switch resolution {
 	case 0:
@@ -295,8 +299,37 @@ func (w *Worker) pickTopEligibleMember(ctx context.Context, leaderboardKey strin
 	return "", 0, false
 }
 
-// sweepExpiredTasks finds all open tasks whose auto_shutdown_at has passed,
-// cancels each one, and refunds the creator's upfront charge.
+func (w *Worker) sweepTop50(ctx context.Context) {
+	if w.service.eventBus == nil {
+		return
+	}
+	year, week := time.Now().ISOWeek()
+	globalKey := fmt.Sprintf("leaderboard:global:week:%d:%d", year, week)
+	members, err := w.cache.ZRevRange(ctx, globalKey, 0, 49)
+	if err != nil || len(members) == 0 {
+		return
+	}
+	for pos, member := range members {
+		eligible, err := w.repo.IsUserEligibleForLeaderboard(ctx, member, 0)
+		if err != nil || !eligible {
+			continue
+		}
+		uid, parseErr := uuid.Parse(member)
+		if parseErr != nil {
+			continue
+		}
+		_ = w.service.eventBus.Publish(ctx, eventbus.TypeTop50, eventbus.LeaderboardEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeTop50,
+				ActorID:   uid.String(),
+				Timestamp: time.Now(),
+			},
+			Scope:    "global",
+			Position: pos + 1,
+		})
+	}
+}
+
 func (w *Worker) sweepExpiredTasks(ctx context.Context) {
 	tasks, err := w.repo.GetOpenTasksForShutdown(ctx)
 	if err != nil {
@@ -312,7 +345,6 @@ func (w *Worker) sweepExpiredTasks(ctx context.Context) {
 	}
 }
 
-// autoShutdownTask cancels a single expired task and refunds the creator atomically.
 func (w *Worker) autoShutdownTask(ctx context.Context, task Task) {
 	tx, err := w.repo.BeginTx(ctx)
 	if err != nil {
@@ -332,8 +364,6 @@ func (w *Worker) autoShutdownTask(ctx context.Context, task Task) {
 		return
 	}
 	if !cancelled {
-		// Another goroutine or worker already handled this task (workers confirmed,
-		// or it was manually cancelled). Nothing to do.
 		return
 	}
 
@@ -356,13 +386,22 @@ func (w *Worker) autoShutdownTask(ctx context.Context, task Task) {
 		zap.String("creator_id", task.CreatorID),
 		zap.Int64("reward_cents", task.Reward),
 	)
+
+	if w.service.eventBus != nil {
+		_ = w.service.eventBus.Publish(ctx, eventbus.TypeTaskExpired, eventbus.TaskEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeTaskExpired,
+				ActorID:   task.CreatorID,
+				Timestamp: time.Now(),
+			},
+			TaskID:    task.ID,
+			CreatorID: task.CreatorID,
+		})
+	}
 }
 
 func parseLeaderboardKey(key string, resolution int) (string, int, int, bool) {
 	parts := strings.Split(key, ":")
-	// arena: leaderboard:arena:{h3}:week:{year}:{week}
-	// city:  leaderboard:city:{h3}:week:{year}:{week}
-	// global: leaderboard:global:week:{year}:{week}
 	if resolution == 0 {
 		if len(parts) != 5 {
 			return "", 0, 0, false
@@ -419,10 +458,6 @@ func pickChampionUserID(fallback string, tiedMembers []string, firstSeen map[str
 		return fallback
 	}
 
-	// Business tie-break rule for equal score:
-	// 1) earliest first contribution in the current weekly leaderboard
-	// 2) if equal/missing timestamps -> earliest account created_at
-	// 3) final deterministic fallback -> lexicographically smallest user_id
 	best := fallback
 	bestTS := int64(0)
 	bestHasTS := false
@@ -445,7 +480,6 @@ func pickChampionUserID(fallback string, tiedMembers []string, firstSeen map[str
 	}
 
 	if !bestHasTS {
-		// Choose the oldest account among tied users for a human-readable deterministic rule.
 		best = ""
 		var bestCreatedAt time.Time
 		hasCreatedAt := false
