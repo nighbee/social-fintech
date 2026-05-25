@@ -262,6 +262,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./account-deletion-info.html:/usr/share/nginx/html/account-deletion.html:ro
       - ./nginx/logs:/var/log/nginx
+      - ./spa/dist:/usr/share/nginx/html/admin:ro
     depends_on:
       api:
         condition: service_healthy
