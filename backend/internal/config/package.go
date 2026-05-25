@@ -63,7 +63,9 @@ type EventBusTopics struct {
 }
 
 type AdminConfig struct {
-	Emails []string `yaml:"emails"`
+	Username string   `yaml:"username"` // standalone admin account email
+	Password string   `yaml:"password"` // bcrypt hash of the admin password
+	Emails   []string `yaml:"emails"`   // existing users to promote on restart
 }
 
 type ModerationConfig struct {
@@ -450,11 +452,25 @@ func overrideFromEnv(cfg *Config) {
 	}
 
 	// Admin
+	if v := os.Getenv("ADMIN_USERNAME"); v != "" {
+		cfg.Admin.Username = v
+	}
+	if v := os.Getenv("ADMIN_PASSWORD"); v != "" {
+		cfg.Admin.Password = v
+	}
 	if v := os.Getenv("ADMIN_EMAILS"); v != "" {
 		cfg.Admin.Emails = strings.Split(v, ",")
 		for i := range cfg.Admin.Emails {
 			cfg.Admin.Emails[i] = strings.TrimSpace(cfg.Admin.Emails[i])
 		}
+	}
+	// Apply default admin credentials if none configured
+	if cfg.Admin.Username == "" {
+		cfg.Admin.Username = "admin@brightbund.com"
+	}
+	if cfg.Admin.Password == "" {
+		// bcrypt hash of "admin123" — change in production
+		cfg.Admin.Password = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
 	}
 
 	// Cache defaults

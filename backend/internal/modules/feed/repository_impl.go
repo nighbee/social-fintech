@@ -1700,3 +1700,95 @@ func (r *repository) UpdateReportCooldown(ctx context.Context, cooldown *ReportC
 	_, err := r.db.ExecContext(ctx, query, cooldown.ReporterID, cooldown.TargetUserID, cooldown.CooldownUntil, cooldown.CurrentCooldownHours, cooldown.LastReportAt)
 	return err
 }
+
+func (r *repository) SearchPosts(ctx context.Context, query string, limit, offset int) ([]PostResponse, int, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+
+	countQuery := `
+		SELECT COUNT(*) FROM posts p
+		JOIN users u ON p.user_id = u.id
+		WHERE p.is_archived = false AND p.is_deleted = false
+		  AND COALESCE(p.is_hidden_by_reports, false) = false
+		  AND (p.caption ILIKE '%' || $1 || '%')
+	`
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, query).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	searchQuery := `
+		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission,
+		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
+		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
+		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
+		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
+		       COALESCE(
+			       (SELECT json_agg(json_build_object(
+				       'type', media_type,
+				       'url', video_1080p_url,
+				       'image_url', video_1080p_url,
+				       'video_1080p_url', video_1080p_url,
+				       'video_480p_url', video_480p_url,
+				       'thumbnail_url', thumbnail_url,
+				       'processing_status', processing_status
+				   ) ORDER BY media_order)
+			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
+		       ) as media_json,
+		       false as viewer_has_liked
+		FROM posts p
+		JOIN users u ON p.user_id = u.id
+		LEFT JOIN profiles prof ON prof.user_id = u.id
+		WHERE p.is_archived = false AND p.is_deleted = false
+		  AND COALESCE(p.is_hidden_by_reports, false) = false
+		  AND (p.caption ILIKE '%' || $1 || '%')
+		ORDER BY p.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+
+	rows, err := r.db.QueryContext(ctx, searchQuery, query, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var posts []PostResponse
+	for rows.Next() {
+		var resp PostResponse
+		var mediaJSON []byte
+		var createdAt sql.NullTime
+		var avatarURL sql.NullString
+		var avatarUpdatedAt sql.NullTime
+		var authorReceivedCentinels int64
+
+		err := rows.Scan(
+			&resp.PostID, &resp.ContentText, &resp.Visibility, &resp.CommentPermission, &resp.Permissions.CanComment,
+			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
+			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
+			&authorReceivedCentinels,
+			&mediaJSON, &resp.ViewerHasLiked,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+
+		if avatarURL.Valid {
+			resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
+		}
+		fillAuthorRank(&resp.Author, authorReceivedCentinels)
+
+		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
+		for i := range resp.MediaAttachments {
+			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
+			resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
+			resp.MediaAttachments[i].ImageURL = resp.MediaAttachments[i].URL_1080p
+			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
+			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
+		}
+
+		posts = append(posts, resp)
+	}
+
+	return posts, total, nil
+}

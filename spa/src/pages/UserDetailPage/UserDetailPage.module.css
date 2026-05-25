@@ -1,0 +1,171 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.back {
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.infoGrid {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 8px 16px;
+  font-size: 14px;
+}
+
+.infoLabel {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.infoValue {
+  color: var(--text);
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chipGreen {
+  background: #e6f9e6;
+  color: var(--success);
+}
+
+.chipRed {
+  background: #fff0f0;
+  color: var(--danger);
+}
+
+.chipGray {
+  background: #f0f0f0;
+  color: var(--text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.formRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 150px;
+}
+
+.label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.input,
+.select {
+  padding: 8px 10px;
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  outline: none;
+  background: var(--input-bg);
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--accent);
+}
+
+.actionBtn {
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.banBtn {
+  background: var(--danger);
+}
+
+.banBtn:hover {
+  background: #a80000;
+}
+
+.balanceBtn {
+  background: var(--success);
+}
+
+.balanceBtn:hover {
+  background: #0a7e0a;
+}
+
+.msg {
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.success {
+  background: #e6f9e6;
+  color: var(--success);
+}
+
+.error {
+  background: #fff0f0;
+  color: var(--danger);
+}
+
+.violationsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.violationsTable th {
+  text-align: left;
+  padding: 8px 12px;
+  background: #f8f8f8;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.violationsTable td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}

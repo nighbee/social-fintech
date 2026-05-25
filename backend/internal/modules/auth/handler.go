@@ -569,6 +569,48 @@ func (h *Handler) AdminBanUser(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+func (h *Handler) AdminLogin(c *fiber.Ctx) error {
+	var req AdminLoginRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	resp, err := h.service.AdminLogin(c.Context(), req, c.IP())
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid_credentials"})
+	}
+
+	return c.JSON(resp)
+}
+
+func (h *Handler) AdminGetUserByID(c *fiber.Ctx) error {
+	userID := c.Params("user_id")
+	if userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user_id_required"})
+	}
+
+	resp, err := h.service.AdminGetUserByID(c.Context(), userID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user_not_found"})
+	}
+
+	return c.JSON(resp)
+}
+
+func (h *Handler) AdminSearchUserByEmail(c *fiber.Ctx) error {
+	email := c.Query("email")
+	if email == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "email_required"})
+	}
+
+	resp, err := h.service.AdminGetUserByEmail(c.Context(), email)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user_not_found"})
+	}
+
+	return c.JSON(resp)
+}
+
 // FirebaseEmailAuth godoc
 // @Summary Firebase Email Authentication (Magic Link)
 // @Description Authenticate user with Firebase ID token from email link verification. For existing users.

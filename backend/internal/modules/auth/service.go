@@ -1379,6 +1379,62 @@ func trimUsername(username string) string {
 	return username[:maxUsernameLength]
 }
 
+// EnsureAdminAccount creates the standalone admin account if it does not exist.
+// Username is the email, passwordHash is a bcrypt hash (set in config).
+func (s *Service) EnsureAdminAccount(ctx context.Context, username, passwordHash string) error {
+	if username == "" || passwordHash == "" {
+		return nil
+	}
+
+	_, err := s.repo.GetUserByEmail(ctx, username)
+	if err == nil {
+		// User exists — ensure it's an admin
+		user, getErr := s.repo.GetUserByEmail(ctx, username)
+		if getErr == nil && !user.IsAdmin {
+			if setErr := s.repo.SetAdminStatus(ctx, user.ID, true); setErr != nil {
+				return setErr
+			}
+			s.logger.Info("promoted_existing_user_to_admin", zap.String("email", username))
+		}
+		return nil
+	}
+	if !IsNotFound(err) {
+		return err
+	}
+
+	// User doesn't exist — create it
+	now := time.Now()
+	user := &User{
+		ID:               uuid.NewString(),
+		Email:            username,
+		Username:         strings.Split(username, "@")[0],
+		PasswordHash:     passwordHash,
+		FirstName:        "Admin",
+		LastName:         "",
+		DateOfBirth:      nil,
+		ReferralCode:     "",
+		IsAdmin:          true,
+		IsShadowBanned:   false,
+		ActivationStatus: "active",
+		ActivationUnlockedAt: &now,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+		LastActiveAt:      now,
+	}
+
+	if err := s.repo.CreateUser(ctx, user); err != nil {
+		return err
+	}
+
+	// Grant signup bonus wallet
+	if s.economyService != nil {
+		_ = s.economyService.GetOrCreateWallets(ctx, user.ID)
+	}
+
+	s.logger.Info("admin_account_created", zap.String("email", username))
+	return nil
+}
+
 // EnsureAdmins promotes the given emails to admin status
 func (s *Service) EnsureAdmins(ctx context.Context, emails []string) error {
 	if len(emails) == 0 {
@@ -1700,4 +1756,78 @@ func (s *Service) FirebaseEmailRegister(ctx context.Context, req FirebaseEmailRe
 		RefreshToken: refresh,
 		User:         *user,
 	}, nil
+}
+
+func (s *Service) AdminLogin(ctx context.Context, req AdminLoginRequest, ip string) (*LoginResponse, error) {
+	s.logger.Info("admin_login_attempt", zap.String("email", req.Email), zap.String("ip", ip))
+
+	if req.Email == "" || req.Password == "" {
+		return nil, ErrInvalidCredentials
+	}
+
+	user, err := s.repo.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, ErrInvalidCredentials
+	}
+	if user.PasswordHash == "" {
+		return nil, ErrInvalidCredentials
+	}
+	if !user.IsAdmin {
+		return nil, ErrInvalidCredentials
+	}
+	if err := ensureUserCanAuthenticate(user); err != nil {
+		return nil, err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+		return nil, ErrInvalidCredentials
+	}
+
+	session := &Session{
+		ID:           uuid.NewString(),
+		UserID:       user.ID,
+		DeviceID:     "admin-spa",
+		IP:           ip,
+		UserAgent:    "admin-spa",
+		AppVersion:   "admin",
+		LastActiveAt: time.Now(),
+		CreatedAt:    time.Now(),
+	}
+	if err := s.repo.CreateSession(ctx, session); err != nil {
+		return nil, err
+	}
+
+	access, refresh, _, err := s.jwt.IssueTokens(uuid.MustParse(user.ID), uuid.MustParse(session.ID))
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.repo.UpdateSessionsRefreshToken(ctx, session.ID, HashToken(refresh), time.Now()); err != nil {
+		return nil, err
+	}
+
+	s.logger.Info("admin_login_success", zap.String("user_id", user.ID))
+	return &LoginResponse{
+		AccessToken:  access,
+		RefreshToken: refresh,
+		User:         *user,
+	}, nil
+}
+
+func (s *Service) AdminGetUserByID(ctx context.Context, userID string) (*AdminUserResponse, error) {
+	user, err := s.repo.GetUserByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	resp := AdminUserResponseFromUser(user)
+	return &resp, nil
+}
+
+func (s *Service) AdminGetUserByEmail(ctx context.Context, email string) (*AdminUserResponse, error) {
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	resp := AdminUserResponseFromUser(user)
+	return &resp, nil
 }

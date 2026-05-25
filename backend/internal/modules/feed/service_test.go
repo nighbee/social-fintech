@@ -275,6 +275,10 @@ func (r *testRepo) LogMediaAbuse(ctx context.Context, userID uuid.UUID, violatio
 	return nil
 }
 
+func (r *testRepo) SearchPosts(ctx context.Context, query string, limit, offset int) ([]PostResponse, int, error) {
+	return nil, 0, nil
+}
+
 func (r *testRepo) ListReports(ctx context.Context, status, targetType, reason string, limit, offset int) ([]ReportItem, int, error) {
 	return nil, 0, nil
 }

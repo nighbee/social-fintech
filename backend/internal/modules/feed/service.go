@@ -1188,3 +1188,15 @@ func extractObjectPath(publicURL string) string {
 func (s *Service) LogMediaAbuse(ctx context.Context, userID uuid.UUID, violationType, detectionDetails string, metadata interface{}) error {
 	return s.repo.LogMediaAbuse(ctx, userID, violationType, detectionDetails, metadata)
 }
+
+func (s *Service) AdminGetPost(ctx context.Context, postID, adminID uuid.UUID) (*PostResponse, error) {
+	resp, err := s.repo.GetPost(ctx, postID, adminID)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (s *Service) AdminSearchPosts(ctx context.Context, query string, limit, offset int) ([]PostResponse, int, error) {
+	return s.repo.SearchPosts(ctx, query, limit, offset)
+}

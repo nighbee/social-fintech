@@ -88,6 +88,9 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 
 	api.Get("/users/search", profilesHandler.SearchUsers)
 
+	// Admin login — no auth middleware, returns JWT only if credentials match an admin user.
+	api.Post("/admin/login", authHandler.AdminLogin)
+
 	authGroup.Post("/login", authLim, authHandler.Login)
 	authGroup.Post("/register-email", registerLim, authHandler.RegisterEmail)
 	authGroup.Post("/login-email", authLim, authHandler.LoginEmail)
@@ -231,7 +234,11 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	feedAdminGroup.Get("/reports", feedHandler.GetAdminReports)
 	feedAdminGroup.Post("/ban", authHandler.AdminBanUser)
 	feedAdminGroup.Delete("/posts/:post_id", feedHandler.AdminDeletePost)
+	feedAdminGroup.Get("/posts/search", feedHandler.AdminSearchPosts)
+	feedAdminGroup.Get("/posts/:post_id", feedHandler.AdminGetPost)
 	feedAdminGroup.Delete("/comments/:comment_id", feedHandler.AdminDeleteComment)
+	feedAdminGroup.Get("/users/search", authHandler.AdminSearchUserByEmail)
+	feedAdminGroup.Get("/users/:user_id", authHandler.AdminGetUserByID)
 	feedAdminGroup.Get("/ops/metrics", func(c *fiber.Ctx) error {
 		return c.JSON(observability.Snapshot())
 	})

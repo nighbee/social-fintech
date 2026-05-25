@@ -274,6 +274,47 @@ type AdminBanRequest struct {
 	Reason   string  `json:"reason" validate:"required"`
 }
 
+type AdminLoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type AdminUserResponse struct {
+	ID                string     `json:"id"`
+	Email             string     `json:"email"`
+	Username          string     `json:"username"`
+	FirstName         string     `json:"first_name"`
+	LastName          string     `json:"last_name"`
+	DateOfBirth       *time.Time `json:"date_of_birth,omitempty"`
+	AvatarURL         string     `json:"avatar_url"`
+	IsAdmin           bool       `json:"is_admin"`
+	IsShadowBanned    bool       `json:"is_shadow_banned"`
+	ActivationStatus  string     `json:"activation_status"`
+	RestrictionsUntil *time.Time `json:"restrictions_until,omitempty"`
+	DeletedAt         *time.Time `json:"deleted_at,omitempty"`
+	LastActiveAt      time.Time  `json:"last_active_at"`
+	CreatedAt         time.Time  `json:"created_at"`
+}
+
+func AdminUserResponseFromUser(u *User) AdminUserResponse {
+	return AdminUserResponse{
+		ID:                u.ID,
+		Email:             u.Email,
+		Username:          u.Username,
+		FirstName:         u.FirstName,
+		LastName:          u.LastName,
+		DateOfBirth:       u.DateOfBirth,
+		AvatarURL:         u.AvatarURL,
+		IsAdmin:           u.IsAdmin,
+		IsShadowBanned:    u.IsShadowBanned,
+		ActivationStatus:  u.ActivationStatus,
+		RestrictionsUntil: u.RestrictionsUntil,
+		DeletedAt:         u.DeletedAt,
+		LastActiveAt:      u.LastActiveAt,
+		CreatedAt:         u.CreatedAt,
+	}
+}
+
 // MarshalJSON emits both the legacy `participate_district` JSON key and
 // the canonical `participate_region` key so clients on either side of the
 // Districts → Region rename keep working.

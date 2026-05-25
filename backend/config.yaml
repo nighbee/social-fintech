@@ -126,3 +126,8 @@ eventbus:
   topics:
     system_events: "brightbund.system.events"
 
+admin:
+  username: "admin@brightbund.com"
+  password: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"  # bcrypt of "admin123"
+  emails:
+    - "admin@brightbund.com"

@@ -59,7 +59,6 @@ import (
 // @description Type "Bearer" followed by a space and your JWT Access Token (not UUID). Example: "Bearer eyJhbGci..."
 
 func main() {
-	// Р·Р°РіСЂСѓР¶Р°РµС‚ РєРѕРЅС„РёРі, РїРѕРґРєР»СЋС‡Р°РµС‚ Р±Рґ Рё РёРЅРёС‚ OAuth jwt
 	_ = godotenv.Load(".env")
 
 	configPath := os.Getenv("CONFIG_PATH")
@@ -72,7 +71,6 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	// РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ СЃС‚СЂСѓРєС‚СѓСЂРёСЂРѕРІР°РЅРЅРѕРіРѕ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ (Zap)
 	if err := logger.Initialize(cfg.Logging); err != nil {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
@@ -126,7 +124,6 @@ func main() {
 
 	logger.Info("redis connection established", zap.String("address", cfg.Redis.Address))
 
-	// Create Asynq client for background tasks (Video Processing)
 	asynqClient := asynq.NewClient(asynq.RedisClientOpt{
 		Addr:     cfg.Redis.Address,
 		Password: cfg.Redis.Password,
@@ -171,7 +168,6 @@ func main() {
 	jwtManager := auth.NewJWTManager(cfg.JWT.Secret, cfg.JWT.Expiration, cfg.JWT.RefreshExpiration)
 	authRepo := auth.NewRepository(db.DB)
 
-	// Initialize profile stats cache if caching is enabled
 	var profilesCache profiles.StatsCache
 	if cfg.Cache.Enabled {
 		profilesCache = profiles.NewCacheWrapperStatsCache(redisCache)
@@ -180,7 +176,6 @@ func main() {
 		)
 	}
 
-	// Initialize economy module with cache invalidator
 	economyRepo := economy.NewRepository(db.DB)
 	economyService := economy.NewService(economyRepo, cfg.Economy, profilesCache, eventProducer)
 	economyHandler := economy.NewHandler(economyService)
@@ -204,10 +199,6 @@ func main() {
 		auth.ProviderGoogle: googleVerifier,
 	}, smsSender, economyService)
 
-	// Wire the outbound email transport. Platform-level sender picks
-	// SMTP when configured, otherwise a logging stub. Both auth and
-	// settings consume it via tiny adapters so neither module depends
-	// on the platform package directly.
 	emailSender := email.NewSender(email.Config{
 		Host:           cfg.SMTP.Host,
 		Port:           cfg.SMTP.Port,
@@ -223,6 +214,11 @@ func main() {
 
 	authHandler := auth.NewHandler(authService)
 
+	// Seed the standalone admin account (username + bcrypt password hash from config)
+	if err := authService.EnsureAdminAccount(context.Background(), cfg.Admin.Username, cfg.Admin.Password); err != nil {
+		logger.Error("failed to seed admin account", zap.Error(err))
+	}
+	// Promote any existing users in the admin emails list
 	if err := authService.EnsureAdmins(context.Background(), cfg.Admin.Emails); err != nil {
 		logger.Error("failed to seed admins", zap.Error(err))
 	}
@@ -257,7 +253,6 @@ func main() {
 	mapHandler := mapmodule.NewHandler(mapService)
 	logger.Info("map module initialized")
 
-	// Feed Module Initialization
 	feedRepo := feed.NewRepositoryWithAdaptiveGeo(db.DB, cfg.Storage.PublicURL, feed.AdaptiveGeoConfig{
 		Enabled:            cfg.Feed.AdaptiveGeoEnabled,
 		MaxKRing:           cfg.Feed.MaxKRing,
@@ -275,7 +270,6 @@ func main() {
 	feedCache := feed.NewCacheRepository(redisCache)
 	feedService := feed.NewService(feedRepo, feedCache, profilesRepo, asynqClient, eventProducer)
 
-	// Initialize Vision Client
 	var visionClient vision.Client
 	vClient, err := vision.NewClient(context.Background())
 	if err != nil {
@@ -284,12 +278,6 @@ func main() {
 		visionClient = vClient
 		logger.Info("Google Vision API client initialized via ADC")
 	}
-
-	// Workers have been moved to cmd/worker to unblock API event loop
-	// Handlers that depended on workers directly are injected appropriately OR refactored
-	// (Note: To keep this compiling safely right away, we will stub the feedWorker temporarily or pass nil if the handler supports it.
-	// Feed handler needs to use Redis directly or a dedicated queue interface instead of the worker instance,
-	// but for now we'll rely on the existing worker initialization for interface compliance if needed, just without .Start())
 
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
 	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, visionClient, cfg.Storage.PublicURL, cfg.Storage.TempBucket)
@@ -325,8 +313,6 @@ func main() {
 	notificationsHandler := notifications.NewHandler(notificationsService)
 	logger.Info("notifications module initialized")
 
-	// Wire the post-seal notifier so that when user A seals user B's
-	// post, A receives "You moved [B] to position X in [region]".
 	feedHandler.SetSealNotifier(&postSealNotifier{
 		cache:    redisCache,
 		mapRepo:  mapRepo,
@@ -359,7 +345,6 @@ func main() {
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	logger.Info("server starting", zap.String("address", addr))
 
-	// Listen for OS signals for graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 
@@ -408,9 +393,6 @@ func runStartupMigrations(db *sqlx.DB) error {
 	return fmt.Errorf("failed to run migrations from known paths: \n- %s", strings.Join(errors, "\n- "))
 }
 
-// authEmailAdapter satisfies auth.EmailSender by delegating to the
-// platform-level email.Sender. Lives here (not in the auth package) so
-// the auth module stays free of any platform/email import.
 type authEmailAdapter struct {
 	sender email.Sender
 }
@@ -419,9 +401,6 @@ func (a authEmailAdapter) Send(ctx context.Context, to, subject, body string) er
 	return a.sender.Send(ctx, to, subject, body)
 }
 
-// settingsEmailAdapter mirrors authEmailAdapter for the settings module's
-// EmailSender interface. The two interfaces are intentionally defined
-// per-module to avoid a shared dependency, hence the duplicate adapter.
 type settingsEmailAdapter struct {
 	sender email.Sender
 }
@@ -430,14 +409,6 @@ func (a settingsEmailAdapter) Send(ctx context.Context, to, subject, body string
 	return a.sender.Send(ctx, to, subject, body)
 }
 
-// postSealNotifier implements feed.SealNotifier. After a successful seal
-// it computes the recipient's leaderboard rank and fires a notification
-// to the *sender* matching the founder spec
-// "You moved [username] to position X in [city/country]."
-//
-// All lookups are best-effort: missing H3 / leaderboard / metadata
-// degrades gracefully into a notification without those fields rather
-// than failing.
 type postSealNotifier struct {
 	cache    *cache.Cache
 	mapRepo  mapmodule.Repository
@@ -451,7 +422,6 @@ func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipi
 		return nil
 	}
 
-	// Recipient profile вЂ” needed for the username string in the title.
 	recipientUser, err := p.authRepo.GetUserByID(ctx, recipientID.String())
 	if err != nil || recipientUser == nil {
 		return nil
@@ -464,8 +434,6 @@ func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipi
 		username = "your ally"
 	}
 
-	// Recipient region вЂ” pick the most granular H3 cell available so we
-	// resolve to the smallest meaningful place name (city в†’ region в†’ country).
 	regionState, _ := p.mapRepo.GetUserRegionState(ctx, recipientID.String())
 	scope := "region"
 	leaderboardKey := ""
@@ -488,7 +456,6 @@ func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipi
 		}
 	}
 
-	// Position lookup: ZRevRank is 0-based, so add 1 for human display.
 	position := 0
 	if leaderboardKey != "" && p.cache != nil {
 		if rank, err := p.cache.ZRevRank(ctx, leaderboardKey, recipientID.String()); err == nil {
@@ -514,8 +481,6 @@ func (p *postSealNotifier) NotifyPostSealed(ctx context.Context, actorID, recipi
 		}
 	}
 
-	// If we couldn't infer a position the message would read "to position 0",
-	// which is worse than no notification вЂ” skip it instead.
 	if position == 0 {
 		return nil
 	}

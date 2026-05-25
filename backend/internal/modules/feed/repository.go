@@ -72,6 +72,9 @@ type Repository interface {
 
 	// Moderation
 	LogMediaAbuse(ctx context.Context, userID uuid.UUID, violationType, detectionDetails string, metadata interface{}) error
+
+	// Admin
+	SearchPosts(ctx context.Context, query string, limit, offset int) ([]PostResponse, int, error)
 }
 
 // CacheRepository interface for Redis high-frequency syncs (Write-behind).

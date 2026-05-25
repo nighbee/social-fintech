@@ -1,3 +1,11 @@
 issues/
 .commandcode
 backend\internal\modules\feed\optimization.md
+
+# SPA
+spa/node_modules/
+spa/dist/
+spa/.env
+spa/.env.local
+spa/routes.md
+spa/implementation-plan.md
