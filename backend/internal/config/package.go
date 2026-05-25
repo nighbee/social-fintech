@@ -470,7 +470,7 @@ func overrideFromEnv(cfg *Config) {
 	}
 	if cfg.Admin.Password == "" {
 		// bcrypt hash of "admin123" — change in production
-		cfg.Admin.Password = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+		cfg.Admin.Password = "$2a$10$04ZM0XJ..ZphKL0ehWsSgug8tYmRNUxD3fE4Cli7HID5orAfDW7TW"
 	}
 
 	// Cache defaults

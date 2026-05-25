@@ -1386,11 +1386,16 @@ func (s *Service) EnsureAdminAccount(ctx context.Context, username, passwordHash
 		return nil
 	}
 
-	_, err := s.repo.GetUserByEmail(ctx, username)
+	user, err := s.repo.GetUserByEmail(ctx, username)
 	if err == nil {
-		// User exists — ensure it's an admin
-		user, getErr := s.repo.GetUserByEmail(ctx, username)
-		if getErr == nil && !user.IsAdmin {
+		// User exists — keep password hash and admin status in sync
+		if user.PasswordHash != passwordHash {
+			if upErr := s.repo.UpdateUserPasswordHashByID(ctx, user.ID, passwordHash, time.Now()); upErr != nil {
+				return upErr
+			}
+			s.logger.Info("admin_password_updated", zap.String("email", username))
+		}
+		if !user.IsAdmin {
 			if setErr := s.repo.SetAdminStatus(ctx, user.ID, true); setErr != nil {
 				return setErr
 			}
@@ -1404,7 +1409,7 @@ func (s *Service) EnsureAdminAccount(ctx context.Context, username, passwordHash
 
 	// User doesn't exist — create it
 	now := time.Now()
-	user := &User{
+	createUser := &User{
 		ID:               uuid.NewString(),
 		Email:            username,
 		Username:         strings.Split(username, "@")[0],
@@ -1422,13 +1427,13 @@ func (s *Service) EnsureAdminAccount(ctx context.Context, username, passwordHash
 		LastActiveAt:      now,
 	}
 
-	if err := s.repo.CreateUser(ctx, user); err != nil {
+	if err := s.repo.CreateUser(ctx, createUser); err != nil {
 		return err
 	}
 
 	// Grant signup bonus wallet
 	if s.economyService != nil {
-		_ = s.economyService.GetOrCreateWallets(ctx, user.ID)
+		_ = s.economyService.GetOrCreateWallets(ctx, createUser.ID)
 	}
 
 	s.logger.Info("admin_account_created", zap.String("email", username))

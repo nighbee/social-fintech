@@ -128,6 +128,6 @@ eventbus:
 
 admin:
   username: "admin@brightbund.com"
-  password: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"  # bcrypt of "admin123"
+  password: "$2a$10$04ZM0XJ..ZphKL0ehWsSgug8tYmRNUxD3fE4Cli7HID5orAfDW7TW"  # bcrypt of "admin123"
   emails:
     - "admin@brightbund.com"
