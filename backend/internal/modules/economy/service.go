@@ -43,6 +43,8 @@ type Service interface {
 	RewardForTaskCompletion(ctx context.Context, userID, taskID string, reward int64) error
 
 	AdminAdjustBalance(ctx context.Context, userID string, amountCentinels int64, currency CurrencyCode, reason string) error
+
+	ResetAllGoldSeals(ctx context.Context) (int64, error)
 }
 
 type service struct {
@@ -282,23 +284,21 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 			ctx = context.WithValue(ctx, "seal_repeat_level", repeatLevel)
 		}
 
-		monthYear := FormatMonthYear(time.Now())
-		limit, err := txRepo.GetOrCreateTransferLimit(ctx, senderUserID, monthYear)
-		if err != nil {
-			return WrapErrorf(err, "failed to get transfer limit")
-		}
-
-		if !limit.CanTransfer(s.cfg.MaxDailyTransfers) {
-			// TODO: Extract client IP from context and pass as last parameter to logViolation
-			// See: backend/internal/platform/geolocation/ip_extractor.go for IP extraction utilities
-			s.logViolation(ctx, senderUserID, ViolationMonthlyLimitExceeded, "/economy/transfer", &amountCents, map[string]interface{}{
-				"recipient_id":  req.RecipientUserID,
-				"current_count": limit.TransfersCount,
-				"limit":         s.cfg.MaxDailyTransfers,
-			}, nil) // IP address should be extracted from handler request context
-			return NewMonthlyLimitError(senderUserID, req.RecipientUserID, currency,
-				int64(s.cfg.MaxDailyTransfers), int64(limit.TransfersCount), amountCents)
-		}
+		// Monthly transfer limit — temporarily disabled.
+		// monthYear := FormatMonthYear(time.Now())
+		// limit, err := txRepo.GetOrCreateTransferLimit(ctx, senderUserID, monthYear)
+		// if err != nil {
+		// 	return WrapErrorf(err, "failed to get transfer limit")
+		// }
+		// if !limit.CanTransfer(s.cfg.MaxDailyTransfers) {
+		// 	s.logViolation(ctx, senderUserID, ViolationMonthlyLimitExceeded, "/economy/transfer", &amountCents, map[string]interface{}{
+		// 		"recipient_id":  req.RecipientUserID,
+		// 		"current_count": limit.TransfersCount,
+		// 		"limit":         s.cfg.MaxDailyTransfers,
+		// 	}, nil)
+		// 	return NewMonthlyLimitError(senderUserID, req.RecipientUserID, currency,
+		// 		int64(s.cfg.MaxDailyTransfers), int64(limit.TransfersCount), amountCents)
+		// }
 
 		senderWallet, err := txRepo.GetOrCreateWallet(ctx, senderUserID, CurrencySilverSeal)
 		if err != nil {
@@ -429,12 +429,13 @@ func (s *service) TransferSeals(ctx context.Context, senderUserID string, req *T
 			return WrapErrorf(err, "failed to upsert profile seal projection")
 		}
 
-		oldTransfersCount := limit.TransfersCount
-		oldTotalSent := limit.TotalSentCentinels
-		limit.IncrementTransfer(amountCents)
-		if err := txRepo.UpdateTransferLimit(ctx, limit, oldTransfersCount, oldTotalSent); err != nil {
-			return WrapErrorf(err, "failed to update transfer limit")
-		}
+		// Monthly transfer limit update — temporarily disabled.
+		// oldTransfersCount := limit.TransfersCount
+		// oldTotalSent := limit.TotalSentCentinels
+		// limit.IncrementTransfer(amountCents)
+		// if err := txRepo.UpdateTransferLimit(ctx, limit, oldTransfersCount, oldTotalSent); err != nil {
+		// 	return WrapErrorf(err, "failed to update transfer limit")
+		// }
 
 		if isSeal {
 			if rl, ok := ctx.Value("seal_repeat_level").(int); ok {
@@ -1228,14 +1229,15 @@ func (s *service) RewardForTaskCompletion(ctx context.Context, userID, taskID st
 
 // RewardForTaskCompletionTx credits the user for completing a task within an existing transaction.
 // The passed repo MUST be bound to the current transaction.
+// Rewards in GOLD_SEAL so the worker's rank progresses.
 func RewardForTaskCompletionTx(ctx context.Context, repo Repository, userID, taskID string, reward int64) error {
 	if reward <= 0 {
 		return NewInvalidAmountError(CentinelsToSeals(reward))
 	}
 
-	wallet, err := repo.GetOrCreateWallet(ctx, userID, CurrencySilverSeal)
+	wallet, err := repo.GetOrCreateWallet(ctx, userID, CurrencyGoldSeal)
 	if err != nil {
-		return WrapErrorf(err, "failed to get wallet")
+		return WrapErrorf(err, "failed to get gold wallet")
 	}
 
 	referenceID := fmt.Sprintf("task_reward_%s", taskID)
@@ -1243,16 +1245,15 @@ func RewardForTaskCompletionTx(ctx context.Context, repo Repository, userID, tas
 		return nil
 	}
 
-	wallet.Balance += reward
-
-	if err := repo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
-		return err
+	// Use atomic increment to update both balance and total_received_amount.
+	if _, err := repo.IncrementWalletBalanceAtomic(ctx, wallet.ID, reward); err != nil {
+		return WrapErrorf(err, "failed to increment gold wallet")
 	}
 
 	entry := &LedgerEntry{
 		ID:               uuid.New().String(),
 		Amount:           reward,
-		Currency:         CurrencySilverSeal,
+		Currency:         CurrencyGoldSeal,
 		ReceiverWalletID: &wallet.ID,
 		Category:         CategoryTaskReward,
 		ReferenceID:      referenceID,
@@ -1311,6 +1312,7 @@ func RefundTaskCreationTx(ctx context.Context, repo Repository, userID, taskID s
 // RewardForApplicationConfirmationTx credits a helper for completing a task application.
 // Uses applicationID as part of the idempotency key so each worker in a multi-worker
 // task receives their individual reward correctly.
+// Rewards in GOLD_SEAL so the worker's rank progresses (creator paid in SILVER_SEAL upfront).
 func RewardForApplicationConfirmationTx(ctx context.Context, repo Repository, workerUserID, taskID, applicationID string, reward int64) error {
 	if reward <= 0 {
 		return NewInvalidAmountError(CentinelsToSeals(reward))
@@ -1321,21 +1323,20 @@ func RewardForApplicationConfirmationTx(ctx context.Context, repo Repository, wo
 		return nil // already rewarded
 	}
 
-	wallet, err := repo.GetOrCreateWallet(ctx, workerUserID, CurrencySilverSeal)
+	wallet, err := repo.GetOrCreateWallet(ctx, workerUserID, CurrencyGoldSeal)
 	if err != nil {
-		return WrapErrorf(err, "failed to get worker wallet")
+		return WrapErrorf(err, "failed to get worker gold wallet")
 	}
 
-	wallet.Balance += reward
-
-	if err := repo.UpdateWalletWithVersion(ctx, wallet, wallet.Version); err != nil {
-		return err
+	// Use atomic increment to update both balance and total_received_amount.
+	if _, err := repo.IncrementWalletBalanceAtomic(ctx, wallet.ID, reward); err != nil {
+		return WrapErrorf(err, "failed to increment gold wallet")
 	}
 
 	entry := &LedgerEntry{
 		ID:               uuid.New().String(),
 		Amount:           reward,
-		Currency:         CurrencySilverSeal,
+		Currency:         CurrencyGoldSeal,
 		ReceiverWalletID: &wallet.ID,
 		Category:         CategoryTaskReward,
 		ReferenceID:      referenceID,
@@ -1725,4 +1726,8 @@ func max(a, b int) int {
 func isoWeek(t time.Time) int {
 	_, w := t.ISOWeek()
 	return w
+}
+
+func (s *service) ResetAllGoldSeals(ctx context.Context) (int64, error) {
+	return s.repo.ResetAllGoldSeals(ctx)
 }

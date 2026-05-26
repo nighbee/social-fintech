@@ -23,10 +23,10 @@ import (
 const (
 	// DefaultMaxAllowedActiveSeconds is the fallback limit (20 minutes)
 	DefaultMaxAllowedActiveSeconds = 1200
-	// BreakDurationSeconds is the mandatory break after the active phase (5 minutes)
-	BreakDurationSeconds = 300
+	// BreakDurationSeconds is the mandatory break after the active phase (15 minutes)
+	BreakDurationSeconds = 900
 	// AwayResetThreshold is how long a user can be away (in active phase) before their timer resets
-	AwayResetThreshold       = 300
+	AwayResetThreshold       = 900
 	NetworkBufferSeconds     = 5.0
 	FeedPresenceTTL          = 20 * time.Second
 	ReportRateLimitPerHour   = 10

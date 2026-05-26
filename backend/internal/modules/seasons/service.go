@@ -10,8 +10,9 @@ import (
 )
 
 type Service struct {
-	repo     Repository
-	eventBus *eventbus.Producer
+	repo           Repository
+	eventBus       *eventbus.Producer
+	goldResetter   GoldSealResetter
 }
 
 func NewService(repo Repository) *Service {
@@ -20,6 +21,10 @@ func NewService(repo Repository) *Service {
 
 func (s *Service) SetEventBus(eb *eventbus.Producer) {
 	s.eventBus = eb
+}
+
+func (s *Service) SetGoldResetter(r GoldSealResetter) {
+	s.goldResetter = r
 }
 
 func (s *Service) GetCurrentSeason(ctx context.Context, now time.Time) (*CurrentSeasonResponse, error) {
@@ -65,6 +70,14 @@ func (s *Service) CloseDueSeasons(ctx context.Context, now time.Time, snap Snaps
 					return err
 				}
 			}
+
+			if s.goldResetter != nil {
+				resetCount, resetErr := s.goldResetter.ResetAllGoldSeals(ctx)
+				if resetErr != nil {
+					return fmt.Errorf("seasons: gold seal reset failed for season %s: %w", season.ID, resetErr)
+				}
+				_ = resetCount
+			}
 		}
 		if err := s.repo.MarkClosed(ctx, season.ID, time.Now().UTC()); err != nil {
 			return err
@@ -90,4 +103,11 @@ func (s *Service) CloseDueSeasons(ctx context.Context, now time.Time, snap Snaps
 // data, so it depends on this small interface to stay decoupled.
 type SnapshotProvider interface {
 	SnapshotSeason(ctx context.Context, season *Season) ([]ArchiveItem, error)
+}
+
+// GoldSealResetter is implemented by the economy module to reset all
+// GOLD_SEAL wallet balances and total_received_amount to zero when a
+// season closes, effectively resetting ranks for the new season.
+type GoldSealResetter interface {
+	ResetAllGoldSeals(ctx context.Context) (int64, error)
 }

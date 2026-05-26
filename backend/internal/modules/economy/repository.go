@@ -46,6 +46,8 @@ type Repository interface {
 	UpsertGoldPeriodStat(ctx context.Context, userID string, periodYear, periodWeek int, amount int64) error
 	GetTopGoldUserForWeek(ctx context.Context, periodYear, periodWeek int) (string, int64, error)
 	UpsertProfileSealProjection(ctx context.Context, senderID, receiverID string, sealsDelta int64, receiverGoldBalanceCentinels int64, receiverRankTier string) error
+
+	ResetAllGoldSeals(ctx context.Context) (int64, error)
 }
 
 type repository struct {
@@ -394,6 +396,28 @@ func (r *repository) UpsertProfileSealProjection(ctx context.Context, senderID, 
 	}
 
 	return nil
+}
+
+// ResetAllGoldSeals zeroes out both balance and total_received_amount for
+// every GOLD_SEAL wallet across all users. Called at season close to reset
+// ranks for the new season. Returns the number of wallets updated.
+func (r *repository) ResetAllGoldSeals(ctx context.Context) (int64, error) {
+	result, err := r.getExecutor().ExecContext(ctx, `
+		UPDATE wallets
+		SET balance = 0,
+		    total_received_amount = 0,
+		    version = version + 1,
+		    updated_at = NOW()
+		WHERE currency = 'GOLD_SEAL'
+	`)
+	if err != nil {
+		return 0, fmt.Errorf("failed to reset gold seal wallets: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get rows affected from gold seal reset: %w", err)
+	}
+	return rows, nil
 }
 
 func (r *repository) CreateReferral(ctx context.Context, referral *Referral) error {

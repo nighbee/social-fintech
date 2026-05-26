@@ -175,7 +175,7 @@ type SyncFeedStateRequest struct {
 type FeedStateResponse struct {
 	AccumulatedActiveSeconds int    `json:"accumulated_active_seconds"`
 	IsInCooldown             bool   `json:"is_in_cooldown"`
-	BreakSecondsRemaining    int    `json:"break_seconds_remaining"` // 0-300; 0 = not in break
+	BreakSecondsRemaining    int    `json:"break_seconds_remaining"` // 0-900; 0 = not in break
 	BreakMode                string `json:"break_mode"`              // "paused" | "counting"
 	// AccumulatedBreakSeconds exposes how many off-feed seconds have been served so far.
 	// Client can use this to animate the break countdown even between sync calls.

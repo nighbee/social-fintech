@@ -324,6 +324,7 @@ func main() {
 	seasonsRepo := seasons.NewRepository(db.DB)
 	seasonsService := seasons.NewService(seasonsRepo)
 	seasonsService.SetEventBus(eventProducer)
+	seasonsService.SetGoldResetter(economyService)
 	seasonsHandler := seasons.NewHandler(seasonsService)
 	seasonsSnapshot := seasons.NewSnapshotProvider(db.DB)
 	seasonsWorker := seasons.NewCloseWorker(seasonsService, seasonsSnapshot, time.Hour, logger.Get())
