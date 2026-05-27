@@ -8,9 +8,8 @@ import 'package:go_router/go_router.dart';
 class ProfileActionButtons extends StatelessWidget {
   const ProfileActionButtons({super.key});
 
-  static const Color _primaryBtnFill = Color.fromRGBO(109, 109, 109, 0.35);
+  static const Color _actionBtnFill = Color(0xFF303030);
   static const Color _primaryBtnBorder = Color.fromRGBO(101, 101, 101, 0.25);
-  static const Color _iconBtnFill = Color.fromRGBO(64, 64, 64, 0.24);
 
   @override
   Widget build(BuildContext context) {
@@ -55,11 +54,11 @@ class _PrimaryActionPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 30,
+        height: 32,
         alignment: Alignment.center,
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
         decoration: BoxDecoration(
-          color: ProfileActionButtons._primaryBtnFill,
+          color: ProfileActionButtons._actionBtnFill,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
             color: ProfileActionButtons._primaryBtnBorder,
@@ -94,11 +93,11 @@ class _IconActionPill extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: 43,
-        height: 30,
+        height: 32,
         alignment: Alignment.center,
         padding: const EdgeInsets.fromLTRB(10, 2, 9, 2),
         decoration: BoxDecoration(
-          color: ProfileActionButtons._iconBtnFill,
+          color: ProfileActionButtons._actionBtnFill,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
             color: const Color.fromRGBO(160, 160, 160, 0.2),

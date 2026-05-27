@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:gap/gap.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/feed_ink_well.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
+import 'package:app/src/core/widgets/media_viewer_page.dart';
 import 'package:app/src/features/home/domain/entities/media_attachment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
@@ -209,7 +211,7 @@ class PostCardWidget extends StatelessWidget
                     BlendMode.srcIn,
                   ),
                 ),
-                onTap: () {},
+                onTap: () => _sharePost(),
               ),
               const Spacer(),
               PostSilverButton(
@@ -226,6 +228,23 @@ class PostCardWidget extends StatelessWidget
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _sharePost() async {
+    final author = post.author.username.trim().isNotEmpty
+        ? '@${post.author.username.trim()}'
+        : post.author.fullName.trim();
+    final text = post.contentText.trim();
+    final link = 'https://brightbund.app/post/${post.postId}';
+    final message = [
+      if (author.isNotEmpty) author,
+      if (text.isNotEmpty) text,
+      link,
+    ].join('\n');
+
+    await SharePlus.instance.share(
+      ShareParams(text: message),
     );
   }
 }
@@ -586,6 +605,7 @@ class _PostImageGridState extends State<PostImageGrid> {
     MediaAttachmentEntity item, {
     required double height,
     double? width,
+    required int index,
   }) {
     final inner = _innerRadius;
     if (_isVideo(item)) {
@@ -595,14 +615,37 @@ class _PostImageGridState extends State<PostImageGrid> {
         height: height,
         width: width,
         clipRadius: inner,
+        onOpen: () => _openViewer(index),
       );
     }
 
-    return CustomNetworkImage(
-      imageUrl: item.url,
-      height: height,
-      width: width,
-      borderRadius: inner,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => _openViewer(index),
+      child: CustomNetworkImage(
+        imageUrl: item.url,
+        height: height,
+        width: width,
+        borderRadius: inner,
+      ),
+    );
+  }
+
+  void _openViewer(int index) {
+    showMediaViewer(
+      context,
+      items: widget.attachments
+          .map(
+            (item) => MediaViewerItem(
+              url: item.url.trim(),
+              type: item.type,
+              thumbnailUrl: item.thumbnailUrl.trim().isEmpty
+                  ? null
+                  : item.thumbnailUrl.trim(),
+            ),
+          )
+          .toList(),
+      initialIndex: index,
     );
   }
 
@@ -614,6 +657,7 @@ class _PostImageGridState extends State<PostImageGrid> {
         attachments[0],
         height: 240,
         width: double.infinity,
+        index: 0,
       );
       if (widget.flushInnerMedia) {
         return ClipRRect(
@@ -644,6 +688,7 @@ class _PostImageGridState extends State<PostImageGrid> {
                   attachments[index],
                   height: 240,
                   width: double.infinity,
+                  index: index,
                 );
               },
             ),
@@ -679,6 +724,7 @@ class _InlineVideoTile extends StatefulWidget {
     required this.height,
     this.width,
     this.clipRadius = const BorderRadius.all(Radius.circular(8)),
+    required this.onOpen,
   });
 
   final String videoUrl;
@@ -686,6 +732,7 @@ class _InlineVideoTile extends StatefulWidget {
   final double height;
   final double? width;
   final BorderRadius clipRadius;
+  final VoidCallback onOpen;
 
   @override
   State<_InlineVideoTile> createState() => _InlineVideoTileState();
@@ -695,7 +742,6 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
   VideoPlayerController? _controller;
   Object? _initError;
   bool _isInitializing = false;
-  bool _isStarted = false;
 
   @override
   void initState() {
@@ -712,7 +758,6 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
       _controller?.dispose();
       _controller = null;
       _initError = null;
-      _isStarted = false;
       if (widget.videoUrl.isNotEmpty) {
         _init();
       }
@@ -737,20 +782,6 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
     } finally {
       _isInitializing = false;
     }
-  }
-
-  Future<void> _togglePlay() async {
-    final controller = _controller;
-    if (controller == null) return;
-    if (!controller.value.isInitialized) return;
-    if (controller.value.isPlaying) {
-      await controller.pause();
-    } else {
-      await controller.play();
-      _isStarted = true;
-    }
-    if (!mounted) return;
-    setState(() {});
   }
 
   @override
@@ -786,14 +817,14 @@ class _InlineVideoTileState extends State<_InlineVideoTile> {
       child: Material(
         color: Colors.transparent,
         child: FeedInkWell(
-          onTap: _togglePlay,
+          onTap: widget.onOpen,
           child: SizedBox(
             width: widget.width,
             height: widget.height,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                if (canShowVideo && _isStarted)
+                if (canShowVideo && controller.value.isPlaying)
                   SizedBox.expand(
                     child: FittedBox(
                       fit: BoxFit.cover,

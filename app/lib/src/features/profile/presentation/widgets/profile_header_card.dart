@@ -81,7 +81,7 @@ class ProfileHeaderCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 21),
       decoration: BoxDecoration(
         color: AppColors.feedMoonstoneBase,
         gradient: const RadialGradient(
@@ -187,7 +187,7 @@ class ProfileHeaderCard extends StatelessWidget {
               );
             },
           ),
-          const Gap(12),
+          const Gap(21),
           isPublicProfile
               ? PublicUserActionButtons(
                   userId: userId,

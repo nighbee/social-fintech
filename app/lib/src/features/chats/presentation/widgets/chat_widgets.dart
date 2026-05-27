@@ -5,6 +5,7 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/glass_container.dart';
+import 'package:app/src/core/widgets/media_viewer_page.dart';
 import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/styles/chat_conversation_styles.dart';
 import 'package:app/src/features/chats/presentation/styles/chat_sapphire_styles.dart';
@@ -14,7 +15,6 @@ import 'package:app/src/features/profile/presentation/widgets/profile_rank_meta_
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 /// Фон под [ChatScaffold]: список чатов или лента сообщений.
 enum ChatBackgroundVariant {
@@ -1008,20 +1008,6 @@ class ChatMessageBubble extends StatelessWidget {
   final VoidCallback? onLongPress;
   final GestureLongPressStartCallback? onLongPressStart;
 
-  Future<void> _openUrl(BuildContext context, String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) {
-      return;
-    }
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!context.mounted || ok) {
-      return;
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Could not open link')),
-    );
-  }
-
   EdgeInsets _bubblePadding(ChatMessageUiModel m) {
     final hasMedia = m.media.isNotEmpty;
     final plain = m.text.trim().isEmpty && m.forwardedSnippet == null;
@@ -1068,6 +1054,10 @@ class ChatMessageBubble extends StatelessWidget {
         message.media.where((ChatMessageMediaItem m) => m.isImage).toList();
     final videoItems =
         message.media.where((ChatMessageMediaItem m) => m.isVideo).toList();
+    final viewableMedia = message.media
+        .where((ChatMessageMediaItem m) => m.isImage || m.isVideo)
+        .where((ChatMessageMediaItem m) => m.url.trim().isNotEmpty)
+        .toList();
     final textOnly = message.text.trim().isEmpty;
 
     return Row(
@@ -1095,7 +1085,27 @@ class ChatMessageBubble extends StatelessWidget {
                   message.forwardedSnippet == null &&
                   (imageItems.first.url).trim().isNotEmpty;
 
-              Widget buildImageTile(String url) {
+              void openViewer(ChatMessageMediaItem media) {
+                final initialIndex = viewableMedia.indexOf(media);
+                showMediaViewer(
+                  context,
+                  items: viewableMedia
+                      .map(
+                        (item) => MediaViewerItem(
+                          url: item.url.trim(),
+                          type: item.type,
+                          thumbnailUrl: (item.thumbnailUrl ?? '').trim().isEmpty
+                              ? null
+                              : item.thumbnailUrl!.trim(),
+                        ),
+                      )
+                      .toList(),
+                  initialIndex: initialIndex < 0 ? 0 : initialIndex,
+                );
+              }
+
+              Widget buildImageTile(ChatMessageMediaItem item) {
+                final url = item.url.trim();
                 final img = CustomNetworkImage(
                   imageUrl: url,
                   height: 220,
@@ -1119,9 +1129,13 @@ class ChatMessageBubble extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                         child: img,
                       );
-                return ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: mediaW),
-                  child: framed,
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => openViewer(item),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: mediaW),
+                    child: framed,
+                  ),
                 );
               }
 
@@ -1158,7 +1172,7 @@ class ChatMessageBubble extends StatelessWidget {
                 if (item.url.trim().isEmpty) {
                   continue;
                 }
-                final tile = buildImageTile(item.url);
+                final tile = buildImageTile(item);
                 if (outgoingSingleImageOverlay) {
                   imageSection.add(
                     Stack(
@@ -1297,7 +1311,7 @@ class ChatMessageBubble extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.35),
                       borderRadius: BorderRadius.circular(4),
                       child: InkWell(
-                        onTap: () => _openUrl(context, item.url),
+                        onTap: () => openViewer(item),
                         borderRadius: BorderRadius.circular(4),
                         child: ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: mediaW),
