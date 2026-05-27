@@ -14,6 +14,8 @@ import (
 type Repository interface {
 	GetOrCreateSeason(ctx context.Context, year, half int) (*Season, error)
 	ListUnclosedDueSeasons(ctx context.Context, now time.Time) ([]Season, error)
+	ListAllSeasons(ctx context.Context) ([]Season, error)
+	CountParticipants(ctx context.Context, seasonID uuid.UUID) (int64, error)
 	MarkClosed(ctx context.Context, seasonID uuid.UUID, closedAt time.Time) error
 	UpsertArchive(ctx context.Context, item *ArchiveItem) error
 	ListArchiveByUser(ctx context.Context, userID uuid.UUID, limit int) ([]ArchiveItem, error)
@@ -57,8 +59,6 @@ func (r *PostgresRepository) GetOrCreateSeason(ctx context.Context, year, half i
 		return nil, err
 	}
 
-	// Re-read in case another writer beat us to the insert; this guarantees
-	// callers always see the canonical row id.
 	if err := r.db.GetContext(ctx, &existing, `
 		SELECT id, season_year, season_half, starts_at, ends_at, closed_at, created_at
 		FROM seasons
@@ -70,8 +70,7 @@ func (r *PostgresRepository) GetOrCreateSeason(ctx context.Context, year, half i
 }
 
 // ListUnclosedDueSeasons returns every season whose ends_at is in the
-// past and that hasn't been closed yet. The season-close worker iterates
-// these and writes archive rows.
+// past and that hasn't been closed yet.
 func (r *PostgresRepository) ListUnclosedDueSeasons(ctx context.Context, now time.Time) ([]Season, error) {
 	var out []Season
 	err := r.db.SelectContext(ctx, &out, `
@@ -83,6 +82,24 @@ func (r *PostgresRepository) ListUnclosedDueSeasons(ctx context.Context, now tim
 	return out, err
 }
 
+func (r *PostgresRepository) ListAllSeasons(ctx context.Context) ([]Season, error) {
+	var out []Season
+	err := r.db.SelectContext(ctx, &out, `
+		SELECT id, season_year, season_half, starts_at, ends_at, closed_at, created_at
+		FROM seasons
+		ORDER BY season_year DESC, season_half DESC
+	`)
+	return out, err
+}
+
+func (r *PostgresRepository) CountParticipants(ctx context.Context, seasonID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.GetContext(ctx, &count, `
+		SELECT COUNT(*) FROM user_season_archive WHERE season_id = $1
+	`, seasonID)
+	return count, err
+}
+
 func (r *PostgresRepository) MarkClosed(ctx context.Context, seasonID uuid.UUID, closedAt time.Time) error {
 	_, err := r.db.ExecContext(ctx, `
 		UPDATE seasons SET closed_at = $2 WHERE id = $1
@@ -90,9 +107,6 @@ func (r *PostgresRepository) MarkClosed(ctx context.Context, seasonID uuid.UUID,
 	return err
 }
 
-// UpsertArchive writes (or updates) one user's frozen standings for a
-// given season. Re-running the close worker is safe: the (user_id,
-// season_id) primary key collapses retries onto the same row.
 func (r *PostgresRepository) UpsertArchive(ctx context.Context, item *ArchiveItem) error {
 	payload := []byte(item.SnapshotPayload)
 	if len(payload) == 0 {
@@ -120,8 +134,6 @@ func (r *PostgresRepository) UpsertArchive(ctx context.Context, item *ArchiveIte
 	return err
 }
 
-// ListArchiveByUser returns the user's archive entries, newest seasons
-// first.
 func (r *PostgresRepository) ListArchiveByUser(ctx context.Context, userID uuid.UUID, limit int) ([]ArchiveItem, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 50

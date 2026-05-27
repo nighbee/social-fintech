@@ -64,7 +64,7 @@ func (c *Cache) Exists(ctx context.Context, key string) (bool, error) {
 	return result > 0, err
 }
 
-// ZSET operations для Leaderboards
+// ZSET operations
 func (c *Cache) ZAdd(ctx context.Context, key string, score float64, member string) error {
 	return c.Client.ZAdd(ctx, key, redis.Z{Score: score, Member: member}).Err()
 }
@@ -99,6 +99,30 @@ func (c *Cache) ZRangeByExactScore(ctx context.Context, key string, score float6
 		Min: scoreStr,
 		Max: scoreStr,
 	}).Result()
+}
+
+func (c *Cache) ZRem(ctx context.Context, key string, members ...string) (int64, error) {
+	args := make([]interface{}, len(members))
+	for i, m := range members {
+		args[i] = m
+	}
+	return c.Client.ZRem(ctx, key, args...).Result()
+}
+
+func (c *Cache) ZRemRangeByScore(ctx context.Context, key, min, max string) (int64, error) {
+	return c.Client.ZRemRangeByScore(ctx, key, min, max).Result()
+}
+
+func (c *Cache) ZCard(ctx context.Context, key string) (int64, error) {
+	return c.Client.ZCard(ctx, key).Result()
+}
+
+func (c *Cache) ZCount(ctx context.Context, key, min, max string) (int64, error) {
+	return c.Client.ZCount(ctx, key, min, max).Result()
+}
+
+func (c *Cache) ZRangeByScore(ctx context.Context, key string, opt *redis.ZRangeBy) ([]string, error) {
+	return c.Client.ZRangeByScore(ctx, key, opt).Result()
 }
 
 func (c *Cache) ZIncrBy(ctx context.Context, key string, increment float64, member string) (float64, error) {

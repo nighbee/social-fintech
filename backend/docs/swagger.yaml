@@ -1,10 +1,104 @@
 basePath: /api/v1
 definitions:
-  auth.AdminBanRequest:
+  github_com_brightbund-backend_internal_modules_profiles.ProfileSearchResult:
+    properties:
+      avatar_url:
+        example: https://storage.example.com/avatars/u1.jpg
+        type: string
+      display_name:
+        example: John Doe
+        type: string
+      rank_tier:
+        example: Quartz
+        type: string
+      reputation_score:
+        example: 100
+        type: integer
+      user_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+    type: object
+  github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse:
+    properties:
+      current_seals:
+        type: integer
+      description:
+        type: string
+      full_title:
+        type: string
+      icon_url:
+        type: string
+      level:
+        type: string
+      level_max_seals:
+        type: integer
+      level_min_seals:
+        type: integer
+      next_level:
+        type: string
+      next_rank:
+        type: string
+      progress_in_rank:
+        type: number
+      progress_to_next_level:
+        type: number
+      quality_name:
+        type: string
+      rank_max_seals:
+        type: integer
+      rank_min_seals:
+        type: integer
+      rank_name:
+        type: string
+    type: object
+  github_com_brightbund-backend_internal_modules_ranks.RankListResponse:
+    properties:
+      ranks:
+        items:
+          $ref: '#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankWithLevels'
+        type: array
+    type: object
+  github_com_brightbund-backend_internal_modules_ranks.RankWithLevels:
+    properties:
+      description:
+        type: string
+      icon_url:
+        type: string
+      id:
+        type: string
+      levels:
+        items:
+          type: string
+        type: array
+      max_seals:
+        type: integer
+      min_seals:
+        type: integer
+      name:
+        type: string
+      order:
+        type: integer
+      quality:
+        type: string
+      sub_levels:
+        items:
+          $ref: '#/definitions/github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo'
+        type: array
+    type: object
+  github_com_brightbund-backend_internal_modules_ranks.SubLevelInfo:
+    properties:
+      level:
+        type: string
+      max_seals:
+        type: integer
+      min_seals:
+        type: integer
+    type: object
+  internal_modules_auth.AdminBanRequest:
     properties:
       ban_type:
         allOf:
-        - $ref: '#/definitions/auth.BanType'
+        - $ref: '#/definitions/internal_modules_auth.BanType'
         enum:
         - temporary
         - permanent
@@ -20,7 +114,7 @@ definitions:
     - reason
     - user_id
     type: object
-  auth.BanType:
+  internal_modules_auth.BanType:
     enum:
     - temporary
     - permanent
@@ -28,19 +122,19 @@ definitions:
     x-enum-varnames:
     - BanTypeTemporary
     - BanTypePermanent
-  auth.CheckEmailRequest:
+  internal_modules_auth.CheckEmailRequest:
     properties:
       email:
         example: john.doe@example.com
         type: string
     type: object
-  auth.CheckEmailResponse:
+  internal_modules_auth.CheckEmailResponse:
     properties:
       exists:
         example: true
         type: boolean
     type: object
-  auth.EmailCodeRequest:
+  internal_modules_auth.EmailCodeRequest:
     properties:
       email:
         example: john.doe@example.com
@@ -49,14 +143,14 @@ definitions:
         example: register
         type: string
     type: object
-  auth.EmailCodeResponse:
+  internal_modules_auth.EmailCodeResponse:
     properties:
       expires_at:
         type: string
       verification_id:
         type: string
     type: object
-  auth.EmailLoginRequest:
+  internal_modules_auth.EmailLoginRequest:
     properties:
       app_version:
         example: 1.0.0
@@ -74,7 +168,7 @@ definitions:
         example: BrightBund-iOS/1.0
         type: string
     type: object
-  auth.EmailRegisterRequest:
+  internal_modules_auth.EmailRegisterRequest:
     properties:
       app_version:
         example: 1.0.0
@@ -107,21 +201,21 @@ definitions:
         example: BrightBund-iOS/1.0
         type: string
     type: object
-  auth.EmailVerifyRequest:
+  internal_modules_auth.EmailVerifyRequest:
     properties:
       code:
         type: string
       verification_id:
         type: string
     type: object
-  auth.EmailVerifyResponse:
+  internal_modules_auth.EmailVerifyResponse:
     properties:
       verification_id:
         type: string
       verified:
         type: boolean
     type: object
-  auth.ErrorResponse:
+  internal_modules_auth.ErrorResponse:
     properties:
       error:
         example: invalid_credentials
@@ -130,7 +224,7 @@ definitions:
         example: Invalid email or password
         type: string
     type: object
-  auth.FirebaseEmailAuthRequest:
+  internal_modules_auth.FirebaseEmailAuthRequest:
     properties:
       app_version:
         type: string
@@ -141,40 +235,7 @@ definitions:
       user_agent:
         type: string
     type: object
-  auth.FirebaseEmailRegisterRequest:
-    properties:
-      app_version:
-        type: string
-      captcha_token:
-        type: string
-      date_of_birth:
-        description: YYYY-MM-DD
-        type: string
-      device_id:
-        type: string
-      firebase_id_token:
-        type: string
-      first_name:
-        type: string
-      last_name:
-        type: string
-      referrer_user_id:
-        type: string
-      user_agent:
-        type: string
-    type: object
-  auth.FirebasePhoneAuthRequest:
-    properties:
-      app_version:
-        type: string
-      device_id:
-        type: string
-      firebase_id_token:
-        type: string
-      user_agent:
-        type: string
-    type: object
-  auth.FirebasePhoneRegisterRequest:
+  internal_modules_auth.FirebaseEmailRegisterRequest:
     properties:
       app_version:
         type: string
@@ -196,7 +257,40 @@ definitions:
       user_agent:
         type: string
     type: object
-  auth.LoginRequest:
+  internal_modules_auth.FirebasePhoneAuthRequest:
+    properties:
+      app_version:
+        type: string
+      device_id:
+        type: string
+      firebase_id_token:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  internal_modules_auth.FirebasePhoneRegisterRequest:
+    properties:
+      app_version:
+        type: string
+      captcha_token:
+        type: string
+      date_of_birth:
+        description: YYYY-MM-DD
+        type: string
+      device_id:
+        type: string
+      firebase_id_token:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      referrer_user_id:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  internal_modules_auth.LoginRequest:
     properties:
       app_version:
         type: string
@@ -205,20 +299,20 @@ definitions:
       provider_token:
         type: string
       provider_type:
-        $ref: '#/definitions/auth.ProviderType'
+        $ref: '#/definitions/internal_modules_auth.ProviderType'
       user_agent:
         type: string
     type: object
-  auth.LoginResponse:
+  internal_modules_auth.LoginResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
       user:
-        $ref: '#/definitions/auth.User'
+        $ref: '#/definitions/internal_modules_auth.User'
     type: object
-  auth.PhoneCodeRequest:
+  internal_modules_auth.PhoneCodeRequest:
     properties:
       country_code:
         example: "+1"
@@ -231,14 +325,14 @@ definitions:
         example: register
         type: string
     type: object
-  auth.PhoneCodeResponse:
+  internal_modules_auth.PhoneCodeResponse:
     properties:
       expires_at:
         type: string
       verification_id:
         type: string
     type: object
-  auth.PhoneRegisterRequest:
+  internal_modules_auth.PhoneRegisterRequest:
     properties:
       app_version:
         type: string
@@ -260,7 +354,7 @@ definitions:
       verification_id:
         type: string
     type: object
-  auth.PhoneVerifyRequest:
+  internal_modules_auth.PhoneVerifyRequest:
     properties:
       app_version:
         type: string
@@ -273,20 +367,20 @@ definitions:
       verification_id:
         type: string
     type: object
-  auth.PhoneVerifyResponse:
+  internal_modules_auth.PhoneVerifyResponse:
     properties:
       access_token:
         type: string
       refresh_token:
         type: string
       user:
-        $ref: '#/definitions/auth.User'
+        $ref: '#/definitions/internal_modules_auth.User'
       verification_id:
         type: string
       verified:
         type: boolean
     type: object
-  auth.ProviderType:
+  internal_modules_auth.ProviderType:
     enum:
     - apple
     - google
@@ -298,12 +392,12 @@ definitions:
     - ProviderGoogle
     - ProviderEmail
     - ProviderPhone
-  auth.RefreshRequest:
+  internal_modules_auth.RefreshRequest:
     properties:
       refresh_token:
         type: string
     type: object
-  auth.User:
+  internal_modules_auth.User:
     properties:
       avatar_url:
         type: string
@@ -344,7 +438,7 @@ definitions:
       username:
         type: string
     type: object
-  chat.Conversation:
+  internal_modules_chat.Conversation:
     properties:
       cleared_at:
         type: string
@@ -393,7 +487,7 @@ definitions:
         type: integer
       pinned_messages:
         items:
-          $ref: '#/definitions/chat.PinnedMessage'
+          $ref: '#/definitions/internal_modules_chat.PinnedMessage'
         type: array
       task_id:
         type: string
@@ -402,52 +496,52 @@ definitions:
       updated_at:
         type: string
     type: object
-  chat.CreateDirectConversationRequest:
+  internal_modules_chat.CreateDirectConversationRequest:
     properties:
       recipient_id:
         type: string
     type: object
-  chat.DeleteConversationRequest:
+  internal_modules_chat.DeleteConversationRequest:
     properties:
       for_both:
         type: boolean
     type: object
-  chat.DeleteMessageRequest:
+  internal_modules_chat.DeleteMessageRequest:
     properties:
       for_both:
         type: boolean
     type: object
-  chat.ListConversationsResponse:
+  internal_modules_chat.ListConversationsResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/chat.Conversation'
+          $ref: '#/definitions/internal_modules_chat.Conversation'
         type: array
       next_cursor:
         type: string
     type: object
-  chat.ListMessagesResponse:
+  internal_modules_chat.ListMessagesResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/chat.Message'
+          $ref: '#/definitions/internal_modules_chat.Message'
         type: array
       next_cursor:
         type: string
     type: object
-  chat.ListPinnedMessagesResponse:
+  internal_modules_chat.ListPinnedMessagesResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/chat.PinnedMessage'
+          $ref: '#/definitions/internal_modules_chat.PinnedMessage'
         type: array
     type: object
-  chat.MarkReadRequest:
+  internal_modules_chat.MarkReadRequest:
     properties:
       last_read_message_id:
         type: string
     type: object
-  chat.Message:
+  internal_modules_chat.Message:
     properties:
       body:
         type: string
@@ -465,7 +559,7 @@ definitions:
         type: string
       media:
         items:
-          $ref: '#/definitions/chat.MessageMedia'
+          $ref: '#/definitions/internal_modules_chat.MessageMedia'
         type: array
       message_type:
         type: string
@@ -476,7 +570,7 @@ definitions:
       viewer_message_read:
         type: boolean
     type: object
-  chat.MessageMedia:
+  internal_modules_chat.MessageMedia:
     properties:
       thumbnail_url:
         type: string
@@ -485,22 +579,22 @@ definitions:
       url:
         type: string
     type: object
-  chat.MuteConversationRequest:
+  internal_modules_chat.MuteConversationRequest:
     properties:
       muted:
         type: boolean
     type: object
-  chat.PinConversationRequest:
+  internal_modules_chat.PinConversationRequest:
     properties:
       pinned:
         type: boolean
     type: object
-  chat.PinMessageRequest:
+  internal_modules_chat.PinMessageRequest:
     properties:
       message_id:
         type: string
     type: object
-  chat.PinnedMessage:
+  internal_modules_chat.PinnedMessage:
     properties:
       conversation_id:
         type: string
@@ -517,7 +611,7 @@ definitions:
       sender_id:
         type: string
     type: object
-  chat.SendMessageRequest:
+  internal_modules_chat.SendMessageRequest:
     properties:
       body:
         type: string
@@ -527,17 +621,17 @@ definitions:
         type: string
       media:
         items:
-          $ref: '#/definitions/chat.MessageMedia'
+          $ref: '#/definitions/internal_modules_chat.MessageMedia'
         type: array
       reply_to_message_id:
         type: string
     type: object
-  chat.UnpinMessageRequest:
+  internal_modules_chat.UnpinMessageRequest:
     properties:
       message_id:
         type: string
     type: object
-  economy.AccrualResponse:
+  internal_modules_economy.AccrualResponse:
     properties:
       amount:
         type: number
@@ -548,12 +642,12 @@ definitions:
       success:
         type: boolean
     type: object
-  economy.AdjustBalanceRequest:
+  internal_modules_economy.AdjustBalanceRequest:
     properties:
       amount:
         type: integer
       currency:
-        $ref: '#/definitions/economy.CurrencyCode'
+        $ref: '#/definitions/internal_modules_economy.CurrencyCode'
       reason:
         maxLength: 255
         type: string
@@ -565,7 +659,7 @@ definitions:
     - reason
     - user_id
     type: object
-  economy.BalanceResponse:
+  internal_modules_economy.BalanceResponse:
     properties:
       gold_balance:
         example: 10
@@ -579,12 +673,12 @@ definitions:
         example: 3
         type: number
     type: object
-  economy.ClaimDailyAccrualRequest:
+  internal_modules_economy.ClaimDailyAccrualRequest:
     properties:
       idempotency_key:
         type: string
     type: object
-  economy.CurrencyCode:
+  internal_modules_economy.CurrencyCode:
     enum:
     - SILVER_SEAL
     - GOLD_SEAL
@@ -592,7 +686,7 @@ definitions:
     x-enum-varnames:
     - CurrencySilverSeal
     - CurrencyGoldSeal
-  economy.ErrorResponse:
+  internal_modules_economy.ErrorResponse:
     properties:
       code:
         example: INSUFFICIENT_FUNDS
@@ -604,7 +698,7 @@ definitions:
         example: You don't have enough Seals
         type: string
     type: object
-  economy.GiveSealToPostRequest:
+  internal_modules_economy.GiveSealToPostRequest:
     properties:
       amount:
         maximum: 10
@@ -627,7 +721,7 @@ definitions:
     - currency
     - receiver_user_id
     type: object
-  economy.GiveSealToUserRequest:
+  internal_modules_economy.GiveSealToUserRequest:
     properties:
       amount:
         type: number
@@ -647,7 +741,7 @@ definitions:
     - currency
     - message
     type: object
-  economy.LimitsResponse:
+  internal_modules_economy.LimitsResponse:
     properties:
       daily_accrual_claimed:
         type: boolean
@@ -662,7 +756,7 @@ definitions:
       remaining:
         type: integer
     type: object
-  economy.Referral:
+  internal_modules_economy.Referral:
     properties:
       bonus_ledger_entry_id:
         type: string
@@ -677,20 +771,20 @@ definitions:
       referrer_user_id:
         type: string
     type: object
-  economy.ReferralStatsResponse:
+  internal_modules_economy.ReferralStatsResponse:
     properties:
       active_referrals:
         type: integer
       referrals:
         items:
-          $ref: '#/definitions/economy.Referral'
+          $ref: '#/definitions/internal_modules_economy.Referral'
         type: array
       total_earned:
         type: number
       total_referrals:
         type: integer
     type: object
-  economy.TransactionCategory:
+  internal_modules_economy.TransactionCategory:
     enum:
     - DAILY_ACCRUAL
     - REFERRAL_BONUS
@@ -716,7 +810,7 @@ definitions:
     - CategoryTaskRefund
     - CategoryPostSeal
     - CategoryTransfer
-  economy.TransactionHistoryResponse:
+  internal_modules_economy.TransactionHistoryResponse:
     properties:
       page:
         type: integer
@@ -726,21 +820,21 @@ definitions:
         type: integer
       transactions:
         items:
-          $ref: '#/definitions/economy.TransactionItem'
+          $ref: '#/definitions/internal_modules_economy.TransactionItem'
         type: array
     type: object
-  economy.TransactionItem:
+  internal_modules_economy.TransactionItem:
     properties:
       amount:
         type: number
       category:
-        $ref: '#/definitions/economy.TransactionCategory'
+        $ref: '#/definitions/internal_modules_economy.TransactionCategory'
       currency:
-        $ref: '#/definitions/economy.CurrencyCode'
+        $ref: '#/definitions/internal_modules_economy.CurrencyCode'
       id:
         type: string
       other_user:
-        $ref: '#/definitions/economy.UserInfo'
+        $ref: '#/definitions/internal_modules_economy.UserInfo'
       reference:
         type: string
       timestamp:
@@ -748,7 +842,7 @@ definitions:
       type:
         type: string
     type: object
-  economy.TransferRequest:
+  internal_modules_economy.TransferRequest:
     properties:
       amount:
         example: 1.5
@@ -775,7 +869,7 @@ definitions:
     - reason
     - recipient_user_id
     type: object
-  economy.TransferResponse:
+  internal_modules_economy.TransferResponse:
     properties:
       created_new:
         type: boolean
@@ -791,7 +885,7 @@ definitions:
       timestamp:
         type: string
     type: object
-  economy.UserInfo:
+  internal_modules_economy.UserInfo:
     properties:
       avatar:
         type: string
@@ -800,7 +894,7 @@ definitions:
       username:
         type: string
     type: object
-  economy.ViolationLog:
+  internal_modules_economy.ViolationLog:
     properties:
       amount_attempted:
         type: integer
@@ -817,9 +911,9 @@ definitions:
       user_id:
         type: string
       violation_type:
-        $ref: '#/definitions/economy.ViolationType'
+        $ref: '#/definitions/internal_modules_economy.ViolationType'
     type: object
-  economy.ViolationLogsResponse:
+  internal_modules_economy.ViolationLogsResponse:
     properties:
       page:
         type: integer
@@ -829,10 +923,10 @@ definitions:
         type: integer
       violations:
         items:
-          $ref: '#/definitions/economy.ViolationLog'
+          $ref: '#/definitions/internal_modules_economy.ViolationLog'
         type: array
     type: object
-  economy.ViolationType:
+  internal_modules_economy.ViolationType:
     enum:
     - COOLDOWN_BREACH
     - RATE_LIMIT_EXCEEDED
@@ -848,7 +942,7 @@ definitions:
     - ViolationMonthlyLimitExceeded
     - ViolationInsufficientFundsAttempt
     - ViolationRepeatTransferPattern
-  feed.AuthorInfo:
+  internal_modules_feed.AuthorInfo:
     properties:
       full_name:
         type: string
@@ -869,16 +963,16 @@ definitions:
       reputation_score:
         description: |-
           ReputationScore is the lifetime count of Gold Seals the author has
-          *received* (whole seals). This is the single input that drives Rank —
+          *received* (whole seals). This is the single input that drives Rank вЂ”
           FE can re-derive the rank locally if it ever needs to.
         type: integer
       username:
         type: string
     type: object
-  feed.CommentResponse:
+  internal_modules_feed.CommentResponse:
     properties:
       author:
-        $ref: '#/definitions/feed.AuthorInfo'
+        $ref: '#/definitions/internal_modules_feed.AuthorInfo'
       comment_id:
         type: string
       content_text:
@@ -889,7 +983,7 @@ definitions:
         type: integer
       media_attachments:
         items:
-          $ref: '#/definitions/feed.MediaAttachment'
+          $ref: '#/definitions/internal_modules_feed.MediaAttachment'
         type: array
       parent_comment_id:
         type: string
@@ -900,21 +994,23 @@ definitions:
         type: string
       time_ago:
         type: string
+      userID:
+        type: string
       viewer_has_liked:
         type: boolean
     type: object
-  feed.CreateCommentRequest:
+  internal_modules_feed.CreateCommentRequest:
     properties:
       content_text:
         type: string
       media_attachments:
         items:
-          $ref: '#/definitions/feed.MediaAttachment'
+          $ref: '#/definitions/internal_modules_feed.MediaAttachment'
         type: array
       parent_id:
         type: string
     type: object
-  feed.CreatePostRequest:
+  internal_modules_feed.CreatePostRequest:
     properties:
       caption:
         type: string
@@ -934,23 +1030,23 @@ definitions:
         type: number
       media_attachments:
         items:
-          $ref: '#/definitions/feed.MediaAttachment'
+          $ref: '#/definitions/internal_modules_feed.MediaAttachment'
         type: array
       visibility:
         type: string
     type: object
-  feed.FeedResponse:
+  internal_modules_feed.FeedResponse:
     properties:
       feed_degraded:
         type: boolean
       items:
         items:
-          $ref: '#/definitions/feed.PostResponse'
+          $ref: '#/definitions/internal_modules_feed.PostResponse'
         type: array
       next_cursor:
         type: string
     type: object
-  feed.FeedStateResponse:
+  internal_modules_feed.FeedStateResponse:
     properties:
       accumulated_active_seconds:
         type: integer
@@ -966,7 +1062,7 @@ definitions:
         description: '"paused" | "counting"'
         type: string
       break_seconds_remaining:
-        description: 0-300; 0 = not in break
+        description: 0-900; 0 = not in break
         type: integer
       is_in_cooldown:
         type: boolean
@@ -975,23 +1071,23 @@ definitions:
       server_timestamp:
         type: string
     type: object
-  feed.InteractionListResponse:
+  internal_modules_feed.InteractionListResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/feed.InteractionResponse'
+          $ref: '#/definitions/internal_modules_feed.InteractionResponse'
         type: array
       next_cursor:
         type: string
     type: object
-  feed.InteractionResponse:
+  internal_modules_feed.InteractionResponse:
     properties:
       created_at:
         type: string
       user:
-        $ref: '#/definitions/feed.AuthorInfo'
+        $ref: '#/definitions/internal_modules_feed.AuthorInfo'
     type: object
-  feed.MediaAttachment:
+  internal_modules_feed.MediaAttachment:
     properties:
       duration_seconds:
         description: DurationSeconds is required for video attachments. Feed rejects
@@ -1016,12 +1112,12 @@ definitions:
       video_1080p_url:
         type: string
     type: object
-  feed.Permissions:
+  internal_modules_feed.Permissions:
     properties:
       can_comment:
         type: boolean
     type: object
-  feed.PostGridItem:
+  internal_modules_feed.PostGridItem:
     properties:
       created_at:
         type: string
@@ -1035,7 +1131,7 @@ definitions:
       thumbnail_url:
         type: string
     type: object
-  feed.PostMetrics:
+  internal_modules_feed.PostMetrics:
     properties:
       comments:
         type: integer
@@ -1046,10 +1142,10 @@ definitions:
       silvers:
         type: integer
     type: object
-  feed.PostResponse:
+  internal_modules_feed.PostResponse:
     properties:
       author:
-        $ref: '#/definitions/feed.AuthorInfo'
+        $ref: '#/definitions/internal_modules_feed.AuthorInfo'
       comment_permission:
         type: string
       content_text:
@@ -1057,38 +1153,38 @@ definitions:
       hide_likes_count:
         type: boolean
       is_own_post:
-        description: IsOwnPost lets the client show/hide the ··· edit/delete options
+        description: IsOwnPost lets the client show/hide the В·В·В· edit/delete options
           menu
         type: boolean
       media_attachments:
         items:
-          $ref: '#/definitions/feed.MediaAttachment'
+          $ref: '#/definitions/internal_modules_feed.MediaAttachment'
         type: array
       metrics:
-        $ref: '#/definitions/feed.PostMetrics'
+        $ref: '#/definitions/internal_modules_feed.PostMetrics'
       permissions:
-        $ref: '#/definitions/feed.Permissions'
+        $ref: '#/definitions/internal_modules_feed.Permissions'
       post_id:
         type: string
       time_ago:
         type: string
       viewer_has_liked:
-        description: ViewerHasLiked lets the client render the ❤️ heart as filled
+        description: ViewerHasLiked lets the client render the вќ¤пёЏ heart as filled
           immediately
         type: boolean
       visibility:
-        description: "Visibility is returned so the client can show the globe \U0001F310
-          or allies \U0001F465 icon"
+        description: Visibility is returned so the client can show the globe рџЊђ
+          or allies рџ‘Ґ icon
         type: string
     type: object
-  feed.ReportCommentRequest:
+  internal_modules_feed.ReportCommentRequest:
     properties:
       description:
         type: string
       reason:
         type: string
     type: object
-  feed.ReportItem:
+  internal_modules_feed.ReportItem:
     properties:
       created_at:
         type: string
@@ -1105,18 +1201,18 @@ definitions:
       target_type:
         type: string
     type: object
-  feed.ReportPostRequest:
+  internal_modules_feed.ReportPostRequest:
     properties:
       description:
         type: string
       reason:
         type: string
     type: object
-  feed.ReportsListResponse:
+  internal_modules_feed.ReportsListResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/feed.ReportItem'
+          $ref: '#/definitions/internal_modules_feed.ReportItem'
         type: array
       limit:
         type: integer
@@ -1125,7 +1221,7 @@ definitions:
       total:
         type: integer
     type: object
-  feed.ReviewReportsRequest:
+  internal_modules_feed.ReviewReportsRequest:
     properties:
       decision:
         type: string
@@ -1134,16 +1230,16 @@ definitions:
       target_type:
         type: string
     type: object
-  feed.SealListResponse:
+  internal_modules_feed.SealListResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/feed.SealResponse'
+          $ref: '#/definitions/internal_modules_feed.SealResponse'
         type: array
       next_cursor:
         type: string
     type: object
-  feed.SealResponse:
+  internal_modules_feed.SealResponse:
     properties:
       amount:
         type: integer
@@ -1155,9 +1251,9 @@ definitions:
       reason:
         type: string
       user:
-        $ref: '#/definitions/feed.AuthorInfo'
+        $ref: '#/definitions/internal_modules_feed.AuthorInfo'
     type: object
-  feed.SendSealRequest:
+  internal_modules_feed.SendSealRequest:
     properties:
       amount:
         type: integer
@@ -1169,7 +1265,7 @@ definitions:
       reason:
         type: string
     type: object
-  feed.SyncFeedStateRequest:
+  internal_modules_feed.SyncFeedStateRequest:
     properties:
       app_section:
         type: string
@@ -1181,32 +1277,150 @@ definitions:
         description: 'Context: either is_feed_active or app_section must be provided.'
         type: boolean
     type: object
-  feed.ThreadedCommentsResponse:
+  internal_modules_feed.ThreadedCommentsResponse:
     properties:
       comments:
         items:
-          $ref: '#/definitions/feed.CommentResponse'
+          $ref: '#/definitions/internal_modules_feed.CommentResponse'
         type: array
       next_cursor:
         type: string
     type: object
-  feed.UpdatePostRequest:
+  internal_modules_feed.UpdatePostRequest:
     properties:
       comment_permission:
         type: string
       hide_likes_count:
         type: boolean
     type: object
-  feed.UserPostsGridResponse:
+  internal_modules_feed.UserPostsGridResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/feed.PostGridItem'
+          $ref: '#/definitions/internal_modules_feed.PostGridItem'
         type: array
       next_cursor:
         type: string
     type: object
-  mapmodule.ApplicationResponse:
+  internal_modules_leaderboard.AdminAddUserRequest:
+    properties:
+      region:
+        type: string
+      scope:
+        type: string
+      score:
+        type: number
+      user_id:
+        type: string
+    type: object
+  internal_modules_leaderboard.AdminAdjustScoreRequest:
+    properties:
+      amount:
+        type: number
+      region:
+        type: string
+      scope:
+        type: string
+      user_id:
+        type: string
+    type: object
+  internal_modules_leaderboard.AdminListScopesResponse:
+    properties:
+      scopes:
+        items:
+          $ref: '#/definitions/internal_modules_leaderboard.ScopeInfo'
+        type: array
+    type: object
+  internal_modules_leaderboard.AdminRemoveUserRequest:
+    properties:
+      region:
+        type: string
+      scope:
+        type: string
+      user_id:
+        type: string
+    type: object
+  internal_modules_leaderboard.Entry:
+    properties:
+      avatar_url:
+        type: string
+      display_name:
+        type: string
+      honor_score:
+        type: integer
+      is_current_user:
+        type: boolean
+      rank:
+        type: integer
+      rank_level:
+        type: string
+      rank_name:
+        type: string
+      user_id:
+        type: string
+      username:
+        type: string
+      weekly_score:
+        type: integer
+    type: object
+  internal_modules_leaderboard.MyRankResponse:
+    properties:
+      honor_score:
+        type: integer
+      rank:
+        type: integer
+      rank_level:
+        type: string
+      rank_name:
+        type: string
+      scope:
+        $ref: '#/definitions/internal_modules_leaderboard.Scope'
+      total_in_scope:
+        type: integer
+      week:
+        type: integer
+      weekly_score:
+        type: number
+      year:
+        type: integer
+    type: object
+  internal_modules_leaderboard.Response:
+    properties:
+      entries:
+        items:
+          $ref: '#/definitions/internal_modules_leaderboard.Entry'
+        type: array
+      scope:
+        $ref: '#/definitions/internal_modules_leaderboard.Scope'
+      week:
+        type: integer
+      year:
+        type: integer
+    type: object
+  internal_modules_leaderboard.Scope:
+    enum:
+    - district
+    - city
+    - country
+    - global
+    type: string
+    x-enum-varnames:
+    - ScopeDistrict
+    - ScopeCity
+    - ScopeCountry
+    - ScopeGlobal
+  internal_modules_leaderboard.ScopeInfo:
+    properties:
+      card:
+        type: integer
+      key:
+        type: string
+      region:
+        type: string
+      scope:
+        $ref: '#/definitions/internal_modules_leaderboard.Scope'
+    type: object
+  internal_modules_map.ApplicationResponse:
     properties:
       applicant_avatar_url:
         type: string
@@ -1223,14 +1437,14 @@ definitions:
       task_id:
         type: string
     type: object
-  mapmodule.AppliedTasksResponse:
+  internal_modules_map.AppliedTasksResponse:
     properties:
       tasks:
         items:
-          $ref: '#/definitions/mapmodule.TaskResponse'
+          $ref: '#/definitions/internal_modules_map.TaskResponse'
         type: array
     type: object
-  mapmodule.ApplyToTaskResponse:
+  internal_modules_map.ApplyToTaskResponse:
     properties:
       application_id:
         type: string
@@ -1240,14 +1454,14 @@ definitions:
       task_id:
         type: string
     type: object
-  mapmodule.CancelTaskResponse:
+  internal_modules_map.CancelTaskResponse:
     properties:
       status:
         type: string
       task_id:
         type: string
     type: object
-  mapmodule.ChampionPin:
+  internal_modules_map.ChampionPin:
     properties:
       avatar_url:
         type: string
@@ -1270,7 +1484,7 @@ definitions:
       username:
         type: string
     type: object
-  mapmodule.ConfirmCompletionResponse:
+  internal_modules_map.ConfirmCompletionResponse:
     properties:
       application_id:
         type: string
@@ -1282,7 +1496,7 @@ definitions:
       task_status:
         type: string
     type: object
-  mapmodule.CreateTaskRequest:
+  internal_modules_map.CreateTaskRequest:
     properties:
       auto_shutdown:
         example: true
@@ -1306,7 +1520,7 @@ definitions:
         example: 1
         type: integer
     type: object
-  mapmodule.CreateTaskResponse:
+  internal_modules_map.CreateTaskResponse:
     properties:
       application_status:
         description: ApplicationStatus is the caller's own application status for
@@ -1342,7 +1556,7 @@ definitions:
       workers_needed:
         type: integer
     type: object
-  mapmodule.H3AdminLookupResponse:
+  internal_modules_map.H3AdminLookupResponse:
     properties:
       city_name:
         example: Almaty
@@ -1363,14 +1577,14 @@ definitions:
         example: "2026-03-21T12:00:00Z"
         type: string
     type: object
-  mapmodule.NearbyTasksResponse:
+  internal_modules_map.NearbyTasksResponse:
     properties:
       tasks:
         items:
-          $ref: '#/definitions/mapmodule.TaskResponse'
+          $ref: '#/definitions/internal_modules_map.TaskResponse'
         type: array
     type: object
-  mapmodule.RankingTimerResponse:
+  internal_modules_map.RankingTimerResponse:
     properties:
       formatted:
         type: string
@@ -1379,7 +1593,7 @@ definitions:
       seconds_remaining:
         type: integer
     type: object
-  mapmodule.RegionAssignmentRequest:
+  internal_modules_map.RegionAssignmentRequest:
     properties:
       latitude:
         example: 37.7749
@@ -1394,7 +1608,7 @@ definitions:
         example: true
         type: boolean
     type: object
-  mapmodule.RegionAssignmentResponse:
+  internal_modules_map.RegionAssignmentResponse:
     properties:
       h3_res2:
         type: string
@@ -1407,13 +1621,13 @@ definitions:
       updated_at:
         type: string
     type: object
-  mapmodule.SubmitVerificationCodeRequest:
+  internal_modules_map.SubmitVerificationCodeRequest:
     properties:
       code:
         example: "4821"
         type: string
     type: object
-  mapmodule.TaskResponse:
+  internal_modules_map.TaskResponse:
     properties:
       application_status:
         description: ApplicationStatus is the caller's own application status for
@@ -1447,7 +1661,7 @@ definitions:
       workers_needed:
         type: integer
     type: object
-  mapmodule.VerifyCodeResponse:
+  internal_modules_map.VerifyCodeResponse:
     properties:
       application_id:
         type: string
@@ -1455,7 +1669,7 @@ definitions:
         description: '"code_verified" on success'
         type: string
     type: object
-  notifications.DevicePlatform:
+  internal_modules_notifications.DevicePlatform:
     enum:
     - ios
     - android
@@ -1465,17 +1679,33 @@ definitions:
     - PlatformIOS
     - PlatformAndroid
     - PlatformHuawei
-  notifications.Kind:
+  internal_modules_notifications.Kind:
     enum:
     - ranking_up
     - moved_user
     - season_end
     - post_liked
     - post_commented
+    - post_replied
     - seal_received
+    - silver_received
     - task_applied
     - task_accepted
     - task_completed
+    - proof_submitted
+    - task_expired
+    - verification_required
+    - reward_delivered
+    - medal_issued
+    - rank_advanced
+    - district_leader
+    - top_50
+    - season_warning
+    - season_result
+    - payment_confirmed
+    - security_signin
+    - profile_verified
+    - post_rejected
     - message_received
     type: string
     x-enum-varnames:
@@ -1484,42 +1714,76 @@ definitions:
     - KindSeasonEnd
     - KindPostLiked
     - KindPostCommented
+    - KindPostReplied
     - KindSealReceived
+    - KindSilverReceived
     - KindTaskApplied
     - KindTaskAccepted
     - KindTaskCompleted
+    - KindTaskProofSubmitted
+    - KindTaskExpired
+    - KindTaskVerificationNeeded
+    - KindTaskRewardDelivered
+    - KindMedalIssued
+    - KindRankAdvanced
+    - KindDistrictLeader
+    - KindTop50
+    - KindSeasonWarning
+    - KindSeasonResult
+    - KindPaymentConfirmed
+    - KindSecuritySignin
+    - KindProfileVerified
+    - KindPostRejected
     - KindMessageReceived
-  notifications.ListResponse:
+  internal_modules_notifications.ListResponse:
     properties:
       items:
         items:
-          $ref: '#/definitions/notifications.Notification'
+          $ref: '#/definitions/internal_modules_notifications.Notification'
         type: array
       next_cursor:
         type: string
       unread_count:
         type: integer
     type: object
-  notifications.Notification:
+  internal_modules_notifications.Notification:
     properties:
+      actor_ids:
+        items:
+          type: integer
+        type: array
+      badge_status:
+        type: string
       body:
         type: string
       created_at:
         type: string
+      deep_link:
+        type: string
+      group_count:
+        type: integer
+      group_key:
+        type: string
       id:
         type: string
+      is_important:
+        type: boolean
       kind:
-        $ref: '#/definitions/notifications.Kind'
+        $ref: '#/definitions/internal_modules_notifications.Kind'
       payload:
         type: object
       read_at:
         type: string
       title:
         type: string
+      ui_tab:
+        $ref: '#/definitions/internal_modules_notifications.UITab'
+      updated_at:
+        type: string
       user_id:
         type: string
     type: object
-  notifications.RegisterDeviceRequest:
+  internal_modules_notifications.RegisterDeviceRequest:
     properties:
       app_version:
         type: string
@@ -1529,7 +1793,7 @@ definitions:
         type: string
       platform:
         allOf:
-        - $ref: '#/definitions/notifications.DevicePlatform'
+        - $ref: '#/definitions/internal_modules_notifications.DevicePlatform'
         enum:
         - ios
         - android
@@ -1540,12 +1804,26 @@ definitions:
     - platform
     - token
     type: object
-  notifications.UnreadCountResponse:
+  internal_modules_notifications.UITab:
+    enum:
+    - RECOGNITION
+    - ACTIVITY
+    - TASKS
+    - RANK
+    - SYSTEM
+    type: string
+    x-enum-varnames:
+    - UITabRecognition
+    - UITabActivity
+    - UITabTasks
+    - UITabRank
+    - UITabSystem
+  internal_modules_notifications.UnreadCountResponse:
     properties:
       count:
         type: integer
     type: object
-  payment.EventPayload:
+  internal_modules_payment.EventPayload:
     properties:
       app_user_id:
         type: string
@@ -1574,12 +1852,12 @@ definitions:
       type:
         type: string
     type: object
-  payment.RevenueCatWebhook:
+  internal_modules_payment.RevenueCatWebhook:
     properties:
       event:
-        $ref: '#/definitions/payment.EventPayload'
+        $ref: '#/definitions/internal_modules_payment.EventPayload'
     type: object
-  profiles.AllyProfile:
+  internal_modules_profiles.AllyProfile:
     properties:
       avatar_url:
         type: string
@@ -1593,7 +1871,7 @@ definitions:
       user_id:
         type: string
     type: object
-  profiles.Profile:
+  internal_modules_profiles.Profile:
     properties:
       avatar_url:
         example: https://storage.example.com/avatars/user123/avatar.jpg
@@ -1647,25 +1925,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  profiles.ProfileSearchResult:
-    properties:
-      avatar_url:
-        example: https://storage.example.com/avatars/u1.jpg
-        type: string
-      display_name:
-        example: John Doe
-        type: string
-      rank_tier:
-        example: Quartz
-        type: string
-      reputation_score:
-        example: 100
-        type: integer
-      user_id:
-        example: 550e8400-e29b-41d4-a716-446655440000
-        type: string
-    type: object
-  profiles.ProfileStats:
+  internal_modules_profiles.ProfileStats:
     properties:
       gold_balance:
         description: in centinels (50 Seals)
@@ -1687,7 +1947,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  profiles.PublicProfileResponse:
+  internal_modules_profiles.PublicProfileResponse:
     properties:
       avatar_url:
         example: https://storage.example.com/avatar.jpg
@@ -1723,7 +1983,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  profiles.RelationshipStatus:
+  internal_modules_profiles.RelationshipStatus:
     properties:
       i_blocked_them:
         example: false
@@ -1744,7 +2004,7 @@ definitions:
         example: 550e8400-e29b-41d4-a716-446655440000
         type: string
     type: object
-  profiles.ReportRequest:
+  internal_modules_profiles.ReportRequest:
     properties:
       description:
         example: Sent spam messages
@@ -1761,7 +2021,7 @@ definitions:
     required:
     - reason
     type: object
-  profiles.UpdateProfileRequest:
+  internal_modules_profiles.UpdateProfileRequest:
     properties:
       avatar_url:
         example: https://storage.example.com/avatar.jpg
@@ -1796,7 +2056,7 @@ definitions:
         example: California
         type: string
     type: object
-  profiles.UserSearchResult:
+  internal_modules_profiles.UserSearchResult:
     properties:
       avatar_url:
         example: https://storage.example.com/avatars/u1.jpg
@@ -1823,7 +2083,7 @@ definitions:
         example: john_doe
         type: string
     type: object
-  ranks.CurrentRankResponse:
+  internal_modules_ranks.CurrentRankResponse:
     properties:
       current_seals:
         type: integer
@@ -1856,14 +2116,14 @@ definitions:
       rank_name:
         type: string
     type: object
-  ranks.RankListResponse:
+  internal_modules_ranks.RankListResponse:
     properties:
       ranks:
         items:
-          $ref: '#/definitions/ranks.RankWithLevels'
+          $ref: '#/definitions/internal_modules_ranks.RankWithLevels'
         type: array
     type: object
-  ranks.RankWithLevels:
+  internal_modules_ranks.RankWithLevels:
     properties:
       description:
         type: string
@@ -1887,10 +2147,10 @@ definitions:
         type: string
       sub_levels:
         items:
-          $ref: '#/definitions/ranks.SubLevelInfo'
+          $ref: '#/definitions/internal_modules_ranks.SubLevelInfo'
         type: array
     type: object
-  ranks.SubLevelInfo:
+  internal_modules_ranks.SubLevelInfo:
     properties:
       level:
         type: string
@@ -1899,65 +2159,7 @@ definitions:
       min_seals:
         type: integer
     type: object
-  seasons.ArchiveItem:
-    properties:
-      created_at:
-        type: string
-      ends_at:
-        type: string
-      final_position:
-        type: integer
-      region:
-        type: string
-      scope:
-        type: string
-      seal_count:
-        type: integer
-      season_half:
-        type: integer
-      season_id:
-        type: string
-      season_year:
-        type: integer
-      snapshot_payload:
-        type: object
-      starts_at:
-        type: string
-      user_id:
-        type: string
-    type: object
-  seasons.ArchiveResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/seasons.ArchiveItem'
-        type: array
-    type: object
-  seasons.CurrentSeasonResponse:
-    properties:
-      season:
-        $ref: '#/definitions/seasons.Season'
-      seconds_remaining:
-        type: integer
-    type: object
-  seasons.Season:
-    properties:
-      closed_at:
-        type: string
-      created_at:
-        type: string
-      ends_at:
-        type: string
-      id:
-        type: string
-      season_half:
-        type: integer
-      season_year:
-        type: integer
-      starts_at:
-        type: string
-    type: object
-  settings.ContactCategory:
+  internal_modules_settings.ContactCategory:
     enum:
     - bug
     - error
@@ -1969,12 +2171,12 @@ definitions:
     - ContactCategoryError
     - ContactCategorySuggestion
     - ContactCategoryOther
-  settings.ContactRequest:
+  internal_modules_settings.ContactRequest:
     properties:
       app_version:
         type: string
       category:
-        $ref: '#/definitions/settings.ContactCategory'
+        $ref: '#/definitions/internal_modules_settings.ContactCategory'
       device_os:
         type: string
       email:
@@ -1984,7 +2186,7 @@ definitions:
       subject:
         type: string
     type: object
-  settings.ContactResponse:
+  internal_modules_settings.ContactResponse:
     properties:
       id:
         type: string
@@ -2017,7 +2219,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.AdminBanRequest'
+          $ref: '#/definitions/internal_modules_auth.AdminBanRequest'
       produces:
       - application/json
       responses:
@@ -2026,19 +2228,19 @@ paths:
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       security:
       - Bearer: []
       summary: 'Admin: Ban user'
@@ -2079,6 +2281,121 @@ paths:
       summary: Admin emergency comment deletion
       tags:
       - Feed Moderation
+  /admin/leaderboard/add-user:
+    post:
+      consumes:
+      - application/json
+      description: Inserts or updates a user's score in the current week's leaderboard
+        for a given scope and optional region.
+      parameters:
+      - description: Add user request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_leaderboard.AdminAddUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Add user to leaderboard
+      tags:
+      - Leaderboard Admin
+  /admin/leaderboard/adjust-score:
+    post:
+      consumes:
+      - application/json
+      description: Increments or decrements a user's score in the current week's leaderboard.
+        Positive amount adds, negative subtracts.
+      parameters:
+      - description: Adjust score request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_leaderboard.AdminAdjustScoreRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Adjust user's leaderboard score
+      tags:
+      - Leaderboard Admin
+  /admin/leaderboard/remove-user:
+    post:
+      consumes:
+      - application/json
+      description: Removes a user from the current week's leaderboard. If region is
+        empty and scope is not global, removes from all regions of that scope.
+      parameters:
+      - description: Remove user request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_leaderboard.AdminRemoveUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Remove user from leaderboard
+      tags:
+      - Leaderboard Admin
+  /admin/leaderboard/scopes:
+    get:
+      description: Returns every live leaderboard Redis key with member counts across
+        all scopes.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_leaderboard.AdminListScopesResponse'
+      security:
+      - Bearer: []
+      summary: List all leaderboard scopes
+      tags:
+      - Leaderboard Admin
   /admin/posts/{post_id}:
     delete:
       description: Emergency deletion of any post by an administrator.
@@ -2146,7 +2463,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.ReportsListResponse'
+            $ref: '#/definitions/internal_modules_feed.ReportsListResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2169,7 +2486,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.ReviewReportsRequest'
+          $ref: '#/definitions/internal_modules_feed.ReviewReportsRequest'
       produces:
       - application/json
       responses:
@@ -2207,22 +2524,22 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.CheckEmailRequest'
+          $ref: '#/definitions/internal_modules_auth.CheckEmailRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.CheckEmailResponse'
+            $ref: '#/definitions/internal_modules_auth.CheckEmailResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Check if Email Exists
       tags:
       - Auth
@@ -2242,30 +2559,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.EmailCodeRequest'
+          $ref: '#/definitions/internal_modules_auth.EmailCodeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.EmailCodeResponse'
+            $ref: '#/definitions/internal_modules_auth.EmailCodeResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Request Email Verification Code
       tags:
       - Auth
@@ -2284,18 +2601,18 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.EmailVerifyRequest'
+          $ref: '#/definitions/internal_modules_auth.EmailVerifyRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.EmailVerifyResponse'
+            $ref: '#/definitions/internal_modules_auth.EmailVerifyResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Verify Email Code
       tags:
       - Auth
@@ -2311,30 +2628,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.FirebaseEmailAuthRequest'
+          $ref: '#/definitions/internal_modules_auth.FirebaseEmailAuthRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Firebase Email Authentication (Magic Link)
       tags:
       - Auth
@@ -2350,30 +2667,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.FirebaseEmailRegisterRequest'
+          $ref: '#/definitions/internal_modules_auth.FirebaseEmailRegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Firebase Email Registration (Magic Link)
       tags:
       - Auth
@@ -2389,30 +2706,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.FirebasePhoneAuthRequest'
+          $ref: '#/definitions/internal_modules_auth.FirebasePhoneAuthRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Firebase Phone Authentication
       tags:
       - Auth
@@ -2427,30 +2744,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.FirebasePhoneRegisterRequest'
+          $ref: '#/definitions/internal_modules_auth.FirebasePhoneRegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Firebase Phone Registration
       tags:
       - Auth
@@ -2466,26 +2783,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.LoginRequest'
+          $ref: '#/definitions/internal_modules_auth.LoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: OAuth Login (Apple/Google)
       tags:
       - Auth
@@ -2500,26 +2817,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.EmailLoginRequest'
+          $ref: '#/definitions/internal_modules_auth.EmailLoginRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Login with Email and Password
       tags:
       - Auth
@@ -2536,11 +2853,11 @@ paths:
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       security:
       - Bearer: []
       summary: Logout Current Session
@@ -2558,30 +2875,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.PhoneCodeRequest'
+          $ref: '#/definitions/internal_modules_auth.PhoneCodeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.PhoneCodeResponse'
+            $ref: '#/definitions/internal_modules_auth.PhoneCodeResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Request Phone Verification Code
       tags:
       - Auth
@@ -2597,26 +2914,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.PhoneVerifyRequest'
+          $ref: '#/definitions/internal_modules_auth.PhoneVerifyRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.PhoneVerifyResponse'
+            $ref: '#/definitions/internal_modules_auth.PhoneVerifyResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Verify Phone Code (Step 2)
       tags:
       - Auth
@@ -2632,26 +2949,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.RefreshRequest'
+          $ref: '#/definitions/internal_modules_auth.RefreshRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Refresh Access Token
       tags:
       - Auth
@@ -2667,26 +2984,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.EmailRegisterRequest'
+          $ref: '#/definitions/internal_modules_auth.EmailRegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Register with Email and Password
       tags:
       - Auth
@@ -2701,26 +3018,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/auth.PhoneRegisterRequest'
+          $ref: '#/definitions/internal_modules_auth.PhoneRegisterRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            $ref: '#/definitions/internal_modules_auth.LoginResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "409":
           description: Conflict
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/auth.ErrorResponse'
+            $ref: '#/definitions/internal_modules_auth.ErrorResponse'
       summary: Complete Phone Registration (Step 3)
       tags:
       - Auth
@@ -2743,7 +3060,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/chat.ListConversationsResponse'
+            $ref: '#/definitions/internal_modules_chat.ListConversationsResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2773,7 +3090,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/chat.DeleteConversationRequest'
+          $ref: '#/definitions/internal_modules_chat.DeleteConversationRequest'
       produces:
       - application/json
       responses:
@@ -2829,7 +3146,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/chat.ListMessagesResponse'
+            $ref: '#/definitions/internal_modules_chat.ListMessagesResponse'
         "401":
           description: Unauthorized
           schema:
@@ -2868,14 +3185,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.SendMessageRequest'
+          $ref: '#/definitions/internal_modules_chat.SendMessageRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/chat.Message'
+            $ref: '#/definitions/internal_modules_chat.Message'
         "400":
           description: Invalid body
           schema:
@@ -2925,7 +3242,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/chat.DeleteMessageRequest'
+          $ref: '#/definitions/internal_modules_chat.DeleteMessageRequest'
       produces:
       - application/json
       responses:
@@ -2974,7 +3291,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.MuteConversationRequest'
+          $ref: '#/definitions/internal_modules_chat.MuteConversationRequest'
       produces:
       - application/json
       responses:
@@ -3024,7 +3341,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.PinConversationRequest'
+          $ref: '#/definitions/internal_modules_chat.PinConversationRequest'
       produces:
       - application/json
       responses:
@@ -3073,7 +3390,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.UnpinMessageRequest'
+          $ref: '#/definitions/internal_modules_chat.UnpinMessageRequest'
       produces:
       - application/json
       responses:
@@ -3127,7 +3444,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.PinMessageRequest'
+          $ref: '#/definitions/internal_modules_chat.PinMessageRequest'
       produces:
       - application/json
       responses:
@@ -3184,7 +3501,7 @@ paths:
         "200":
           description: Pinned messages
           schema:
-            $ref: '#/definitions/chat.ListPinnedMessagesResponse'
+            $ref: '#/definitions/internal_modules_chat.ListPinnedMessagesResponse'
         "401":
           description: Unauthorized
           schema:
@@ -3223,7 +3540,7 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/chat.MarkReadRequest'
+          $ref: '#/definitions/internal_modules_chat.MarkReadRequest'
       produces:
       - application/json
       responses:
@@ -3267,14 +3584,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/chat.CreateDirectConversationRequest'
+          $ref: '#/definitions/internal_modules_chat.CreateDirectConversationRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/chat.Conversation'
+            $ref: '#/definitions/internal_modules_chat.Conversation'
         "400":
           description: Invalid body
           schema:
@@ -3341,7 +3658,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.CommentResponse'
+            $ref: '#/definitions/internal_modules_feed.CommentResponse'
         "401":
           description: Unauthorized
           schema:
@@ -3363,26 +3680,26 @@ paths:
         in: body
         name: request
         schema:
-          $ref: '#/definitions/economy.ClaimDailyAccrualRequest'
+          $ref: '#/definitions/internal_modules_economy.ClaimDailyAccrualRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.AccrualResponse'
+            $ref: '#/definitions/internal_modules_economy.AccrualResponse'
         "400":
           description: Already claimed today or cap reached
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Claim daily free Silver accrual
@@ -3399,30 +3716,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/economy.AdjustBalanceRequest'
+          $ref: '#/definitions/internal_modules_economy.AdjustBalanceRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.BalanceResponse'
+            $ref: '#/definitions/internal_modules_economy.BalanceResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: 'Admin: Adjust user balance'
@@ -3456,23 +3773,23 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.ViolationLogsResponse'
+            $ref: '#/definitions/internal_modules_economy.ViolationLogsResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: 'Admin: Get user violation logs'
@@ -3489,15 +3806,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.BalanceResponse'
+            $ref: '#/definitions/internal_modules_economy.BalanceResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Get user wallet balance
@@ -3529,19 +3846,19 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.TransactionHistoryResponse'
+            $ref: '#/definitions/internal_modules_economy.TransactionHistoryResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Get transaction history
@@ -3558,15 +3875,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.LimitsResponse'
+            $ref: '#/definitions/internal_modules_economy.LimitsResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Get transfer limits and accrual status
@@ -3588,26 +3905,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/economy.GiveSealToPostRequest'
+          $ref: '#/definitions/internal_modules_economy.GiveSealToPostRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.TransferResponse'
+            $ref: '#/definitions/internal_modules_economy.TransferResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "402":
           description: Insufficient funds
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Give Seals to a post
@@ -3624,15 +3941,15 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.ReferralStatsResponse'
+            $ref: '#/definitions/internal_modules_economy.ReferralStatsResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Get referral statistics
@@ -3649,30 +3966,30 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/economy.TransferRequest'
+          $ref: '#/definitions/internal_modules_economy.TransferRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.TransferResponse'
+            $ref: '#/definitions/internal_modules_economy.TransferResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "402":
           description: Insufficient funds
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "429":
           description: Transfer limit exceeded
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Transfer Seals to another user (P2P)
@@ -3694,26 +4011,26 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/economy.GiveSealToUserRequest'
+          $ref: '#/definitions/internal_modules_economy.GiveSealToUserRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/economy.TransferResponse'
+            $ref: '#/definitions/internal_modules_economy.TransferResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "402":
           description: Insufficient funds
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/economy.ErrorResponse'
+            $ref: '#/definitions/internal_modules_economy.ErrorResponse'
       security:
       - Bearer: []
       summary: Gift Seals to another user
@@ -3746,7 +4063,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.FeedResponse'
+            $ref: '#/definitions/internal_modules_feed.FeedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -3776,7 +4093,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/feed.PostResponse'
+            $ref: '#/definitions/internal_modules_feed.PostResponse'
         "400":
           description: Invalid file (size/type/format)
           schema:
@@ -3833,7 +4150,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/profiles.ProfileSearchResult'
+              $ref: '#/definitions/github_com_brightbund-backend_internal_modules_profiles.ProfileSearchResult'
             type: array
         "401":
           description: Unauthorized
@@ -3855,16 +4172,16 @@ paths:
   /feed/state:
     get:
       description: 'Returns accumulated active seconds, cooldown status, and break_seconds_remaining
-        (0-300). Applies the hard break/reset state machine: if a 5-min break has
-        expired the state is fully reset; if the user was away ≥ 5 min during an active
-        phase the timer resets to 0.'
+        (0-900). Applies the hard break/reset state machine: if a 15-min break has
+        expired the state is fully reset; if the user was away ≥ 15 min during an
+        active phase the timer resets to 0.'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.FeedStateResponse'
+            $ref: '#/definitions/internal_modules_feed.FeedStateResponse'
         "401":
           description: Unauthorized
           schema:
@@ -3893,14 +4210,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.SyncFeedStateRequest'
+          $ref: '#/definitions/internal_modules_feed.SyncFeedStateRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.FeedStateResponse'
+            $ref: '#/definitions/internal_modules_feed.FeedStateResponse'
         "400":
           description: Validation error
           schema:
@@ -3924,6 +4241,65 @@ paths:
       summary: Sync active feed time
       tags:
       - Feed
+  /leaderboard:
+    get:
+      description: Returns the weekly leaderboard for the given scope.
+      parameters:
+      - description: 'Scope: district | city | country | global'
+        in: query
+        name: scope
+        required: true
+        type: string
+      - description: Number of entries (1-100, default 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_leaderboard.Response'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Get leaderboard
+      tags:
+      - Leaderboard
+  /leaderboard/me:
+    get:
+      description: Returns the current user's rank and score for the given scope,
+        even if outside top N.
+      parameters:
+      - description: 'Scope: district | city | country | global'
+        in: query
+        name: scope
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_leaderboard.MyRankResponse'
+      security:
+      - Bearer: []
+      summary: Get my rank
+      tags:
+      - Leaderboard
   /map/champions:
     get:
       description: |-
@@ -3957,7 +4333,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/mapmodule.ChampionPin'
+              $ref: '#/definitions/internal_modules_map.ChampionPin'
             type: array
         "400":
           description: Missing h3 parameter
@@ -4001,7 +4377,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.H3AdminLookupResponse'
+            $ref: '#/definitions/internal_modules_map.H3AdminLookupResponse'
         "400":
           description: Invalid H3 index
           schema:
@@ -4038,7 +4414,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.RankingTimerResponse'
+            $ref: '#/definitions/internal_modules_map.RankingTimerResponse'
         "401":
           description: Unauthorized
           schema:
@@ -4063,14 +4439,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/mapmodule.RegionAssignmentRequest'
+          $ref: '#/definitions/internal_modules_map.RegionAssignmentRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.RegionAssignmentResponse'
+            $ref: '#/definitions/internal_modules_map.RegionAssignmentResponse'
         "400":
           description: Invalid coordinates
           schema:
@@ -4096,10 +4472,13 @@ paths:
       - Map
   /notifications:
     get:
-      description: |-
-        Returns notifications for the current user, newest first.
-        Cursor is the RFC3339 nano timestamp of the last item from the previous page.
+      description: Returns notifications for the current user. Omit tab for the All
+        tab.
       parameters:
+      - description: 'Tab filter: RECOGNITION, ACTIVITY, TASKS, RANK, SYSTEM'
+        in: query
+        name: tab
+        type: string
       - description: RFC3339 nano timestamp from previous page
         in: query
         name: cursor
@@ -4115,7 +4494,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notifications.ListResponse'
+            $ref: '#/definitions/internal_modules_notifications.ListResponse'
         "401":
           description: Unauthorized
           schema:
@@ -4156,7 +4535,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/notifications.RegisterDeviceRequest'
+          $ref: '#/definitions/internal_modules_notifications.RegisterDeviceRequest'
       produces:
       - application/json
       responses:
@@ -4214,7 +4593,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/notifications.UnreadCountResponse'
+            $ref: '#/definitions/internal_modules_notifications.UnreadCountResponse'
       security:
       - Bearer: []
       summary: Unread count
@@ -4237,7 +4616,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/payment.RevenueCatWebhook'
+          $ref: '#/definitions/internal_modules_payment.RevenueCatWebhook'
       produces:
       - application/json
       responses:
@@ -4273,14 +4652,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.CreatePostRequest'
+          $ref: '#/definitions/internal_modules_feed.CreatePostRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/feed.PostResponse'
+            $ref: '#/definitions/internal_modules_feed.PostResponse'
         "400":
           description: Validation error
           schema:
@@ -4355,14 +4734,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.UpdatePostRequest'
+          $ref: '#/definitions/internal_modules_feed.UpdatePostRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.PostResponse'
+            $ref: '#/definitions/internal_modules_feed.PostResponse'
         "400":
           description: Validation error
           schema:
@@ -4421,7 +4800,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.ThreadedCommentsResponse'
+            $ref: '#/definitions/internal_modules_feed.ThreadedCommentsResponse'
         "401":
           description: Unauthorized
           schema:
@@ -4448,14 +4827,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.CreateCommentRequest'
+          $ref: '#/definitions/internal_modules_feed.CreateCommentRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/feed.CommentResponse'
+            $ref: '#/definitions/internal_modules_feed.CommentResponse'
         "400":
           description: Validation error
           schema:
@@ -4540,7 +4919,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.ReportCommentRequest'
+          $ref: '#/definitions/internal_modules_feed.ReportCommentRequest'
       produces:
       - application/json
       responses:
@@ -4582,7 +4961,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.InteractionListResponse'
+            $ref: '#/definitions/internal_modules_feed.InteractionListResponse'
       summary: Fetch post likes
       tags:
       - Feed Interactions
@@ -4600,7 +4979,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.PostResponse'
+            $ref: '#/definitions/internal_modules_feed.PostResponse'
         "401":
           description: Unauthorized
           schema:
@@ -4628,7 +5007,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.ReportPostRequest'
+          $ref: '#/definitions/internal_modules_feed.ReportPostRequest'
       produces:
       - application/json
       responses:
@@ -4670,7 +5049,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.SealListResponse'
+            $ref: '#/definitions/internal_modules_feed.SealListResponse'
         "401":
           description: Unauthorized
           schema:
@@ -4698,7 +5077,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/feed.SendSealRequest'
+          $ref: '#/definitions/internal_modules_feed.SendSealRequest'
       produces:
       - application/json
       responses:
@@ -4748,7 +5127,7 @@ paths:
         "200":
           description: Public profile
           schema:
-            $ref: '#/definitions/profiles.PublicProfileResponse'
+            $ref: '#/definitions/internal_modules_profiles.PublicProfileResponse'
         "400":
           description: Invalid user ID
           schema:
@@ -4815,7 +5194,7 @@ paths:
           description: List of allies
           schema:
             items:
-              $ref: '#/definitions/profiles.AllyProfile'
+              $ref: '#/definitions/internal_modules_profiles.AllyProfile'
             type: array
         "400":
           description: Invalid ID
@@ -4926,7 +5305,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.UserPostsGridResponse'
+            $ref: '#/definitions/internal_modules_feed.UserPostsGridResponse'
         "400":
           description: Invalid user_id
           schema:
@@ -4979,7 +5358,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.FeedResponse'
+            $ref: '#/definitions/internal_modules_feed.FeedResponse'
         "400":
           description: Invalid user_id
           schema:
@@ -5019,7 +5398,7 @@ paths:
         "200":
           description: Relationship status
           schema:
-            $ref: '#/definitions/profiles.RelationshipStatus'
+            $ref: '#/definitions/internal_modules_profiles.RelationshipStatus'
         "400":
           description: Invalid user ID or self-check
           schema:
@@ -5057,7 +5436,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/profiles.ReportRequest'
+          $ref: '#/definitions/internal_modules_profiles.ReportRequest'
       responses:
         "202":
           description: Report received
@@ -5139,7 +5518,7 @@ paths:
         "200":
           description: Profile statistics
           schema:
-            $ref: '#/definitions/profiles.ProfileStats'
+            $ref: '#/definitions/internal_modules_profiles.ProfileStats'
         "400":
           description: Invalid user ID
           schema:
@@ -5208,7 +5587,7 @@ paths:
         "200":
           description: User profile
           schema:
-            $ref: '#/definitions/profiles.Profile'
+            $ref: '#/definitions/internal_modules_profiles.Profile'
         "401":
           description: Unauthorized
           schema:
@@ -5238,14 +5617,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/profiles.UpdateProfileRequest'
+          $ref: '#/definitions/internal_modules_profiles.UpdateProfileRequest'
       produces:
       - application/json
       responses:
         "200":
           description: Updated profile
           schema:
-            $ref: '#/definitions/profiles.Profile'
+            $ref: '#/definitions/internal_modules_profiles.Profile'
         "400":
           description: Invalid request body
           schema:
@@ -5277,7 +5656,7 @@ paths:
           description: List of allies
           schema:
             items:
-              $ref: '#/definitions/profiles.AllyProfile'
+              $ref: '#/definitions/internal_modules_profiles.AllyProfile'
             type: array
         "401":
           description: Unauthorized
@@ -5306,7 +5685,7 @@ paths:
         "200":
           description: Updated profile with new avatar URL
           schema:
-            $ref: '#/definitions/profiles.Profile'
+            $ref: '#/definitions/internal_modules_profiles.Profile'
         "400":
           description: File required, too large, or invalid type
           schema:
@@ -5350,7 +5729,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.UserPostsGridResponse'
+            $ref: '#/definitions/internal_modules_feed.UserPostsGridResponse'
         "401":
           description: Unauthorized
           schema:
@@ -5393,7 +5772,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/feed.FeedResponse'
+            $ref: '#/definitions/internal_modules_feed.FeedResponse'
         "401":
           description: Unauthorized
           schema:
@@ -5423,7 +5802,7 @@ paths:
         "200":
           description: User's current rank
           schema:
-            $ref: '#/definitions/ranks.CurrentRankResponse'
+            $ref: '#/definitions/github_com_brightbund-backend_internal_modules_ranks.CurrentRankResponse'
         "401":
           description: Unauthorized
           schema:
@@ -5453,7 +5832,7 @@ paths:
         "200":
           description: Profile statistics
           schema:
-            $ref: '#/definitions/profiles.ProfileStats'
+            $ref: '#/definitions/internal_modules_profiles.ProfileStats'
         "401":
           description: Unauthorized
           schema:
@@ -5483,7 +5862,7 @@ paths:
         "200":
           description: List of all ranks
           schema:
-            $ref: '#/definitions/ranks.RankListResponse'
+            $ref: '#/definitions/github_com_brightbund-backend_internal_modules_ranks.RankListResponse'
         "500":
           description: Internal server error
           schema:
@@ -5505,7 +5884,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/ranks.RankListResponse'
+            $ref: '#/definitions/internal_modules_ranks.RankListResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -5527,7 +5906,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/ranks.CurrentRankResponse'
+            $ref: '#/definitions/internal_modules_ranks.CurrentRankResponse'
         "401":
           description: Unauthorized
           schema:
@@ -5545,69 +5924,6 @@ paths:
       summary: Get current user rank
       tags:
       - ranks
-  /seasons/current:
-    get:
-      description: Returns the currently-active 6-month season window with seconds
-        remaining.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/seasons.CurrentSeasonResponse'
-      security:
-      - Bearer: []
-      summary: Current season status
-      tags:
-      - Seasons
-  /seasons/me/archive:
-    get:
-      description: |-
-        Returns the caller's archived per-season standings, newest first.
-        Powers the "Архив" tab inside the profile screen.
-      parameters:
-      - description: Max items (default 50, max 200)
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/seasons.ArchiveResponse'
-      security:
-      - Bearer: []
-      summary: Personal season archive
-      tags:
-      - Seasons
-  /seasons/users/{user_id}/archive:
-    get:
-      description: Same as /seasons/me/archive but for a specified user id.
-      parameters:
-      - description: User UUID
-        in: path
-        name: user_id
-        required: true
-        type: string
-      - description: Max items (default 50, max 200)
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/seasons.ArchiveResponse'
-      security:
-      - Bearer: []
-      summary: Public season archive for a user
-      tags:
-      - Seasons
   /settings/support/contact:
     post:
       consumes:
@@ -5622,14 +5938,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/settings.ContactRequest'
+          $ref: '#/definitions/internal_modules_settings.ContactRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/settings.ContactResponse'
+            $ref: '#/definitions/internal_modules_settings.ContactResponse'
         "400":
           description: validation error
           schema:
@@ -5662,14 +5978,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/mapmodule.CreateTaskRequest'
+          $ref: '#/definitions/internal_modules_map.CreateTaskRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/mapmodule.CreateTaskResponse'
+            $ref: '#/definitions/internal_modules_map.CreateTaskResponse'
         "400":
           description: Validation error (invalid_title | invalid_reward | invalid_workers
             | invalid_coordinates)
@@ -5723,7 +6039,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.CancelTaskResponse'
+            $ref: '#/definitions/internal_modules_map.CancelTaskResponse'
         "401":
           description: Unauthorized
           schema:
@@ -5773,7 +6089,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.TaskResponse'
+            $ref: '#/definitions/internal_modules_map.TaskResponse'
         "401":
           description: Unauthorized
           schema:
@@ -5815,7 +6131,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/mapmodule.ApplicationResponse'
+              $ref: '#/definitions/internal_modules_map.ApplicationResponse'
             type: array
         "401":
           description: Unauthorized
@@ -5925,7 +6241,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.ApplicationResponse'
+            $ref: '#/definitions/internal_modules_map.ApplicationResponse'
         "401":
           description: Unauthorized
           schema:
@@ -6043,7 +6359,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.ConfirmCompletionResponse'
+            $ref: '#/definitions/internal_modules_map.ConfirmCompletionResponse'
         "400":
           description: Application not in code_verified state
           schema:
@@ -6167,14 +6483,14 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/mapmodule.SubmitVerificationCodeRequest'
+          $ref: '#/definitions/internal_modules_map.SubmitVerificationCodeRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.VerifyCodeResponse'
+            $ref: '#/definitions/internal_modules_map.VerifyCodeResponse'
         "400":
           description: Wrong code
           schema:
@@ -6233,7 +6549,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/mapmodule.ApplyToTaskResponse'
+            $ref: '#/definitions/internal_modules_map.ApplyToTaskResponse'
         "400":
           description: Cannot apply to your own task
           schema:
@@ -6278,7 +6594,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.AppliedTasksResponse'
+            $ref: '#/definitions/internal_modules_map.AppliedTasksResponse'
         "401":
           description: Unauthorized
           schema:
@@ -6305,7 +6621,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.AppliedTasksResponse'
+            $ref: '#/definitions/internal_modules_map.AppliedTasksResponse'
         "401":
           description: Unauthorized
           schema:
@@ -6354,7 +6670,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/mapmodule.NearbyTasksResponse'
+            $ref: '#/definitions/internal_modules_map.NearbyTasksResponse'
         "400":
           description: Invalid coordinates
           schema:
@@ -6408,7 +6724,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/profiles.UserSearchResult'
+              $ref: '#/definitions/internal_modules_profiles.UserSearchResult'
             type: array
       summary: Search users by nickname or name
       tags:

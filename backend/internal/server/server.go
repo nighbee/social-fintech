@@ -191,6 +191,17 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	leaderboardGroup.Use(middleware.RequireAuth(jwt, authRepo))
 	leaderboardGroup.Use(middleware.TouchSession(authRepo))
 	leaderboardGroup.Get("", leaderboardHandler.Get)
+	leaderboardGroup.Get("/me", leaderboardHandler.GetMyRank)
+
+	// Admin leaderboard management
+	leaderboardAdminGroup := api.Group("/admin/leaderboard")
+	leaderboardAdminGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	leaderboardAdminGroup.Use(middleware.TouchSession(authRepo))
+	leaderboardAdminGroup.Use(middleware.RequireAdmin(authRepo))
+	leaderboardAdminGroup.Get("/scopes", leaderboardHandler.AdminListScopes)
+	leaderboardAdminGroup.Post("/add-user", leaderboardHandler.AdminAddUser)
+	leaderboardAdminGroup.Post("/remove-user", leaderboardHandler.AdminRemoveUser)
+	leaderboardAdminGroup.Post("/adjust-score", leaderboardHandler.AdminAdjustScore)
 
 	// Feed & Interactions (Note: Feed router actually manages its own sub-routing in routes.go
 	// but for consistency we can call a Feed register wrapper here or just inject the handler)
@@ -313,6 +324,14 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	seasonsGroup.Get("/current", seasonsHandler.GetCurrent)
 	seasonsGroup.Get("/me/archive", seasonsHandler.GetMyArchive)
 	seasonsGroup.Get("/users/:user_id/archive", seasonsHandler.GetUserArchive)
+
+	// Admin seasons management
+	seasonsAdminGroup := api.Group("/admin/seasons")
+	seasonsAdminGroup.Use(middleware.RequireAuth(jwt, authRepo))
+	seasonsAdminGroup.Use(middleware.TouchSession(authRepo))
+	seasonsAdminGroup.Use(middleware.RequireAdmin(authRepo))
+	seasonsAdminGroup.Get("", seasonsHandler.AdminListSeasons)
+	seasonsAdminGroup.Post("/:season_id/force-close", seasonsHandler.AdminForceClose)
 
 	chatSendLimiter := limiter.New(limiter.Config{
 		Max:        25,

@@ -29,6 +29,7 @@ const (
 	maxWorkersNeeded     = 20
 	autoShutdownHours    = 24
 	leaderboardTieTTL    = 14 * 24 * time.Hour
+	leaderboardKeyTTL    = 30 * 24 * time.Hour
 	h3MetadataRefreshTTL = 7 * 24 * time.Hour
 )
 
@@ -948,8 +949,8 @@ func (s *Service) updateLeaderboards(userID string, task *Task) {
 func (s *Service) recordLeaderboardScore(leaderboardKey, userID string, score float64, now time.Time) {
 	ctx := context.Background()
 	_, _ = s.cache.ZIncrBy(ctx, leaderboardKey, score, userID)
+	_ = s.cache.Expire(ctx, leaderboardKey, leaderboardKeyTTL)
 
-	// Business tie-break anchor: first contribution timestamp in this weekly leaderboard.
 	firstSeenKey := leaderboardKey + ":first_seen"
 	_, _ = s.cache.HSetNX(ctx, firstSeenKey, userID, now.Unix())
 	_ = s.cache.Expire(ctx, firstSeenKey, leaderboardTieTTL)

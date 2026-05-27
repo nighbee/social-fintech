@@ -8,6 +8,8 @@ import UserDetailPage from './pages/UserDetailPage/UserDetailPage';
 import PostsPage from './pages/PostsPage/PostsPage';
 import PostDetailPage from './pages/PostDetailPage/PostDetailPage';
 import ReportsPage from './pages/ReportsPage/ReportsPage';
+import LeaderboardPage from './pages/LeaderboardPage/LeaderboardPage';
+import SeasonsPage from './pages/SeasonsPage/SeasonsPage';
 import NotFoundPage from './pages/NotFoundPage/NotFoundPage';
 
 export default function App() {
@@ -23,6 +25,8 @@ export default function App() {
           <Route path="/admin/posts" element={<PostsPage />} />
           <Route path="/admin/posts/:id" element={<PostDetailPage />} />
           <Route path="/admin/reports" element={<ReportsPage />} />
+          <Route path="/admin/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/admin/seasons" element={<SeasonsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />

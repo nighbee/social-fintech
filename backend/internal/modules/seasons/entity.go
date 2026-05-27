@@ -54,6 +54,21 @@ type ArchiveResponse struct {
 	Items []ArchiveItem `json:"items"`
 }
 
+type AdminSeasonInfo struct {
+	Season       Season `json:"season"`
+	IsClosed     bool   `json:"is_closed"`
+	Participants int64  `json:"participants"`
+}
+
+type AdminSeasonsListResponse struct {
+	Seasons []AdminSeasonInfo `json:"seasons"`
+}
+
+type AdminForceCloseResponse struct {
+	SeasonID      string `json:"season_id"`
+	ArchivedUsers int    `json:"archived_users"`
+}
+
 // SeasonForTime returns the (year, half) that contains `t`. Used by the
 // service to answer "which season are we in right now" without a DB
 // round-trip.

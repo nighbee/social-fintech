@@ -51,6 +51,89 @@ func (s *Service) GetUserArchive(ctx context.Context, userID uuid.UUID, limit in
 	return &ArchiveResponse{Items: items}, nil
 }
 
+func (s *Service) ListAllSeasons(ctx context.Context) (*AdminSeasonsListResponse, error) {
+	seasons, err := s.repo.ListAllSeasons(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("seasons: list all: %w", err)
+	}
+
+	out := make([]AdminSeasonInfo, 0, len(seasons))
+	for _, season := range seasons {
+		count, _ := s.repo.CountParticipants(ctx, season.ID)
+		out = append(out, AdminSeasonInfo{
+			Season:       season,
+			IsClosed:     season.ClosedAt != nil,
+			Participants: count,
+		})
+	}
+
+	return &AdminSeasonsListResponse{Seasons: out}, nil
+}
+
+func (s *Service) ForceCloseSeason(ctx context.Context, seasonID uuid.UUID, snap SnapshotProvider) (*AdminForceCloseResponse, error) {
+	seasons, err := s.repo.ListAllSeasons(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var found *Season
+	for i := range seasons {
+		if seasons[i].ID == seasonID {
+			found = &seasons[i]
+			break
+		}
+	}
+	if found == nil {
+		return nil, fmt.Errorf("seasons: season %s not found", seasonID)
+	}
+	if found.ClosedAt != nil {
+		return nil, fmt.Errorf("seasons: season %s is already closed", seasonID)
+	}
+
+	archived := 0
+	if snap != nil {
+		rows, snapErr := snap.SnapshotSeason(ctx, found)
+		if snapErr != nil {
+			return nil, snapErr
+		}
+		for j := range rows {
+			rows[j].SeasonID = found.ID
+			rows[j].SeasonYear = found.SeasonYear
+			rows[j].SeasonHalf = found.SeasonHalf
+			if err := s.repo.UpsertArchive(ctx, &rows[j]); err != nil {
+				return nil, err
+			}
+		}
+		archived = len(rows)
+	}
+
+	if s.goldResetter != nil {
+		if _, resetErr := s.goldResetter.ResetAllGoldSeals(ctx); resetErr != nil {
+			return nil, fmt.Errorf("seasons: gold seal reset failed: %w", resetErr)
+		}
+	}
+
+	if err := s.repo.MarkClosed(ctx, seasonID, time.Now().UTC()); err != nil {
+		return nil, err
+	}
+
+	if s.eventBus != nil {
+		_ = s.eventBus.Publish(ctx, eventbus.TypeSeasonResult, eventbus.LeaderboardEvent{
+			BaseEvent: eventbus.BaseEvent{
+				Type:      eventbus.TypeSeasonResult,
+				Timestamp: time.Now(),
+			},
+			SeasonID: seasonID.String(),
+			Scope:    fmt.Sprintf("season_%d_%d", found.SeasonYear, found.SeasonHalf),
+		})
+	}
+
+	return &AdminForceCloseResponse{
+		SeasonID:      seasonID.String(),
+		ArchivedUsers: archived,
+	}, nil
+}
+
 func (s *Service) CloseDueSeasons(ctx context.Context, now time.Time, snap SnapshotProvider) error {
 	due, err := s.repo.ListUnclosedDueSeasons(ctx, now)
 	if err != nil {

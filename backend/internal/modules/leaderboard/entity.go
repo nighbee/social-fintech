@@ -44,3 +44,34 @@ type userProfile struct {
 	AvatarURL   string `db:"avatar_url"`
 	GoldSeals   int    `db:"gold_seals"`
 }
+
+type AdminRemoveUserRequest struct {
+	UserID string `json:"user_id"`
+	Scope  string `json:"scope"`
+	Region string `json:"region,omitempty"`
+}
+
+type AdminAddUserRequest struct {
+	UserID string  `json:"user_id"`
+	Scope  string  `json:"scope"`
+	Region string  `json:"region,omitempty"`
+	Score  float64 `json:"score"`
+}
+
+type AdminAdjustScoreRequest struct {
+	UserID string  `json:"user_id"`
+	Scope  string  `json:"scope"`
+	Region string  `json:"region,omitempty"`
+	Amount float64 `json:"amount"`
+}
+
+type AdminListScopesResponse struct {
+	Scopes []ScopeInfo `json:"scopes"`
+}
+
+type ScopeInfo struct {
+	Scope     Scope  `json:"scope"`
+	Region    string `json:"region,omitempty"`
+	Key       string `json:"key"`
+	Card      int64  `json:"card"`
+}

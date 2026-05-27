@@ -7,6 +7,8 @@ const navItems = [
   { to: '/admin/users', label: 'Users' },
   { to: '/admin/posts', label: 'Posts' },
   { to: '/admin/reports', label: 'Reports' },
+  { to: '/admin/leaderboard', label: 'Leaderboard' },
+  { to: '/admin/seasons', label: 'Seasons' },
 ];
 
 export default function Layout() {

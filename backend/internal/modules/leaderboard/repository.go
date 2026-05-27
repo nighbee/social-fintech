@@ -46,10 +46,9 @@ func (r *Repository) getUserProfiles(ctx context.Context, userIDs []string) (map
 			COALESCE(u.username, '')                        AS username,
 			COALESCE(p.display_name, u.username, '')        AS display_name,
 			COALESCE(p.avatar_url, '')                      AS avatar_url,
-			COALESCE(w.total_received_amount / 100, 0)      AS gold_seals
+			COALESCE(p.honor_score, 0)                      AS gold_seals
 		FROM users u
 		LEFT JOIN profiles p ON p.user_id = u.id
-		LEFT JOIN wallets  w ON w.user_id = u.id AND w.currency = 'GOLD_SEAL'
 		WHERE u.id = ANY($1)
 	`, pq.Array(userIDs))
 	if err != nil {
