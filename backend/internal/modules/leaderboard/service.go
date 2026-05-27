@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
+	"strconv"
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/ranks"
@@ -25,6 +27,12 @@ type Service struct {
 
 func NewService(repo *Repository, cache *cache.Cache) *Service {
 	return &Service{repo: repo, cache: cache}
+}
+
+type memberWithFirstSeen struct {
+	userID    string
+	score     float64
+	firstSeen int64
 }
 
 func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope, limit int) (*Response, error) {
@@ -48,66 +56,112 @@ func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope
 	}
 
 	userInTop := false
-	userIDs := make([]string, 0, len(members)+1)
+	allUserIDs := make(map[string]bool)
 	for _, m := range members {
 		uid := fmt.Sprint(m.Member)
-		userIDs = append(userIDs, uid)
+		allUserIDs[uid] = true
 		if uid == userID {
 			userInTop = true
 		}
 	}
 
-	currentUserEntry := Entry{}
+	currentUserScore := float64(0)
+	currentUserRank := 0
 	if !userInTop {
-		userIDs = append(userIDs, userID)
-		rank, _ := s.cache.ZRevRank(ctx, key, userID)
-		score, _ := s.cache.ZScore(ctx, key, userID)
-		total, _ := s.cache.ZCard(ctx, key)
-		currentUserEntry = Entry{
-			Rank:          int(rank) + 1,
-			UserID:        userID,
-			WeeklyScore:   int(score),
-			IsCurrentUser: true,
+		allUserIDs[userID] = true
+		revRank, err := s.cache.ZRevRank(ctx, key, userID)
+		if err == nil {
+			currentUserRank = int(revRank)
 		}
-		_ = total
+		currentUserScore, _ = s.cache.ZScore(ctx, key, userID)
 	}
 
-	profiles, err := s.getUserProfilesCached(ctx, userIDs)
+	userIDList := make([]string, 0, len(allUserIDs))
+	for uid := range allUserIDs {
+		userIDList = append(userIDList, uid)
+	}
+
+	firstSeenKey := key + ":first_seen"
+	firstSeen, _ := s.cache.HGetAll(ctx, firstSeenKey)
+
+	memberList := make([]memberWithFirstSeen, 0, len(members))
+	for _, m := range members {
+		uid := fmt.Sprint(m.Member)
+		fs := int64(0)
+		if v, ok := firstSeen[uid]; ok {
+			if ts, parseErr := strconv.ParseInt(v, 10, 64); parseErr == nil {
+				fs = ts
+			}
+		}
+		memberList = append(memberList, memberWithFirstSeen{
+			userID:    uid,
+			score:     m.Score,
+			firstSeen: fs,
+		})
+	}
+
+	sort.SliceStable(memberList, func(i, j int) bool {
+		if memberList[i].score != memberList[j].score {
+			return memberList[i].score > memberList[j].score
+		}
+		return memberList[i].firstSeen < memberList[j].firstSeen
+	})
+
+	profiles, err := s.getUserProfilesCached(ctx, userIDList)
 	if err != nil {
 		return nil, fmt.Errorf("leaderboard: profile fetch: %w", err)
 	}
 
-	entries := make([]Entry, 0, len(members)+1)
-	for i, m := range members {
-		uid := fmt.Sprint(m.Member)
-		p := profiles[uid]
+	entries := make([]Entry, 0, len(memberList)+1)
+	rank := 1
+	for i, m := range memberList {
+		if i > 0 {
+			prev := memberList[i-1]
+			if m.score < prev.score {
+				rank = i + 1
+			} else if m.score == prev.score && m.firstSeen > prev.firstSeen {
+				rank = i + 1
+			}
+		}
 
+		p := profiles[m.userID]
 		rankDef, level, _, _ := ranks.CalculateRankAndLevel(p.GoldSeals)
 
 		entries = append(entries, Entry{
-			Rank:          i + 1,
-			UserID:        uid,
+			Rank:          rank,
+			UserID:        m.userID,
 			Username:      p.Username,
 			DisplayName:   p.DisplayName,
 			AvatarURL:     p.AvatarURL,
-			WeeklyScore:   int(m.Score),
+			WeeklyScore:   int(m.score),
 			HonorScore:    p.GoldSeals,
 			RankName:      rankDef.Name,
 			RankLevel:     level,
-			IsCurrentUser: uid == userID,
+			IsCurrentUser: m.userID == userID,
 		})
 	}
 
 	if !userInTop {
+		if len(entries) > 0 {
+			last := entries[len(entries)-1]
+			if currentUserScore < float64(last.WeeklyScore) {
+				currentUserRank++
+			}
+		}
 		p := profiles[userID]
 		rankDef, level, _, _ := ranks.CalculateRankAndLevel(p.GoldSeals)
-		currentUserEntry.Username = p.Username
-		currentUserEntry.DisplayName = p.DisplayName
-		currentUserEntry.AvatarURL = p.AvatarURL
-		currentUserEntry.HonorScore = p.GoldSeals
-		currentUserEntry.RankName = rankDef.Name
-		currentUserEntry.RankLevel = level
-		entries = append(entries, currentUserEntry)
+		entries = append(entries, Entry{
+			Rank:          currentUserRank + 1,
+			UserID:        userID,
+			Username:      p.Username,
+			DisplayName:   p.DisplayName,
+			AvatarURL:     p.AvatarURL,
+			WeeklyScore:   int(currentUserScore),
+			HonorScore:    p.GoldSeals,
+			RankName:      rankDef.Name,
+			RankLevel:     level,
+			IsCurrentUser: true,
+		})
 	}
 
 	return &Response{Scope: scope, Year: year, Week: week, Entries: entries}, nil
@@ -137,18 +191,46 @@ func (s *Service) GetMyRank(ctx context.Context, userID string, scope Scope) (*M
 		return nil, err
 	}
 
-	rank, err := s.cache.ZRevRank(ctx, key, userID)
-	if err != nil {
-		return &MyRankResponse{
-			Scope: scope,
-			Year:  year,
-			Week:  week,
-			Rank:  -1,
-		}, nil
-	}
-
 	score, _ := s.cache.ZScore(ctx, key, userID)
 	total, _ := s.cache.ZCard(ctx, key)
+
+	firstSeenKey := key + ":first_seen"
+	firstSeenData, _ := s.cache.HGetAll(ctx, firstSeenKey)
+	myFirstSeen := int64(0)
+	if v, ok := firstSeenData[userID]; ok {
+		if ts, parseErr := strconv.ParseInt(v, 10, 64); parseErr == nil {
+			myFirstSeen = ts
+		}
+	}
+
+	denseRank := int64(0)
+	sameScoreAndEarlier := int64(0)
+	if total > 0 {
+		allMembers, err := s.cache.ZRevRangeWithScores(ctx, key, 0, total-1)
+		if err == nil {
+			for _, m := range allMembers {
+				uid := fmt.Sprint(m.Member)
+				if int64(m.Score) > int64(score) {
+					denseRank++
+				} else if int64(m.Score) == int64(score) {
+					if uid == userID {
+						break
+					}
+					otherFirstSeen := int64(0)
+					if v, ok := firstSeenData[uid]; ok {
+						if ts, parseErr := strconv.ParseInt(v, 10, 64); parseErr == nil {
+							otherFirstSeen = ts
+						}
+					}
+					if otherFirstSeen < myFirstSeen || (otherFirstSeen == myFirstSeen && uid < userID) {
+						sameScoreAndEarlier++
+					}
+				}
+			}
+		}
+	}
+
+	rank := denseRank + sameScoreAndEarlier + 1
 
 	profiles, err := s.getUserProfilesCached(ctx, []string{userID})
 	if err != nil {
@@ -162,7 +244,7 @@ func (s *Service) GetMyRank(ctx context.Context, userID string, scope Scope) (*M
 		Scope:        scope,
 		Year:         year,
 		Week:         week,
-		Rank:         rank + 1,
+		Rank:         rank,
 		WeeklyScore:  score,
 		HonorScore:   p.GoldSeals,
 		RankName:     rankDef.Name,

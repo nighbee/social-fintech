@@ -137,6 +137,10 @@ func (c *Cache) HGet(ctx context.Context, key, field string) (string, error) {
 	return c.Client.HGet(ctx, key, field).Result()
 }
 
+func (c *Cache) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	return c.Client.HGetAll(ctx, key).Result()
+}
+
 func (c *Cache) Expire(ctx context.Context, key string, ttl time.Duration) error {
 	return c.Client.Expire(ctx, key, ttl).Err()
 }
