@@ -15,14 +15,14 @@ func NewRepository(db *sqlx.DB) *Repository {
 	return &Repository{db: db}
 }
 
-type userRegion struct {
+type UserRegion struct {
 	H3Res5 *string `db:"h3_res5"`
 	H3Res4 *string `db:"h3_res4"`
 	H3Res2 *string `db:"h3_res2"`
 }
 
-func (r *Repository) getUserRegion(ctx context.Context, userID string) (*userRegion, error) {
-	var reg userRegion
+func (r *Repository) getUserRegion(ctx context.Context, userID string) (*UserRegion, error) {
+	var reg UserRegion
 	err := r.db.GetContext(ctx, &reg, `
 		SELECT h3_res5, h3_res4, h3_res2
 		FROM users

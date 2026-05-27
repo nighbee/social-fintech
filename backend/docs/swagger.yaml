@@ -2309,6 +2309,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - Bearer: []
       summary: Add user to leaderboard
@@ -2338,6 +2344,12 @@ paths:
             type: object
         "400":
           description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
           schema:
             additionalProperties:
               type: string
@@ -2375,6 +2387,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - Bearer: []
       summary: Remove user from leaderboard
@@ -2391,6 +2409,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_modules_leaderboard.AdminListScopesResponse'
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - Bearer: []
       summary: List all leaderboard scopes
@@ -4295,6 +4319,18 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/internal_modules_leaderboard.MyRankResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - Bearer: []
       summary: Get my rank

@@ -47,13 +47,29 @@ func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope
 		return nil, fmt.Errorf("leaderboard: redis fetch: %w", err)
 	}
 
-	if len(members) == 0 {
-		return &Response{Scope: scope, Year: year, Week: week, Entries: []Entry{}}, nil
+	userInTop := false
+	userIDs := make([]string, 0, len(members)+1)
+	for _, m := range members {
+		uid := fmt.Sprint(m.Member)
+		userIDs = append(userIDs, uid)
+		if uid == userID {
+			userInTop = true
+		}
 	}
 
-	userIDs := make([]string, len(members))
-	for i, m := range members {
-		userIDs[i] = fmt.Sprint(m.Member)
+	currentUserEntry := Entry{}
+	if !userInTop {
+		userIDs = append(userIDs, userID)
+		rank, _ := s.cache.ZRevRank(ctx, key, userID)
+		score, _ := s.cache.ZScore(ctx, key, userID)
+		total, _ := s.cache.ZCard(ctx, key)
+		currentUserEntry = Entry{
+			Rank:          int(rank) + 1,
+			UserID:        userID,
+			WeeklyScore:   int(score),
+			IsCurrentUser: true,
+		}
+		_ = total
 	}
 
 	profiles, err := s.getUserProfilesCached(ctx, userIDs)
@@ -61,7 +77,7 @@ func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope
 		return nil, fmt.Errorf("leaderboard: profile fetch: %w", err)
 	}
 
-	entries := make([]Entry, 0, len(members))
+	entries := make([]Entry, 0, len(members)+1)
 	for i, m := range members {
 		uid := fmt.Sprint(m.Member)
 		p := profiles[uid]
@@ -80,6 +96,18 @@ func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope
 			RankLevel:     level,
 			IsCurrentUser: uid == userID,
 		})
+	}
+
+	if !userInTop {
+		p := profiles[userID]
+		rankDef, level, _, _ := ranks.CalculateRankAndLevel(p.GoldSeals)
+		currentUserEntry.Username = p.Username
+		currentUserEntry.DisplayName = p.DisplayName
+		currentUserEntry.AvatarURL = p.AvatarURL
+		currentUserEntry.HonorScore = p.GoldSeals
+		currentUserEntry.RankName = rankDef.Name
+		currentUserEntry.RankLevel = level
+		entries = append(entries, currentUserEntry)
 	}
 
 	return &Response{Scope: scope, Year: year, Week: week, Entries: entries}, nil
@@ -211,6 +239,10 @@ func (s *Service) getUserProfilesCached(ctx context.Context, userIDs []string) (
 	}
 
 	return cached, nil
+}
+
+func (s *Service) GetUserRegion(ctx context.Context, userID string) (*UserRegion, error) {
+	return s.repo.getUserRegion(ctx, userID)
 }
 
 func BuildGlobalKey(year, week int) string {

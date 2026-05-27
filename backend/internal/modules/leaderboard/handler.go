@@ -71,6 +71,8 @@ func (h *Handler) Get(c *fiber.Ctx) error {
 // @Security     Bearer
 // @Param        scope  query  string  true  "Scope: district | city | country | global"
 // @Success      200    {object}  MyRankResponse
+// @Failure      400    {object}  map[string]string
+// @Failure      401    {object}  map[string]string
 // @Router       /leaderboard/me [get]
 func (h *Handler) GetMyRank(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
@@ -105,6 +107,7 @@ func (h *Handler) GetMyRank(c *fiber.Ctx) error {
 // @Produce      json
 // @Security     Bearer
 // @Success      200  {object}  AdminListScopesResponse
+// @Failure      403  {object}  map[string]string
 // @Router       /admin/leaderboard/scopes [get]
 func (h *Handler) AdminListScopes(c *fiber.Ctx) error {
 	patterns := []struct {
@@ -153,6 +156,7 @@ func (h *Handler) AdminListScopes(c *fiber.Ctx) error {
 // @Param        body  body  AdminAddUserRequest  true  "Add user request"
 // @Success      200   {object}  map[string]string
 // @Failure      400   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
 // @Router       /admin/leaderboard/add-user [post]
 func (h *Handler) AdminAddUser(c *fiber.Ctx) error {
 	var req AdminAddUserRequest
@@ -169,14 +173,44 @@ func (h *Handler) AdminAddUser(c *fiber.Ctx) error {
 	}
 
 	year, week := time.Now().UTC().ISOWeek()
-	key := BuildScopeKey(scope, req.Region, year, week)
 
-	if err := h.svc.cache.ZAdd(c.Context(), key, req.Score, req.UserID); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to add user"})
+	var keys []string
+	if scope == ScopeGlobal {
+		keys = append(keys, BuildGlobalKey(year, week))
+	} else if req.Region != "" {
+		keys = append(keys, BuildScopeKey(scope, req.Region, year, week))
+	} else {
+		reg, err := h.svc.GetUserRegion(c.Context(), req.UserID)
+		if err != nil || reg == nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": "user has no location set; specify a region or have the user set their location first",
+			})
+		}
+		switch scope {
+		case ScopeDistrict:
+			if reg.H3Res5 == nil || *reg.H3Res5 == "" {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user has no district set"})
+			}
+			keys = append(keys, BuildScopeKey(scope, *reg.H3Res5, year, week))
+		case ScopeCity:
+			if reg.H3Res4 == nil || *reg.H3Res4 == "" {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user has no city set"})
+			}
+			keys = append(keys, BuildScopeKey(scope, *reg.H3Res4, year, week))
+		case ScopeCountry:
+			if reg.H3Res2 == nil || *reg.H3Res2 == "" {
+				return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "user has no country set"})
+			}
+			keys = append(keys, BuildScopeKey(scope, *reg.H3Res2, year, week))
+		}
 	}
-	_ = h.svc.cache.Expire(c.Context(), key, leaderboardKeyTTL)
 
-	return c.JSON(fiber.Map{"status": "ok"})
+	for _, key := range keys {
+		_ = h.svc.cache.ZAdd(c.Context(), key, req.Score, req.UserID)
+		_ = h.svc.cache.Expire(c.Context(), key, leaderboardKeyTTL)
+	}
+
+	return c.JSON(fiber.Map{"status": "ok", "keys": len(keys)})
 }
 
 // AdminRemoveUser godoc
@@ -189,6 +223,7 @@ func (h *Handler) AdminAddUser(c *fiber.Ctx) error {
 // @Param        body  body  AdminRemoveUserRequest  true  "Remove user request"
 // @Success      200   {object}  map[string]string
 // @Failure      400   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
 // @Router       /admin/leaderboard/remove-user [post]
 func (h *Handler) AdminRemoveUser(c *fiber.Ctx) error {
 	var req AdminRemoveUserRequest
@@ -206,22 +241,44 @@ func (h *Handler) AdminRemoveUser(c *fiber.Ctx) error {
 
 	year, week := time.Now().UTC().ISOWeek()
 
-	if scope == ScopeGlobal || req.Region == "" {
-		if scope == ScopeGlobal {
-			key := BuildGlobalKey(year, week)
-			_, _ = h.svc.cache.ZRem(c.Context(), key, req.UserID)
-			return c.JSON(fiber.Map{"status": "ok"})
-		}
-		keys, _ := h.svc.cache.ScanKeys(c.Context(), fmt.Sprintf("leaderboard:%s:*:week:%d:%d", scopeToPrefix(scope), year, week), 500)
-		for _, key := range keys {
-			_, _ = h.svc.cache.ZRem(c.Context(), key, req.UserID)
-		}
-	} else {
-		key := BuildScopeKey(scope, req.Region, year, week)
+	if scope == ScopeGlobal {
+		key := BuildGlobalKey(year, week)
 		_, _ = h.svc.cache.ZRem(c.Context(), key, req.UserID)
+		return c.JSON(fiber.Map{"status": "ok"})
 	}
 
-	return c.JSON(fiber.Map{"status": "ok"})
+	var keys []string
+	if req.Region != "" {
+		keys = append(keys, BuildScopeKey(scope, req.Region, year, week))
+	} else {
+		reg, err := h.svc.GetUserRegion(c.Context(), req.UserID)
+		if err == nil && reg != nil {
+			switch scope {
+			case ScopeDistrict:
+				if reg.H3Res5 != nil && *reg.H3Res5 != "" {
+					keys = append(keys, BuildScopeKey(scope, *reg.H3Res5, year, week))
+				}
+			case ScopeCity:
+				if reg.H3Res4 != nil && *reg.H3Res4 != "" {
+					keys = append(keys, BuildScopeKey(scope, *reg.H3Res4, year, week))
+				}
+			case ScopeCountry:
+				if reg.H3Res2 != nil && *reg.H3Res2 != "" {
+					keys = append(keys, BuildScopeKey(scope, *reg.H3Res2, year, week))
+				}
+			}
+		}
+		scanned, _ := h.svc.cache.ScanKeys(c.Context(), fmt.Sprintf("leaderboard:%s:*:week:%d:%d", scopeToPrefix(scope), year, week), 500)
+		keys = append(keys, scanned...)
+	}
+
+	removed := int64(0)
+	for _, key := range keys {
+		n, _ := h.svc.cache.ZRem(c.Context(), key, req.UserID)
+		removed += n
+	}
+
+	return c.JSON(fiber.Map{"status": "ok", "removed_from": removed})
 }
 
 // AdminAdjustScore godoc
@@ -234,6 +291,7 @@ func (h *Handler) AdminRemoveUser(c *fiber.Ctx) error {
 // @Param        body  body  AdminAdjustScoreRequest  true  "Adjust score request"
 // @Success      200   {object}  map[string]string
 // @Failure      400   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
 // @Router       /admin/leaderboard/adjust-score [post]
 func (h *Handler) AdminAdjustScore(c *fiber.Ctx) error {
 	var req AdminAdjustScoreRequest
@@ -257,21 +315,42 @@ func (h *Handler) AdminAdjustScore(c *fiber.Ctx) error {
 	} else if req.Region != "" {
 		keys = append(keys, BuildScopeKey(scope, req.Region, year, week))
 	} else {
-		scanned, _ := h.svc.cache.ScanKeys(c.Context(), fmt.Sprintf("leaderboard:%s:*:week:%d:%d", scopeToPrefix(scope), year, week), 500)
-		keys = scanned
+		reg, err := h.svc.GetUserRegion(c.Context(), req.UserID)
+		if err == nil && reg != nil {
+			switch scope {
+			case ScopeDistrict:
+				if reg.H3Res5 != nil && *reg.H3Res5 != "" {
+					keys = append(keys, BuildScopeKey(scope, *reg.H3Res5, year, week))
+				}
+			case ScopeCity:
+				if reg.H3Res4 != nil && *reg.H3Res4 != "" {
+					keys = append(keys, BuildScopeKey(scope, *reg.H3Res4, year, week))
+				}
+			case ScopeCountry:
+				if reg.H3Res2 != nil && *reg.H3Res2 != "" {
+					keys = append(keys, BuildScopeKey(scope, *reg.H3Res2, year, week))
+				}
+			}
+		}
+		if len(keys) == 0 {
+			scanned, _ := h.svc.cache.ScanKeys(c.Context(), fmt.Sprintf("leaderboard:%s:*:week:%d:%d", scopeToPrefix(scope), year, week), 500)
+			keys = scanned
+		}
 	}
 
+	affected := 0
 	for _, key := range keys {
 		newScore, err := h.svc.cache.ZIncrBy(c.Context(), key, req.Amount, req.UserID)
 		if err != nil {
 			continue
 		}
+		affected++
 		if newScore <= 0 {
 			h.svc.cache.ZRem(c.Context(), key, req.UserID)
 		}
 	}
 
-	return c.JSON(fiber.Map{"status": "ok"})
+	return c.JSON(fiber.Map{"status": "ok", "keys_affected": affected})
 }
 
 func scopeToPrefix(scope Scope) string {
