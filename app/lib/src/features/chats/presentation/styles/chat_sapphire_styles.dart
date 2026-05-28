@@ -3,19 +3,17 @@ import 'package:flutter/material.dart';
 abstract final class ChatSapphireStyles {
   static const double listCornerRadius = 6;
 
-  /// Сетка строки чата (Figma: сверху 12, снизу 44; аватар 48; hug-высота ряда 12+48+44=104).
+  /// Сетка строки чата под обновлённый compact-макет.
   static const double threadCardPaddingTop = 12;
-  static const double threadCardPaddingBottom = 44;
+  static const double threadCardPaddingBottom = 14;
   static const double threadCardPaddingHorizontal = 14;
 
-  /// Минимальная высота карточки (Figma hug ≈ 104 для короткой строки).
-  /// Верхнюю границу 104 в макете не дублируем как `maxHeight`: при имени + ранге
-  /// + превью строка выше, иначе текст обрежется при отступах 12 / 44.
-  static const double threadCardMinHeight = 104;
+  /// Минимальная высота карточки (Figma ≈ 114).
+  static const double threadCardMinHeight = 114;
 
   /// Горизонтально между правым краем аватарки и текстом.
   static const double threadCardGapAfterAvatar = 12;
-  static const double threadCardAvatarSize = 48;
+  static const double threadCardAvatarSize = 56;
 
   static double get threadCardAvatarRadius => threadCardAvatarSize / 2;
 
@@ -57,7 +55,7 @@ abstract final class ChatSapphireStyles {
   /// Остаток строки ранга после префикса ранга.
   static const Color rankLineMutedColor = Color(0xFF8A93A3);
 
-  static const Color searchFieldFill = Color(0xFF212125);
+  static const Color searchFieldFill = Color(0xFF1E1E20);
 
   /// Figma: Y 4, blur 32, #000 48%.
   static final List<BoxShadow> threadCardShadows = <BoxShadow>[

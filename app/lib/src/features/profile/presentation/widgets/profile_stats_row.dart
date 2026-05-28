@@ -19,19 +19,19 @@ class ProfileStatsRow extends StatelessWidget {
 
   static const double _honorH = 35;
   static const double _statsH = 35;
-  static const double _honorW = 70;
-  static const double _statsW = 118;
+  static const double _honorW = 60;
+  static const double _statsW = 110;
   static const double _minHonorW = 52;
   static const double _minStatsW = 104;
   static const double _radius = 4;
   static const double _honorBorderWidth = 0.8;
   static const double _statsBorderWidth = 1;
   static const double _honorInnerGap = 5;
-  static const double _statsInnerGap = 6;
+  static const double _statsInnerGap = 5;
   static const double _betweenChips = 6;
 
   static const EdgeInsets _honorPadding = EdgeInsets.fromLTRB(7, 4, 7, 4);
-  static const EdgeInsets _statsPadding = EdgeInsets.fromLTRB(8, 2, 8, 2);
+  static const EdgeInsets _statsPadding = EdgeInsets.fromLTRB(10, 2, 6, 2);
 
   @override
   Widget build(BuildContext context) {
@@ -145,7 +145,6 @@ class ProfileStatsRow extends StatelessWidget {
                           fontSize: 15,
                           fontWeight: FontWeight.w300,
                           height: 16 / 15,
-                          letterSpacing: -0.3,
                           color: const Color(0xFFCACACA),
                         ),
                       ),
