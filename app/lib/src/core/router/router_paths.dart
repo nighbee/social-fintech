@@ -46,6 +46,7 @@ class RoutePaths {
 
   // Profile routes
   static const String profile = '/profile';
+
   /// Full path for nested GoRoute (`path: 'publications'` under [profile]).
   static const String profilePublications = '$profile/publications';
   static const String settings = '/settings';
@@ -60,6 +61,7 @@ class RoutePaths {
   static const String log = '/log';
   static const String widgetBook = '/widget_book';
   static const String rangs = '/rangs';
+  static const String leaderboardAdmin = '/leaderboard_admin';
   static const String feedPreview = '/feed-preview';
 
   // Add more routes as needed

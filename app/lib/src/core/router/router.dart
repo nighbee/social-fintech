@@ -23,7 +23,6 @@ import 'package:app/src/features/profile/presentation/pages/security_page.dart';
 import 'package:app/src/features/profile/presentation/pages/settings_page.dart';
 import 'package:app/src/features/profile/presentation/pages/terms_conditions_page.dart';
 import 'package:app/src/features/profile/presentation/pages/two_factor_authentication_page.dart';
-import 'package:app/src/features/profile/presentation/pages/user_stats_page.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
@@ -64,6 +63,7 @@ import 'package:app/src/features/chats/presentation/pages/chat_select_message_pa
 import 'package:app/src/features/chats/presentation/pages/chats_page.dart';
 import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/developer_features/presentation/pages/developer_features_page.dart';
+import 'package:app/src/features/developer_features/presentation/pages/leaderboard_admin_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/widget_book_page.dart';
 import 'package:app/src/features/profile/presentation/pages/ranks_page.dart';
 import 'package:app/src/core/service/storage/secure_storage/secure_storage_service_impl.dart';
@@ -102,4 +102,3 @@ GoRouter routerProvider(AppFlavor flavor) {
   );
   return goRouter;
 }
-

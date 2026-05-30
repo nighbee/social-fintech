@@ -52,12 +52,9 @@ class RouteNames {
   static const String settings = 'settings';
   static const String profileStats = 'profileStats';
   static const String profileInteractions = 'profileInteractions';
-  static const String profileInteractionMessages =
-      'profileInteractionMessages';
-  static const String profileInteractionComments =
-      'profileInteractionComments';
-  static const String profileInteractionMentions =
-      'profileInteractionMentions';
+  static const String profileInteractionMessages = 'profileInteractionMessages';
+  static const String profileInteractionComments = 'profileInteractionComments';
+  static const String profileInteractionMentions = 'profileInteractionMentions';
   static const String profileBlockedAccounts = 'profileBlockedAccounts';
   static const String profileMessageFilteredKeywords =
       'profileMessageFilteredKeywords';
@@ -93,6 +90,7 @@ class RouteNames {
   static const String log = 'log';
   static const String widgetBook = 'widget_book';
   static const String rangs = 'rangs';
+  static const String leaderboardAdmin = 'leaderboard_admin';
   static const String feedPreview = 'feedPreview';
 
   // Add more route names as needed

@@ -39,6 +39,11 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             name: RouteNames.rangs,
             builder: (context, state) => const RangsPage(),
           ),
+          GoRoute(
+            path: 'leaderboard_admin',
+            name: RouteNames.leaderboardAdmin,
+            builder: (context, state) => const LeaderboardAdminPage(),
+          ),
         ],
       ),
 

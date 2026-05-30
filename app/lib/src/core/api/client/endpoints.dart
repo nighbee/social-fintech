@@ -54,6 +54,8 @@ class EndPoints {
 
   //* Leaderboard
   static const String leaderboard = '/leaderboard';
+  static const String adminLeaderboardScopes = '/admin/leaderboard/scopes';
+  static const String adminLeaderboardAddUser = '/admin/leaderboard/add-user';
   static const String leaderboardGlobal = '/leaderboards/global';
   static String leaderboardLocal(String regionId) =>
       '/leaderboards/local/$regionId';
