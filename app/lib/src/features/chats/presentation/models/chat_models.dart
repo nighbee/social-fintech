@@ -152,4 +152,30 @@ class ChatMessageUiModel {
   final ChatReplyPreview? replyPreview;
   final ChatForwardedSnippet? forwardedSnippet;
   final ChatOutgoingReceipt outgoingReceipt;
+
+  ChatMessageUiModel copyWith({
+    String? id,
+    ChatMessageDirection? direction,
+    String? text,
+    String? timeLabel,
+    DateTime? createdAt,
+    String? messageType,
+    List<ChatMessageMediaItem>? media,
+    ChatReplyPreview? replyPreview,
+    ChatForwardedSnippet? forwardedSnippet,
+    ChatOutgoingReceipt? outgoingReceipt,
+  }) {
+    return ChatMessageUiModel(
+      id: id ?? this.id,
+      direction: direction ?? this.direction,
+      text: text ?? this.text,
+      timeLabel: timeLabel ?? this.timeLabel,
+      createdAt: createdAt ?? this.createdAt,
+      messageType: messageType ?? this.messageType,
+      media: media ?? this.media,
+      replyPreview: replyPreview ?? this.replyPreview,
+      forwardedSnippet: forwardedSnippet ?? this.forwardedSnippet,
+      outgoingReceipt: outgoingReceipt ?? this.outgoingReceipt,
+    );
+  }
 }

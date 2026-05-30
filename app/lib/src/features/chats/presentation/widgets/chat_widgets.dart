@@ -357,37 +357,48 @@ class ChatConversationOverflowButton extends StatelessWidget {
     return PopupMenuButton<String>(
       tooltip: 'Chat actions',
       onSelected: onSelected,
-      color: const Color(0xFF252529),
+      color: const Color(0xFF18191C),
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      elevation: 12,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
       position: PopupMenuPosition.under,
-      itemBuilder: (BuildContext context) => [
+      itemBuilder: (BuildContext context) => const [
         PopupMenuItem<String>(
-          value: 'forward',
-          child: Text(
-            'Переслать сообщение',
-            style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+          value: 'mute',
+          height: 32,
+          padding: EdgeInsets.zero,
+          child: _ChatOverflowMenuItem(
+            label: 'Mute',
+            icon: Icons.notifications_off_outlined,
           ),
         ),
         PopupMenuItem<String>(
-          value: 'select',
-          child: Text(
-            'Выбрать сообщение',
-            style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+          value: 'pin',
+          height: 32,
+          padding: EdgeInsets.zero,
+          child: _ChatOverflowMenuItem(
+            label: 'Pin',
+            icon: Icons.push_pin_outlined,
           ),
         ),
         PopupMenuItem<String>(
           value: 'block',
-          child: Text(
-            'Заблокировать',
-            style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+          height: 32,
+          padding: EdgeInsets.zero,
+          child: _ChatOverflowMenuItem(
+            label: 'Block',
+            icon: Icons.group_remove_outlined,
+            danger: true,
           ),
         ),
         PopupMenuItem<String>(
           value: 'delete',
-          child: Text(
-            'Удалить чат',
-            style: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
+          height: 32,
+          padding: EdgeInsets.zero,
+          child: _ChatOverflowMenuItem(
+            label: 'Delete',
+            icon: Icons.delete_outline_rounded,
+            danger: true,
           ),
         ),
       ],
@@ -397,6 +408,45 @@ class ChatConversationOverflowButton extends StatelessWidget {
           width: 22,
           height: 22,
           fit: BoxFit.contain,
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatOverflowMenuItem extends StatelessWidget {
+  const _ChatOverflowMenuItem({
+    required this.label,
+    required this.icon,
+    this.danger = false,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = danger ? const Color(0xFFFF3040) : AppColors.textBrand;
+
+    return SizedBox(
+      width: 112,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyles.bodyMain.copyWith(
+                  color: color,
+                  fontSize: 12,
+                  height: 1,
+                ),
+              ),
+            ),
+            Icon(icon, color: color, size: 15),
+          ],
         ),
       ),
     );
@@ -860,6 +910,7 @@ class ChatConversationMessageList extends StatelessWidget {
     this.onMessageLongPressAt,
     this.emptyState,
     this.padding,
+    this.hiddenMessageIds = const <String>{},
   });
 
   final List<ChatMessageUiModel> messages;
@@ -871,6 +922,7 @@ class ChatConversationMessageList extends StatelessWidget {
       onMessageLongPressAt;
   final Widget? emptyState;
   final EdgeInsetsGeometry? padding;
+  final Set<String> hiddenMessageIds;
 
   @override
   Widget build(BuildContext context) {
@@ -895,22 +947,25 @@ class ChatConversationMessageList extends StatelessWidget {
         );
         children.add(const Gap(18));
       }
+      final bubble = ChatMessageBubble(
+        message: message,
+        showSelectionControls: showSelectionControls,
+        isSelected: selectedMessageIds.contains(message.id),
+        onTap: onMessageTap == null ? null : () => onMessageTap!(message),
+        onLongPress: onMessageLongPress == null
+            ? null
+            : () => onMessageLongPress!(message),
+        onLongPressStart: onMessageLongPressAt == null
+            ? null
+            : (details) => onMessageLongPressAt!(
+                  message,
+                  details.globalPosition,
+                ),
+      );
       children.add(
-        ChatMessageBubble(
-          message: message,
-          showSelectionControls: showSelectionControls,
-          isSelected: selectedMessageIds.contains(message.id),
-          onTap: onMessageTap == null ? null : () => onMessageTap!(message),
-          onLongPress: onMessageLongPress == null
-              ? null
-              : () => onMessageLongPress!(message),
-          onLongPressStart: onMessageLongPressAt == null
-              ? null
-              : (details) => onMessageLongPressAt!(
-                    message,
-                    details.globalPosition,
-                  ),
-        ),
+        hiddenMessageIds.contains(message.id)
+            ? Opacity(opacity: 0, child: bubble)
+            : bubble,
       );
       children.add(const Gap(14));
     }
@@ -1106,10 +1161,12 @@ class ChatMessageBubble extends StatelessWidget {
 
               Widget buildImageTile(ChatMessageMediaItem item) {
                 final url = item.url.trim();
+                final tileHeight = outgoingSingleImageOverlay ? 196.0 : 220.0;
                 final img = CustomNetworkImage(
                   imageUrl: url,
-                  height: 220,
-                  fit: BoxFit.contain,
+                  width: mediaW,
+                  height: tileHeight,
+                  fit: BoxFit.cover,
                 );
                 final framed = isOutgoing
                     ? DecoratedBox(
@@ -1400,9 +1457,9 @@ double chatThreadComposerStackBottomPadding(
   bool hasReplyDraft = false,
 }) {
   final safeBottom = MediaQuery.paddingOf(context).bottom;
-  const composerVertical = 8.0 + 44.0 + 10.0;
+  const composerVertical = 6.0 + 44.0 + 10.0;
   const pendingVertical = 6.0 + 64.0 + 6.0;
-  const replyStrip = 50.0;
+  const replyStrip = 56.0;
   const breathing = 24.0;
   return breathing +
       safeBottom +
@@ -1421,6 +1478,8 @@ class ChatComposerBar extends StatelessWidget {
     this.hintText = 'Message',
     this.sendEnabled = true,
     this.hasPendingAttachment = false,
+    this.padding = const EdgeInsets.fromLTRB(20, 6, 20, 10),
+    this.useSafeArea = true,
   });
 
   final TextEditingController controller;
@@ -1430,66 +1489,66 @@ class ChatComposerBar extends StatelessWidget {
   final String hintText;
   final bool sendEnabled;
   final bool hasPendingAttachment;
+  final EdgeInsetsGeometry padding;
+  final bool useSafeArea;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _ChatComposerActionButton(
-              icon: Icons.attach_file_rounded,
-              onTap: onAttachmentTap,
-            ),
-            const Gap(10),
-            Expanded(
-              child: CustomTextField(
-                controller: controller,
-                labelText: hintText,
-                hintText: hintText,
-                showLabel: false,
-                height: 44,
-                borderRadius: 10,
-                backgroundColor: Colors.white.withValues(alpha: 0.022),
-                customBorder: Border.all(
-                  color: Colors.white.withValues(alpha: 0.055),
-                  width: 1.25,
-                ),
-                containerPadding: const EdgeInsets.symmetric(horizontal: 16),
-                contentPadding: EdgeInsets.zero,
-                textStyle: TextStyles.bodyLarge.copyWith(
-                  color: AppColors.textBrand,
-                ),
-                hintStyle: TextStyles.bodyLarge.copyWith(
-                  color: AppColors.textBrand.withValues(alpha: 0.4),
-                ),
-              ),
-            ),
-            const Gap(10),
-            ValueListenableBuilder<TextEditingValue>(
-              valueListenable: controller,
-              builder: (
-                BuildContext context,
-                TextEditingValue value,
-                Widget? child,
-              ) {
-                final hasText = value.text.trim().isNotEmpty;
-                final canSend =
-                    sendEnabled && (hasText || hasPendingAttachment);
-                return _ChatComposerActionButton(
-                  icon: hasText || hasPendingAttachment
-                      ? Icons.send_rounded
-                      : Icons.mic_none_rounded,
-                  onTap: canSend ? onSend : onMicrophoneTap,
-                );
-              },
-            ),
-          ],
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _ChatComposerActionButton(
+          icon: Icons.attach_file_rounded,
+          onTap: onAttachmentTap,
+          filled: true,
         ),
-      ),
+        const Gap(10),
+        Expanded(
+          child: CustomTextField(
+            controller: controller,
+            labelText: hintText,
+            hintText: hintText,
+            showLabel: false,
+            height: 44,
+            borderRadius: 4,
+            backgroundColor: Colors.black.withValues(alpha: 0.22),
+            customBorder: Border.all(
+              color: const Color(0xFF3B3C40),
+              width: 1,
+            ),
+            containerPadding: const EdgeInsets.symmetric(horizontal: 14),
+            contentPadding: EdgeInsets.zero,
+            textStyle: TextStyles.bodyLarge.copyWith(
+              color: AppColors.textBrand,
+              fontSize: 13,
+            ),
+            hintStyle: TextStyles.bodyLarge.copyWith(
+              color: AppColors.textBrand.withValues(alpha: 0.38),
+              fontSize: 13,
+            ),
+          ),
+        ),
+        const Gap(10),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (
+            BuildContext context,
+            TextEditingValue value,
+            Widget? child,
+          ) {
+            final hasText = value.text.trim().isNotEmpty;
+            final canSend = sendEnabled && (hasText || hasPendingAttachment);
+            return _ChatComposerActionButton(
+              icon: Icons.send_rounded,
+              onTap: canSend ? onSend : null,
+            );
+          },
+        ),
+      ],
+    );
+    return Padding(
+      padding: padding,
+      child: useSafeArea ? SafeArea(top: false, child: row) : row,
     );
   }
 }
@@ -1605,10 +1664,12 @@ class _ChatComposerActionButton extends StatelessWidget {
   const _ChatComposerActionButton({
     required this.icon,
     this.onTap,
+    this.filled = false,
   });
 
   final IconData icon;
   final VoidCallback? onTap;
+  final bool filled;
 
   @override
   Widget build(BuildContext context) {
@@ -1616,25 +1677,29 @@ class _ChatComposerActionButton extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(6),
         child: Container(
           width: 44,
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.022),
-            borderRadius: BorderRadius.circular(10),
+            color: filled
+                ? const Color(0xFF4B4C50)
+                : Colors.black.withValues(alpha: 0.28),
+            borderRadius: BorderRadius.circular(6),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.055),
-              width: 1.25,
+              color: filled
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFF25262A),
+              width: 1,
             ),
           ),
           child: Icon(
             icon,
             color: AppColors.textBrand.withValues(
-              alpha: onTap == null ? 0.28 : 0.9,
+              alpha: onTap == null ? 0.32 : 0.92,
             ),
-            size: 22,
+            size: filled ? 24 : 28,
           ),
         ),
       ),

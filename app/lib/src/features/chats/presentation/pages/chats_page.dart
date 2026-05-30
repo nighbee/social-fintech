@@ -182,16 +182,17 @@ class _ChatsPageState extends State<ChatsPage> {
                     activeThreads.isEmpty &&
                     (visibleRequests.isEmpty ||
                         _selectedTab == _ChatListTab.requests)) ...[
-                  Padding(
-                    padding: const EdgeInsets.only(top: 48),
-                    child: ChatCenteredStatusCard(
-                      message: query.isEmpty
-                          ? (_selectedTab == _ChatListTab.inbox
-                              ? 'No chats yet. Start a conversation from a profile.'
-                              : 'No requests yet.')
-                          : 'No chats found for this search.',
+                  if (query.isEmpty && _selectedTab == _ChatListTab.requests)
+                    const _NoRequestsEmptyState()
+                  else
+                    Padding(
+                      padding: const EdgeInsets.only(top: 48),
+                      child: ChatCenteredStatusCard(
+                        message: query.isEmpty
+                            ? 'No chats yet. Start a conversation from a profile.'
+                            : 'No chats found for this search.',
+                      ),
                     ),
-                  ),
                 ],
               ],
             ],
@@ -251,28 +252,27 @@ class _ChatListTabButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderRadius = BorderRadius.circular(6);
+    final width = label == 'Inbox' ? 95.0 : 108.0;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         borderRadius: borderRadius,
-        splashColor: Colors.white.withValues(alpha: 0.06),
-        highlightColor: Colors.white.withValues(alpha: 0.03),
+        splashColor: Colors.white.withValues(alpha: 0.04),
+        highlightColor: Colors.white.withValues(alpha: 0.025),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
-          width: 116,
-          height: 40,
+          width: width,
+          height: 32,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE8E8E8) : Colors.transparent,
+            color: selected ? const Color(0xFFDBDBDB) : Colors.transparent,
             borderRadius: borderRadius,
             border: Border.all(
-              color: selected
-                  ? const Color(0xFFE8E8E8)
-                  : AppColors.textBrand.withValues(alpha: 0.88),
-              width: 1,
+              color: const Color(0xFFCACACA),
+              width: 1.5,
             ),
           ),
           child: Text(
@@ -281,12 +281,45 @@ class _ChatListTabButton extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyles.bodyLarge.copyWith(
               fontWeight: FontWeight.w600,
-              height: 20 / 16,
-              color: selected
-                  ? AppColors.colorff19191A
-                  : AppColors.textBrand.withValues(alpha: 0.94),
+              fontSize: 14,
+              height: 18 / 14,
+              color:
+                  selected ? AppColors.colorff19191A : const Color(0xFFDBDBDB),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NoRequestsEmptyState extends StatelessWidget {
+  const _NoRequestsEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 154),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/no_request.png',
+              width: 76,
+              height: 76,
+              fit: BoxFit.contain,
+            ),
+            const Gap(18),
+            Text(
+              'No requests',
+              style: TextStyles.titleMain.copyWith(
+                color: AppColors.textBrand,
+                fontSize: 20,
+                height: 1.15,
+              ),
+            ),
+          ],
         ),
       ),
     );
