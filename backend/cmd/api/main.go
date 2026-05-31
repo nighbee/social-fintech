@@ -303,7 +303,7 @@ func main() {
 	}
 
 	chatService := chat.NewService(chatRepo, settingsService, chatHub, pushNotifier)
-	chatHandler := chat.NewHandler(chatService, chatHub, jwtManager, authRepo)
+	chatHandler := chat.NewHandler(chatService, chatHub, jwtManager, authRepo, storageClient, cfg.Storage.Bucket)
 	mapService.SetChatIntegrator(chatService)
 	logger.Info("chat module initialized")
 
