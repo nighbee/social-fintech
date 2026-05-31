@@ -350,6 +350,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	chatGroup.Use(middleware.RequireAuth(jwt, authRepo))
 	chatGroup.Use(middleware.TouchSession(authRepo))
 
+	chatGroup.Post("/media/upload", chatHandler.UploadMedia)
 	chatGroup.Get("/conversations", chatHandler.ListConversations)
 	chatGroup.Post("/conversations/direct", chatHandler.OpenDirectConversation)
 	chatGroup.Get("/conversations/:conversation_id/messages", chatHandler.ListMessages)
