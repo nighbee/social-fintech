@@ -12,7 +12,20 @@
           "package_name": "com.brightbund.brightbundapp"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "561457994081-b195ql62k5jtrbtqktu31r2h5ti14rec.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.brightbund.brightbundapp",
+            "certificate_hash": "8fc57d98b279319998ceb5017754d003b467cb9e"
+          }
+        },
+        {
+          "client_id": "561457994081-por164johkedghf1tamlmtemm31qdapg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBb8YKokQLhLIOds_1BpGxL9sDyeyRlmAY"
@@ -20,26 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:561457994081:android:d588f671aa73f0382b4d20",
-        "android_client_info": {
-          "package_name": "com.btightbund.brightbundapp"
-        }
-      },
-      "oauth_client": [],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBb8YKokQLhLIOds_1BpGxL9sDyeyRlmAY"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "561457994081-por164johkedghf1tamlmtemm31qdapg.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "561457994081-jf9c6nj0ag5sfkl73id6ad2hgck8mp5u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.brightbund.brightbundapp"
+              }
+            }
+          ]
         }
       }
     }

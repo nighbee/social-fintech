@@ -72,7 +72,7 @@ cors:
 
 firebase:
   enabled: true
-  credentials_path: ../google/brightbund-7784f-firebase-adminsdk-fbsvc-af554bc032.json
+  credentials_path: ../google/brightbund-7784f-f2f0751062d5.json
   project_id: brightbund-7784f
 
 storage:

@@ -84,7 +84,7 @@ oauth:
 
 firebase:
   enabled: true  # Set to true to enable Firebase SMS
-  credentials_path: ../google/brightbund-7784f-firebase-adminsdk-fbsvc-af554bc032.json  # Path to Firebase service account JSON
+  credentials_path: ../google/brightbund-7784f-f2f0751062d5.json  # Path to Firebase service account JSON
   project_id: brightbund-7784f
 
 storage:
