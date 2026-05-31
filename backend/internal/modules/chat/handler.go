@@ -51,7 +51,7 @@ func (h *Handler) OpenDirectConversation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
 	}
 
-	conversation, err := h.service.OpenDirectConversation(c.Context(), userID, strings.TrimSpace(req.RecipientID))
+	conversation, err := h.service.OpenDirectConversation(c.Context(), userID, strings.TrimSpace(req.RecipientID), req.AsRequest)
 	if err != nil {
 		status := mapChatErrToHTTPStatus(err)
 		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
@@ -491,6 +491,54 @@ func (h *Handler) DeleteConversation(c *fiber.Ctx) error {
 	}
 
 	if err := h.service.DeleteConversation(c.Context(), userID, conversationID, req.ForBoth); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// AcceptChatRequest godoc
+// @Summary Accept a chat request
+// @Description Accepts a pending chat request. Only the recipient (non-creator) can accept.
+// @Tags Chat
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 409 {object} map[string]string "Request already handled"
+// @Router /chats/conversations/{conversation_id}/accept [post]
+func (h *Handler) AcceptChatRequest(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	if err := h.service.AcceptChatRequest(c.Context(), userID, conversationID); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// DeclineChatRequest godoc
+// @Summary Decline a chat request
+// @Description Declines a pending chat request. Only the recipient (non-creator) can decline.
+// @Tags Chat
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 409 {object} map[string]string "Request already handled"
+// @Router /chats/conversations/{conversation_id}/decline [post]
+func (h *Handler) DeclineChatRequest(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	if err := h.service.DeclineChatRequest(c.Context(), userID, conversationID); err != nil {
 		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"status": "ok"})

@@ -14,7 +14,7 @@ import (
 )
 
 type Repository interface {
-	EnsureDirectConversation(ctx context.Context, actorID, recipientID string) (*Conversation, error)
+	EnsureDirectConversation(ctx context.Context, actorID, recipientID string, asRequest bool) (*Conversation, error)
 	EnsureTaskConversation(ctx context.Context, taskID, creatorID, helperID string) (*Conversation, error)
 	GetConversation(ctx context.Context, conversationID, userID string) (*Conversation, error)
 	ListConversations(ctx context.Context, userID string, cursor *time.Time, limit int) ([]Conversation, error)
@@ -36,6 +36,10 @@ type Repository interface {
 	UnpinMessageInConversation(ctx context.Context, conversationID, messageID string) error
 	ListPinnedMessages(ctx context.Context, conversationID string) ([]PinnedMessage, error)
 	CountPinnedMessages(ctx context.Context, conversationID string) (int, error)
+	AcceptChatRequest(ctx context.Context, conversationID, userID string) error
+	DeclineChatRequest(ctx context.Context, conversationID, userID string) error
+	GetMessagesWithSenderName(ctx context.Context, ids []string) (map[string]ReplyPreview, error)
+	GetUserBasicInfo(ctx context.Context, userIDs []string) (map[string]ForwardedUser, error)
 }
 
 type PostgresRepository struct {
@@ -58,7 +62,7 @@ type CreateMessageParams struct {
 	ForwardedFromUserID *string
 }
 
-func (r *PostgresRepository) EnsureDirectConversation(ctx context.Context, actorID, recipientID string) (*Conversation, error) {
+func (r *PostgresRepository) EnsureDirectConversation(ctx context.Context, actorID, recipientID string, asRequest bool) (*Conversation, error) {
 	dKey := directPairKey(actorID, recipientID)
 
 	tx, err := r.db.BeginTxx(ctx, nil)
@@ -67,11 +71,16 @@ func (r *PostgresRepository) EnsureDirectConversation(ctx context.Context, actor
 	}
 	defer tx.Rollback()
 
+	requestStatus := RequestStatusAccepted
+	if asRequest {
+		requestStatus = RequestStatusPending
+	}
+
 	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO chat_conversations(kind, direct_key, created_by, created_at, updated_at)
-		VALUES ($1, $2, $3, NOW(), NOW())
+		INSERT INTO chat_conversations(kind, direct_key, created_by, request_status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
 		ON CONFLICT (kind, direct_key) WHERE task_id IS NULL DO NOTHING
-	`, ConversationKindDirect, dKey, actorID); err != nil {
+	`, ConversationKindDirect, dKey, actorID, requestStatus); err != nil {
 		return nil, err
 	}
 
@@ -148,7 +157,7 @@ func (r *PostgresRepository) ensureMembersTx(ctx context.Context, tx *sqlx.Tx, c
 func (r *PostgresRepository) GetConversation(ctx context.Context, conversationID, userID string) (*Conversation, error) {
 	const query = `
 		SELECT
-			c.id, c.kind, c.task_id, c.last_message_id, c.last_message_at,
+			c.id, c.kind, c.task_id, c.request_status, c.last_message_id, c.last_message_at,
 			c.last_message_preview, c.last_message_type, c.last_message_sender_id,
 			c.created_at, c.updated_at,
 			cm.unread_count, cm.last_read_at, cm.is_muted, cm.is_pinned, cm.cleared_at,
@@ -195,7 +204,7 @@ func (r *PostgresRepository) ListConversations(ctx context.Context, userID strin
 
 	const query = `
 		SELECT
-			c.id, c.kind, c.task_id, c.last_message_id, c.last_message_at,
+			c.id, c.kind, c.task_id, c.request_status, c.last_message_id, c.last_message_at,
 			c.last_message_preview, c.last_message_type, c.last_message_sender_id,
 			c.created_at, c.updated_at,
 			cm.unread_count, cm.last_read_at, cm.is_muted, cm.is_pinned, cm.cleared_at,
@@ -757,4 +766,137 @@ func (r *PostgresRepository) CountPinnedMessages(ctx context.Context, conversati
 		  AND m.deleted_at IS NULL
 	`, conversationID)
 	return count, err
+}
+
+// AcceptChatRequest marks a pending request as accepted. Only the non-creator member can accept.
+func (r *PostgresRepository) AcceptChatRequest(ctx context.Context, conversationID, userID string) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE chat_conversations
+		SET request_status = 'accepted'
+		WHERE id = $1
+		  AND request_status = 'pending'
+		  AND created_by <> $2
+		  AND EXISTS (
+		      SELECT 1 FROM chat_conversation_members
+		      WHERE conversation_id = $1 AND user_id = $2
+		  )
+	`, conversationID, userID)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrRequestAlreadyHandled
+	}
+	return nil
+}
+
+// DeclineChatRequest marks a pending request as declined. Only the non-creator member can decline.
+func (r *PostgresRepository) DeclineChatRequest(ctx context.Context, conversationID, userID string) error {
+	result, err := r.db.ExecContext(ctx, `
+		UPDATE chat_conversations
+		SET request_status = 'declined'
+		WHERE id = $1
+		  AND request_status = 'pending'
+		  AND created_by <> $2
+		  AND EXISTS (
+		      SELECT 1 FROM chat_conversation_members
+		      WHERE conversation_id = $1 AND user_id = $2
+		  )
+	`, conversationID, userID)
+	if err != nil {
+		return err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrRequestAlreadyHandled
+	}
+	return nil
+}
+
+// GetMessagesWithSenderName batch-loads messages by ID and joins sender username for reply previews.
+func (r *PostgresRepository) GetMessagesWithSenderName(ctx context.Context, ids []string) (map[string]ReplyPreview, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	query, args, err := sqlx.In(`
+		SELECT m.id, m.body, m.sender_id,
+		       COALESCE(p.display_name, u.username, '') AS sender_name
+		FROM chat_messages m
+		LEFT JOIN users u ON u.id = m.sender_id
+		LEFT JOIN profiles p ON p.user_id = m.sender_id
+		WHERE m.id IN (?)
+		  AND m.deleted_at IS NULL
+	`, ids)
+	if err != nil {
+		return nil, err
+	}
+	query = r.db.Rebind(query)
+
+	type row struct {
+		ID         string  `db:"id"`
+		Body       string  `db:"body"`
+		SenderID   *string `db:"sender_id"`
+		SenderName string  `db:"sender_name"`
+	}
+	var rows []row
+	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]ReplyPreview, len(rows))
+	for _, row := range rows {
+		result[row.ID] = ReplyPreview{
+			ID:         row.ID,
+			Body:       row.Body,
+			SenderID:   row.SenderID,
+			SenderName: row.SenderName,
+		}
+	}
+	return result, nil
+}
+
+// GetUserBasicInfo batch-loads username and display_name for forwarded message attribution.
+func (r *PostgresRepository) GetUserBasicInfo(ctx context.Context, userIDs []string) (map[string]ForwardedUser, error) {
+	if len(userIDs) == 0 {
+		return nil, nil
+	}
+
+	query, args, err := sqlx.In(`
+		SELECT u.id, u.username, COALESCE(p.display_name, '') AS display_name
+		FROM users u
+		LEFT JOIN profiles p ON p.user_id = u.id
+		WHERE u.id IN (?)
+	`, userIDs)
+	if err != nil {
+		return nil, err
+	}
+	query = r.db.Rebind(query)
+
+	type row struct {
+		ID          string `db:"id"`
+		Username    string `db:"username"`
+		DisplayName string `db:"display_name"`
+	}
+	var rows []row
+	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]ForwardedUser, len(rows))
+	for _, row := range rows {
+		result[row.ID] = ForwardedUser{
+			ID:          row.ID,
+			Username:    row.Username,
+			DisplayName: row.DisplayName,
+		}
+	}
+	return result, nil
 }

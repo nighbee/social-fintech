@@ -14,10 +14,14 @@ type stubRepo struct {
 	message      Message
 }
 
-func (s *stubRepo) EnsureDirectConversation(ctx context.Context, actorID, recipientID string) (*Conversation, error) {
+func (s *stubRepo) EnsureDirectConversation(ctx context.Context, actorID, recipientID string, asRequest bool) (*Conversation, error) {
 	c := s.conversation
 	if c.ID == "" {
-		c = Conversation{ID: "conv-1", Kind: ConversationKindDirect}
+		status := RequestStatusAccepted
+		if asRequest {
+			status = RequestStatusPending
+		}
+		c = Conversation{ID: "conv-1", Kind: ConversationKindDirect, RequestStatus: status}
 	}
 	return &c, nil
 }
@@ -129,6 +133,22 @@ func (s *stubRepo) CountPinnedMessages(ctx context.Context, conversationID strin
 	return 0, nil
 }
 
+func (s *stubRepo) AcceptChatRequest(ctx context.Context, conversationID, userID string) error {
+	return nil
+}
+
+func (s *stubRepo) DeclineChatRequest(ctx context.Context, conversationID, userID string) error {
+	return nil
+}
+
+func (s *stubRepo) GetMessagesWithSenderName(ctx context.Context, ids []string) (map[string]ReplyPreview, error) {
+	return nil, nil
+}
+
+func (s *stubRepo) GetUserBasicInfo(ctx context.Context, userIDs []string) (map[string]ForwardedUser, error) {
+	return nil, nil
+}
+
 type stubSettings struct {
 	privacyByUser map[string]string
 	blocked       bool
@@ -168,7 +188,7 @@ func TestOpenDirectConversationHonorsNoOnePrivacy(t *testing.T) {
 	}
 	service := NewService(repo, settingsStub, nil, nil)
 
-	_, err := service.OpenDirectConversation(context.Background(), "u1", "u2")
+	_, err := service.OpenDirectConversation(context.Background(), "u1", "u2", false)
 	if err == nil || err != ErrMessageNotAllowed {
 		t.Fatalf("expected ErrMessageNotAllowed, got %v", err)
 	}

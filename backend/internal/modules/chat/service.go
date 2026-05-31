@@ -78,7 +78,7 @@ func (s *Service) SetRealtimePublisher(realtime RealtimePublisher) {
 	s.realtime = realtime
 }
 
-func (s *Service) OpenDirectConversation(ctx context.Context, actorID, recipientID string) (*Conversation, error) {
+func (s *Service) OpenDirectConversation(ctx context.Context, actorID, recipientID string, asRequest bool) (*Conversation, error) {
 	if strings.TrimSpace(actorID) == "" || strings.TrimSpace(recipientID) == "" || actorID == recipientID {
 		return nil, ErrInvalidMessage
 	}
@@ -87,7 +87,37 @@ func (s *Service) OpenDirectConversation(ctx context.Context, actorID, recipient
 		return nil, err
 	}
 
-	return s.repo.EnsureDirectConversation(ctx, actorID, recipientID)
+	return s.repo.EnsureDirectConversation(ctx, actorID, recipientID, asRequest)
+}
+
+func (s *Service) AcceptChatRequest(ctx context.Context, userID, conversationID string) error {
+	if err := s.repo.AcceptChatRequest(ctx, conversationID, userID); err != nil {
+		return err
+	}
+	participants, err := s.repo.ListConversationParticipants(ctx, conversationID)
+	if err == nil && s.realtime != nil {
+		_ = s.realtime.EmitToUsers(ctx, participants, RealtimeEnvelope{
+			Type:           "conversation.request_accepted",
+			ConversationID: conversationID,
+			RequestStatus:  RequestStatusAccepted,
+		})
+	}
+	return nil
+}
+
+func (s *Service) DeclineChatRequest(ctx context.Context, userID, conversationID string) error {
+	if err := s.repo.DeclineChatRequest(ctx, conversationID, userID); err != nil {
+		return err
+	}
+	// Notify only the acting user (decliner) — the sender learns via their next poll.
+	if s.realtime != nil {
+		_ = s.realtime.EmitToUsers(ctx, []string{userID}, RealtimeEnvelope{
+			Type:           "conversation.request_declined",
+			ConversationID: conversationID,
+			RequestStatus:  RequestStatusDeclined,
+		})
+	}
+	return nil
 }
 
 func (s *Service) ListConversations(ctx context.Context, userID, cursor string, limit int) (*ListConversationsResponse, error) {
@@ -147,6 +177,11 @@ func (s *Service) ListMessages(ctx context.Context, userID, conversationID, curs
 		}
 	}
 
+	// Enrich reply previews and forward user info in a single batch pass.
+	if err := s.enrichMessageDetails(ctx, items); err != nil {
+		logger.Warn("failed to enrich message details", zap.Error(err))
+	}
+
 	for i := range items {
 		item := &items[i]
 		if item.SenderID != nil && *item.SenderID != userID {
@@ -190,6 +225,9 @@ func (s *Service) SendMessage(ctx context.Context, userID, conversationID string
 	if err != nil {
 		return nil, err
 	}
+	if conversation.RequestStatus == RequestStatusDeclined {
+		return nil, ErrChatRequestDeclined
+	}
 
 	participants, err := s.repo.ListConversationParticipants(ctx, conversationID)
 	if err != nil {
@@ -222,6 +260,12 @@ func (s *Service) SendMessage(ctx context.Context, userID, conversationID string
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// Enrich reply preview and forward user info for the HTTP response.
+	msgs := []Message{*message}
+	if err := s.enrichMessageDetails(ctx, msgs); err == nil {
+		message = &msgs[0]
 	}
 
 	// Idempotent replay returns stored payload; skip duplicate event emission.
@@ -590,6 +634,43 @@ func messageFingerprint(conversationID, body string, media []MessageMedia) strin
 	return hex.EncodeToString(sum[:])
 }
 
+func (s *Service) enrichMessageDetails(ctx context.Context, items []Message) error {
+	replyIDs := make([]string, 0, len(items))
+	fwdUserIDs := make([]string, 0, len(items))
+	seenReply := make(map[string]bool)
+	seenUser := make(map[string]bool)
+
+	for _, m := range items {
+		if m.ReplyToMessageID != nil && !seenReply[*m.ReplyToMessageID] {
+			replyIDs = append(replyIDs, *m.ReplyToMessageID)
+			seenReply[*m.ReplyToMessageID] = true
+		}
+		if m.ForwardedFromUserID != nil && !seenUser[*m.ForwardedFromUserID] {
+			fwdUserIDs = append(fwdUserIDs, *m.ForwardedFromUserID)
+			seenUser[*m.ForwardedFromUserID] = true
+		}
+	}
+
+	replyMap, _ := s.repo.GetMessagesWithSenderName(ctx, replyIDs)
+	userMap, _ := s.repo.GetUserBasicInfo(ctx, fwdUserIDs)
+
+	for i := range items {
+		if items[i].ReplyToMessageID != nil && replyMap != nil {
+			if preview, ok := replyMap[*items[i].ReplyToMessageID]; ok {
+				p := preview
+				items[i].ReplyToMessage = &p
+			}
+		}
+		if items[i].ForwardedFromUserID != nil && userMap != nil {
+			if u, ok := userMap[*items[i].ForwardedFromUserID]; ok {
+				fu := u
+				items[i].ForwardedFromUser = &fu
+			}
+		}
+	}
+	return nil
+}
+
 func mapChatErrToHTTPStatus(err error) int {
 	switch {
 	case errors.Is(err, ErrConversationNotFound):
@@ -600,8 +681,12 @@ func mapChatErrToHTTPStatus(err error) int {
 		return 403
 	case errors.Is(err, ErrMessageNotAllowed), errors.Is(err, ErrBlockedRelationship):
 		return 403
+	case errors.Is(err, ErrChatRequestDeclined):
+		return 403
 	case errors.Is(err, ErrDeletePermissionDenied):
 		return 403
+	case errors.Is(err, ErrRequestAlreadyHandled):
+		return 409
 	case errors.Is(err, ErrIdempotencyConflict), errors.Is(err, ErrIdempotencyInProgress):
 		return 409
 	case errors.Is(err, ErrInvalidMessage), errors.Is(err, ErrInvalidIdempotencyKey):
