@@ -356,6 +356,10 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	chatGroup.Post("/conversations/:conversation_id/messages", chatSendLimiter, chatHandler.SendMessage)
 	chatGroup.Post("/conversations/:conversation_id/read", chatHandler.MarkConversationRead)
 
+	// Chat request lifecycle
+	chatGroup.Post("/conversations/:conversation_id/accept", chatHandler.AcceptChatRequest)
+	chatGroup.Post("/conversations/:conversation_id/decline", chatHandler.DeclineChatRequest)
+
 	// Advanced chat features
 	chatGroup.Post("/conversations/:conversation_id/pin-message", chatHandler.PinMessage)
 	chatGroup.Delete("/conversations/:conversation_id/pin-message", chatHandler.UnpinMessage)
