@@ -49,6 +49,7 @@ class RoutePaths {
 
   /// Full path for nested GoRoute (`path: 'publications'` under [profile]).
   static const String profilePublications = '$profile/publications';
+  static const String profileStats = '$profile/stats';
   static const String settings = '/settings';
   static const String allies = '/allies';
   static const String publicProfile = '/public-profile/:userId';

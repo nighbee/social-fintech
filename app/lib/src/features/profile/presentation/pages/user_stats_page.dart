@@ -1,29 +1,99 @@
 import 'package:app/gen/assets.gen.dart';
+import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/glass_container.dart';
+import 'package:app/src/features/profile/data/models/profile_stats_dto.dart';
+import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.dart';
+import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 
 class UserStatsPage extends StatefulWidget {
   const UserStatsPage({
     super.key,
     this.userId,
     this.isCurrentUser = true,
+    this.rankTier = '',
+    this.reputationScore = 0,
   });
 
   final String? userId;
   final bool isCurrentUser;
+  final String rankTier;
+  final int reputationScore;
 
   @override
   State<UserStatsPage> createState() => _UserStatsPageState();
 }
 
 class _UserStatsPageState extends State<UserStatsPage> {
-  UserStatsData get _data =>
+  ProfileStatsDto? _stats;
+  String? _statsError;
+  bool _isStatsLoading = false;
+
+  UserStatsData get _baseData =>
       widget.isCurrentUser ? _currentUserStatsData : _publicUserStatsData;
+
+  UserStatsData get _data {
+    final stats = _stats;
+    if (stats == null) {
+      return _baseData
+          ._withCurrentGoldHonor(widget.reputationScore)
+          ._withRankParts(_rankParts);
+    }
+    return _baseData.withStats(stats)._withRankParts(_rankParts);
+  }
+
+  _RankParts get _rankParts => _RankParts.fromRankTier(widget.rankTier);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  @override
+  void didUpdateWidget(covariant UserStatsPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId ||
+        oldWidget.isCurrentUser != widget.isCurrentUser) {
+      _loadStats();
+    }
+  }
+
+  Future<void> _loadStats() async {
+    final userId = widget.userId?.trim() ?? '';
+    if (!widget.isCurrentUser && userId.isEmpty) return;
+
+    setState(() {
+      _isStatsLoading = true;
+      _statsError = null;
+    });
+
+    final remote = getIt<IProfileRemote>(instanceName: 'ProfileRemoteImpl');
+    final result = widget.isCurrentUser
+        ? await remote.getMyStats()
+        : await remote.getPublicStats(UserIdRequest(userId: userId));
+
+    if (!mounted) return;
+
+    result.fold(
+      (error) {
+        setState(() {
+          _isStatsLoading = false;
+          _statsError = error.message;
+        });
+      },
+      (stats) {
+        setState(() {
+          _isStatsLoading = false;
+          _stats = stats;
+        });
+      },
+    );
+  }
 
   void _showMedalDialog(UserStatsMedalItem medal) {
     showDialog<void>(
@@ -79,17 +149,75 @@ class _UserStatsPageState extends State<UserStatsPage> {
                 medals: _data.medals.take(4).toList(),
                 onMedalTap: _showMedalDialog,
               ),
+              if (_isStatsLoading || _statsError != null) ...[
+                const Gap(14),
+                _StatsLoadingNotice(
+                  isLoading: _isStatsLoading,
+                  error: _statsError,
+                ),
+              ],
               const Gap(25),
               for (final season in _data.seasons) ...[
                 Padding(
-                  padding: EdgeInsets.symmetric(horizontal: season.isCurrent ? 0 : 12),
-                  child: _SeasonStatsCard(season: season),
+                  padding: EdgeInsets.symmetric(
+                      horizontal: season.isCurrent ? 0 : 12),
+                  child: _SeasonStatsCard(
+                    season: season,
+                    onCountdownTap: season.isCurrent
+                        ? () => _showSeasonCountdownDialog(season)
+                        : null,
+                    onPatronBadgeTap: (season.footerBadgeLabel ?? '').isNotEmpty
+                        ? _showPatronBadgeDialog
+                        : null,
+                  ),
                 ),
                 if (season != _data.seasons.last) const Gap(20),
               ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showSeasonCountdownDialog(UserStatsSeasonItem season) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      builder: (_) => _SeasonCountdownDialog(label: season.trailingLabel),
+    );
+  }
+
+  void _showPatronBadgeDialog() {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      builder: (_) => const _PatronBadgeDialog(),
+    );
+  }
+}
+
+class _StatsLoadingNotice extends StatelessWidget {
+  const _StatsLoadingNotice({
+    required this.isLoading,
+    required this.error,
+  });
+
+  final bool isLoading;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      isLoading ? 'Loading stats...' : 'Stats are temporarily unavailable',
+      style: TextStyles.bodyMain.copyWith(
+        fontSize: 13,
+        height: 1.35,
+        color: error == null
+            ? AppColors.textBrand.withValues(alpha: 0.62)
+            : Colors.redAccent.withValues(alpha: 0.82),
       ),
     );
   }
@@ -188,9 +316,15 @@ class _MedalTile extends StatelessWidget {
 }
 
 class _SeasonStatsCard extends StatelessWidget {
-  const _SeasonStatsCard({required this.season});
+  const _SeasonStatsCard({
+    required this.season,
+    this.onCountdownTap,
+    this.onPatronBadgeTap,
+  });
 
   final UserStatsSeasonItem season;
+  final VoidCallback? onCountdownTap;
+  final VoidCallback? onPatronBadgeTap;
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +358,10 @@ class _SeasonStatsCard extends StatelessWidget {
                 ),
               ),
               season.isCurrent
-                  ? _SeasonCountdownPill(label: season.trailingLabel)
+                  ? _SeasonCountdownPill(
+                      label: season.trailingLabel,
+                      onTap: onCountdownTap,
+                    )
                   : Text(
                       season.trailingLabel,
                       style: TextStyles.bodyMain.copyWith(
@@ -309,20 +446,25 @@ class _SeasonStatsCard extends StatelessWidget {
           ),
           if ((season.footerBadgeLabel ?? '').isNotEmpty) ...[
             const Gap(18),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                season.footerBadgeLabel!,
-                textAlign: TextAlign.center,
-                style: TextStyles.bodyMain.copyWith(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: const Color(0xFFE5C367),
+            GestureDetector(
+              onTap: onPatronBadgeTap,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  season.footerBadgeLabel!,
+                  textAlign: TextAlign.center,
+                  style: TextStyles.bodyMain.copyWith(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: const Color(0xFFE5C367),
+                  ),
                 ),
               ),
             ),
@@ -334,37 +476,162 @@ class _SeasonStatsCard extends StatelessWidget {
 }
 
 class _SeasonCountdownPill extends StatelessWidget {
-  const _SeasonCountdownPill({required this.label});
+  const _SeasonCountdownPill({
+    required this.label,
+    this.onTap,
+  });
+
+  final String label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyles.bodyLarge.copyWith(
+                fontSize: 16,
+                height: 1.4,
+                color: AppColors.textBrand,
+              ),
+            ),
+            const Gap(6),
+            const Icon(
+              Icons.hourglass_bottom_rounded,
+              size: 16,
+              color: AppColors.textBrand,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SeasonCountdownDialog extends StatelessWidget {
+  const _SeasonCountdownDialog({required this.label});
 
   final String label;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyles.bodyLarge.copyWith(
-              fontSize: 16,
-              height: 1.4,
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 36),
+      child: GlassContainer(
+        borderRadius: 12,
+        blurSigma: 22,
+        padding: const EdgeInsets.fromLTRB(14, 28, 14, 20),
+        backgroundColor: Colors.white.withValues(alpha: 0.06),
+        borderColor: Colors.white.withValues(alpha: 0.08),
+        borderWidth: 1,
+        enableWhiteGlow: false,
+        dropShadowColor: Colors.black.withValues(alpha: 0.56),
+        dropShadowBlurRadius: 34,
+        dropShadowOffset: const Offset(0, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.hourglass_empty_rounded,
+              size: 78,
               color: AppColors.textBrand,
             ),
-          ),
-          const Gap(6),
-          const Icon(
-            Icons.hourglass_bottom_rounded,
-            size: 16,
-            color: AppColors.textBrand,
-          ),
-        ],
+            const Gap(18),
+            Text(
+              'Seasons ends in $label',
+              textAlign: TextAlign.center,
+              style: TextStyles.titleMain.copyWith(
+                fontSize: 22,
+                height: 1.12,
+                color: AppColors.textBrand,
+              ),
+            ),
+            const Gap(14),
+            Text(
+              'After season end, your seasonal counters reset. Past seasons remain saved in Season History.',
+              textAlign: TextAlign.center,
+              style: TextStyles.bodyLarge.copyWith(
+                height: 1.28,
+                color: const Color(0xFFCACACA),
+              ),
+            ),
+            const Gap(24),
+            CustomOutlinedButton(
+              text: 'Ok',
+              onTap: () => Navigator.of(context).pop(),
+              width: double.infinity,
+              borderRadius: 6,
+              borderColor: AppColors.textBrand,
+              backgroundColor: Colors.transparent,
+              textStyle: TextStyles.titleTag.copyWith(
+                fontSize: 16,
+                color: const Color(0xFFEAEAEA),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PatronBadgeDialog extends StatelessWidget {
+  const _PatronBadgeDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 30),
+      child: GlassContainer(
+        borderRadius: 12,
+        blurSigma: 22,
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        backgroundColor: Colors.white.withValues(alpha: 0.06),
+        borderColor: Colors.white.withValues(alpha: 0.08),
+        borderWidth: 1,
+        enableWhiteGlow: false,
+        dropShadowColor: Colors.black.withValues(alpha: 0.56),
+        dropShadowBlurRadius: 34,
+        dropShadowOffset: const Offset(0, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            GestureDetector(
+              onTap: () => Navigator.of(context).pop(),
+              child: const Icon(
+                Icons.close_rounded,
+                size: 24,
+                color: AppColors.textBrand,
+              ),
+            ),
+            const Gap(24),
+            Text(
+              'The Patron Badge marks those who sustain a culture where Honor is earned and openly recognized.',
+              textAlign: TextAlign.center,
+              style: TextStyles.titleMain.copyWith(
+                fontSize: 18,
+                height: 1.18,
+                color: AppColors.textBrand,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -463,8 +730,10 @@ class _MedalArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = medal.isUnlocked ? medal.primaryColor : const Color(0xFF666769);
-    final secondary = medal.isUnlocked ? medal.secondaryColor : const Color(0xFF2E2F31);
+    final primary =
+        medal.isUnlocked ? medal.primaryColor : const Color(0xFF666769);
+    final secondary =
+        medal.isUnlocked ? medal.secondaryColor : const Color(0xFF2E2F31);
 
     final decoratedChild = DecoratedBox(
       decoration: BoxDecoration(
@@ -496,7 +765,8 @@ class _MedalArt extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(
-              color: Colors.white.withValues(alpha: medal.isUnlocked ? 0.14 : 0.08),
+              color: Colors.white
+                  .withValues(alpha: medal.isUnlocked ? 0.14 : 0.08),
             ),
           ),
           child: ClipOval(child: decoratedChild),
@@ -508,7 +778,8 @@ class _MedalArt extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: Colors.white.withValues(alpha: medal.isUnlocked ? 0.14 : 0.08),
+              color: Colors.white
+                  .withValues(alpha: medal.isUnlocked ? 0.14 : 0.08),
             ),
           ),
           child: ClipRRect(
@@ -742,6 +1013,49 @@ class UserStatsData {
 
   final List<UserStatsMedalItem> medals;
   final List<UserStatsSeasonItem> seasons;
+
+  UserStatsData withStats(ProfileStatsDto stats) {
+    if (seasons.isEmpty) return this;
+
+    return UserStatsData(
+      medals: medals,
+      seasons: [
+        seasons.first.copyWith(
+          gainedGoldHonor: stats.totalReceivedSeals,
+          givenSilverHonor: stats.totalSentSeals,
+        ),
+        ...seasons.skip(1),
+      ],
+    );
+  }
+
+  UserStatsData _withCurrentGoldHonor(int value) {
+    if (value <= 0 || seasons.isEmpty) return this;
+
+    return UserStatsData(
+      medals: medals,
+      seasons: [
+        seasons.first.copyWith(gainedGoldHonor: value),
+        ...seasons.skip(1),
+      ],
+    );
+  }
+
+  UserStatsData _withRankParts(_RankParts parts) {
+    if (!parts.hasValue || seasons.isEmpty) return this;
+
+    return UserStatsData(
+      medals: medals,
+      seasons: [
+        for (final season in seasons)
+          season.copyWith(
+            rankName: season.isCurrent ? parts.name : season.rankName,
+            rankTier: season.isCurrent ? parts.quality : season.rankTier,
+            rankGrade: season.isCurrent ? parts.level : season.rankGrade,
+          ),
+      ],
+    );
+  }
 }
 
 class UserStatsMedalItem {
@@ -790,6 +1104,61 @@ class UserStatsSeasonItem {
   final AssetGenImage gemImage;
   final bool isCurrent;
   final String? footerBadgeLabel;
+
+  UserStatsSeasonItem copyWith({
+    String? title,
+    String? trailingLabel,
+    String? rankName,
+    String? rankTier,
+    String? rankGrade,
+    int? gainedGoldHonor,
+    int? givenSilverHonor,
+    AssetGenImage? gemImage,
+    bool? isCurrent,
+    String? footerBadgeLabel,
+  }) {
+    return UserStatsSeasonItem(
+      title: title ?? this.title,
+      trailingLabel: trailingLabel ?? this.trailingLabel,
+      rankName: rankName ?? this.rankName,
+      rankTier: rankTier ?? this.rankTier,
+      rankGrade: rankGrade ?? this.rankGrade,
+      gainedGoldHonor: gainedGoldHonor ?? this.gainedGoldHonor,
+      givenSilverHonor: givenSilverHonor ?? this.givenSilverHonor,
+      gemImage: gemImage ?? this.gemImage,
+      isCurrent: isCurrent ?? this.isCurrent,
+      footerBadgeLabel: footerBadgeLabel ?? this.footerBadgeLabel,
+    );
+  }
+}
+
+class _RankParts {
+  const _RankParts({
+    required this.name,
+    required this.quality,
+    required this.level,
+  });
+
+  factory _RankParts.fromRankTier(String rankTier) {
+    final parts = rankTier
+        .split(RegExp(r'\s*[|•·]\s*'))
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+
+    return _RankParts(
+      name: parts.isNotEmpty ? parts[0] : '',
+      quality: parts.length > 1 ? parts[1] : '',
+      level: parts.length > 2 ? parts[2] : '',
+    );
+  }
+
+  final String name;
+  final String quality;
+  final String level;
+
+  bool get hasValue =>
+      name.isNotEmpty || quality.isNotEmpty || level.isNotEmpty;
 }
 
 final UserStatsData _currentUserStatsData = UserStatsData(

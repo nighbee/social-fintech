@@ -91,7 +91,8 @@ class _PublicProfilePageState extends State<PublicProfilePage>
     );
   }
 
-  Future<void> _openDirectMessageFromProfile(PublicProfileEntity profile) async {
+  Future<void> _openDirectMessageFromProfile(
+      PublicProfileEntity profile) async {
     final remote = getIt<IChatsRemote>(instanceName: 'ChatsRemoteImpl');
     final result = await remote.openDirectConversation(
       recipientId: profile.userId.trim(),
@@ -279,6 +280,18 @@ class _PublicProfilePageState extends State<PublicProfilePage>
     );
   }
 
+  void _openUserStats(PublicProfileEntity profile) {
+    context.pushNamed(
+      RouteNames.profileStats,
+      extra: <String, dynamic>{
+        'userId': profile.userId,
+        'isCurrentUser': false,
+        'rankTier': profile.rankTier,
+        'reputationScore': profile.reputationScore,
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bloc = getIt<ProfileBloc>();
@@ -412,6 +425,7 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                               reputationScore: profile.reputationScore,
                               isPublicProfile: true,
                               relationshipStatus: viewModel.relationshipStatus,
+                              onStatsTap: () => _openUserStats(profile),
                               onFollow: () => bloc.add(
                                 ProfileEvent.becomeAlly(widget.userId),
                               ),

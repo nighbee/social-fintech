@@ -33,6 +33,7 @@ class ProfileHeaderCard extends StatelessWidget {
     this.onFollow,
     this.onUnfollow,
     this.onUnblock,
+    this.onStatsTap,
     super.key,
   });
 
@@ -55,6 +56,7 @@ class ProfileHeaderCard extends StatelessWidget {
   final VoidCallback? onFollow;
   final VoidCallback? onUnfollow;
   final VoidCallback? onUnblock;
+  final VoidCallback? onStatsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -181,6 +183,7 @@ class ProfileHeaderCard extends StatelessWidget {
                             goldenSeals: reputationScore,
                             statsLabel:
                                 isPublicProfile ? 'User Stats' : 'Your Stats',
+                            onTap: onStatsTap,
                           ),
                         ],
                       ),

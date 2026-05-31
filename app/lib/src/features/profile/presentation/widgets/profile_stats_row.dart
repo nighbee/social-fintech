@@ -7,11 +7,13 @@ class ProfileStatsRow extends StatelessWidget {
   const ProfileStatsRow({
     required this.goldenSeals,
     this.statsLabel = 'Your Stats',
+    this.onTap,
     super.key,
   });
 
   final int goldenSeals;
   final String statsLabel;
+  final VoidCallback? onTap;
 
   static const _pillBg = Color(0xFF303030);
   static const _honorBorder = Color.fromRGBO(215, 215, 217, 0.53);
@@ -53,107 +55,111 @@ class ProfileStatsRow extends StatelessWidget {
           }
         }
 
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: honorW,
-              height: _honorH,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: _pillBg,
-                  borderRadius: BorderRadius.circular(_radius),
-                  border: Border.all(
-                    color: _honorBorder,
-                    width: _honorBorderWidth,
+        return GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: honorW,
+                height: _honorH,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _pillBg,
+                    borderRadius: BorderRadius.circular(_radius),
+                    border: Border.all(
+                      color: _honorBorder,
+                      width: _honorBorderWidth,
+                    ),
                   ),
-                ),
-                child: Padding(
-                  padding: _honorPadding,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: Assets.images.goldenHonor.image(
+                  child: Padding(
+                    padding: _honorPadding,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        SizedBox(
                           width: 20,
                           height: 20,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          isAntiAlias: true,
-                          excludeFromSemantics: true,
-                        ),
-                      ),
-                      const Gap(_honorInnerGap),
-                      Flexible(
-                        child: Text(
-                          goldenSeals.toString(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: TextStyles.titleTag.copyWith(
-                            fontFamily: 'CanelaDeckTrial',
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            height: 16 / 18,
-                            color: const Color(0xFFFFFFFF),
+                          child: Assets.images.goldenHonor.image(
+                            width: 20,
+                            height: 20,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            isAntiAlias: true,
+                            excludeFromSemantics: true,
                           ),
                         ),
-                      ),
-                    ],
+                        const Gap(_honorInnerGap),
+                        Flexible(
+                          child: Text(
+                            goldenSeals.toString(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyles.titleTag.copyWith(
+                              fontFamily: 'CanelaDeckTrial',
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              height: 16 / 18,
+                              color: const Color(0xFFFFFFFF),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const Gap(_betweenChips),
-            SizedBox(
-              width: statsW,
-              height: _statsH,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: _pillBg,
-                  borderRadius: BorderRadius.circular(_radius),
-                  border: Border.all(
-                    color: _statsBorder,
-                    width: _statsBorderWidth,
+              const Gap(_betweenChips),
+              SizedBox(
+                width: statsW,
+                height: _statsH,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _pillBg,
+                    borderRadius: BorderRadius.circular(_radius),
+                    border: Border.all(
+                      color: _statsBorder,
+                      width: _statsBorderWidth,
+                    ),
                   ),
-                ),
-                child: Padding(
-                  padding: _statsPadding,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Assets.icons.statsIcon.svg(
-                        width: 16,
-                        height: 16,
-                        colorFilter: const ColorFilter.mode(
-                          Color(0xFFCACACA),
-                          BlendMode.srcIn,
+                  child: Padding(
+                    padding: _statsPadding,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Assets.icons.statsIcon.svg(
+                          width: 16,
+                          height: 16,
+                          colorFilter: const ColorFilter.mode(
+                            Color(0xFFCACACA),
+                            BlendMode.srcIn,
+                          ),
                         ),
-                      ),
-                      const Gap(_statsInnerGap),
-                      Text(
-                        statsLabel,
-                        maxLines: 1,
-                        softWrap: false,
-                        overflow: TextOverflow.visible,
-                        style: TextStyles.titleTag.copyWith(
-                          fontFamily: 'CanelaDeckTrial',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w300,
-                          height: 16 / 15,
-                          color: const Color(0xFFCACACA),
+                        const Gap(_statsInnerGap),
+                        Text(
+                          statsLabel,
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.visible,
+                          style: TextStyles.titleTag.copyWith(
+                            fontFamily: 'CanelaDeckTrial',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w300,
+                            height: 16 / 15,
+                            color: const Color(0xFFCACACA),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         );
       },
     );
