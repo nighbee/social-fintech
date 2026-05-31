@@ -348,9 +348,13 @@ class ChatConversationOverflowButton extends StatelessWidget {
   const ChatConversationOverflowButton({
     required this.onSelected,
     super.key,
+    this.isMuted = false,
+    this.isPinned = false,
   });
 
   final ValueChanged<String> onSelected;
+  final bool isMuted;
+  final bool isPinned;
 
   @override
   Widget build(BuildContext context) {
@@ -362,14 +366,16 @@ class ChatConversationOverflowButton extends StatelessWidget {
       elevation: 12,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(2)),
       position: PopupMenuPosition.under,
-      itemBuilder: (BuildContext context) => const [
+      itemBuilder: (BuildContext context) => [
         PopupMenuItem<String>(
           value: 'mute',
           height: 32,
           padding: EdgeInsets.zero,
           child: _ChatOverflowMenuItem(
-            label: 'Mute',
-            icon: Icons.notifications_off_outlined,
+            label: isMuted ? 'Unmute' : 'Mute',
+            icon: isMuted
+                ? Icons.notifications_none_rounded
+                : Icons.notifications_off_outlined,
           ),
         ),
         PopupMenuItem<String>(
@@ -377,11 +383,11 @@ class ChatConversationOverflowButton extends StatelessWidget {
           height: 32,
           padding: EdgeInsets.zero,
           child: _ChatOverflowMenuItem(
-            label: 'Pin',
-            icon: Icons.push_pin_outlined,
+            label: isPinned ? 'Unpin' : 'Pin',
+            icon: isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
           ),
         ),
-        PopupMenuItem<String>(
+        const PopupMenuItem<String>(
           value: 'block',
           height: 32,
           padding: EdgeInsets.zero,
@@ -391,7 +397,7 @@ class ChatConversationOverflowButton extends StatelessWidget {
             danger: true,
           ),
         ),
-        PopupMenuItem<String>(
+        const PopupMenuItem<String>(
           value: 'delete',
           height: 32,
           padding: EdgeInsets.zero,
@@ -624,10 +630,14 @@ class ChatThreadCard extends StatelessWidget {
     required this.thread,
     required this.onTap,
     super.key,
+    this.onAcceptRequest,
+    this.onDeclineRequest,
   });
 
   final ChatThreadPreview thread;
   final VoidCallback onTap;
+  final VoidCallback? onAcceptRequest;
+  final VoidCallback? onDeclineRequest;
 
   @override
   Widget build(BuildContext context) {
@@ -673,8 +683,10 @@ class ChatThreadCard extends StatelessWidget {
                     ),
                   ),
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      minHeight: ChatSapphireStyles.threadCardMinHeight,
+                    constraints: BoxConstraints(
+                      minHeight: thread.isRequest
+                          ? 102
+                          : ChatSapphireStyles.threadCardMinHeight,
                     ),
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(
@@ -766,12 +778,81 @@ class ChatThreadCard extends StatelessWidget {
                               ],
                             ),
                           ),
+                          if (thread.isRequest)
+                            Positioned(
+                              left: ChatSapphireStyles.threadCardAvatarRadius *
+                                      2 +
+                                  ChatSapphireStyles.threadCardGapAfterAvatar,
+                              right: 0,
+                              bottom: 0,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: _ChatRequestActionButton(
+                                      label: 'Accept',
+                                      filled: true,
+                                      onTap: onAcceptRequest,
+                                    ),
+                                  ),
+                                  const Gap(14),
+                                  Expanded(
+                                    child: _ChatRequestActionButton(
+                                      label: 'Decline',
+                                      filled: false,
+                                      onTap: onDeclineRequest,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatRequestActionButton extends StatelessWidget {
+  const _ChatRequestActionButton({
+    required this.label,
+    required this.filled,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool filled;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Container(
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: filled ? const Color(0xFFDBDBDB) : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFCACACA), width: 1.2),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyles.bodyLarge.copyWith(
+              fontSize: 14,
+              height: 1,
+              color: filled ? AppColors.colorff19191A : const Color(0xFFDBDBDB),
             ),
           ),
         ),

@@ -27,6 +27,9 @@ class ChatThreadPreview {
     this.otherUserId,
     this.pinnedMessagePreview,
     this.pinnedMessageId,
+    this.isMuted = false,
+    this.isPinned = false,
+    this.requestStatus = '',
   });
 
   final String id;
@@ -45,6 +48,9 @@ class ChatThreadPreview {
   /// Текст закреплённого сообщения для баннера под шапкой.
   final String? pinnedMessagePreview;
   final String? pinnedMessageId;
+  final bool isMuted;
+  final bool isPinned;
+  final String requestStatus;
 
   ChatThreadPreview copyWith({
     String? id,
@@ -59,6 +65,9 @@ class ChatThreadPreview {
     String? otherUserId,
     String? pinnedMessagePreview,
     String? pinnedMessageId,
+    bool? isMuted,
+    bool? isPinned,
+    String? requestStatus,
   }) {
     return ChatThreadPreview(
       id: id ?? this.id,
@@ -73,6 +82,9 @@ class ChatThreadPreview {
       otherUserId: otherUserId ?? this.otherUserId,
       pinnedMessagePreview: pinnedMessagePreview ?? this.pinnedMessagePreview,
       pinnedMessageId: pinnedMessageId ?? this.pinnedMessageId,
+      isMuted: isMuted ?? this.isMuted,
+      isPinned: isPinned ?? this.isPinned,
+      requestStatus: requestStatus ?? this.requestStatus,
     );
   }
 }
@@ -82,10 +94,14 @@ class ChatForwardedSnippet {
   const ChatForwardedSnippet({
     required this.senderName,
     required this.senderAvatarUrl,
+    this.senderId,
+    this.username,
   });
 
   final String senderName;
   final String senderAvatarUrl;
+  final String? senderId;
+  final String? username;
 }
 
 @immutable

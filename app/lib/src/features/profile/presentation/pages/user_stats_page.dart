@@ -101,8 +101,18 @@ class _UserStatsPageState extends State<UserStatsPage> {
       barrierDismissible: true,
       barrierColor: Colors.black.withValues(alpha: 0.56),
       builder: (_) => medal.isUnlocked
-          ? _UnlockedMedalDialog(medal: medal)
+          ? _EarnedMedalDialog(medal: medal)
           : _LockedMedalDialog(medal: medal),
+    );
+  }
+
+  void _openAllMedals() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _AllMedalsPage(
+          medals: _data.medals,
+        ),
+      ),
     );
   }
 
@@ -135,12 +145,19 @@ class _UserStatsPageState extends State<UserStatsPage> {
             children: [
               Align(
                 alignment: Alignment.centerRight,
-                child: Text(
-                  'View All Medals',
-                  style: TextStyles.bodyMain.copyWith(
-                    fontSize: 14,
-                    height: 1.4,
-                    color: AppColors.textBrand,
+                child: GestureDetector(
+                  onTap: _openAllMedals,
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Text(
+                      'View All Medals',
+                      style: TextStyles.bodyMain.copyWith(
+                        fontSize: 14,
+                        height: 1.4,
+                        color: AppColors.textBrand,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -195,6 +212,61 @@ class _UserStatsPageState extends State<UserStatsPage> {
       barrierDismissible: true,
       barrierColor: Colors.black.withValues(alpha: 0.62),
       builder: (_) => const _PatronBadgeDialog(),
+    );
+  }
+}
+
+class _AllMedalsPage extends StatelessWidget {
+  const _AllMedalsPage({
+    required this.medals,
+  });
+
+  final List<UserStatsMedalItem> medals;
+
+  void _showMedalDialog(BuildContext context, UserStatsMedalItem medal) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withValues(alpha: 0.56),
+      builder: (_) => medal.isUnlocked
+          ? _EarnedMedalDialog(medal: medal)
+          : _LockedMedalDialog(medal: medal),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.colorff19191A,
+      appBar: CustomAppBar(
+        title: 'Medals',
+        backgroundColor: AppColors.colorff19191A,
+      ),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+          child: GridView.builder(
+            itemCount: medals.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.62,
+            ),
+            itemBuilder: (context, index) {
+              final medal = medals[index];
+              return _MedalTile(
+                medal: medal,
+                onTap: () => _showMedalDialog(context, medal),
+                tileWidth: double.infinity,
+                artSize: 64,
+                medalSize: 48,
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 }
@@ -260,22 +332,28 @@ class _MedalTile extends StatelessWidget {
   const _MedalTile({
     required this.medal,
     required this.onTap,
+    this.tileWidth = 80,
+    this.artSize = 80,
+    this.medalSize = 56,
   });
 
   final UserStatsMedalItem medal;
   final VoidCallback onTap;
+  final double tileWidth;
+  final double artSize;
+  final double medalSize;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: SizedBox(
-        width: 80,
+        width: tileWidth,
         child: Column(
           children: [
             Container(
-              width: 80,
-              height: 80,
+              width: artSize,
+              height: artSize,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: const Color(0xFF252525),
@@ -290,7 +368,7 @@ class _MedalTile extends StatelessWidget {
               child: Center(
                 child: _MedalArt(
                   medal: medal,
-                  size: 56,
+                  size: medalSize,
                 ),
               ),
             ),
@@ -807,8 +885,8 @@ class _MedalArt extends StatelessWidget {
   }
 }
 
-class _UnlockedMedalDialog extends StatelessWidget {
-  const _UnlockedMedalDialog({required this.medal});
+class _EarnedMedalDialog extends StatelessWidget {
+  const _EarnedMedalDialog({required this.medal});
 
   final UserStatsMedalItem medal;
 
@@ -831,25 +909,23 @@ class _UnlockedMedalDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: const Icon(
-                  Icons.close_rounded,
-                  size: 24,
-                  color: AppColors.textBrand,
-                ),
-              ),
-            ),
-            const Gap(16),
             _MedalArt(
               medal: medal,
               size: 120,
             ),
-            const Gap(20),
+            const Gap(18),
             Text(
-              'New Medal Unlocked!',
+              medal.earnedOnLabel ?? 'Earned',
+              textAlign: TextAlign.center,
+              style: TextStyles.bodyMain.copyWith(
+                fontSize: 12,
+                height: 1.35,
+                color: const Color(0xFFA3A3A3),
+              ),
+            ),
+            const Gap(10),
+            Text(
+              medal.title,
               textAlign: TextAlign.center,
               style: TextStyles.titleMain.copyWith(
                 fontSize: 20,
@@ -868,7 +944,7 @@ class _UnlockedMedalDialog extends StatelessWidget {
             ),
             const Gap(24),
             CustomOutlinedButton(
-              text: 'Honor Record',
+              text: 'Ok',
               onTap: () => Navigator.of(context).pop(),
               width: double.infinity,
               borderRadius: 6,
@@ -1068,6 +1144,7 @@ class UserStatsMedalItem {
     required this.isUnlocked,
     required this.lockedDescription,
     required this.unlockedDescription,
+    this.earnedOnLabel,
   });
 
   final String id;
@@ -1078,6 +1155,7 @@ class UserStatsMedalItem {
   final bool isUnlocked;
   final String lockedDescription;
   final String unlockedDescription;
+  final String? earnedOnLabel;
 }
 
 class UserStatsSeasonItem {
@@ -1174,6 +1252,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Issued to the first 3000 members who laid the foundation.',
       unlockedDescription:
           'You are now one of the first 3000 founding members who laid the foundation. Thank you!',
+      earnedOnLabel: 'Earned on Oct 15, 2023',
     ),
     UserStatsMedalItem(
       id: 'district-crown',
@@ -1186,6 +1265,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Awarded to people who consistently stand out in their district.',
       unlockedDescription:
           'Your local impact is visible now. You have earned the District Crown.',
+      earnedOnLabel: 'Earned this season',
     ),
     UserStatsMedalItem(
       id: 'clarity-master',
@@ -1198,6 +1278,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Reserved for members whose recognition remains steady and clear.',
       unlockedDescription:
           'Your recognition pattern is consistent and respected. Clarity Master is now yours.',
+      earnedOnLabel: 'Earned this season',
     ),
     UserStatsMedalItem(
       id: 'pillar-community',
@@ -1210,6 +1291,51 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Issued to members whose support of others becomes a lasting community signal.',
       unlockedDescription:
           'You have become a pillar others rely on. The community now recognizes your impact.',
+    ),
+    UserStatsMedalItem(
+      id: 'season-medal',
+      title: 'Season medal',
+      shape: UserStatsMedalShape.circle,
+      primaryColor: Color(0xFF8E8E8E),
+      secondaryColor: Color(0xFF3C3C3C),
+      isUnlocked: false,
+      lockedDescription:
+          'Earned by finishing a season with a visible honor record.',
+      unlockedDescription: 'Your season record is now preserved as a medal.',
+    ),
+    UserStatsMedalItem(
+      id: 'jade-crown',
+      title: 'Jade Crown',
+      shape: UserStatsMedalShape.roundedSquare,
+      primaryColor: Color(0xFFBDBDBD),
+      secondaryColor: Color(0xFF5A5A5A),
+      isUnlocked: false,
+      lockedDescription:
+          'Awarded for reaching a high local standing in a completed season.',
+      unlockedDescription: 'Your local standing earned the Jade Crown.',
+    ),
+    UserStatsMedalItem(
+      id: 'scarlet-master',
+      title: 'Clarity Master',
+      shape: UserStatsMedalShape.octagon,
+      primaryColor: Color(0xFF8E8E8E),
+      secondaryColor: Color(0xFF3C3C3C),
+      isUnlocked: false,
+      lockedDescription:
+          'Reserved for members whose recognition remains steady and clear.',
+      unlockedDescription:
+          'Your recognition pattern is consistent and respected.',
+    ),
+    UserStatsMedalItem(
+      id: 'community-pillar-alt',
+      title: 'Pillar of the Community',
+      shape: UserStatsMedalShape.triangle,
+      primaryColor: Color(0xFF8E8E8E),
+      secondaryColor: Color(0xFF3C3C3C),
+      isUnlocked: false,
+      lockedDescription:
+          'Issued to members whose support of others becomes a lasting community signal.',
+      unlockedDescription: 'You have become a pillar others rely on.',
     ),
   ],
   seasons: [

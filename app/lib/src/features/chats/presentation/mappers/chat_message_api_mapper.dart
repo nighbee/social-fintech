@@ -54,11 +54,18 @@ class ChatMessageApiMapper {
         .toList(growable: false);
 
     final fwd = dto.forwardedFromUserId?.trim() ?? '';
-    final ChatForwardedSnippet? forwarded = fwd.isEmpty
+    final fwdUser = dto.forwardedFromUser;
+    final fwdDisplay = (fwdUser?.displayName ?? '').trim();
+    final fwdUsername = (fwdUser?.username ?? '').trim();
+    final ChatForwardedSnippet? forwarded = fwd.isEmpty && fwdUser == null
         ? null
-        : const ChatForwardedSnippet(
-            senderName: 'Переслано',
+        : ChatForwardedSnippet(
+            senderName: fwdDisplay.isNotEmpty
+                ? fwdDisplay
+                : (fwdUsername.isNotEmpty ? '@$fwdUsername' : 'Forwarded'),
             senderAvatarUrl: '',
+            senderId: fwdUser?.id,
+            username: fwdUsername.isEmpty ? null : fwdUsername,
           );
 
     return ChatMessageUiModel(
@@ -81,6 +88,18 @@ class ChatMessageApiMapper {
     String? currentUserId,
   ) {
     final replyId = dto.replyToMessageId?.trim() ?? '';
+    final enriched = dto.replyToMessage;
+    if (enriched != null) {
+      final explicitName = (enriched.senderName ?? '').trim();
+      final author = _sameSender(enriched.senderId, currentUserId)
+          ? 'You'
+          : (explicitName.isNotEmpty ? explicitName : 'Original message');
+      final body = enriched.body.trim();
+      return ChatReplyPreview(
+        authorLabel: author,
+        excerpt: body.isEmpty ? 'Message' : body,
+      );
+    }
     if (replyId.isEmpty || replyLookup == null) {
       return null;
     }

@@ -1,6 +1,7 @@
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/chats/data/models/conversation_dto.dart';
 import 'package:app/src/features/chats/data/models/message_dto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:fpdart/fpdart.dart';
 
 abstract class IChatsRemote {
@@ -13,6 +14,15 @@ abstract class IChatsRemote {
   /// POST `/chats/conversations/direct` — открыть или получить direct с собеседником.
   Future<Either<DomainException, ConversationDto>> openDirectConversation({
     required String recipientId,
+    bool asRequest = true,
+  });
+
+  Future<Either<DomainException, void>> acceptConversationRequest({
+    required String conversationId,
+  });
+
+  Future<Either<DomainException, void>> declineConversationRequest({
+    required String conversationId,
   });
 
   Future<Either<DomainException, ListMessagesResponseDto>> listMessages({
@@ -36,7 +46,23 @@ abstract class IChatsRemote {
     String? lastReadMessageId,
   });
 
-  Future<Either<DomainException, ListPinnedMessagesResponseDto>> listPinnedMessages({
+  Future<Either<DomainException, void>> setConversationMuted({
+    required String conversationId,
+    required bool muted,
+  });
+
+  Future<Either<DomainException, void>> setConversationPinned({
+    required String conversationId,
+    required bool pinned,
+  });
+
+  Future<Either<DomainException, MessageMediaDto>> uploadChatMedia({
+    required Uint8List bytes,
+    required String fileName,
+  });
+
+  Future<Either<DomainException, ListPinnedMessagesResponseDto>>
+      listPinnedMessages({
     required String conversationId,
   });
 

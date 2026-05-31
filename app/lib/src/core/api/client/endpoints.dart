@@ -96,11 +96,21 @@ class EndPoints {
 
   //* Chats
   static const String chatsConversations = '/chats/conversations';
+  static const String chatsMediaUpload = '/chats/media/upload';
+  static const String chatsWs = '/chats/ws';
   static String chatsConversationMessages(String conversationId) =>
       '/chats/conversations/$conversationId/messages';
   static String chatsConversationRead(String conversationId) =>
       '/chats/conversations/$conversationId/read';
   static const String chatsConversationsDirect = '/chats/conversations/direct';
+  static String chatsConversationAccept(String conversationId) =>
+      '/chats/conversations/$conversationId/accept';
+  static String chatsConversationDecline(String conversationId) =>
+      '/chats/conversations/$conversationId/decline';
+  static String chatsConversationMute(String conversationId) =>
+      '/chats/conversations/$conversationId/mute';
+  static String chatsConversationPin(String conversationId) =>
+      '/chats/conversations/$conversationId/pin';
   static String chatsConversationPinMessage(String conversationId) =>
       '/chats/conversations/$conversationId/pin-message';
   static String chatsConversationPinnedMessages(String conversationId) =>

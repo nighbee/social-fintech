@@ -9,11 +9,10 @@ import 'package:app/src/core/utils/helpers/image_picker_helper.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/chats/data/models/message_dto.dart';
 import 'package:app/src/features/chats/data/sources/remote/i_chats_remote.dart';
+import 'package:app/src/features/chats/data/services/chat_realtime_service.dart';
 import 'package:app/src/features/chats/presentation/mappers/chat_message_api_mapper.dart';
 import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/widgets/chat_widgets.dart';
-import 'package:app/src/features/home/data/sources/remote/i_home_remote.dart';
-import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.dart';
 import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
@@ -53,12 +52,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   final Set<String> _locallySentMessageIds = <String>{};
   String? _actionOverlayMessageId;
   String? _resolvedCurrentUserId;
+  StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
 
   IChatsRemote get _remote =>
       getIt<IChatsRemote>(instanceName: 'ChatsRemoteImpl');
-
-  IHomeRemote get _homeRemote =>
-      getIt<IHomeRemote>(instanceName: 'HomeRemoteImpl');
 
   IProfileRemote get _profileRemote =>
       getIt<IProfileRemote>(instanceName: 'ProfileRemoteImpl');
@@ -163,6 +160,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         unawaited(_loadRemoteMessages());
         unawaited(_enrichHeaderFromProfile());
       });
+      _realtimeSubscription = ChatRealtimeService.instance.events.listen(
+        _handleRealtimeEvent,
+      );
     } else {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -200,8 +200,105 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     _messageController.dispose();
     super.dispose();
+  }
+
+  void _handleRealtimeEvent(ChatRealtimeEvent event) {
+    if (!mounted || !_isRealConversation) {
+      return;
+    }
+    final eventConversationId = event.conversationId?.trim();
+    if (eventConversationId == null ||
+        eventConversationId != widget.chatId.trim()) {
+      return;
+    }
+
+    switch (event.type) {
+      case 'message.new':
+        final dto = event.message;
+        if (dto == null) {
+          return;
+        }
+        _upsertRemoteMessage(dto);
+        final messageId = dto.id.trim();
+        ChatRealtimeService.instance.markRead(
+          conversationId: widget.chatId.trim(),
+          lastReadMessageId: messageId.isEmpty ? null : messageId,
+        );
+        return;
+      case 'conversation.request_accepted':
+        setState(() {
+          _thread = _thread.copyWith(
+            isRequest: false,
+            requestStatus: event.requestStatus ?? 'accepted',
+          );
+        });
+        return;
+      case 'conversation.request_declined':
+        setState(() {
+          _thread = _thread.copyWith(
+            requestStatus: event.requestStatus ?? 'declined',
+          );
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chat request declined')),
+        );
+        return;
+      case 'message.deleted':
+        final messageId = event.messageId?.trim();
+        if (messageId == null || messageId.isEmpty) {
+          return;
+        }
+        setState(() {
+          _remoteMessageDtos = _remoteMessageDtos
+              .where((message) => message.id.trim() != messageId)
+              .toList(growable: false);
+          _messages = ChatMessageApiMapper.toUiModels(
+            _remoteMessageDtos,
+            currentUserId: _currentUserId(),
+            forceOutgoingMessageIds: _locallySentMessageIds,
+          );
+        });
+        unawaited(_loadPinnedMessages());
+        return;
+      case 'message.pinned':
+      case 'message.unpinned':
+        unawaited(_loadPinnedMessages());
+        return;
+      case 'conversation.deleted':
+      case 'conversation.cleared':
+        setState(() {
+          _remoteMessageDtos = <MessageDto>[];
+          _messages = <ChatMessageUiModel>[];
+        });
+        return;
+    }
+  }
+
+  void _upsertRemoteMessage(MessageDto dto) {
+    final dtoId = dto.id.trim();
+    setState(() {
+      if (dto.senderId?.trim() == _currentUserId()) {
+        _locallySentMessageIds.add(dto.id.trim());
+      }
+      final index = dtoId.isEmpty
+          ? -1
+          : _remoteMessageDtos.indexWhere((m) => m.id.trim() == dtoId);
+      if (index == -1) {
+        _remoteMessageDtos = [..._remoteMessageDtos, dto];
+      } else {
+        final next = List<MessageDto>.from(_remoteMessageDtos);
+        next[index] = dto;
+        _remoteMessageDtos = next;
+      }
+      _messages = ChatMessageApiMapper.toUiModels(
+        _remoteMessageDtos,
+        currentUserId: _currentUserId(),
+        forceOutgoingMessageIds: _locallySentMessageIds,
+      );
+    });
   }
 
   String _replyLabelForMessage(ChatMessageUiModel m) {
@@ -391,12 +488,10 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
   void _handleMenuSelection(String value) {
     switch (value) {
       case 'mute':
+        unawaited(_setConversationMuted(!_thread.isMuted));
+        return;
       case 'pin':
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  '${value == 'mute' ? 'Mute' : 'Pin'} is not available yet')),
-        );
+        unawaited(_setConversationPinned(!_thread.isPinned));
         return;
       case 'forward':
         context.pushNamed(
@@ -427,6 +522,58 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         );
         return;
     }
+  }
+
+  Future<void> _setConversationMuted(bool muted) async {
+    if (!_isRealConversation) {
+      return;
+    }
+    final result = await _remote.setConversationMuted(
+      conversationId: widget.chatId.trim(),
+      muted: muted,
+    );
+    if (!mounted) {
+      return;
+    }
+    result.fold(
+      (DomainException error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      },
+      (_) {
+        setState(() => _thread = _thread.copyWith(isMuted: muted));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(muted ? 'Muted' : 'Unmuted')),
+        );
+      },
+    );
+  }
+
+  Future<void> _setConversationPinned(bool pinned) async {
+    if (!_isRealConversation) {
+      return;
+    }
+    final result = await _remote.setConversationPinned(
+      conversationId: widget.chatId.trim(),
+      pinned: pinned,
+    );
+    if (!mounted) {
+      return;
+    }
+    result.fold(
+      (DomainException error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      },
+      (_) {
+        setState(() => _thread = _thread.copyWith(isPinned: pinned));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(pinned ? 'Chat pinned' : 'Chat unpinned')),
+        );
+      },
+    );
   }
 
   Future<void> _loadRemoteMessages() async {
@@ -571,8 +718,9 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       return;
     }
     setState(() => _sending = true);
-    final upload = await _homeRemote.uploadFeedMedia(
-      UploadFeedMediaRequest(bytes: bytes, fileName: fileName),
+    final upload = await _remote.uploadChatMedia(
+      bytes: bytes,
+      fileName: fileName,
     );
     if (!mounted) {
       return;
@@ -717,7 +865,11 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       appBar: ChatDetailAppBar(
         thread: _thread,
         actions: [
-          ChatConversationOverflowButton(onSelected: _handleMenuSelection),
+          ChatConversationOverflowButton(
+            isMuted: _thread.isMuted,
+            isPinned: _thread.isPinned,
+            onSelected: _handleMenuSelection,
+          ),
         ],
       ),
       bottomNavigationBar: ClipRect(

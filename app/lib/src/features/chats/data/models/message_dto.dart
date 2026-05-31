@@ -19,6 +19,49 @@ class MessageMediaDto {
   }
 }
 
+class ReplyToMessageDto {
+  const ReplyToMessageDto({
+    required this.id,
+    required this.body,
+    this.senderId,
+    this.senderName,
+  });
+
+  final String id;
+  final String body;
+  final String? senderId;
+  final String? senderName;
+
+  factory ReplyToMessageDto.fromJson(Map<String, dynamic> json) {
+    return ReplyToMessageDto(
+      id: json['id'] as String? ?? '',
+      body: json['body'] as String? ?? '',
+      senderId: _trimmedOrNull(json['sender_id']),
+      senderName: _trimmedOrNull(json['sender_name']),
+    );
+  }
+}
+
+class ForwardedFromUserDto {
+  const ForwardedFromUserDto({
+    required this.id,
+    this.username,
+    this.displayName,
+  });
+
+  final String id;
+  final String? username;
+  final String? displayName;
+
+  factory ForwardedFromUserDto.fromJson(Map<String, dynamic> json) {
+    return ForwardedFromUserDto(
+      id: json['id'] as String? ?? '',
+      username: _trimmedOrNull(json['username']),
+      displayName: _trimmedOrNull(json['display_name']),
+    );
+  }
+}
+
 class MessageDto {
   const MessageDto({
     required this.id,
@@ -28,7 +71,9 @@ class MessageDto {
     required this.body,
     required this.media,
     this.replyToMessageId,
+    this.replyToMessage,
     this.forwardedFromUserId,
+    this.forwardedFromUser,
     this.deletedAt,
     this.deletedByUserId,
     required this.createdAt,
@@ -42,7 +87,9 @@ class MessageDto {
   final String body;
   final List<MessageMediaDto> media;
   final String? replyToMessageId;
+  final ReplyToMessageDto? replyToMessage;
   final String? forwardedFromUserId;
+  final ForwardedFromUserDto? forwardedFromUser;
   final DateTime? deletedAt;
   final String? deletedByUserId;
   final DateTime createdAt;
@@ -56,31 +103,30 @@ class MessageDto {
             .toList(growable: false)
         : <MessageMediaDto>[];
 
-    final senderRaw = json['sender_id'] ?? json['senderId'];
-    final senderTrimmed =
-        (senderRaw is String ? senderRaw : senderRaw?.toString())?.trim() ?? '';
-
-    final replyRaw = json['reply_to_message_id'];
-    final replyTrimmed =
-        (replyRaw is String ? replyRaw : replyRaw?.toString())?.trim() ?? '';
-    final fwdRaw = json['forwarded_from_user_id'];
-    final fwdTrimmed =
-        (fwdRaw is String ? fwdRaw : fwdRaw?.toString())?.trim() ?? '';
-    final delByRaw = json['deleted_by_user_id'];
-    final delByTrimmed =
-        (delByRaw is String ? delByRaw : delByRaw?.toString())?.trim() ?? '';
+    final senderTrimmed = _trimmedOrNull(json['sender_id'] ?? json['senderId']);
+    final replyTrimmed = _trimmedOrNull(json['reply_to_message_id']);
+    final fwdTrimmed = _trimmedOrNull(json['forwarded_from_user_id']);
+    final delByTrimmed = _trimmedOrNull(json['deleted_by_user_id']);
+    final replyPayload = json['reply_to_message'];
+    final forwardedPayload = json['forwarded_from_user'];
 
     return MessageDto(
       id: json['id'] as String? ?? '',
       conversationId: json['conversation_id'] as String? ?? '',
-      senderId: senderTrimmed.isEmpty ? null : senderTrimmed,
+      senderId: senderTrimmed,
       messageType: json['message_type'] as String? ?? '',
       body: json['body'] as String? ?? '',
       media: mediaList,
-      replyToMessageId: replyTrimmed.isEmpty ? null : replyTrimmed,
-      forwardedFromUserId: fwdTrimmed.isEmpty ? null : fwdTrimmed,
+      replyToMessageId: replyTrimmed,
+      replyToMessage: replyPayload is Map<String, dynamic>
+          ? ReplyToMessageDto.fromJson(replyPayload)
+          : null,
+      forwardedFromUserId: fwdTrimmed,
+      forwardedFromUser: forwardedPayload is Map<String, dynamic>
+          ? ForwardedFromUserDto.fromJson(forwardedPayload)
+          : null,
       deletedAt: _parseDate(json['deleted_at']),
-      deletedByUserId: delByTrimmed.isEmpty ? null : delByTrimmed,
+      deletedByUserId: delByTrimmed,
       createdAt: _parseDate(json['created_at']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       viewerMessageRead: json['viewer_message_read'] as bool? ?? false,
@@ -94,6 +140,11 @@ class MessageDto {
     }
     return null;
   }
+}
+
+String? _trimmedOrNull(Object? value) {
+  final text = (value is String ? value : value?.toString())?.trim() ?? '';
+  return text.isEmpty ? null : text;
 }
 
 class ListMessagesResponseDto {

@@ -44,6 +44,9 @@ class ChatThreadPreviewMapper {
       otherUserId: otherId.isNotEmpty ? otherId : null,
       pinnedMessagePreview: pinPreview,
       pinnedMessageId: pinId,
+      isMuted: dto.isMuted,
+      isPinned: dto.isPinned,
+      requestStatus: dto.requestStatus,
     );
   }
 

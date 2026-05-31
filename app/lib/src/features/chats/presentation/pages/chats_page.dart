@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/core/widgets/nav_bars/custom_nav_bar.dart';
 import 'package:app/src/features/chats/data/sources/remote/i_chats_remote.dart';
+import 'package:app/src/features/chats/data/services/chat_realtime_service.dart';
 import 'package:app/src/features/chats/presentation/mappers/chat_thread_preview_mapper.dart';
 import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/widgets/chat_widgets.dart';
@@ -25,6 +28,8 @@ class _ChatsPageState extends State<ChatsPage> {
   bool _loading = true;
   String? _errorMessage;
   List<ChatThreadPreview> _threads = const [];
+  StreamSubscription<ChatRealtimeEvent>? _realtimeSubscription;
+  Timer? _realtimeReloadDebounce;
 
   IChatsRemote get _remote =>
       getIt<IChatsRemote>(instanceName: 'ChatsRemoteImpl');
@@ -33,24 +38,55 @@ class _ChatsPageState extends State<ChatsPage> {
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _realtimeSubscription = ChatRealtimeService.instance.events.listen(
+      _handleRealtimeEvent,
+    );
     _loadConversations();
   }
 
   @override
   void dispose() {
+    _realtimeReloadDebounce?.cancel();
+    _realtimeSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadConversations() async {
-    setState(() {
-      _loading = true;
-      _errorMessage = null;
+  void _handleRealtimeEvent(ChatRealtimeEvent event) {
+    switch (event.type) {
+      case 'message.new':
+      case 'conversation.request_accepted':
+      case 'conversation.request_declined':
+      case 'conversation.deleted':
+      case 'conversation.cleared':
+        _scheduleRealtimeReload();
+        return;
+    }
+  }
+
+  void _scheduleRealtimeReload() {
+    _realtimeReloadDebounce?.cancel();
+    _realtimeReloadDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (mounted) {
+        unawaited(_loadConversations(silent: true));
+      }
     });
+  }
+
+  Future<void> _loadConversations({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _loading = true;
+        _errorMessage = null;
+      });
+    }
     final result = await _remote.listConversations(limit: 30);
     if (!mounted) return;
     result.fold(
       (DomainException error) {
+        if (silent) {
+          return;
+        }
         setState(() {
           _loading = false;
           _errorMessage = error.message;
@@ -62,7 +98,9 @@ class _ChatsPageState extends State<ChatsPage> {
             .map(ChatThreadPreviewMapper.fromConversation)
             .toList(growable: false);
         setState(() {
-          _loading = false;
+          if (!silent) {
+            _loading = false;
+          }
           _errorMessage = null;
           _threads = mapped;
         });
@@ -85,13 +123,48 @@ class _ChatsPageState extends State<ChatsPage> {
 
   List<ChatThreadPreview> get _visibleRequests {
     return _filterThreads(
-      _threads.where((thread) => thread.isRequest).toList(growable: false),
+      _threads
+          .where((thread) => thread.isRequest && !_isDeclined(thread))
+          .toList(growable: false),
     );
   }
 
   List<ChatThreadPreview> get _visibleChats {
     return _filterThreads(
-      _threads.where((thread) => !thread.isRequest).toList(growable: false),
+      _threads
+          .where((thread) => !thread.isRequest && !_isDeclined(thread))
+          .toList(growable: false),
+    );
+  }
+
+  bool _isDeclined(ChatThreadPreview thread) {
+    final status = thread.requestStatus.trim().toLowerCase();
+    return status == 'declined' || status == 'rejected';
+  }
+
+  Future<void> _handleRequestAction(
+    ChatThreadPreview thread, {
+    required bool accept,
+  }) async {
+    final result = accept
+        ? await _remote.acceptConversationRequest(conversationId: thread.id)
+        : await _remote.declineConversationRequest(conversationId: thread.id);
+    if (!mounted) {
+      return;
+    }
+    result.fold(
+      (DomainException error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      },
+      (_) async {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(accept ? 'Request accepted' : 'Request declined')),
+        );
+        await _loadConversations();
+      },
     );
   }
 
@@ -161,6 +234,12 @@ class _ChatsPageState extends State<ChatsPage> {
                   for (final thread in activeThreads) ...[
                     ChatThreadCard(
                       thread: thread,
+                      onAcceptRequest: thread.isRequest
+                          ? () => _handleRequestAction(thread, accept: true)
+                          : null,
+                      onDeclineRequest: thread.isRequest
+                          ? () => _handleRequestAction(thread, accept: false)
+                          : null,
                       onTap: () async {
                         await context.pushNamed(
                           RouteNames.chatConversation,
