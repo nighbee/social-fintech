@@ -350,11 +350,16 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	chatGroup.Use(middleware.RequireAuth(jwt, authRepo))
 	chatGroup.Use(middleware.TouchSession(authRepo))
 
+	chatGroup.Post("/media/upload", chatHandler.UploadMedia)
 	chatGroup.Get("/conversations", chatHandler.ListConversations)
 	chatGroup.Post("/conversations/direct", chatHandler.OpenDirectConversation)
 	chatGroup.Get("/conversations/:conversation_id/messages", chatHandler.ListMessages)
 	chatGroup.Post("/conversations/:conversation_id/messages", chatSendLimiter, chatHandler.SendMessage)
 	chatGroup.Post("/conversations/:conversation_id/read", chatHandler.MarkConversationRead)
+
+	// Chat request lifecycle
+	chatGroup.Post("/conversations/:conversation_id/accept", chatHandler.AcceptChatRequest)
+	chatGroup.Post("/conversations/:conversation_id/decline", chatHandler.DeclineChatRequest)
 
 	// Advanced chat features
 	chatGroup.Post("/conversations/:conversation_id/pin-message", chatHandler.PinMessage)

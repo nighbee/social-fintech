@@ -8,6 +8,7 @@ class ChatMessageApiMapper {
   static List<ChatMessageUiModel> toUiModels(
     List<MessageDto> dtos, {
     required String? currentUserId,
+    Set<String> forceOutgoingMessageIds = const <String>{},
   }) {
     final byId = <String, MessageDto>{
       for (final dto in dtos)
@@ -19,6 +20,7 @@ class ChatMessageApiMapper {
             dto,
             currentUserId: currentUserId,
             replyLookup: byId,
+            forceOutgoing: forceOutgoingMessageIds.contains(dto.id.trim()),
           ),
         )
         .toList(growable: false);
@@ -28,8 +30,11 @@ class ChatMessageApiMapper {
     MessageDto dto, {
     required String? currentUserId,
     Map<String, MessageDto>? replyLookup,
+    bool forceOutgoing = false,
   }) {
-    final direction = _direction(dto, currentUserId);
+    final direction = forceOutgoing
+        ? ChatMessageDirection.outgoing
+        : _direction(dto, currentUserId);
     final timeLabel = _timeLabel(dto.createdAt);
     final outgoing = direction == ChatMessageDirection.outgoing;
     final receipt = outgoing

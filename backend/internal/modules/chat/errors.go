@@ -14,4 +14,6 @@ var (
 	ErrNotConversationMember   = errors.New("not_conversation_member")
 	ErrMessageNotFound         = errors.New("message_not_found")
 	ErrDeletePermissionDenied  = errors.New("delete_permission_denied")
+	ErrRequestAlreadyHandled   = errors.New("request_already_handled")
+	ErrChatRequestDeclined     = errors.New("chat_request_declined")
 )

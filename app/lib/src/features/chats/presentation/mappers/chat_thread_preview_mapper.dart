@@ -40,7 +40,7 @@ class ChatThreadPreviewMapper {
       avatarUrl: (dto.otherAvatarUrl ?? '').trim(),
       previewText: preview,
       unreadCount: dto.unreadCount,
-      isRequest: false,
+      isRequest: dto.isRequest,
       otherUserId: otherId.isNotEmpty ? otherId : null,
       pinnedMessagePreview: pinPreview,
       pinnedMessageId: pinId,

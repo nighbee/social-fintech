@@ -153,6 +153,13 @@ class _DeveloperFeaturesPageState extends State<DeveloperFeaturesPage> {
             onTap: () => context.pushNamed(RouteNames.rangs),
           ),
           CustomListItem(
+            title: 'Leaderboard Admin',
+            subtitle: 'Redis scopes, add-user, verify rating',
+            isStroke: true,
+            iconRight: true,
+            onTap: () => context.pushNamed(RouteNames.leaderboardAdmin),
+          ),
+          CustomListItem(
             title: 'Регистрация по Email',
             subtitle: 'Тестирование регистрации',
             isStroke: true,

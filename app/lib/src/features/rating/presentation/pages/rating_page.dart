@@ -27,7 +27,7 @@ class _RatingPageState extends State<RatingPage> {
   }
 
   List<_RatingEntry> _mapItemsToEntries(List<Map<String, dynamic>> items) {
-    return items.map((item) {
+    final entries = items.map((item) {
       final name =
           item['name']?.toString() ?? item['username']?.toString() ?? 'Unknown';
       final rank = (item['rank'] is int)
@@ -56,7 +56,10 @@ class _RatingPageState extends State<RatingPage> {
         honorCount: honor,
         isCurrentUser: isCurrent,
       );
-    }).toList();
+    }).toList()
+      ..sort((a, b) => a.rank.compareTo(b.rank));
+
+    return entries;
   }
 
   List<_RatingEntry> _filterEntries(List<_RatingEntry> entries) {
@@ -82,20 +85,9 @@ class _RatingPageState extends State<RatingPage> {
             }
 
             final filtered = _filterEntries(entries);
-            final podium =
-                filtered.where((e) => !e.isCurrentUser).take(3).toList();
-            final ranked =
-                filtered.where((e) => !e.isCurrentUser).skip(3).toList();
-            _RatingEntry? current;
-            for (final entry in filtered) {
-              if (entry.isCurrentUser) {
-                current = entry;
-                break;
-              }
-            }
-
-            final hasVisibleContent =
-                podium.isNotEmpty || ranked.isNotEmpty || current != null;
+            final podium = filtered.take(3).toList();
+            final ranked = filtered.skip(3).toList();
+            final hasVisibleContent = filtered.isNotEmpty;
 
             return Column(
               children: [
@@ -185,14 +177,6 @@ class _RatingPageState extends State<RatingPage> {
                         )
                       : _EmptyResultsState(query: _searchController.text),
                 ),
-                if (current != null)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(15, 0, 15, 12),
-                    child: _RatingListItem(
-                      entry: current,
-                      isPinned: true,
-                    ),
-                  ),
               ],
             );
           },
@@ -305,7 +289,7 @@ class _RatingPodiumCard extends StatelessWidget {
           const Gap(8),
           Text(
             entry.name,
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: TextStyles.bodyMain.copyWith(
@@ -388,11 +372,9 @@ class _RatingSegmentedControl extends StatelessWidget {
 class _RatingListItem extends StatelessWidget {
   const _RatingListItem({
     required this.entry,
-    this.isPinned = false,
   });
 
   final _RatingEntry entry;
-  final bool isPinned;
 
   @override
   Widget build(BuildContext context) {
@@ -403,18 +385,9 @@ class _RatingListItem extends StatelessWidget {
         color: const Color(0xFF202020),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isPinned ? const Color(0xFF3B3B3B) : const Color(0xFF2A2A2A),
+          color: const Color(0xFF2A2A2A),
           width: 1,
         ),
-        boxShadow: isPinned
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.22),
-                  blurRadius: 10,
-                  offset: const Offset(0, -1),
-                ),
-              ]
-            : null,
       ),
       child: Row(
         children: [

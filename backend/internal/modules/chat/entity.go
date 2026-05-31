@@ -8,12 +8,17 @@ const (
 
 	MessageTypeUser   = "user"
 	MessageTypeSystem = "system"
+
+	RequestStatusPending  = "pending"
+	RequestStatusAccepted = "accepted"
+	RequestStatusDeclined = "declined"
 )
 
 type Conversation struct {
 	ID                   string     `db:"id" json:"id"`
 	Kind                 string     `db:"kind" json:"kind"`
 	TaskID               *string    `db:"task_id" json:"task_id,omitempty"`
+	RequestStatus        string     `db:"request_status" json:"request_status"`
 	LastMessageID        *string    `db:"last_message_id" json:"last_message_id,omitempty"`
 	LastMessageAt        *time.Time `db:"last_message_at" json:"last_message_at,omitempty"`
 	LastMessagePreview   *string    `db:"last_message_preview" json:"last_message_preview,omitempty"`
@@ -24,10 +29,6 @@ type Conversation struct {
 	OtherUsername        *string    `db:"other_username" json:"other_username,omitempty"`
 	OtherDisplayName     *string    `db:"other_display_name" json:"other_display_name,omitempty"`
 	OtherAvatarURL       *string    `db:"other_avatar_url" json:"other_avatar_url,omitempty"`
-	// OtherReputationScore is the conversation partner's lifetime received Gold
-	// Seals (whole seals). OtherRankTier is the derived tier string. Both are
-	// populated at read time so callers don't need a follow-up /me/rank
-	// request per conversation row.
 	OtherReputationScore *int       `db:"other_reputation_score" json:"other_reputation_score,omitempty"`
 	OtherRankTier        *string    `db:"-" json:"other_rank_tier,omitempty"`
 	LastReadAt           *time.Time `db:"last_read_at" json:"last_read_at,omitempty"`
@@ -41,6 +42,19 @@ type Conversation struct {
 	UpdatedAt            time.Time  `db:"updated_at" json:"updated_at"`
 }
 
+type ReplyPreview struct {
+	ID         string  `json:"id"`
+	Body       string  `json:"body"`
+	SenderID   *string `json:"sender_id,omitempty"`
+	SenderName string  `json:"sender_name"`
+}
+
+type ForwardedUser struct {
+	ID          string `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"display_name"`
+}
+
 type MessageMedia struct {
 	Type         string `json:"type"`
 	URL          string `json:"url"`
@@ -48,15 +62,17 @@ type MessageMedia struct {
 }
 
 type Message struct {
-	ID                string         `db:"id" json:"id"`
-	ConversationID    string         `db:"conversation_id" json:"conversation_id"`
-	SenderID          *string        `db:"sender_id" json:"sender_id,omitempty"`
-	MessageType       string         `db:"message_type" json:"message_type"`
-	Body              string         `db:"body" json:"body"`
+	ID                  string         `db:"id" json:"id"`
+	ConversationID      string         `db:"conversation_id" json:"conversation_id"`
+	SenderID            *string        `db:"sender_id" json:"sender_id,omitempty"`
+	MessageType         string         `db:"message_type" json:"message_type"`
+	Body                string         `db:"body" json:"body"`
 	MediaJSON           []byte         `db:"media" json:"-"`
 	Media               []MessageMedia `json:"media"`
 	ReplyToMessageID    *string        `db:"reply_to_message_id" json:"reply_to_message_id,omitempty"`
+	ReplyToMessage      *ReplyPreview  `db:"-" json:"reply_to_message,omitempty"`
 	ForwardedFromUserID *string        `db:"forwarded_from_user_id" json:"forwarded_from_user_id,omitempty"`
+	ForwardedFromUser   *ForwardedUser `db:"-" json:"forwarded_from_user,omitempty"`
 	DeletedAt           *time.Time     `db:"deleted_at" json:"deleted_at,omitempty"`
 	DeletedByUserID     *string        `db:"deleted_by_user_id" json:"deleted_by_user_id,omitempty"`
 	CreatedAt           time.Time      `db:"created_at" json:"created_at"`
@@ -65,6 +81,7 @@ type Message struct {
 
 type CreateDirectConversationRequest struct {
 	RecipientID string `json:"recipient_id"`
+	AsRequest   bool   `json:"as_request"`
 }
 
 type SendMessageRequest struct {
@@ -134,6 +151,7 @@ type RealtimeEnvelope struct {
 	MessageID      string     `json:"message_id,omitempty"`
 	ReadByUserID   string     `json:"read_by_user_id,omitempty"`
 	ReadAt         *time.Time `json:"read_at,omitempty"`
+	RequestStatus  string     `json:"request_status,omitempty"`
 }
 
 type wsClientCommand struct {

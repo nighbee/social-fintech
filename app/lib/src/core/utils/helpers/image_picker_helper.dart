@@ -173,6 +173,49 @@ class ImagePickerHelper {
     );
   }
 
+  static Future<void> pickCameraMedia({
+    required Function(Uint8List bytes, String fileName) onMediaSelected,
+    Function(String message)? onError,
+    int imageQuality = 80,
+    double? maxWidth = 1280,
+    double? maxHeight = 1280,
+  }) async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      await _pickImage(
+        picker,
+        ImageSource.camera,
+        onMediaSelected,
+        imageQuality,
+        maxWidth,
+        maxHeight,
+      );
+    } catch (e) {
+      debugPrint('Error picking camera media: $e');
+      onError?.call('Failed to open camera. Please try again.');
+    }
+  }
+
+  static Future<void> pickGalleryMedia({
+    required Function(Uint8List bytes, String fileName) onMediaSelected,
+    Function(String message)? onError,
+    int imageQuality = 80,
+    double? maxWidth = 1280,
+    double? maxHeight = 1280,
+    VideoQuality videoQuality = VideoQuality.Res1280x720Quality,
+  }) async {
+    final ImagePicker picker = ImagePicker();
+    await _pickMultipleMedia(
+      picker,
+      onMediaSelected,
+      imageQuality: imageQuality,
+      maxWidth: maxWidth,
+      maxHeight: maxHeight,
+      videoQuality: videoQuality,
+      onError: onError,
+    );
+  }
+
   static Future<void> showImagePickerFile({
     required BuildContext context,
     required Function(XFile file) onImageSelected,

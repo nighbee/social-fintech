@@ -136,6 +136,7 @@ func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope
 			WeeklyScore:   int(m.score),
 			HonorScore:    p.GoldSeals,
 			RankName:      rankDef.Name,
+			RankQuality:   rankDef.Quality,
 			RankLevel:     level,
 			IsCurrentUser: m.userID == userID,
 		})
@@ -159,6 +160,7 @@ func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope
 			WeeklyScore:   int(currentUserScore),
 			HonorScore:    p.GoldSeals,
 			RankName:      rankDef.Name,
+			RankQuality:   rankDef.Quality,
 			RankLevel:     level,
 			IsCurrentUser: true,
 		})
@@ -168,15 +170,16 @@ func (s *Service) GetLeaderboard(ctx context.Context, userID string, scope Scope
 }
 
 type MyRankResponse struct {
-	Scope       Scope   `json:"scope"`
-	Year        int     `json:"year"`
-	Week        int     `json:"week"`
-	Rank        int64   `json:"rank"`
-	WeeklyScore float64 `json:"weekly_score"`
-	HonorScore  int     `json:"honor_score"`
-	RankName    string  `json:"rank_name"`
-	RankLevel   string  `json:"rank_level,omitempty"`
-	TotalInScope int64  `json:"total_in_scope"`
+	Scope        Scope   `json:"scope"`
+	Year         int     `json:"year"`
+	Week         int     `json:"week"`
+	Rank         int64   `json:"rank"`
+	WeeklyScore  float64 `json:"weekly_score"`
+	HonorScore   int     `json:"honor_score"`
+	RankName     string  `json:"rank_name"`
+	RankQuality  string  `json:"rank_quality"`
+	RankLevel    string  `json:"rank_level,omitempty"`
+	TotalInScope int64   `json:"total_in_scope"`
 }
 
 func (s *Service) GetMyRank(ctx context.Context, userID string, scope Scope) (*MyRankResponse, error) {
@@ -248,6 +251,7 @@ func (s *Service) GetMyRank(ctx context.Context, userID string, scope Scope) (*M
 		WeeklyScore:  score,
 		HonorScore:   p.GoldSeals,
 		RankName:     rankDef.Name,
+		RankQuality:  rankDef.Quality,
 		RankLevel:    level,
 		TotalInScope: total,
 	}, nil

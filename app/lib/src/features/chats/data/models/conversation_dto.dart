@@ -64,6 +64,8 @@ class ConversationDto {
     this.pinnedMessages = const <PinnedMessageDto>[],
     this.isMuted = false,
     this.isPinned = false,
+    this.isRequest = false,
+    this.requestStatus = '',
     this.clearedAt,
     required this.createdAt,
     required this.updatedAt,
@@ -90,6 +92,8 @@ class ConversationDto {
   final List<PinnedMessageDto> pinnedMessages;
   final bool isMuted;
   final bool isPinned;
+  final bool isRequest;
+  final String requestStatus;
   final DateTime? clearedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -124,12 +128,27 @@ class ConversationDto {
       pinnedMessages: pins,
       isMuted: json['is_muted'] as bool? ?? false,
       isPinned: json['is_pinned'] as bool? ?? false,
+      isRequest: _parseRequestFlag(json),
+      requestStatus:
+          (json['request_status'] ?? json['conversation_status'] ?? '')
+              .toString(),
       clearedAt: _parseDate(json['cleared_at']),
       createdAt: _parseDate(json['created_at']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
       updatedAt: _parseDate(json['updated_at']) ??
           DateTime.fromMillisecondsSinceEpoch(0),
     );
+  }
+
+  static bool _parseRequestFlag(Map<String, dynamic> json) {
+    final explicit = json['is_request'] ?? json['is_chat_request'];
+    if (explicit is bool) return explicit;
+
+    final status = (json['request_status'] ?? json['conversation_status'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    return status == 'pending' || status == 'requested' || status == 'request';
   }
 
   static DateTime? _parseDate(Object? value) {

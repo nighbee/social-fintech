@@ -39,6 +39,11 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
             name: RouteNames.rangs,
             builder: (context, state) => const RangsPage(),
           ),
+          GoRoute(
+            path: 'leaderboard_admin',
+            name: RouteNames.leaderboardAdmin,
+            builder: (context, state) => const LeaderboardAdminPage(),
+          ),
         ],
       ),
 
@@ -318,6 +323,24 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                   return NoTransitionPage(child: ProfilePage());
                 },
                 routes: [
+                  GoRoute(
+                    path: 'stats',
+                    name: RouteNames.profileStats,
+                    parentNavigatorKey: rootNavigatorKey,
+                    redirect: AuthGuard,
+                    builder: (context, state) {
+                      final extra = state.extra;
+                      final map = extra is Map<String, dynamic>
+                          ? extra
+                          : <String, dynamic>{};
+                      return UserStatsPage(
+                        userId: map['userId'] as String?,
+                        isCurrentUser: map['isCurrentUser'] as bool? ?? true,
+                        rankTier: map['rankTier'] as String? ?? '',
+                        reputationScore: map['reputationScore'] as int? ?? 0,
+                      );
+                    },
+                  ),
                   GoRoute(
                     path: 'settings',
                     name: RouteNames.settings,

@@ -3,28 +3,148 @@ package chat
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"time"
 
 	"github.com/brightbund-backend/internal/modules/auth"
+	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/websocket/v2"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
-type Handler struct {
-	service  *Service
-	hub      *Hub
-	jwt      *auth.JWTManager
-	authRepo auth.Repository
+// ObjectStorage is the minimal interface the chat package needs for media uploads.
+type ObjectStorage interface {
+	Upload(ctx context.Context, bucketName, objectName string, reader io.Reader, size int64, contentType string) (string, error)
+	Delete(ctx context.Context, bucketName, objectName string) error
 }
 
-func NewHandler(service *Service, hub *Hub, jwt *auth.JWTManager, authRepo auth.Repository) *Handler {
+const (
+	chatMaxImageBytes = 10 * 1024 * 1024  // 10 MB
+	chatMaxVideoBytes = 100 * 1024 * 1024 // 100 MB
+)
+
+var chatAllowedImageMimes = map[string]bool{
+	"image/jpeg": true,
+	"image/png":  true,
+	"image/webp": true,
+	"image/gif":  true,
+}
+
+var chatAllowedVideoMimes = map[string]bool{
+	"video/mp4":       true,
+	"video/webm":      true,
+	"video/quicktime": true,
+}
+
+type Handler struct {
+	service   *Service
+	hub       *Hub
+	jwt       *auth.JWTManager
+	authRepo  auth.Repository
+	storage   ObjectStorage
+	bucket    string
+}
+
+func NewHandler(service *Service, hub *Hub, jwt *auth.JWTManager, authRepo auth.Repository, storage ObjectStorage, bucket string) *Handler {
 	return &Handler{
 		service:  service,
 		hub:      hub,
 		jwt:      jwt,
 		authRepo: authRepo,
+		storage:  storage,
+		bucket:   bucket,
 	}
+}
+
+// UploadMedia godoc
+// @Summary Upload chat media
+// @Description Uploads an image or video for use in chat messages. Returns URL and type for the MessageMedia object.
+// @Tags Chat
+// @Accept multipart/form-data
+// @Produce json
+// @Security Bearer
+// @Param file formData file true "Image (JPEG/PNG/WebP/GIF ≤10 MB) or video (MP4/WebM/MOV ≤100 MB)"
+// @Success 201 {object} map[string]string "url and type"
+// @Failure 400 {object} map[string]string "Invalid file"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 501 {object} map[string]string "Storage not configured"
+// @Router /chats/media/upload [post]
+func (h *Handler) UploadMedia(c *fiber.Ctx) error {
+	_, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	if h.storage == nil {
+		return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{"error": "storage_not_configured"})
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_file"})
+	}
+
+	contentType := file.Header.Get("Content-Type")
+
+	var mediaType string
+	var maxSize int64
+	if strings.HasPrefix(contentType, "image/") {
+		if !chatAllowedImageMimes[contentType] {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":   "invalid_image_type",
+				"message": "Supported: JPEG, PNG, WebP, GIF",
+			})
+		}
+		mediaType = "image"
+		maxSize = chatMaxImageBytes
+	} else if strings.HasPrefix(contentType, "video/") {
+		if !chatAllowedVideoMimes[contentType] {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error":   "invalid_video_type",
+				"message": "Supported: MP4, WebM, MOV",
+			})
+		}
+		mediaType = "video"
+		maxSize = chatMaxVideoBytes
+	} else {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   "unsupported_media_type",
+			"message": "Only image/* or video/* allowed",
+		})
+	}
+
+	if file.Size > maxSize {
+		return c.Status(fiber.StatusRequestEntityTooLarge).JSON(fiber.Map{
+			"error":    "file_too_large",
+			"max_bytes": maxSize,
+		})
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "cannot_read_file"})
+	}
+	defer src.Close()
+
+	ext := ""
+	if idx := strings.LastIndex(file.Filename, "."); idx != -1 {
+		ext = file.Filename[idx:]
+	}
+	objectName := "chat/" + uuid.NewString() + ext
+
+	url, err := h.storage.Upload(c.Context(), h.bucket, objectName, src, file.Size, contentType)
+	if err != nil {
+		logger.Error("chat media upload failed", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "upload_failed"})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"url":  url,
+		"type": mediaType,
+	})
 }
 
 // OpenDirectConversation godoc
@@ -51,7 +171,7 @@ func (h *Handler) OpenDirectConversation(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
 	}
 
-	conversation, err := h.service.OpenDirectConversation(c.Context(), userID, strings.TrimSpace(req.RecipientID))
+	conversation, err := h.service.OpenDirectConversation(c.Context(), userID, strings.TrimSpace(req.RecipientID), req.AsRequest)
 	if err != nil {
 		status := mapChatErrToHTTPStatus(err)
 		return c.Status(status).JSON(fiber.Map{"error": err.Error()})
@@ -491,6 +611,54 @@ func (h *Handler) DeleteConversation(c *fiber.Ctx) error {
 	}
 
 	if err := h.service.DeleteConversation(c.Context(), userID, conversationID, req.ForBoth); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// AcceptChatRequest godoc
+// @Summary Accept a chat request
+// @Description Accepts a pending chat request. Only the recipient (non-creator) can accept.
+// @Tags Chat
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 409 {object} map[string]string "Request already handled"
+// @Router /chats/conversations/{conversation_id}/accept [post]
+func (h *Handler) AcceptChatRequest(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	if err := h.service.AcceptChatRequest(c.Context(), userID, conversationID); err != nil {
+		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// DeclineChatRequest godoc
+// @Summary Decline a chat request
+// @Description Declines a pending chat request. Only the recipient (non-creator) can decline.
+// @Tags Chat
+// @Produce json
+// @Security Bearer
+// @Param conversation_id path string true "Conversation ID"
+// @Success 200 {object} map[string]string "status: ok"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 409 {object} map[string]string "Request already handled"
+// @Router /chats/conversations/{conversation_id}/decline [post]
+func (h *Handler) DeclineChatRequest(c *fiber.Ctx) error {
+	userID, ok := userIDFromContext(c)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	conversationID := strings.TrimSpace(c.Params("conversation_id"))
+	if err := h.service.DeclineChatRequest(c.Context(), userID, conversationID); err != nil {
 		return c.Status(mapChatErrToHTTPStatus(err)).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"status": "ok"})

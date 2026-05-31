@@ -64,6 +64,7 @@ import 'package:app/src/features/chats/presentation/pages/chat_select_message_pa
 import 'package:app/src/features/chats/presentation/pages/chats_page.dart';
 import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/developer_features/presentation/pages/developer_features_page.dart';
+import 'package:app/src/features/developer_features/presentation/pages/leaderboard_admin_page.dart';
 import 'package:app/src/features/developer_features/presentation/pages/widget_book_page.dart';
 import 'package:app/src/features/profile/presentation/pages/ranks_page.dart';
 import 'package:app/src/core/service/storage/secure_storage/secure_storage_service_impl.dart';
@@ -102,4 +103,3 @@ GoRouter routerProvider(AppFlavor flavor) {
   );
   return goRouter;
 }
-

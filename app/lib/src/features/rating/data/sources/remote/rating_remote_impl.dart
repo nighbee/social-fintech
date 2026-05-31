@@ -68,8 +68,12 @@ class RatingRemoteImpl implements IRatingRemote {
       'name': (displayName?.isNotEmpty ?? false)
           ? displayName
           : ((username?.isNotEmpty ?? false) ? username : 'Unknown'),
-      'honor': item['honor_score'] ?? item['honor'] ?? 0,
-      'rank_tier': item['rank_quality'] ?? item['rank_tier'] ?? '',
+      'honor':
+          item['weekly_score'] ?? item['honor'] ?? item['honor_score'] ?? 0,
+      'rank_tier': item['rank_quality'] ??
+          item['quality_name'] ??
+          item['rank_tier'] ??
+          '',
       'rank_grade': item['rank_level'] ?? item['rank_grade'] ?? '',
     };
   }

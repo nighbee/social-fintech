@@ -81,6 +81,22 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
     );
   }
 
+  void _openUserStats({
+    required String userId,
+    required String rankTier,
+    required int reputationScore,
+  }) {
+    context.pushNamed(
+      RouteNames.profileStats,
+      extra: <String, dynamic>{
+        'userId': userId,
+        'isCurrentUser': true,
+        'rankTier': rankTier,
+        'reputationScore': reputationScore,
+      },
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -322,6 +338,11 @@ class _ProfilePageContentState extends State<_ProfilePageContent> {
                                 region: profile.region,
                                 rankTier: profile.rankTier,
                                 reputationScore: profile.reputationScore,
+                                onStatsTap: () => _openUserStats(
+                                  userId: userIdForCard,
+                                  rankTier: profile.rankTier,
+                                  reputationScore: profile.reputationScore,
+                                ),
                               ),
                             ),
                           ),

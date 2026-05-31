@@ -8,6 +8,7 @@ import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/models/ally_profile_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_search_result_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_dto.dart';
+import 'package:app/src/features/profile/data/models/profile_stats_dto.dart';
 import 'package:app/src/features/profile/data/models/public_profile_dto.dart';
 import 'package:app/src/features/profile/data/models/relationship_status_dto.dart';
 import 'package:app/src/features/profile/data/sources/remote/i_profile_remote.dart';
@@ -61,6 +62,42 @@ class ProfileRemoteImpl implements IProfileRemote {
 
       return response.fold((error) => Left(error), (result) {
         final dto = PublicProfileDto.fromJson(
+          result.data as Map<String, dynamic>,
+        );
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ProfileStatsDto>> getMyStats() async {
+    try {
+      final response = await _restClient.get(EndPoints.profileMeStats);
+
+      return response.fold((error) => Left(error), (result) {
+        final dto = ProfileStatsDto.fromJson(
+          result.data as Map<String, dynamic>,
+        );
+        return Right(dto);
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, ProfileStatsDto>> getPublicStats(
+    UserIdRequest request,
+  ) async {
+    try {
+      final response = await _restClient.get(
+        EndPoints.profileStatsById(request.userId),
+      );
+
+      return response.fold((error) => Left(error), (result) {
+        final dto = ProfileStatsDto.fromJson(
           result.data as Map<String, dynamic>,
         );
         return Right(dto);

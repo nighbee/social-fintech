@@ -33,6 +33,7 @@ class ProfileHeaderCard extends StatelessWidget {
     this.onFollow,
     this.onUnfollow,
     this.onUnblock,
+    this.onStatsTap,
     super.key,
   });
 
@@ -55,6 +56,7 @@ class ProfileHeaderCard extends StatelessWidget {
   final VoidCallback? onFollow;
   final VoidCallback? onUnfollow;
   final VoidCallback? onUnblock;
+  final VoidCallback? onStatsTap;
 
   @override
   Widget build(BuildContext context) {
@@ -146,41 +148,45 @@ class ProfileHeaderCard extends StatelessWidget {
                         ),
                   Gap(horizontalGap),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: TextStyles.titleHeadline.copyWith(
-                            fontFamily: 'CanelaDeckTrial',
-                            fontWeight: FontWeight.w400,
-                            color: const Color(0xFFCACACA),
-                            fontSize: 18,
-                            height: 16 / 18,
+                    child: SizedBox(
+                      height: isCompact ? null : avatarSize,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyles.titleHeadline.copyWith(
+                              fontFamily: 'CanelaDeckTrial',
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFFCACACA),
+                              fontSize: 18,
+                              height: 16 / 18,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Gap(6),
-                        ProfileRankMetaLine(rankTier: rankText),
-                        const Gap(4),
-                        SizedBox(
-                          width: double.infinity,
-                          height: _kProfileBioSlotHeight,
-                          child: hasBio
-                              ? Align(
-                                  alignment: Alignment.topLeft,
-                                  child: ProfileExpandableBio(text: bio),
-                                )
-                              : null,
-                        ),
-                        const Gap(8),
-                        ProfileStatsRow(
-                          goldenSeals: reputationScore,
-                          statsLabel:
-                              isPublicProfile ? 'User Stats' : 'Your Stats',
-                        ),
-                      ],
+                          const Gap(6),
+                          ProfileRankMetaLine(rankTier: rankText),
+                          const Gap(4),
+                          SizedBox(
+                            width: double.infinity,
+                            height: _kProfileBioSlotHeight,
+                            child: hasBio
+                                ? Align(
+                                    alignment: Alignment.topLeft,
+                                    child: ProfileExpandableBio(text: bio),
+                                  )
+                                : null,
+                          ),
+                          if (isCompact) const Gap(8) else const Spacer(),
+                          ProfileStatsRow(
+                            goldenSeals: reputationScore,
+                            statsLabel:
+                                isPublicProfile ? 'User Stats' : 'Your Stats',
+                            onTap: onStatsTap,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

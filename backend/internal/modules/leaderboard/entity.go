@@ -26,6 +26,7 @@ type Entry struct {
 	WeeklyScore   int    `json:"weekly_score"`
 	HonorScore    int    `json:"honor_score"`
 	RankName      string `json:"rank_name"`
+	RankQuality   string `json:"rank_quality"`
 	RankLevel     string `json:"rank_level,omitempty"`
 	IsCurrentUser bool   `json:"is_current_user"`
 }
