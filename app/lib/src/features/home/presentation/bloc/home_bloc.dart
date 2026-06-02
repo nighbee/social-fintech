@@ -91,7 +91,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
       loadNotifications: () =>
           _loadNotifications(event as _LoadNotifications, emit),
       loadFeedState: () => _loadFeedState(event as _LoadFeedState, emit),
-        syncFeedState: (_, __, ___, ____) =>
+      syncFeedState: (_, __, ___, ____) =>
           _syncFeedState(event as _SyncFeedState, emit),
       createFeedPost: (_, __) =>
           _createFeedPost(event as _CreateFeedPost, emit),
@@ -922,6 +922,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     result.fold(
       (_) {},
       (createdPost) {
+        final ownCreatedPost = createdPost.copyWith(isOwnPost: true);
         final mergedLocalMediaPayloads = <LocalMediaPayload>[
           ..._viewModel.localMediaPayloads,
         ];
@@ -937,7 +938,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
           lastAction: const StatusResponseEntity(status: 'success'),
           localMediaPayloads: mergedLocalMediaPayloads,
           feed: _viewModel.feed.copyWith(
-            items: [createdPost, ..._viewModel.feed.items],
+            items: [ownCreatedPost, ..._viewModel.feed.items],
           ),
         );
       },
@@ -1317,15 +1318,21 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
     final incomingAvatar = incoming.author.profilePicUrl.trim();
 
     final mergedAuthor = incoming.author.copyWith(
-      id: incoming.author.id.trim().isEmpty ? current.author.id : incoming.author.id,
+      id: incoming.author.id.trim().isEmpty
+          ? current.author.id
+          : incoming.author.id,
       username: incoming.author.username.trim().isEmpty
           ? current.author.username
           : incoming.author.username,
       fullName: incoming.author.fullName.trim().isEmpty
           ? current.author.fullName
           : incoming.author.fullName,
-      profilePicUrl: incomingAvatar.isEmpty ? current.author.profilePicUrl : incoming.author.profilePicUrl,
-      rank: incoming.author.rank.trim().isEmpty ? current.author.rank : incoming.author.rank,
+      profilePicUrl: incomingAvatar.isEmpty
+          ? current.author.profilePicUrl
+          : incoming.author.profilePicUrl,
+      rank: incoming.author.rank.trim().isEmpty
+          ? current.author.rank
+          : incoming.author.rank,
       rankSubLevel: incoming.author.rankSubLevel.trim().isEmpty
           ? current.author.rankSubLevel
           : incoming.author.rankSubLevel,

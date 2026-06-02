@@ -12,66 +12,70 @@ mixin ShowPublicationOwnerActionsBottomSheet {
     final result = await context.showRoundedModalBottomSheet<bool>(
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.34,
-      child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020),
-        backgroundOpacity: 0.2,
-        enableGlassEffect: true,
-        enableDropShadow: false,
-        showDivider: false,
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.34),
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-                const Gap(18),
-                Text(
-                  'Delete post?',
-                  style: TextStyles.titleMain.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const Gap(10),
-                Text(
-                  'This post will be removed from your profile and feed.',
-                  textAlign: TextAlign.center,
-                  style: TextStyles.bodyMain.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const Gap(18),
-                Row(
+      child: Builder(
+        builder: (sheetContext) {
+          return ActionBottomSheet(
+            backgroundColor: const Color(0xFF202020),
+            backgroundOpacity: 0.2,
+            enableGlassEffect: true,
+            enableDropShadow: false,
+            showDivider: false,
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: _SheetButton(
-                        label: 'Cancel',
-                        onTap: () => Navigator.of(context).pop(false),
+                    Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.34),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const Gap(18),
+                    Text(
+                      'Delete post?',
+                      style: TextStyles.titleMain.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const Gap(10),
-                    Expanded(
-                      child: _SheetButton(
-                        label: 'Delete',
-                        isDestructive: true,
-                        onTap: () => Navigator.of(context).pop(true),
+                    Text(
+                      'This post will be removed from your profile and feed.',
+                      textAlign: TextAlign.center,
+                      style: TextStyles.bodyMain.copyWith(
+                        color: AppColors.textSecondary,
                       ),
+                    ),
+                    const Gap(18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _SheetButton(
+                            label: 'Cancel',
+                            onTap: () => Navigator.of(sheetContext).pop(false),
+                          ),
+                        ),
+                        const Gap(10),
+                        Expanded(
+                          child: _SheetButton(
+                            label: 'Delete',
+                            isDestructive: true,
+                            onTap: () => Navigator.of(sheetContext).pop(true),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
     return result == true;
@@ -82,114 +86,116 @@ mixin ShowPublicationOwnerActionsBottomSheet {
     required HomeBloc bloc,
     required PostResponseEntity post,
     required VoidCallback onPostDeleted,
+    VoidCallback? onPostUpdated,
   }) async {
     await context.showRoundedModalBottomSheet<void>(
       backgroundColor: Colors.transparent,
       maxHeightFactor: 0.42,
-      child: ActionBottomSheet(
-        backgroundColor: const Color(0xFF202020),
-        backgroundOpacity: 0.1,
-        enableGlassEffect: true,
-        enableDropShadow: false,
-        showDivider: false,
-        child: Stack(
-          children: [
-            const Positioned.fill(child: _OwnerSheetVisualLayer()),
-            SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Gap(12),
-                  Container(
-                    width: 42,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.34),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
-                  ),
-                  const Gap(12),
-                  _OwnerActionTile(
-                    label: 'Delete',
-                    isDestructive: true,
-                    onTap: () async {
-                      final messenger = ScaffoldMessenger.maybeOf(context);
-                      final sheetNavigator = Navigator.of(context);
+      child: Builder(
+        builder: (sheetContext) {
+          return ActionBottomSheet(
+            backgroundColor: const Color(0xFF202020),
+            backgroundOpacity: 0.1,
+            enableGlassEffect: true,
+            enableDropShadow: false,
+            showDivider: false,
+            child: Stack(
+              children: [
+                const Positioned.fill(child: _OwnerSheetVisualLayer()),
+                SafeArea(
+                  top: false,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Gap(12),
+                      Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.34),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const Gap(12),
+                      _OwnerActionTile(
+                        label: 'Delete',
+                        isDestructive: true,
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.maybeOf(context);
 
-                      if (sheetNavigator.canPop()) {
-                        sheetNavigator.pop();
-                      }
-                      final confirmed = await _showDeleteConfirmSheet(context);
-                      if (confirmed != true) return;
+                          await Navigator.of(sheetContext).maybePop();
+                          if (!context.mounted) return;
+                          final confirmed =
+                              await _showDeleteConfirmSheet(context);
+                          if (confirmed != true) return;
 
-                      final result = await bloc.deletePostDirect(post.postId);
-                      result.fold(
-                        (e) {
-                          messenger?.showSnackBar(
-                            SnackBar(content: Text(e.message)),
+                          final result =
+                              await bloc.deletePostDirect(post.postId);
+                          result.fold(
+                            (e) {
+                              messenger?.showSnackBar(
+                                SnackBar(content: Text(e.message)),
+                              );
+                            },
+                            (_) => onPostDeleted(),
                           );
                         },
-                        (_) => onPostDeleted(),
-                      );
-                    },
-                  ),
-                  _OwnerActionTile(
-                    label:
-                        post.hideLikesCount ? 'Show like count' : 'Hide like count',
-                    onTap: () async {
-                      final messenger = ScaffoldMessenger.maybeOf(context);
-                      final sheetNavigator = Navigator.of(context);
-                      if (sheetNavigator.canPop()) {
-                        sheetNavigator.pop();
-                      }
-                      final next = !post.hideLikesCount;
-                      final result = await bloc.updatePostDirect(
-                        post.postId,
-                        UpdatePostRequest(hideLikesCount: next),
-                      );
-                      result.fold(
-                        (e) {
-                          messenger?.showSnackBar(
-                            SnackBar(content: Text(e.message)),
+                      ),
+                      _OwnerActionTile(
+                        label: post.hideLikesCount
+                            ? 'Show like count'
+                            : 'Hide like count',
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.maybeOf(context);
+                          await Navigator.of(sheetContext).maybePop();
+                          final next = !post.hideLikesCount;
+                          final result = await bloc.updatePostDirect(
+                            post.postId,
+                            UpdatePostRequest(hideLikesCount: next),
+                          );
+                          result.fold(
+                            (e) {
+                              messenger?.showSnackBar(
+                                SnackBar(content: Text(e.message)),
+                              );
+                            },
+                            (_) => onPostUpdated?.call(),
                           );
                         },
-                        (_) {},
-                      );
-                    },
-                  ),
-                  _OwnerActionTile(
-                    label: post.permissions.canComment
-                        ? 'Turn off commenting'
-                        : 'Allow comments',
-                    onTap: () async {
-                      final messenger = ScaffoldMessenger.maybeOf(context);
-                      final sheetNavigator = Navigator.of(context);
-                      if (sheetNavigator.canPop()) {
-                        sheetNavigator.pop();
-                      }
-                      final nextPermission =
-                          post.permissions.canComment ? 'NO_ONE' : 'ANYONE';
-                      final result = await bloc.updatePostDirect(
-                        post.postId,
-                        UpdatePostRequest(commentPermission: nextPermission),
-                      );
-                      result.fold(
-                        (e) {
-                          messenger?.showSnackBar(
-                            SnackBar(content: Text(e.message)),
+                      ),
+                      _OwnerActionTile(
+                        label: post.permissions.canComment
+                            ? 'Turn off commenting'
+                            : 'Allow comments',
+                        onTap: () async {
+                          final messenger = ScaffoldMessenger.maybeOf(context);
+                          await Navigator.of(sheetContext).maybePop();
+                          final nextPermission =
+                              post.permissions.canComment ? 'NO_ONE' : 'ANYONE';
+                          final result = await bloc.updatePostDirect(
+                            post.postId,
+                            UpdatePostRequest(
+                              commentPermission: nextPermission,
+                            ),
+                          );
+                          result.fold(
+                            (e) {
+                              messenger?.showSnackBar(
+                                SnackBar(content: Text(e.message)),
+                              );
+                            },
+                            (_) => onPostUpdated?.call(),
                           );
                         },
-                        (_) {},
-                      );
-                    },
+                      ),
+                      const Gap(14),
+                    ],
                   ),
-                  const Gap(14),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

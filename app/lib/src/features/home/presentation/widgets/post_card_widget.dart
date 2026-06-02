@@ -13,7 +13,9 @@ import 'package:app/src/core/widgets/media_viewer_page.dart';
 import 'package:app/src/features/home/domain/entities/media_attachment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_response_entity.dart';
+import 'package:app/src/features/home/domain/requests/feed_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
+import 'package:app/src/features/home/presentation/mixins/show_publication_owner_actions_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_comments_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_silver_honor_bottom_sheet.dart';
 import 'package:app/src/features/home/presentation/mixins/show_post_report_bottom_sheet.dart';
@@ -22,10 +24,12 @@ class PostCardWidget extends StatelessWidget
     with
         ShowPostCommentsBottomSheet,
         ShowPostReportBottomSheet,
+        ShowPublicationOwnerActionsBottomSheet,
         ShowPostSilverHonorBottomSheet {
   final PostResponseEntity post;
   final HomeBloc bloc;
   final VoidCallback? onReported;
+  final VoidCallback? onPostDeleted;
   final VoidCallback? onMoreTap;
   final VoidCallback? onAuthorTap;
 
@@ -34,6 +38,7 @@ class PostCardWidget extends StatelessWidget
     required this.post,
     required this.bloc,
     this.onReported,
+    this.onPostDeleted,
     this.onMoreTap,
     this.onAuthorTap,
   });
@@ -150,6 +155,25 @@ class PostCardWidget extends StatelessWidget
                   final customMoreTap = onMoreTap;
                   if (customMoreTap != null) {
                     customMoreTap();
+                    return;
+                  }
+                  if (post.isOwnPost) {
+                    showPublicationOwnerActionsBottomSheet(
+                      context,
+                      bloc: homeBloc,
+                      post: post,
+                      onPostDeleted: onPostDeleted ??
+                          () => homeBloc.add(
+                                const HomeEvent.loadFeed(
+                                  request: FeedRequest(),
+                                ),
+                              ),
+                      onPostUpdated: () => homeBloc.add(
+                        const HomeEvent.loadFeed(
+                          request: FeedRequest(),
+                        ),
+                      ),
+                    );
                     return;
                   }
                   showPostReportBottomSheet(

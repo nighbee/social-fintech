@@ -505,7 +505,7 @@ class _SeasonStatsCard extends StatelessWidget {
                 child: _SeasonMetric(
                   label: 'Gained gold honor',
                   value: season.gainedGoldHonor,
-                  iconColor: const Color(0xFFC8A66C),
+                  iconAssetPath: _goldHonorAssetPath,
                 ),
               ),
               Container(
@@ -517,7 +517,6 @@ class _SeasonStatsCard extends StatelessWidget {
                 child: _SeasonMetric(
                   label: 'Given silver honor',
                   value: season.givenSilverHonor,
-                  iconColor: const Color(0xFFA8ACB7),
                 ),
               ),
             ],
@@ -748,12 +747,12 @@ class _SeasonMetric extends StatelessWidget {
   const _SeasonMetric({
     required this.label,
     required this.value,
-    required this.iconColor,
+    this.iconAssetPath,
   });
 
   final String label;
   final int value;
-  final Color iconColor;
+  final String? iconAssetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -784,11 +783,15 @@ class _SeasonMetric extends StatelessWidget {
                 ),
               ),
               const Gap(6),
-              Assets.icons.silverCoin.svg(
-                width: 25,
-                height: 25,
-                colorFilter: ColorFilter.mode(iconColor, BlendMode.srcIn),
-              ),
+              if (iconAssetPath == null)
+                Assets.icons.silverCoin.svg(width: 25, height: 25)
+              else
+                Image.asset(
+                  iconAssetPath!,
+                  width: 25,
+                  height: 25,
+                  fit: BoxFit.contain,
+                ),
             ],
           ),
         ],
@@ -808,6 +811,47 @@ class _MedalArt extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final assetPath = medal.assetPath;
+    if (assetPath != null) {
+      final image = Image.asset(
+        assetPath,
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+      );
+
+      if (medal.isUnlocked) return image;
+
+      return Opacity(
+        opacity: 0.44,
+        child: ColorFiltered(
+          colorFilter: const ColorFilter.matrix(<double>[
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0.2126,
+            0.7152,
+            0.0722,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: image,
+        ),
+      );
+    }
+
     final primary =
         medal.isUnlocked ? medal.primaryColor : const Color(0xFF666769);
     final secondary =
@@ -1144,6 +1188,7 @@ class UserStatsMedalItem {
     required this.isUnlocked,
     required this.lockedDescription,
     required this.unlockedDescription,
+    this.assetPath,
     this.earnedOnLabel,
   });
 
@@ -1155,8 +1200,15 @@ class UserStatsMedalItem {
   final bool isUnlocked;
   final String lockedDescription;
   final String unlockedDescription;
+  final String? assetPath;
   final String? earnedOnLabel;
 }
+
+const String _founderMedalAssetPath = 'assets/images/Emerald_medal.png';
+const String _districtCrownMedalAssetPath = 'assets/images/Medal.png';
+const String _clarityMasterMedalAssetPath = 'assets/images/Rubin_medal.png';
+const String _pillarMedalAssetPath = 'assets/images/Topaz_medal.png';
+const String _goldHonorAssetPath = 'assets/images/golden_honor.png';
 
 class UserStatsSeasonItem {
   const UserStatsSeasonItem({
@@ -1252,6 +1304,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Issued to the first 3000 members who laid the foundation.',
       unlockedDescription:
           'You are now one of the first 3000 founding members who laid the foundation. Thank you!',
+      assetPath: _founderMedalAssetPath,
       earnedOnLabel: 'Earned on Oct 15, 2023',
     ),
     UserStatsMedalItem(
@@ -1265,6 +1318,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Awarded to people who consistently stand out in their district.',
       unlockedDescription:
           'Your local impact is visible now. You have earned the District Crown.',
+      assetPath: _districtCrownMedalAssetPath,
       earnedOnLabel: 'Earned this season',
     ),
     UserStatsMedalItem(
@@ -1278,6 +1332,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Reserved for members whose recognition remains steady and clear.',
       unlockedDescription:
           'Your recognition pattern is consistent and respected. Clarity Master is now yours.',
+      assetPath: _clarityMasterMedalAssetPath,
       earnedOnLabel: 'Earned this season',
     ),
     UserStatsMedalItem(
@@ -1291,6 +1346,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Issued to members whose support of others becomes a lasting community signal.',
       unlockedDescription:
           'You have become a pillar others rely on. The community now recognizes your impact.',
+      assetPath: _pillarMedalAssetPath,
     ),
     UserStatsMedalItem(
       id: 'season-medal',
@@ -1302,6 +1358,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
       lockedDescription:
           'Earned by finishing a season with a visible honor record.',
       unlockedDescription: 'Your season record is now preserved as a medal.',
+      assetPath: _founderMedalAssetPath,
     ),
     UserStatsMedalItem(
       id: 'jade-crown',
@@ -1313,6 +1370,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
       lockedDescription:
           'Awarded for reaching a high local standing in a completed season.',
       unlockedDescription: 'Your local standing earned the Jade Crown.',
+      assetPath: _districtCrownMedalAssetPath,
     ),
     UserStatsMedalItem(
       id: 'scarlet-master',
@@ -1325,6 +1383,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
           'Reserved for members whose recognition remains steady and clear.',
       unlockedDescription:
           'Your recognition pattern is consistent and respected.',
+      assetPath: _clarityMasterMedalAssetPath,
     ),
     UserStatsMedalItem(
       id: 'community-pillar-alt',
@@ -1336,6 +1395,7 @@ final UserStatsData _currentUserStatsData = UserStatsData(
       lockedDescription:
           'Issued to members whose support of others becomes a lasting community signal.',
       unlockedDescription: 'You have become a pillar others rely on.',
+      assetPath: _pillarMedalAssetPath,
     ),
   ],
   seasons: [

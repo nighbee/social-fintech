@@ -152,7 +152,8 @@ class PublicationsPostCard extends StatelessWidget
         final post = isOwnerMode
             ? _mergeFromMyPublicationsCache(bloc, anchorPost)
             : anchorPost;
-        final rankMeta = _pubResolveRankMeta(post.author.rank, post.author.rankSubLevel);
+        final rankMeta =
+            _pubResolveRankMeta(post.author.rank, post.author.rankSubLevel);
         final avatarUrl = post.author.profilePicUrl.trim().isNotEmpty
             ? post.author.profilePicUrl
             : '';
@@ -239,7 +240,8 @@ class PublicationsPostCard extends StatelessWidget
               const Gap(12),
               Text(
                 post.contentText,
-                style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
+                style:
+                    TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
               ),
               if (hasMedia) ...[
                 const Gap(12),
@@ -259,7 +261,9 @@ class PublicationsPostCard extends StatelessWidget
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SvgPicture.string(
-                          post.viewerHasLiked ? _filledLikeIcon : _outlineLikeIcon,
+                          post.viewerHasLiked
+                              ? _filledLikeIcon
+                              : _outlineLikeIcon,
                           width: 18,
                           height: 18,
                           colorFilter: ColorFilter.mode(
@@ -305,7 +309,8 @@ class PublicationsPostCard extends StatelessWidget
                         : () {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Comments are turned off for this post.'),
+                                content: Text(
+                                    'Comments are turned off for this post.'),
                               ),
                             );
                           },
