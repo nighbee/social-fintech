@@ -27,6 +27,19 @@ extension _NotificationFilterLabel on NotificationFilter {
     }
   }
 
+  String get title {
+    switch (this) {
+      case NotificationFilter.post:
+        return 'Posts';
+      case NotificationFilter.all:
+      case NotificationFilter.like:
+      case NotificationFilter.comment:
+      case NotificationFilter.help:
+      case NotificationFilter.subscriptions:
+        return label;
+    }
+  }
+
   String? get backendTab {
     switch (this) {
       case NotificationFilter.all:
@@ -75,6 +88,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   NotificationFilter _selectedFilter = NotificationFilter.all;
   List<NotificationEntity> _notifications = const <NotificationEntity>[];
   bool _isLoading = true;
+  bool _isFilterMenuOpen = false;
   String? _errorMessage;
 
   @override
@@ -126,30 +140,67 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            _NotificationsHeader(
-              selectedFilter: _selectedFilter,
-              onFilterChanged: (filter) {
-                if (filter == _selectedFilter) return;
-                setState(() {
-                  _selectedFilter = filter;
-                });
-                _loadNotifications();
-              },
+            Column(
+              children: [
+                _NotificationsHeader(
+                  selectedFilter: _selectedFilter,
+                  isFilterMenuOpen: _isFilterMenuOpen,
+                  onMenuTap: () {
+                    setState(() {
+                      _isFilterMenuOpen = !_isFilterMenuOpen;
+                    });
+                  },
+                ),
+                Expanded(
+                  child: RefreshIndicator(
+                    color: Colors.white,
+                    backgroundColor: const Color(0xFF17191F),
+                    onRefresh: _loadNotifications,
+                    child: _NotificationsBody(
+                      isLoading: _isLoading,
+                      errorMessage: _errorMessage,
+                      items: visibleItems,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            Expanded(
-              child: RefreshIndicator(
-                color: Colors.white,
-                backgroundColor: const Color(0xFF17191F),
-                onRefresh: _loadNotifications,
-                child: _NotificationsBody(
-                  isLoading: _isLoading,
-                  errorMessage: _errorMessage,
-                  items: visibleItems,
+            if (_isFilterMenuOpen) ...[
+              Positioned.fill(
+                top: 56,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () {
+                    setState(() {
+                      _isFilterMenuOpen = false;
+                    });
+                  },
+                  child: const SizedBox.expand(),
                 ),
               ),
-            ),
+              Positioned(
+                top: 52,
+                right: 24,
+                child: _NotificationFilterMenu(
+                  selectedFilter: _selectedFilter,
+                  onFilterChanged: (filter) {
+                    if (filter == _selectedFilter) {
+                      setState(() {
+                        _isFilterMenuOpen = false;
+                      });
+                      return;
+                    }
+                    setState(() {
+                      _selectedFilter = filter;
+                      _isFilterMenuOpen = false;
+                    });
+                    _loadNotifications();
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -160,11 +211,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
 class _NotificationsHeader extends StatelessWidget {
   const _NotificationsHeader({
     required this.selectedFilter,
-    required this.onFilterChanged,
+    required this.isFilterMenuOpen,
+    required this.onMenuTap,
   });
 
   final NotificationFilter selectedFilter;
-  final ValueChanged<NotificationFilter> onFilterChanged;
+  final bool isFilterMenuOpen;
+  final VoidCallback onMenuTap;
 
   @override
   Widget build(BuildContext context) {
@@ -189,29 +242,14 @@ class _NotificationsHeader extends StatelessWidget {
                   ),
                 ),
               ),
-              PopupMenuButton<NotificationFilter>(
-                color: const Color(0xFF17191F),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: Color(0x28FFFFFF)),
+              IconButton(
+                onPressed: onMenuTap,
+                icon: Icon(
+                  Icons.more_vert,
+                  color: isFilterMenuOpen
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.9),
                 ),
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                onSelected: onFilterChanged,
-                itemBuilder: (context) => NotificationFilter.values
-                    .map(
-                      (filter) => PopupMenuItem<NotificationFilter>(
-                        value: filter,
-                        child: Text(
-                          filter.label,
-                          style: TextStyles.bodyLarge.copyWith(
-                            color: filter == selectedFilter
-                                ? Colors.white
-                                : Colors.white70,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
               ),
             ],
           ),
@@ -219,7 +257,7 @@ class _NotificationsHeader extends StatelessWidget {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              selectedFilter.label,
+              selectedFilter.title,
               style: TextStyles.titleBig.copyWith(
                 color: Colors.white,
                 fontSize: 40 / 1.9,
@@ -227,6 +265,92 @@ class _NotificationsHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NotificationFilterMenu extends StatelessWidget {
+  const _NotificationFilterMenu({
+    required this.selectedFilter,
+    required this.onFilterChanged,
+  });
+
+  final NotificationFilter selectedFilter;
+  final ValueChanged<NotificationFilter> onFilterChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: 118,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF17191F).withValues(alpha: 0.96),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.24),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final filter in NotificationFilter.values)
+              _NotificationFilterMenuItem(
+                filter: filter,
+                isSelected: filter == selectedFilter,
+                onTap: () => onFilterChanged(filter),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NotificationFilterMenuItem extends StatelessWidget {
+  const _NotificationFilterMenuItem({
+    required this.filter,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final NotificationFilter filter;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        height: 36,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              filter.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyles.bodyMain.copyWith(
+                fontSize: 14,
+                height: 1.2,
+                color: isSelected
+                    ? AppColors.colorffffffff
+                    : AppColors.colorffcacaca,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
