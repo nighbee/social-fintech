@@ -12,12 +12,14 @@ import (
 
 	"github.com/brightbund-backend/internal/modules/profiles"
 	"github.com/brightbund-backend/internal/modules/settings"
+	"github.com/brightbund-backend/internal/platform/eventbus"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/observability"
+	"github.com/brightbund-backend/internal/platform/translation"
 	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
-	"github.com/brightbund-backend/internal/platform/eventbus"
 	"go.uber.org/zap"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -49,12 +51,13 @@ var severeReportReasons = map[string]struct{}{
 }
 
 type Service struct {
-	repo        Repository
-	cache       CacheRepository
-	asynqClient *asynq.Client
-	profileRepo *profiles.Repository
-	settingsSvc settings.PublicService
-	eventBus    *eventbus.Producer
+	repo           Repository
+	cache          CacheRepository
+	asynqClient    *asynq.Client
+	profileRepo    *profiles.Repository
+	settingsSvc    settings.PublicService
+	eventBus       *eventbus.Producer
+	translateClient translation.Client
 }
 
 func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Repository, asynqClient *asynq.Client, eventBus *eventbus.Producer) *Service {
@@ -65,6 +68,11 @@ func NewService(repo Repository, cache CacheRepository, profileRepo *profiles.Re
 		asynqClient: asynqClient,
 		eventBus:    eventBus,
 	}
+}
+
+// SetTranslateClient wires the Google Cloud Translation client after construction.
+func (s *Service) SetTranslateClient(c translation.Client) {
+	s.translateClient = c
 }
 
 func (s *Service) SetSettingsService(settingsSvc settings.PublicService) {
@@ -748,6 +756,56 @@ func (s *Service) DeleteComment(ctx context.Context, actorID, commentID uuid.UUI
 	}
 	return s.repo.DeleteComment(ctx, commentID, actorID, isAdmin)
 }
+
+// TranslateCommentResponse holds the original and translated content of a comment.
+type TranslateCommentResponse struct {
+	CommentID      uuid.UUID `json:"comment_id"`
+	OriginalText   string    `json:"original_text"`
+	TranslatedText string    `json:"translated_text"`
+	TargetLang     string    `json:"target_lang"`
+}
+
+// TranslateComment translates the comment's text to the requested target language.
+// targetLang must be a valid BCP 47 language tag (e.g. "en", "ru", "de", "kk").
+func (s *Service) TranslateComment(ctx context.Context, viewerID, commentID uuid.UUID, targetLang string) (*TranslateCommentResponse, error) {
+	if s.translateClient == nil {
+		return nil, ErrTranslationNotAvailable
+	}
+
+	targetLang = strings.TrimSpace(targetLang)
+	if targetLang == "" {
+		return nil, ErrInvalidTargetLang
+	}
+	if _, err := language.Parse(targetLang); err != nil {
+		return nil, ErrInvalidTargetLang
+	}
+
+	comment, err := s.repo.GetComment(ctx, commentID, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	if comment.ContentText == "" {
+		return nil, ErrCommentHasNoText
+	}
+
+	translated, err := s.translateClient.TranslateText(ctx, comment.ContentText, targetLang)
+	if err != nil {
+		logger.Error("comment translation failed",
+			zap.String("comment_id", commentID.String()),
+			zap.String("target_lang", targetLang),
+			zap.Error(err),
+		)
+		return nil, ErrTranslationFailed
+	}
+
+	return &TranslateCommentResponse{
+		CommentID:      commentID,
+		OriginalText:   comment.ContentText,
+		TranslatedText: translated,
+		TargetLang:     targetLang,
+	}, nil
+}
+
 
 func (s *Service) validateReportReason(reason string) bool {
 	switch strings.TrimSpace(reason) {

@@ -1507,6 +1507,116 @@ const docTemplate = `{
                 }
             }
         },
+        "/chats/conversations/{conversation_id}/accept": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Accepts a pending chat request. Only the recipient (non-creator) can accept.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Accept a chat request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Request already handled",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/conversations/{conversation_id}/decline": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Declines a pending chat request. Only the recipient (non-creator) can decline.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Decline a chat request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Conversation ID",
+                        "name": "conversation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "status: ok",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Request already handled",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/chats/conversations/{conversation_id}/messages": {
             "get": {
                 "security": [
@@ -2186,6 +2296,73 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Conversation not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/chats/media/upload": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Uploads an image or video for use in chat messages. Returns URL and type for the MessageMedia object.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Chat"
+                ],
+                "summary": "Upload chat media",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Image (JPEG/PNG/WebP/GIF ≤10 MB) or video (MP4/WebM/MOV ≤100 MB)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "url and type",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "501": {
+                        "description": "Storage not configured",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -4247,6 +4424,113 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{post_id}/comments/{comment_id}/translate": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Translates the comment text to the requested target language. Must be a valid BCP 47 tag (e.g. \"en\", \"ru\", \"de\", \"kk\").",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Feed"
+                ],
+                "summary": "Translate a comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post UUID",
+                        "name": "post_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comment UUID",
+                        "name": "comment_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Translation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_feed.TranslateCommentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_feed.TranslateCommentResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid IDs or target_lang",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Comment not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Comment has no text",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Translation API failed",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Translation service unavailable",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -7667,7 +7951,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "other_reputation_score": {
-                    "description": "OtherReputationScore is the conversation partner's lifetime received Gold\nSeals (whole seals). OtherRankTier is the derived tier string. Both are\npopulated at read time so callers don't need a follow-up /me/rank\nrequest per conversation row.",
                     "type": "integer"
                 },
                 "other_user_id": {
@@ -7685,6 +7968,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/internal_modules_chat.PinnedMessage"
                     }
                 },
+                "request_status": {
+                    "type": "string"
+                },
                 "task_id": {
                     "type": "string"
                 },
@@ -7699,6 +7985,9 @@ const docTemplate = `{
         "internal_modules_chat.CreateDirectConversationRequest": {
             "type": "object",
             "properties": {
+                "as_request": {
+                    "type": "boolean"
+                },
                 "recipient_id": {
                     "type": "string"
                 }
@@ -7717,6 +8006,20 @@ const docTemplate = `{
             "properties": {
                 "for_both": {
                     "type": "boolean"
+                }
+            }
+        },
+        "internal_modules_chat.ForwardedUser": {
+            "type": "object",
+            "properties": {
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         },
@@ -7785,6 +8088,9 @@ const docTemplate = `{
                 "deleted_by_user_id": {
                     "type": "string"
                 },
+                "forwarded_from_user": {
+                    "$ref": "#/definitions/internal_modules_chat.ForwardedUser"
+                },
                 "forwarded_from_user_id": {
                     "type": "string"
                 },
@@ -7799,6 +8105,9 @@ const docTemplate = `{
                 },
                 "message_type": {
                     "type": "string"
+                },
+                "reply_to_message": {
+                    "$ref": "#/definitions/internal_modules_chat.ReplyPreview"
                 },
                 "reply_to_message_id": {
                     "type": "string"
@@ -7871,6 +8180,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "sender_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_chat.ReplyPreview": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "sender_id": {
+                    "type": "string"
+                },
+                "sender_name": {
                     "type": "string"
                 }
             }
@@ -8369,7 +8695,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "reputation_score": {
-                    "description": "ReputationScore is the lifetime count of Gold Seals the author has\n*received* (whole seals). This is the single input that drives Rank вЂ”\nFE can re-derive the rank locally if it ever needs to.",
+                    "description": "ReputationScore is the lifetime count of Gold Seals the author has\n*received* (whole seals). This is the single input that drives Rank —\nFE can re-derive the rank locally if it ever needs to.",
                     "type": "integer"
                 },
                 "username": {
@@ -8649,7 +8975,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "is_own_post": {
-                    "description": "IsOwnPost lets the client show/hide the В·В·В· edit/delete options menu",
+                    "description": "IsOwnPost lets the client show/hide the ··· edit/delete options menu",
                     "type": "boolean"
                 },
                 "media_attachments": {
@@ -8671,11 +8997,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "viewer_has_liked": {
-                    "description": "ViewerHasLiked lets the client render the вќ¤пёЏ heart as filled immediately",
+                    "description": "ViewerHasLiked lets the client render the ❤️ heart as filled immediately",
                     "type": "boolean"
                 },
                 "visibility": {
-                    "description": "Visibility is returned so the client can show the globe рџЊђ or allies рџ‘Ґ icon",
+                    "description": "Visibility is returned so the client can show the globe 🌐 or allies 👥 icon",
                     "type": "string"
                 }
             }
@@ -8847,6 +9173,31 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_modules_feed.TranslateCommentRequest": {
+            "type": "object",
+            "properties": {
+                "target_lang": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_feed.TranslateCommentResponse": {
+            "type": "object",
+            "properties": {
+                "comment_id": {
+                    "type": "string"
+                },
+                "original_text": {
+                    "type": "string"
+                },
+                "target_lang": {
+                    "type": "string"
+                },
+                "translated_text": {
+                    "type": "string"
+                }
+            }
+        },
         "internal_modules_feed.UpdatePostRequest": {
             "type": "object",
             "properties": {
@@ -8955,6 +9306,9 @@ const docTemplate = `{
                 "rank_name": {
                     "type": "string"
                 },
+                "rank_quality": {
+                    "type": "string"
+                },
                 "user_id": {
                     "type": "string"
                 },
@@ -8979,6 +9333,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "rank_name": {
+                    "type": "string"
+                },
+                "rank_quality": {
                     "type": "string"
                 },
                 "scope": {

@@ -39,10 +39,12 @@ func verifyCaptchaToken(ctx context.Context, token, remoteIP string) error {
 		return nil
 	}
 	if strings.TrimSpace(token) == "" {
+		log.Printf("captcha: validation failed: empty captcha token")
 		return ErrCaptchaRequired
 	}
 	secret := captchaSecret()
 	if secret == "" {
+		log.Printf("captcha: validation failed: CAPTCHA_SECRET is not configured")
 		return ErrCaptchaInvalid
 	}
 
@@ -55,6 +57,7 @@ func verifyCaptchaToken(ctx context.Context, token, remoteIP string) error {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, captchaVerifyURL(), strings.NewReader(form.Encode()))
 	if err != nil {
+		log.Printf("captcha: failed to create siteverify request: %v", err)
 		return ErrCaptchaInvalid
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -62,18 +65,22 @@ func verifyCaptchaToken(ctx context.Context, token, remoteIP string) error {
 	client := &http.Client{Timeout: 5 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Printf("captcha: siteverify request failed: %v", err)
 		return ErrCaptchaInvalid
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Printf("captcha: siteverify status code error: %d", resp.StatusCode)
 		return ErrCaptchaInvalid
 	}
 
 	var payload captchaVerifyResponse
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		log.Printf("captcha: decode payload failed: %v", err)
 		return fmt.Errorf("%w: decode failed", ErrCaptchaInvalid)
 	}
 	if !payload.Success {
+		log.Printf("captcha: token is invalid or expired (success=false)")
 		return ErrCaptchaInvalid
 	}
 	return nil

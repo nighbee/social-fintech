@@ -755,6 +755,66 @@ func (h *Handler) DeleteComment(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"status": "deleted"})
 }
 
+// TranslateComment godoc
+// @Summary Translate a comment
+// @Description Translates the comment text to the requested target language. Must be a valid BCP 47 tag (e.g. "en", "ru", "de", "kk").
+// @Tags Feed
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param post_id path string true "Post UUID"
+// @Param comment_id path string true "Comment UUID"
+// @Param request body TranslateCommentRequest true "Translation request"
+// @Success 200 {object} TranslateCommentResponse
+// @Failure 400 {object} map[string]string "Invalid IDs or target_lang"
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Comment not found"
+// @Failure 422 {object} map[string]string "Comment has no text"
+// @Failure 502 {object} map[string]string "Translation API failed"
+// @Failure 503 {object} map[string]string "Translation service unavailable"
+// @Router /posts/{post_id}/comments/{comment_id}/translate [post]
+func (h *Handler) TranslateComment(c *fiber.Ctx) error {
+	userID, ok := requireUserID(c)
+	if !ok {
+		return c.Status(401).JSON(fiber.Map{"error": "unauthorized"})
+	}
+
+	commentID, err := uuid.Parse(c.Params("comment_id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_comment_id"})
+	}
+
+	var req TranslateCommentRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "invalid_body"})
+	}
+
+	result, err := h.service.TranslateComment(c.Context(), userID, commentID, req.TargetLang)
+	if err != nil {
+		if errors.Is(err, ErrCommentNotFound) {
+			return c.Status(404).JSON(fiber.Map{"error": "comment_not_found"})
+		}
+		if errors.Is(err, ErrCommentHasNoText) {
+			return c.Status(422).JSON(fiber.Map{"error": "comment_has_no_text"})
+		}
+		if errors.Is(err, ErrInvalidTargetLang) {
+			return c.Status(400).JSON(fiber.Map{"error": "invalid_target_lang"})
+		}
+		if errors.Is(err, ErrTranslationNotAvailable) {
+			return c.Status(503).JSON(fiber.Map{"error": "translation_not_available"})
+		}
+		if errors.Is(err, ErrTranslationFailed) {
+			return c.Status(502).JSON(fiber.Map{"error": "translation_failed"})
+		}
+		logger.Error("failed to translate comment",
+			zap.String("comment_id", commentID.String()),
+			zap.Error(err),
+		)
+		return c.Status(500).JSON(fiber.Map{"error": "translation_error"})
+	}
+return c.JSON(result)
+}
+
 // ReportComment godoc
 // @Summary Report comment
 // @Description Creates moderation report for a comment.

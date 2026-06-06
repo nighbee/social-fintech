@@ -279,6 +279,14 @@ func main() {
 		logger.Info("Google Vision API client initialized via ADC")
 	}
 
+	translationClient, err := translation.NewClient(context.Background(), "")
+	if err != nil {
+		logger.Error("failed to initialize translation client (ADC not configured)", zap.Error(err))
+	} else {
+		feedService.SetTranslateClient(translationClient)
+		logger.Info("Google Translation API client initialized via ADC")
+	}
+
 	feedWorker := feed.NewInteractionWorker(redisCache, feedRepo)
 	feedHandler := feed.NewHandler(feedService, feedWorker, economyService, storageClient, visionClient, cfg.Storage.PublicURL, cfg.Storage.TempBucket)
 	logger.Info("feed module initialized")

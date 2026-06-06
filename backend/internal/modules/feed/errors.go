@@ -155,4 +155,21 @@ var (
 	// ErrRateLimitExceeded is returned when a user exceeds the allowed
 	// request frequency for a feed action (e.g. too many comments per minute).
 	ErrRateLimitExceeded = errors.New("rate_limit_exceeded: slow down and try again")
+
+	// ── Translation ───────────────────────────────────────────────────────
+	// ErrTranslationNotAvailable is returned when the translation client is not
+	// configured (missing ADC or disabled feature flag).
+	ErrTranslationNotAvailable = errors.New("translation_not_available")
+
+	// ErrTranslationFailed is returned when the upstream Google Translation API
+	// call fails (network error, quota exceeded, etc.).
+	ErrTranslationFailed = errors.New("translation_failed")
+
+	// ErrCommentHasNoText is returned when a translate request targets a
+	// media-only comment with no text content to translate.
+	ErrCommentHasNoText = errors.New("comment_has_no_text")
+
+	// ErrInvalidTargetLang is returned when the target_lang field is missing,
+	// empty, or not a valid BCP 47 language tag.
+	ErrInvalidTargetLang = errors.New("invalid_target_lang")
 )
