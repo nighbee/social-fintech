@@ -30,6 +30,7 @@ import (
 	"github.com/brightbund-backend/internal/platform/email"
 	"github.com/brightbund-backend/internal/platform/logger"
 	"github.com/brightbund-backend/internal/platform/storage"
+	"github.com/brightbund-backend/internal/platform/translation"
 	"github.com/brightbund-backend/internal/platform/vision"
 	"github.com/brightbund-backend/internal/server"
 	"github.com/google/uuid"
