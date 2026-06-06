@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS development
+FROM golang:1.25-alpine AS development
 
 # h3-go/v4 wraps the H3 C library and requires CGO.
 # gcc + musl-dev provide the C toolchain on Alpine.

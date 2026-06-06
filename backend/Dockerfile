@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Production Dockerfile
-FROM golang:1.24-alpine AS base
+FROM golang:1.25-alpine AS base
 WORKDIR /app
 # Install build dependencies for CGO (required by H3)
 RUN apk add --no-cache git gcc musl-dev libc-dev make
