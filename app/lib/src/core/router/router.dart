@@ -25,10 +25,12 @@ import 'package:app/src/features/profile/presentation/pages/terms_conditions_pag
 import 'package:app/src/features/profile/presentation/pages/two_factor_authentication_page.dart';
 import 'package:app/src/features/profile/presentation/pages/user_stats_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:talker_flutter/talker_flutter.dart';
 import 'package:app/src/app/application.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
+import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/auth/presentation/pages/signup_with_number_page.dart';
 import 'package:app/src/features/auth/presentation/pages/signup_with_email_page.dart';
 import 'package:app/src/features/auth/presentation/pages/login_with_number_page.dart';

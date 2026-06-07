@@ -1,5 +1,94 @@
 part of 'router.dart';
 
+NoTransitionPage<void> _authPage(
+  GoRouterState state,
+  Widget child,
+) {
+  return NoTransitionPage<void>(
+    key: state.pageKey,
+    child: ColoredBox(
+      color: AppColors.mainBackground,
+      child: child,
+    ),
+  );
+}
+
+class _AppBackNavigationScope extends StatefulWidget {
+  const _AppBackNavigationScope({
+    required this.location,
+    required this.child,
+  });
+
+  final String location;
+  final Widget child;
+
+  @override
+  State<_AppBackNavigationScope> createState() =>
+      _AppBackNavigationScopeState();
+}
+
+class _AppBackNavigationScopeState extends State<_AppBackNavigationScope> {
+  static const Duration _exitConfirmationWindow = Duration(seconds: 2);
+
+  DateTime? _lastBackPressedAt;
+
+  bool get _isHome => widget.location == RoutePaths.home;
+
+  bool get _isMainTabRoot =>
+      widget.location == RoutePaths.home ||
+      widget.location == RoutePaths.map ||
+      widget.location == RoutePaths.rating ||
+      widget.location == RoutePaths.chats ||
+      widget.location == RoutePaths.profile;
+
+  @override
+  void didUpdateWidget(covariant _AppBackNavigationScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.location != widget.location) {
+      _lastBackPressedAt = null;
+    }
+  }
+
+  void _handleRootBack() {
+    if (!_isHome) {
+      context.go(RoutePaths.home);
+      return;
+    }
+
+    final now = DateTime.now();
+    final shouldExit = _lastBackPressedAt != null &&
+        now.difference(_lastBackPressedAt!) <= _exitConfirmationWindow;
+
+    if (shouldExit) {
+      SystemNavigator.pop();
+      return;
+    }
+
+    _lastBackPressedAt = now;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    messenger
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: _exitConfirmationWindow,
+        ),
+      );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_isMainTabRoot,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop || !_isMainTabRoot) return;
+        _handleRootBack();
+      },
+      child: widget.child,
+    );
+  }
+}
+
 List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
     <RouteBase>[
       // Initial route - redirects to home
@@ -62,12 +151,19 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
       // Main app routes wrapped in StatefulShellRoute for LogPushButton
       StatefulShellRoute.indexedStack(
         builder: (context, state, child) {
-          return Stack(
-            children: [
-              child,
-              // Show LogPushButton only in development flavor
-              if (flavor == AppFlavor.development) const LogPushButton(),
-            ],
+          return _AppBackNavigationScope(
+            location: state.uri.path,
+            child: ColoredBox(
+              color: AppColors.mainBackground,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  child,
+                  // Show LogPushButton only in development flavor
+                  if (flavor == AppFlavor.development) const LogPushButton(),
+                ],
+              ),
+            ),
           );
         },
         branches: [
@@ -78,110 +174,134 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
               GoRoute(
                 path: RoutePaths.signup,
                 name: RouteNames.signup,
-                builder: (context, state) => const SignupWithNumberPage(),
+                pageBuilder: (context, state) =>
+                    _authPage(state, const SignupWithNumberPage()),
               ),
               GoRoute(
                 path: RoutePaths.signupWithEmail,
                 name: RouteNames.signupWithEmail,
-                builder: (context, state) => const SignupWithEmailPage(),
+                pageBuilder: (context, state) =>
+                    _authPage(state, const SignupWithEmailPage()),
               ),
               GoRoute(
                 path: RoutePaths.code,
                 name: RouteNames.code,
-                builder: (context, state) {
+                pageBuilder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
-                  return CodePage(
-                    verificationId: extra?['verificationId'] ?? '',
-                    phoneNumber: extra?['phoneNumber'] ?? '',
-                    isLogin: extra?['isLogin'] ?? true,
+                  return _authPage(
+                    state,
+                    CodePage(
+                      verificationId: extra?['verificationId'] ?? '',
+                      phoneNumber: extra?['phoneNumber'] ?? '',
+                      isLogin: extra?['isLogin'] ?? true,
+                    ),
                   );
                 },
               ),
               GoRoute(
                 path: RoutePaths.info,
                 name: RouteNames.info,
-                builder: (context, state) {
+                pageBuilder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
-                  return InfoPage(
-                    email: extra?['email'] as String?,
-                    password: extra?['password'] as String?,
-                    phoneNumber: extra?['phoneNumber'] as String?,
-                    firebaseIdToken: extra?['firebaseIdToken'] as String?,
-                    firebaseAuthProvider:
-                        extra?['firebaseAuthProvider'] as String?,
+                  return _authPage(
+                    state,
+                    InfoPage(
+                      email: extra?['email'] as String?,
+                      password: extra?['password'] as String?,
+                      phoneNumber: extra?['phoneNumber'] as String?,
+                      firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                      firebaseAuthProvider:
+                          extra?['firebaseAuthProvider'] as String?,
+                    ),
                   );
                 },
               ),
               GoRoute(
                 path: RoutePaths.referal,
                 name: RouteNames.referal,
-                builder: (context, state) {
+                pageBuilder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
-                  return ReferalPage(
-                    email: extra?['email'] as String?,
-                    password: extra?['password'] as String?,
-                    phoneNumber: extra?['phoneNumber'] as String?,
-                    firebaseIdToken: extra?['firebaseIdToken'] as String?,
-                    firebaseAuthProvider:
-                        extra?['firebaseAuthProvider'] as String?,
-                    firstName: extra?['firstName'] as String?,
-                    lastName: extra?['lastName'] as String?,
-                    dateOfBirth: extra?['dateOfBirth'] as String?,
+                  return _authPage(
+                    state,
+                    ReferalPage(
+                      email: extra?['email'] as String?,
+                      password: extra?['password'] as String?,
+                      phoneNumber: extra?['phoneNumber'] as String?,
+                      firebaseIdToken: extra?['firebaseIdToken'] as String?,
+                      firebaseAuthProvider:
+                          extra?['firebaseAuthProvider'] as String?,
+                      firstName: extra?['firstName'] as String?,
+                      lastName: extra?['lastName'] as String?,
+                      dateOfBirth: extra?['dateOfBirth'] as String?,
+                    ),
                   );
                 },
               ),
               GoRoute(
                 path: RoutePaths.createPassword,
                 name: RouteNames.createPassword,
-                builder: (context, state) {
+                pageBuilder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
                   final email = extra?['email'] as String? ?? '';
-                  return CreatePasswordPage(email: email);
+                  return _authPage(
+                    state,
+                    CreatePasswordPage(email: email),
+                  );
                 },
               ),
               // Auth routes - Login
               GoRoute(
                 path: RoutePaths.login,
                 name: RouteNames.login,
-                builder: (context, state) => const LoginWithNumberPage(),
+                pageBuilder: (context, state) =>
+                    _authPage(state, const LoginWithNumberPage()),
               ),
               GoRoute(
                 path: RoutePaths.loginWithEmail,
                 name: RouteNames.loginWithEmail,
-                builder: (context, state) => const LoginWithEmailPage(),
+                pageBuilder: (context, state) =>
+                    _authPage(state, const LoginWithEmailPage()),
               ),
               GoRoute(
                 path: RoutePaths.emailEntry,
                 name: RouteNames.emailEntry,
-                builder: (context, state) => const EmailEntryPage(),
+                pageBuilder: (context, state) =>
+                    _authPage(state, const EmailEntryPage()),
               ),
               GoRoute(
                 path: RoutePaths.emailPassword,
                 name: RouteNames.emailPassword,
-                builder: (context, state) {
+                pageBuilder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
-                  return EmailPasswordPage(
-                    email: extra?['email'] ?? '',
-                    isNewUser: extra?['isNewUser'] ?? false,
+                  return _authPage(
+                    state,
+                    EmailPasswordPage(
+                      email: extra?['email'] ?? '',
+                      isNewUser: extra?['isNewUser'] ?? false,
+                    ),
                   );
                 },
               ),
               GoRoute(
                 path: RoutePaths.loginCode,
                 name: RouteNames.loginCode,
-                builder: (context, state) {
+                pageBuilder: (context, state) {
                   final extra = state.extra as Map<String, dynamic>?;
-                  return LoginCodePage(
-                    verificationId: extra?['verificationId'] ?? '',
-                    phoneNumber: extra?['phoneNumber'] ?? '',
-                    isLogin: extra?['isLogin'] ?? true,
+                  return _authPage(
+                    state,
+                    LoginCodePage(
+                      verificationId: extra?['verificationId'] ?? '',
+                      phoneNumber: extra?['phoneNumber'] ?? '',
+                      isLogin: extra?['isLogin'] ?? true,
+                    ),
                   );
                 },
               ),
               GoRoute(
                 path: RoutePaths.changePassword,
                 name: RouteNames.changePassword,
-                builder: (context, state) => const ChangePasswordPage(),
+                pageBuilder: (context, state) =>
+                    _authPage(state, const ChangePasswordPage()),
               ),
 
               // Home route (protected by auth guard)

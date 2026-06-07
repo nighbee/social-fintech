@@ -43,19 +43,23 @@ MaterialApp _buildMaterialApp({
     routeInformationProvider: router.routeInformationProvider,
     debugShowCheckedModeBanner: false,
     builder: (context, child) {
-      return MediaQuery(
-        data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1)),
-        child: flavor == AppFlavor.development
-            ? Align(
-                alignment: Alignment.topRight,
-                child: Banner(
-                  message: flavor.envPath,
-                  location: BannerLocation.topEnd,
-                  color: Colors.red,
-                  child: child!,
-                ),
-              )
-            : child!,
+      return ColoredBox(
+        color: AppColors.mainBackground,
+        child: MediaQuery(
+          data:
+              MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1)),
+          child: flavor == AppFlavor.development
+              ? Align(
+                  alignment: Alignment.topRight,
+                  child: Banner(
+                    message: flavor.envPath,
+                    location: BannerLocation.topEnd,
+                    color: Colors.red,
+                    child: child!,
+                  ),
+                )
+              : child!,
+        ),
       );
     },
   );
