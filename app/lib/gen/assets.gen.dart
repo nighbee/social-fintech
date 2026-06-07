@@ -235,15 +235,30 @@ class $AssetsImagesGen {
   /// File path: assets/images/Dots.png
   AssetGenImage get dots => const AssetGenImage('assets/images/Dots.png');
 
+  /// File path: assets/images/Emerald_medal.png
+  AssetGenImage get emeraldMedal =>
+      const AssetGenImage('assets/images/Emerald_medal.png');
+
   /// File path: assets/images/Heroes.png
   AssetGenImage get heroes => const AssetGenImage('assets/images/Heroes.png');
 
   /// File path: assets/images/MapOpen.png
   AssetGenImage get mapOpen => const AssetGenImage('assets/images/MapOpen.png');
 
+  /// File path: assets/images/Medal.png
+  AssetGenImage get medal => const AssetGenImage('assets/images/Medal.png');
+
+  /// File path: assets/images/Rubin_medal.png
+  AssetGenImage get rubinMedal =>
+      const AssetGenImage('assets/images/Rubin_medal.png');
+
   /// File path: assets/images/Task_create.png
   AssetGenImage get taskCreate =>
       const AssetGenImage('assets/images/Task_create.png');
+
+  /// File path: assets/images/Topaz_medal.png
+  AssetGenImage get topazMedal =>
+      const AssetGenImage('assets/images/Topaz_medal.png');
 
   /// File path: assets/images/ammolite.png
   AssetGenImage get ammolite =>
@@ -270,12 +285,19 @@ class $AssetsImagesGen {
   /// File path: assets/images/menu.png
   AssetGenImage get menu => const AssetGenImage('assets/images/menu.png');
 
+  /// File path: assets/images/message.png
+  AssetGenImage get message => const AssetGenImage('assets/images/message.png');
+
   /// File path: assets/images/moonstone.png
   AssetGenImage get moonstone =>
       const AssetGenImage('assets/images/moonstone.png');
 
   /// File path: assets/images/myTask.png
   AssetGenImage get myTask => const AssetGenImage('assets/images/myTask.png');
+
+  /// File path: assets/images/no_request.png
+  AssetGenImage get noRequest =>
+      const AssetGenImage('assets/images/no_request.png');
 
   /// File path: assets/images/onyx.png
   AssetGenImage get onyx => const AssetGenImage('assets/images/onyx.png');
@@ -292,9 +314,13 @@ class $AssetsImagesGen {
         bigGoldenCoin,
         chevronLeft,
         dots,
+        emeraldMedal,
         heroes,
         mapOpen,
+        medal,
+        rubinMedal,
         taskCreate,
+        topazMedal,
         ammolite,
         goldenHonor,
         image,
@@ -302,8 +328,10 @@ class $AssetsImagesGen {
         lapislazuli,
         mapTriangleMarker,
         menu,
+        message,
         moonstone,
         myTask,
+        noRequest,
         onyx,
         pearl,
         supernova

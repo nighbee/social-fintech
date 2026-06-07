@@ -54,6 +54,14 @@ import '../../../features/profile/data/sources/remote/profile_remote_impl.dart'
 import '../../../features/profile/domain/repositories/i_profile_repository.dart'
     as _i1037;
 import '../../../features/ranking/presentation/bloc/ranking_bloc.dart' as _i815;
+import '../../../features/rating/data/repositories/rating_repository_impl.dart'
+    as _i515;
+import '../../../features/rating/data/sources/remote/i_rating_remote.dart'
+    as _i368;
+import '../../../features/rating/data/sources/remote/rating_remote_impl.dart'
+    as _i506;
+import '../../../features/rating/domain/usecases/get_leaderboard_usecase.dart'
+    as _i1003;
 import '../../api/client/dio/dio_client.dart' as _i1019;
 import '../../api/client/dio/rest_client.dart' as _i877;
 import '../../config/environment_manager.dart' as _i931;
@@ -82,9 +90,15 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i134.AuthLocalImpl(),
       instanceName: 'AuthLocalImpl',
     );
+    gh.lazySingleton<_i1003.GetLeaderboardUseCase>(
+        () => _i1003.GetLeaderboardUseCase(gh<_i515.IRatingRepository>()));
     gh.lazySingleton<_i374.ILocationService>(
       () => _i131.LocationServiceImpl(),
       instanceName: 'LocationServiceImpl',
+    );
+    gh.lazySingleton<_i515.IRatingRepository>(
+      () => _i515.RatingRepositoryImpl(gh<_i368.IRatingRemote>()),
+      instanceName: 'RatingRepositoryImpl',
     );
     gh.lazySingleton<_i951.IMapRemote>(
       () =>
@@ -112,6 +126,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i236.ProfileRemoteImpl(
           gh<_i877.RestClient>(instanceName: 'DioClient')),
       instanceName: 'ProfileRemoteImpl',
+    );
+    gh.lazySingleton<_i368.IRatingRemote>(
+      () => _i506.RatingRemoteImpl(
+          gh<_i877.RestClient>(instanceName: 'DioClient')),
+      instanceName: 'RatingRemoteImpl',
     );
     gh.lazySingleton<_i748.IInteractionSettingsRemote>(() =>
         _i371.InteractionSettingsRemoteImpl(

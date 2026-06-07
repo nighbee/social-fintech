@@ -1,4 +1,3 @@
-import 'package:app/src/core/enums/notification_type.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/home/domain/entities/notification_entity.dart';
@@ -7,36 +6,23 @@ import 'package:app/src/features/home/presentation/widgets/notification_item_wid
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 
-enum NotificationFilter { all, like, comment, help, subscriptions, post }
+enum NotificationFilter { all, recognition, activity, tasks, rank, system }
 
 extension _NotificationFilterLabel on NotificationFilter {
   String get label {
     switch (this) {
       case NotificationFilter.all:
         return 'All';
-      case NotificationFilter.like:
-        return 'Like';
-      case NotificationFilter.comment:
-        return 'Comment';
-      case NotificationFilter.help:
-        return 'Help';
-      case NotificationFilter.subscriptions:
-        return 'Subscriptions';
-      case NotificationFilter.post:
-        return 'Post';
-    }
-  }
-
-  String get title {
-    switch (this) {
-      case NotificationFilter.post:
-        return 'Posts';
-      case NotificationFilter.all:
-      case NotificationFilter.like:
-      case NotificationFilter.comment:
-      case NotificationFilter.help:
-      case NotificationFilter.subscriptions:
-        return label;
+      case NotificationFilter.recognition:
+        return 'Recognition';
+      case NotificationFilter.activity:
+        return 'Activity';
+      case NotificationFilter.tasks:
+        return 'Tasks';
+      case NotificationFilter.rank:
+        return 'Rank';
+      case NotificationFilter.system:
+        return 'System';
     }
   }
 
@@ -44,32 +30,16 @@ extension _NotificationFilterLabel on NotificationFilter {
     switch (this) {
       case NotificationFilter.all:
         return null;
-      case NotificationFilter.like:
-      case NotificationFilter.comment:
-        return 'ACTIVITY';
-      case NotificationFilter.help:
-        return 'TASKS';
-      case NotificationFilter.subscriptions:
+      case NotificationFilter.recognition:
         return 'RECOGNITION';
-      case NotificationFilter.post:
+      case NotificationFilter.activity:
+        return 'ACTIVITY';
+      case NotificationFilter.tasks:
+        return 'TASKS';
+      case NotificationFilter.rank:
+        return 'RANK';
+      case NotificationFilter.system:
         return 'SYSTEM';
-    }
-  }
-
-  NotificationType? get localType {
-    switch (this) {
-      case NotificationFilter.all:
-        return null;
-      case NotificationFilter.like:
-        return NotificationType.like;
-      case NotificationFilter.comment:
-        return NotificationType.comment;
-      case NotificationFilter.help:
-        return NotificationType.help;
-      case NotificationFilter.subscriptions:
-        return NotificationType.subscriptions;
-      case NotificationFilter.post:
-        return NotificationType.post;
     }
   }
 }
@@ -88,7 +58,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
   NotificationFilter _selectedFilter = NotificationFilter.all;
   List<NotificationEntity> _notifications = const <NotificationEntity>[];
   bool _isLoading = true;
-  bool _isFilterMenuOpen = false;
   String? _errorMessage;
 
   @override
@@ -125,82 +94,37 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  List<NotificationEntity> get _visibleNotifications {
-    final localType = _selectedFilter.localType;
-    if (localType == null) return _notifications;
-    return _notifications
-        .where((item) => item.notificationType == localType)
-        .toList(growable: false);
+  void _selectFilter(NotificationFilter filter) {
+    if (filter == _selectedFilter) return;
+    setState(() {
+      _selectedFilter = filter;
+    });
+    _loadNotifications();
   }
 
   @override
   Widget build(BuildContext context) {
-    final visibleItems = _visibleNotifications;
-
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                _NotificationsHeader(
-                  selectedFilter: _selectedFilter,
-                  isFilterMenuOpen: _isFilterMenuOpen,
-                  onMenuTap: () {
-                    setState(() {
-                      _isFilterMenuOpen = !_isFilterMenuOpen;
-                    });
-                  },
-                ),
-                Expanded(
-                  child: RefreshIndicator(
-                    color: Colors.white,
-                    backgroundColor: const Color(0xFF17191F),
-                    onRefresh: _loadNotifications,
-                    child: _NotificationsBody(
-                      isLoading: _isLoading,
-                      errorMessage: _errorMessage,
-                      items: visibleItems,
-                    ),
-                  ),
-                ),
-              ],
+            _NotificationsHeader(
+              selectedFilter: _selectedFilter,
+              onFilterChanged: _selectFilter,
             ),
-            if (_isFilterMenuOpen) ...[
-              Positioned.fill(
-                top: 56,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: () {
-                    setState(() {
-                      _isFilterMenuOpen = false;
-                    });
-                  },
-                  child: const SizedBox.expand(),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.textBrand,
+                backgroundColor: const Color(0xFF242424),
+                onRefresh: _loadNotifications,
+                child: _NotificationsBody(
+                  isLoading: _isLoading,
+                  errorMessage: _errorMessage,
+                  items: _notifications,
                 ),
               ),
-              Positioned(
-                top: 52,
-                right: 24,
-                child: _NotificationFilterMenu(
-                  selectedFilter: _selectedFilter,
-                  onFilterChanged: (filter) {
-                    if (filter == _selectedFilter) {
-                      setState(() {
-                        _isFilterMenuOpen = false;
-                      });
-                      return;
-                    }
-                    setState(() {
-                      _selectedFilter = filter;
-                      _isFilterMenuOpen = false;
-                    });
-                    _loadNotifications();
-                  },
-                ),
-              ),
-            ],
+            ),
           ],
         ),
       ),
@@ -211,68 +135,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
 class _NotificationsHeader extends StatelessWidget {
   const _NotificationsHeader({
     required this.selectedFilter,
-    required this.isFilterMenuOpen,
-    required this.onMenuTap,
-  });
-
-  final NotificationFilter selectedFilter;
-  final bool isFilterMenuOpen;
-  final VoidCallback onMenuTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
-              ),
-              Expanded(
-                child: Text(
-                  'Notification',
-                  textAlign: TextAlign.center,
-                  style: TextStyles.titleHeadline.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 34 / 1.9,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: onMenuTap,
-                icon: Icon(
-                  Icons.more_vert,
-                  color: isFilterMenuOpen
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-            ],
-          ),
-          const Gap(8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              selectedFilter.title,
-              style: TextStyles.titleBig.copyWith(
-                color: Colors.white,
-                fontSize: 40 / 1.9,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NotificationFilterMenu extends StatelessWidget {
-  const _NotificationFilterMenu({
-    required this.selectedFilter,
     required this.onFilterChanged,
   });
 
@@ -281,77 +143,93 @@ class _NotificationFilterMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        width: 118,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFF17191F).withValues(alpha: 0.96),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.24),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final filter in NotificationFilter.values)
-              _NotificationFilterMenuItem(
-                filter: filter,
-                isSelected: filter == selectedFilter,
-                onTap: () => onFilterChanged(filter),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NotificationFilterMenuItem extends StatelessWidget {
-  const _NotificationFilterMenuItem({
-    required this.filter,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final NotificationFilter filter;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        height: 36,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              filter.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyles.bodyMain.copyWith(
-                fontSize: 14,
-                height: 1.2,
-                color: isSelected
-                    ? AppColors.colorffffffff
-                    : AppColors.colorffcacaca,
-              ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: AppColors.textBrand,
+                    size: 20,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    'Notification Center',
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyles.titleHeadline.copyWith(
+                      color: AppColors.textBrand,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'More',
+                  onPressed: () {},
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: AppColors.textBrand,
+                    size: 24,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      ),
+        SizedBox(
+          height: 48,
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            scrollDirection: Axis.horizontal,
+            itemCount: NotificationFilter.values.length,
+            separatorBuilder: (_, __) => const Gap(8),
+            itemBuilder: (context, index) {
+              final filter = NotificationFilter.values[index];
+              final isSelected = filter == selectedFilter;
+              return Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => onFilterChanged(filter),
+                  borderRadius: BorderRadius.circular(18),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.13)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      filter.label,
+                      style: TextStyles.bodyMain.copyWith(
+                        color: isSelected
+                            ? AppColors.textBrand
+                            : AppColors.textSecondary,
+                        fontSize: 15,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -371,7 +249,7 @@ class _NotificationsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+        child: CircularProgressIndicator(color: AppColors.textBrand),
       );
     }
 
@@ -382,13 +260,15 @@ class _NotificationsBody extends StatelessWidget {
           Text(
             'Failed to load notifications',
             textAlign: TextAlign.center,
-            style: TextStyles.titleBig.copyWith(color: Colors.white),
+            style: TextStyles.titleBig.copyWith(color: AppColors.textBrand),
           ),
           const Gap(8),
           Text(
             errorMessage!,
             textAlign: TextAlign.center,
-            style: TextStyles.bodyLarge.copyWith(color: Colors.white60),
+            style: TextStyles.bodyLarge.copyWith(
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       );
@@ -401,19 +281,104 @@ class _NotificationsBody extends StatelessWidget {
           Text(
             'No notifications yet',
             textAlign: TextAlign.center,
-            style: TextStyles.titleBig.copyWith(color: Colors.white),
+            style: TextStyles.titleBig.copyWith(color: AppColors.textBrand),
           ),
         ],
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-      itemCount: items.length,
-      separatorBuilder: (_, __) => const Gap(14),
-      itemBuilder: (context, index) {
-        return NotificationItemWidget(notification: items[index]);
+    final sections = _groupByDay(items);
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+      itemCount: sections.length,
+      itemBuilder: (context, sectionIndex) {
+        final section = sections[sectionIndex];
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: sectionIndex == sections.length - 1 ? 0 : 18,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 12),
+                child: Text(
+                  section.label,
+                  style: TextStyles.bodyMain.copyWith(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              for (var index = 0; index < section.items.length; index++) ...[
+                NotificationItemWidget(notification: section.items[index]),
+                if (index != section.items.length - 1) const Gap(10),
+              ],
+            ],
+          ),
+        );
       },
     );
   }
+
+  List<_NotificationDaySection> _groupByDay(
+    List<NotificationEntity> notifications,
+  ) {
+    final sorted = [...notifications]
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    final groups = <String, List<NotificationEntity>>{};
+
+    for (final notification in sorted) {
+      final label = _dayLabel(notification.createdAt);
+      groups.putIfAbsent(label, () => <NotificationEntity>[]).add(notification);
+    }
+
+    return groups.entries
+        .map(
+          (entry) => _NotificationDaySection(
+            label: entry.key,
+            items: entry.value,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  String _dayLabel(DateTime value) {
+    final local = value.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(local.year, local.month, local.day);
+    final difference = today.difference(day).inDays;
+
+    if (difference <= 0) return 'TODAY';
+    if (difference == 1) return 'YESTERDAY';
+
+    const months = <String>[
+      'JAN',
+      'FEB',
+      'MAR',
+      'APR',
+      'MAY',
+      'JUN',
+      'JUL',
+      'AUG',
+      'SEP',
+      'OCT',
+      'NOV',
+      'DEC',
+    ];
+    return '${months[local.month - 1]} ${local.day}';
+  }
+}
+
+class _NotificationDaySection {
+  const _NotificationDaySection({
+    required this.label,
+    required this.items,
+  });
+
+  final String label;
+  final List<NotificationEntity> items;
 }

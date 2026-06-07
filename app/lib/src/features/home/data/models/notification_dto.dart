@@ -4,13 +4,14 @@ import 'package:app/src/features/home/domain/entities/notification_entity.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'notification_dto.freezed.dart';
-part 'notification_dto.g.dart';
 
 @freezed
 class NotificationDto extends BaseDto with _$NotificationDto {
   const NotificationDto._();
   const factory NotificationDto({
     required String id,
+    required String kind,
+    required String uiTab,
     // Action status/raw backend kind (e.g. like, follow, rejected, approved).
     required String type,
     // UI category filter type.
@@ -19,6 +20,8 @@ class NotificationDto extends BaseDto with _$NotificationDto {
     required String userName,
     required String userAvatarUrl,
     required String userMeta,
+    required String title,
+    required String body,
     required String message,
     required String accentText,
     required String ctaLabel,
@@ -27,23 +30,58 @@ class NotificationDto extends BaseDto with _$NotificationDto {
     required String postId,
     required DateTime createdAt,
     required bool isRead,
+    required bool isImportant,
+    required String badgeStatus,
+    required String deepLink,
+    required int groupCount,
+    required List<String> actorIds,
   }) = _NotificationDto;
 
   factory NotificationDto.fromJson(Map<String, dynamic> json) {
-    if (json.containsKey('kind') || json.containsKey('ui_tab')) {
-      return _$NotificationDtoFromJson(_normalizeBackendNotification(json));
-    }
-    return _$NotificationDtoFromJson(_withNotificationDefaults(json));
+    final normalized = json.containsKey('kind') || json.containsKey('ui_tab')
+        ? _normalizeBackendNotification(json)
+        : _withNotificationDefaults(json);
+
+    return NotificationDto(
+      id: _stringValue(normalized['id']),
+      kind: _stringValue(normalized['kind']),
+      uiTab: _stringValue(normalized['uiTab']),
+      type: _stringValue(normalized['type']),
+      notificationType: _stringValue(normalized['notificationType']),
+      userId: _stringValue(normalized['userId']),
+      userName: _stringValue(normalized['userName']),
+      userAvatarUrl: _stringValue(normalized['userAvatarUrl']),
+      userMeta: _stringValue(normalized['userMeta']),
+      title: _stringValue(normalized['title']),
+      body: _stringValue(normalized['body']),
+      message: _stringValue(normalized['message']),
+      accentText: _stringValue(normalized['accentText']),
+      ctaLabel: _stringValue(normalized['ctaLabel']),
+      ctaValue: _stringValue(normalized['ctaValue']),
+      rightImageUrl: _stringValue(normalized['rightImageUrl']),
+      postId: _stringValue(normalized['postId']),
+      createdAt: _dateTimeValue(normalized['createdAt']),
+      isRead: normalized['isRead'] == true,
+      isImportant: normalized['isImportant'] == true,
+      badgeStatus: _stringValue(normalized['badgeStatus']),
+      deepLink: _stringValue(normalized['deepLink']),
+      groupCount: _intValue(normalized['groupCount'], fallback: 1),
+      actorIds: _stringList(normalized['actorIds']),
+    );
   }
 
   NotificationEntity toEntity() => NotificationEntity(
         id: id,
+        kind: kind,
+        uiTab: uiTab,
         type: type,
         notificationType: NotificationType.fromString(notificationType),
         userId: userId,
         userName: userName,
         userAvatarUrl: userAvatarUrl,
         userMeta: userMeta,
+        title: title,
+        body: body,
         message: message,
         accentText: accentText,
         ctaLabel: ctaLabel,
@@ -52,6 +90,11 @@ class NotificationDto extends BaseDto with _$NotificationDto {
         postId: postId,
         createdAt: createdAt,
         isRead: isRead,
+        isImportant: isImportant,
+        badgeStatus: badgeStatus,
+        deepLink: deepLink,
+        groupCount: groupCount,
+        actorIds: actorIds,
       );
 }
 
@@ -59,12 +102,16 @@ Map<String, dynamic> _withNotificationDefaults(Map<String, dynamic> json) {
   final now = DateTime.now().toIso8601String();
   return <String, dynamic>{
     'id': '',
+    'kind': '',
+    'uiTab': '',
     'type': '',
     'notificationType': 'unknown',
     'userId': '',
     'userName': '',
     'userAvatarUrl': '',
     'userMeta': '',
+    'title': '',
+    'body': '',
     'message': '',
     'accentText': '',
     'ctaLabel': '',
@@ -73,6 +120,11 @@ Map<String, dynamic> _withNotificationDefaults(Map<String, dynamic> json) {
     'postId': '',
     'createdAt': now,
     'isRead': false,
+    'isImportant': false,
+    'badgeStatus': '',
+    'deepLink': '',
+    'groupCount': 1,
+    'actorIds': const <String>[],
     ...json,
   };
 }
@@ -93,6 +145,8 @@ Map<String, dynamic> _normalizeBackendNotification(Map<String, dynamic> json) {
 
   return <String, dynamic>{
     'id': _stringValue(json['id']),
+    'kind': kind,
+    'uiTab': uiTab,
     'type': badgeStatus.isNotEmpty ? badgeStatus.toLowerCase() : kind,
     'notificationType': _notificationTypeFor(kind, uiTab, badgeStatus),
     'userId': _firstString(payload, const <String>[
@@ -117,6 +171,8 @@ Map<String, dynamic> _normalizeBackendNotification(Map<String, dynamic> json) {
       'user_meta',
       'rank_label',
     ]),
+    'title': title,
+    'body': body,
     'message': body.isEmpty ? title : '$title $body',
     'accentText': reason.isNotEmpty ? 'reason' : '',
     'ctaLabel': _ctaLabelFor(kind, uiTab, deepLink),
@@ -136,6 +192,11 @@ Map<String, dynamic> _normalizeBackendNotification(Map<String, dynamic> json) {
         ? DateTime.now().toIso8601String()
         : _stringValue(json['created_at']),
     'isRead': json['read_at'] != null,
+    'isImportant': json['is_important'] == true,
+    'badgeStatus': badgeStatus,
+    'deepLink': deepLink,
+    'groupCount': _intValue(json['group_count'], fallback: 1),
+    'actorIds': _stringList(json['actor_ids']),
   };
 }
 
@@ -156,6 +217,25 @@ String _firstString(Map<String, dynamic> map, List<String> keys) {
 }
 
 String _stringValue(dynamic value) => value?.toString() ?? '';
+
+DateTime _dateTimeValue(dynamic value) {
+  if (value is DateTime) return value;
+  return DateTime.tryParse(_stringValue(value)) ?? DateTime.now();
+}
+
+int _intValue(dynamic value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
+}
+
+List<String> _stringList(dynamic value) {
+  if (value is! List) return const <String>[];
+  return value
+      .map((item) => item.toString())
+      .where((item) => item.isNotEmpty)
+      .toList(growable: false);
+}
 
 String _notificationTypeFor(String kind, String uiTab, String badgeStatus) {
   switch (kind) {

@@ -8,6 +8,8 @@ part 'notification_entity.g.dart';
 class NotificationEntity with _$NotificationEntity {
   const factory NotificationEntity({
     required String id,
+    @Default('') String kind,
+    @Default('') String uiTab,
     // Action status/raw backend kind (e.g. like, follow, rejected, approved).
     required String type,
     // UI category filter type.
@@ -16,6 +18,8 @@ class NotificationEntity with _$NotificationEntity {
     required String userName,
     required String userAvatarUrl,
     required String userMeta,
+    @Default('') String title,
+    @Default('') String body,
     required String message,
     required String accentText,
     required String ctaLabel,
@@ -24,17 +28,25 @@ class NotificationEntity with _$NotificationEntity {
     required String postId,
     required DateTime createdAt,
     required bool isRead,
+    @Default(false) bool isImportant,
+    @Default('') String badgeStatus,
+    @Default('') String deepLink,
+    @Default(1) int groupCount,
+    @Default(<String>[]) List<String> actorIds,
   }) = _NotificationEntity;
-  
 
   const factory NotificationEntity.empty({
     @Default('') String id,
+    @Default('') String kind,
+    @Default('') String uiTab,
     @Default('') String type,
     @Default(NotificationType.all) NotificationType notificationType,
     @Default('') String userId,
     @Default('') String userName,
     @Default('') String userAvatarUrl,
     @Default('') String userMeta,
+    @Default('') String title,
+    @Default('') String body,
     @Default('') String message,
     @Default('') String accentText,
     @Default('') String ctaLabel,
@@ -43,6 +55,11 @@ class NotificationEntity with _$NotificationEntity {
     @Default('') String postId,
     required DateTime createdAt,
     @Default(false) bool isRead,
+    @Default(false) bool isImportant,
+    @Default('') String badgeStatus,
+    @Default('') String deepLink,
+    @Default(1) int groupCount,
+    @Default(<String>[]) List<String> actorIds,
   }) = _NotificationEntityEmpty;
 
   factory NotificationEntity.fromJson(Map<String, dynamic> json) =>
