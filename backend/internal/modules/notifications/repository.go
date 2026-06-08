@@ -9,6 +9,13 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// ActorInfo holds enriched display data for the user who triggered an event.
+type ActorInfo struct {
+	Username  string `db:"username"`
+	AvatarURL string `db:"avatar_url"`
+	RankTier  string `db:"rank_tier"`
+}
+
 type Repository interface {
 	Insert(ctx context.Context, n *Notification) error
 	Upsert(ctx context.Context, n *Notification) error
@@ -25,6 +32,8 @@ type Repository interface {
 
 	GetUsernameByID(ctx context.Context, userID uuid.UUID) (string, error)
 	GetTaskTitleByID(ctx context.Context, taskID uuid.UUID) (string, error)
+	GetActorInfo(ctx context.Context, userID uuid.UUID) (ActorInfo, error)
+	GetPostThumbnailURL(ctx context.Context, postID uuid.UUID) (string, error)
 }
 
 type PostgresRepository struct {
@@ -278,6 +287,34 @@ func (r *PostgresRepository) GetTaskTitleByID(ctx context.Context, taskID uuid.U
 	var title string
 	err := r.db.QueryRowContext(ctx, `SELECT title FROM tasks WHERE id = $1`, taskID).Scan(&title)
 	return title, err
+}
+
+func (r *PostgresRepository) GetActorInfo(ctx context.Context, userID uuid.UUID) (ActorInfo, error) {
+	var info ActorInfo
+	err := r.db.QueryRowxContext(ctx, `
+		SELECT u.username,
+		       COALESCE(p.avatar_url, '') AS avatar_url,
+		       COALESCE(p.current_rank_tier, '') AS rank_tier
+		FROM users u
+		LEFT JOIN profiles p ON p.user_id = u.id
+		WHERE u.id = $1
+	`, userID).StructScan(&info)
+	return info, err
+}
+
+func (r *PostgresRepository) GetPostThumbnailURL(ctx context.Context, postID uuid.UUID) (string, error) {
+	var url string
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(thumbnail_url, media_url, '')
+		FROM post_media
+		WHERE post_id = $1
+		ORDER BY created_at ASC
+		LIMIT 1
+	`, postID).Scan(&url)
+	if err != nil {
+		return "", nil
+	}
+	return url, nil
 }
 
 // ensure PostgresRepository implements Repository at compile time

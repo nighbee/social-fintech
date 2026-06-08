@@ -235,12 +235,20 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, authorUUID, KindPostLiked) {
 			return nil
 		}
-		actorName := s.resolveUsername(ctx, ev.ActorID)
+		actor := s.resolveActorInfo(ctx, ev.ActorID)
+		postThumb := s.resolvePostThumbnail(ctx, ev.PostID)
 		title := "Someone liked your post"
-		if actorName != "" {
-			title = fmt.Sprintf("%s liked your post", actorName)
+		if actor.Username != "" {
+			title = fmt.Sprintf("%s liked your post", actor.Username)
 		}
-		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID}
+		payload := map[string]any{
+			"post_id":          ev.PostID,
+			"actor_id":         ev.ActorID,
+			"actor_username":   actor.Username,
+			"actor_avatar_url": actor.AvatarURL,
+			"actor_rank":       actor.RankTier,
+			"post_image_url":   postThumb,
+		}
 		enq := Enqueue{
 			UserID:   authorUUID,
 			Kind:     KindPostLiked,
@@ -264,12 +272,21 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, authorUUID, KindPostCommented) {
 			return nil
 		}
-		actorName := s.resolveUsername(ctx, ev.ActorID)
+		actor := s.resolveActorInfo(ctx, ev.ActorID)
+		postThumb := s.resolvePostThumbnail(ctx, ev.PostID)
 		title := "Someone commented on your post"
-		if actorName != "" {
-			title = fmt.Sprintf("%s commented on your post", actorName)
+		if actor.Username != "" {
+			title = fmt.Sprintf("%s commented on your post", actor.Username)
 		}
-		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID, "comment_id": ev.CommentID}
+		payload := map[string]any{
+			"post_id":          ev.PostID,
+			"actor_id":         ev.ActorID,
+			"comment_id":       ev.CommentID,
+			"actor_username":   actor.Username,
+			"actor_avatar_url": actor.AvatarURL,
+			"actor_rank":       actor.RankTier,
+			"post_image_url":   postThumb,
+		}
 		enq := Enqueue{
 			UserID:   authorUUID,
 			Kind:     KindPostCommented,
@@ -294,12 +311,21 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, authorUUID, KindPostReplied) {
 			return nil
 		}
-		actorName := s.resolveUsername(ctx, ev.ActorID)
+		actor := s.resolveActorInfo(ctx, ev.ActorID)
+		postThumb := s.resolvePostThumbnail(ctx, ev.PostID)
 		title := "Someone replied to your comment"
-		if actorName != "" {
-			title = fmt.Sprintf("%s replied to your comment", actorName)
+		if actor.Username != "" {
+			title = fmt.Sprintf("%s replied to your comment", actor.Username)
 		}
-		payload := map[string]any{"post_id": ev.PostID, "actor_id": ev.ActorID, "comment_id": ev.CommentID}
+		payload := map[string]any{
+			"post_id":          ev.PostID,
+			"actor_id":         ev.ActorID,
+			"comment_id":       ev.CommentID,
+			"actor_username":   actor.Username,
+			"actor_avatar_url": actor.AvatarURL,
+			"actor_rank":       actor.RankTier,
+			"post_image_url":   postThumb,
+		}
 		enq := Enqueue{
 			UserID:   authorUUID,
 			Kind:     KindPostReplied,
@@ -321,12 +347,19 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, recipientUUID, KindSealReceived) {
 			return nil
 		}
-		actorName := s.resolveUsername(ctx, ev.ActorID)
+		actor := s.resolveActorInfo(ctx, ev.ActorID)
 		title := fmt.Sprintf("You received %d seals!", ev.Amount)
-		if actorName != "" {
-			title = fmt.Sprintf("%s recognized your post", actorName)
+		if actor.Username != "" {
+			title = fmt.Sprintf("%s recognized your post", actor.Username)
 		}
-		payload := map[string]any{"actor_id": ev.ActorID, "amount": ev.Amount, "post_id": ev.PostID}
+		payload := map[string]any{
+			"actor_id":         ev.ActorID,
+			"amount":           ev.Amount,
+			"post_id":          ev.PostID,
+			"actor_username":   actor.Username,
+			"actor_avatar_url": actor.AvatarURL,
+			"actor_rank":       actor.RankTier,
+		}
 		enq := Enqueue{
 			UserID:   recipientUUID,
 			Kind:     KindSealReceived,
@@ -347,12 +380,19 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, recipientUUID, KindSilverReceived) {
 			return nil
 		}
-		actorName := s.resolveUsername(ctx, ev.ActorID)
+		actor := s.resolveActorInfo(ctx, ev.ActorID)
 		title := fmt.Sprintf("You received %d silver seals!", ev.Amount)
-		if actorName != "" {
-			title = fmt.Sprintf("%s sent you silver", actorName)
+		if actor.Username != "" {
+			title = fmt.Sprintf("%s sent you silver", actor.Username)
 		}
-		payload := map[string]any{"actor_id": ev.ActorID, "amount": ev.Amount, "post_id": ev.PostID}
+		payload := map[string]any{
+			"actor_id":         ev.ActorID,
+			"amount":           ev.Amount,
+			"post_id":          ev.PostID,
+			"actor_username":   actor.Username,
+			"actor_avatar_url": actor.AvatarURL,
+			"actor_rank":       actor.RankTier,
+		}
 		enq := Enqueue{
 			UserID:   recipientUUID,
 			Kind:     KindSilverReceived,
@@ -373,17 +413,23 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, creatorUUID, KindTaskApplied) {
 			return nil
 		}
-		actorName := s.resolveUsername(ctx, ev.ActorID)
+		actor := s.resolveActorInfo(ctx, ev.ActorID)
 		taskTitle := s.resolveTaskTitle(ctx, ev.TaskID)
 		title := "Someone applied to your task"
-		if actorName != "" {
-			title = fmt.Sprintf("%s applied to your task", actorName)
+		if actor.Username != "" {
+			title = fmt.Sprintf("%s applied to your task", actor.Username)
 		}
 		body := "You have a new application."
 		if taskTitle != "" {
 			body = fmt.Sprintf("Task: %s", taskTitle)
 		}
-		payload := map[string]any{"task_id": ev.TaskID, "actor_id": ev.ActorID}
+		payload := map[string]any{
+			"task_id":          ev.TaskID,
+			"actor_id":         ev.ActorID,
+			"task_title":       taskTitle,
+			"actor_username":   actor.Username,
+			"actor_avatar_url": actor.AvatarURL,
+		}
 		enq := Enqueue{
 			UserID:  creatorUUID,
 			Kind:    KindTaskApplied,
@@ -410,7 +456,11 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if taskTitle != "" {
 			body = fmt.Sprintf("\"%s\" — someone is on the way.", taskTitle)
 		}
-		payload := map[string]any{"task_id": ev.TaskID, "creator_id": ev.CreatorID}
+		payload := map[string]any{
+			"task_id":    ev.TaskID,
+			"creator_id": ev.CreatorID,
+			"task_title": taskTitle,
+		}
 		enq := Enqueue{
 			UserID:  helperUUID,
 			Kind:    KindTaskAccepted,
@@ -431,7 +481,12 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, helperUUID, KindTaskCompleted) {
 			return nil
 		}
-		payload := map[string]any{"task_id": ev.TaskID, "reward": ev.Reward}
+		taskTitleCompleted := s.resolveTaskTitle(ctx, ev.TaskID)
+		payload := map[string]any{
+			"task_id":    ev.TaskID,
+			"reward":     ev.Reward,
+			"task_title": taskTitleCompleted,
+		}
 		enq := Enqueue{
 			UserID:  helperUUID,
 			Kind:    KindTaskCompleted,
@@ -452,15 +507,21 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, creatorUUID, KindTaskProofSubmitted) {
 			return nil
 		}
-		actorName := s.resolveUsername(ctx, ev.HelperID)
+		helperActor := s.resolveActorInfo(ctx, ev.HelperID)
 		taskTitle := s.resolveTaskTitle(ctx, ev.TaskID)
 		title := "Proof submitted for review"
-		if actorName != "" && taskTitle != "" {
-			title = fmt.Sprintf("%s submitted proof for \"%s\"", actorName, taskTitle)
-		} else if actorName != "" {
-			title = fmt.Sprintf("%s submitted proof for review", actorName)
+		if helperActor.Username != "" && taskTitle != "" {
+			title = fmt.Sprintf("%s submitted proof for \"%s\"", helperActor.Username, taskTitle)
+		} else if helperActor.Username != "" {
+			title = fmt.Sprintf("%s submitted proof for review", helperActor.Username)
 		}
-		payload := map[string]any{"task_id": ev.TaskID, "helper_id": ev.HelperID}
+		payload := map[string]any{
+			"task_id":          ev.TaskID,
+			"helper_id":        ev.HelperID,
+			"task_title":       taskTitle,
+			"actor_username":   helperActor.Username,
+			"actor_avatar_url": helperActor.AvatarURL,
+		}
 		enq := Enqueue{
 			UserID:  creatorUUID,
 			Kind:    KindTaskProofSubmitted,
@@ -486,7 +547,7 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if taskTitle != "" {
 			body = fmt.Sprintf("\"%s\" expired.", taskTitle)
 		}
-		payload := map[string]any{"task_id": ev.TaskID}
+		payload := map[string]any{"task_id": ev.TaskID, "task_title": taskTitle}
 		enq := Enqueue{
 			UserID:  creatorUUID,
 			Kind:    KindTaskExpired,
@@ -513,7 +574,7 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if taskTitle != "" {
 			body = fmt.Sprintf("Your proof for \"%s\" needs verification.", taskTitle)
 		}
-		payload := map[string]any{"task_id": ev.TaskID}
+		payload := map[string]any{"task_id": ev.TaskID, "task_title": taskTitle}
 		enq := Enqueue{
 			UserID:  helperUUID,
 			Kind:    KindTaskVerificationNeeded,
@@ -534,7 +595,12 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 		if !s.shouldSendNotification(ctx, helperUUID, KindTaskRewardDelivered) {
 			return nil
 		}
-		payload := map[string]any{"task_id": ev.TaskID, "reward": ev.Reward}
+		taskTitleReward := s.resolveTaskTitle(ctx, ev.TaskID)
+		payload := map[string]any{
+			"task_id":    ev.TaskID,
+			"reward":     ev.Reward,
+			"task_title": taskTitleReward,
+		}
 		enq := Enqueue{
 			UserID:  helperUUID,
 			Kind:    KindTaskRewardDelivered,
@@ -761,7 +827,11 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		userUUID, _ := uuid.Parse(ev.UserID)
-		payload := map[string]any{"post_id": ev.PostID, "details": ev.Details}
+		payload := map[string]any{
+			"post_id":          ev.PostID,
+			"details":          ev.Details,
+			"rejection_reason": ev.Details,
+		}
 		enq := Enqueue{
 			UserID:  userUUID,
 			Kind:    KindPostRejected,
@@ -779,14 +849,24 @@ func (s *Service) HandleSystemEvent(ctx context.Context, envelope eventbus.Envel
 			return err
 		}
 		recipientUUID, _ := uuid.Parse(ev.RecipientID)
-		payload := map[string]any{"actor_id": ev.ActorID, "conversation_id": ev.ConversationID}
+		actor := s.resolveActorInfo(ctx, ev.ActorID)
+		title := "New message"
+		if actor.Username != "" {
+			title = actor.Username
+		}
+		payload := map[string]any{
+			"actor_id":         ev.ActorID,
+			"conversation_id":  ev.ConversationID,
+			"actor_username":   actor.Username,
+			"actor_avatar_url": actor.AvatarURL,
+		}
 		enq := Enqueue{
-			UserID:  recipientUUID,
-			Kind:    KindMessageReceived,
-			Title:   "New message",
-			Body:    ev.Preview,
-			Payload: payload,
-			UITab:   UITabActivity,
+			UserID:   recipientUUID,
+			Kind:     KindMessageReceived,
+			Title:    title,
+			Body:     ev.Preview,
+			Payload:  payload,
+			UITab:    UITabActivity,
 			DeepLink: fmt.Sprintf("app://chat/%s", ev.ConversationID),
 		}
 		_, err := s.Enqueue(ctx, enq)
@@ -810,6 +890,33 @@ func (s *Service) resolveUsername(ctx context.Context, rawID string) string {
 		return ""
 	}
 	return username
+}
+
+// resolveActorInfo fetches username, avatar URL, and rank tier for enriching notification payloads.
+// Returns zero ActorInfo on any error — it is optional enrichment, never blocking.
+func (s *Service) resolveActorInfo(ctx context.Context, rawID string) ActorInfo {
+	if rawID == "" {
+		return ActorInfo{}
+	}
+	userID, err := uuid.Parse(rawID)
+	if err != nil {
+		return ActorInfo{}
+	}
+	info, _ := s.repo.GetActorInfo(ctx, userID)
+	return info
+}
+
+// resolvePostThumbnail fetches the first media thumbnail URL for a post.
+func (s *Service) resolvePostThumbnail(ctx context.Context, postID string) string {
+	if postID == "" {
+		return ""
+	}
+	id, err := uuid.Parse(postID)
+	if err != nil {
+		return ""
+	}
+	url, _ := s.repo.GetPostThumbnailURL(ctx, id)
+	return url
 }
 
 func (s *Service) resolveTaskTitle(ctx context.Context, rawID string) string {
