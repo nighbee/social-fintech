@@ -15,3 +15,7 @@ export function removeUserFromLeaderboard(userId, scope, region) {
 export function adjustLeaderboardScore(userId, scope, amount, region) {
   return api.post('/admin/leaderboard/adjust-score', { user_id: userId, scope, amount, region });
 }
+
+export function resetLeaderboard(scope, region, allWeeks) {
+  return api.post('/admin/leaderboard/reset', { scope, region, all_weeks: allWeeks });
+}

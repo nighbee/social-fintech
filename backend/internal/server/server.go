@@ -202,6 +202,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	leaderboardAdminGroup.Post("/add-user", leaderboardHandler.AdminAddUser)
 	leaderboardAdminGroup.Post("/remove-user", leaderboardHandler.AdminRemoveUser)
 	leaderboardAdminGroup.Post("/adjust-score", leaderboardHandler.AdminAdjustScore)
+	leaderboardAdminGroup.Post("/reset", leaderboardHandler.AdminResetLeaderboard)
 
 	// Feed & Interactions (Note: Feed router actually manages its own sub-routing in routes.go
 	// but for consistency we can call a Feed register wrapper here or just inject the handler)

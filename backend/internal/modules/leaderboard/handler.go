@@ -205,9 +205,11 @@ func (h *Handler) AdminAddUser(c *fiber.Ctx) error {
 		}
 	}
 
+	now := time.Now().Unix()
 	for _, key := range keys {
 		_ = h.svc.cache.ZAdd(c.Context(), key, req.Score, req.UserID)
 		_ = h.svc.cache.Expire(c.Context(), key, leaderboardKeyTTL)
+		h.svc.cache.HSetNX(c.Context(), key+":first_seen", req.UserID, now)
 	}
 
 	return c.JSON(fiber.Map{"status": "ok", "keys": len(keys)})
@@ -351,6 +353,84 @@ func (h *Handler) AdminAdjustScore(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "ok", "keys_affected": affected})
+}
+
+// AdminResetLeaderboard godoc
+// @Summary      Reset leaderboard scope
+// @Description  Deletes the entire sorted set (and associated first_seen hash) for a given scope and optional region. Defaults to current week only; set all_weeks=true to wipe all weeks for the scope.
+// @Tags         Leaderboard Admin
+// @Accept       json
+// @Produce      json
+// @Security     Bearer
+// @Param        body  body  AdminResetLeaderboardRequest  true  "Reset leaderboard request"
+// @Success      200   {object}  AdminResetLeaderboardResponse
+// @Failure      400   {object}  map[string]string
+// @Failure      403   {object}  map[string]string
+// @Router       /admin/leaderboard/reset [post]
+func (h *Handler) AdminResetLeaderboard(c *fiber.Ctx) error {
+	var req AdminResetLeaderboardRequest
+	if err := json.Unmarshal(c.Body(), &req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+	if req.Scope == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "scope is required"})
+	}
+
+	scope := Scope(req.Scope)
+	if !scope.Valid() {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid scope"})
+	}
+
+	year, week := time.Now().UTC().ISOWeek()
+
+	var patterns []string
+	if scope == ScopeGlobal {
+		if req.AllWeeks {
+			patterns = append(patterns, "leaderboard:global:week:*")
+		} else {
+			patterns = append(patterns, fmt.Sprintf("leaderboard:global:week:%d:%d", year, week))
+		}
+	} else {
+		prefix := scopeToPrefix(scope)
+		if req.AllWeeks {
+			if req.Region != "" {
+				patterns = append(patterns, fmt.Sprintf("leaderboard:%s:%s:week:*", prefix, req.Region))
+			} else {
+				patterns = append(patterns, fmt.Sprintf("leaderboard:%s:*:week:*", prefix))
+			}
+		} else {
+			if req.Region != "" {
+				patterns = append(patterns, fmt.Sprintf("leaderboard:%s:%s:week:%d:%d", prefix, req.Region, year, week))
+			} else {
+				patterns = append(patterns, fmt.Sprintf("leaderboard:%s:*:week:%d:%d", prefix, year, week))
+			}
+		}
+	}
+
+	var allKeys []string
+	for _, pattern := range patterns {
+		keys, err := h.svc.cache.ScanKeys(c.Context(), pattern, 500)
+		if err != nil {
+			continue
+		}
+		allKeys = append(allKeys, keys...)
+	}
+
+	var keysDeleted int64
+	var membersDropped int64
+
+	for _, key := range allKeys {
+		card, _ := h.svc.cache.ZCard(c.Context(), key)
+		membersDropped += card
+		_ = h.svc.cache.Delete(c.Context(), key)
+		_ = h.svc.cache.Delete(c.Context(), key+":first_seen")
+		keysDeleted++
+	}
+
+	return c.JSON(AdminResetLeaderboardResponse{
+		KeysDeleted:    keysDeleted,
+		MembersDropped: membersDropped,
+	})
 }
 
 func scopeToPrefix(scope Scope) string {

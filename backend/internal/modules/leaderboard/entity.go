@@ -66,6 +66,17 @@ type AdminAdjustScoreRequest struct {
 	Amount float64 `json:"amount"`
 }
 
+type AdminResetLeaderboardRequest struct {
+	Scope    string `json:"scope"`
+	Region   string `json:"region,omitempty"`
+	AllWeeks bool   `json:"all_weeks,omitempty"`
+}
+
+type AdminResetLeaderboardResponse struct {
+	KeysDeleted    int64 `json:"keys_deleted"`
+	MembersDropped int64 `json:"members_dropped"`
+}
+
 type AdminListScopesResponse struct {
 	Scopes []ScopeInfo `json:"scopes"`
 }

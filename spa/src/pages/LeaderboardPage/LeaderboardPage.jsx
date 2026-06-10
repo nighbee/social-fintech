@@ -4,6 +4,7 @@ import {
   addUserToLeaderboard,
   removeUserFromLeaderboard,
   adjustLeaderboardScore,
+  resetLeaderboard,
 } from '../../api/leaderboard';
 import { searchUserByEmail } from '../../api/users';
 import { Loading, ErrorMessage } from '../../components/Loading';
@@ -19,10 +20,12 @@ export default function LeaderboardPage() {
   const [addMode, setAddMode] = useState(false);
   const [removeMode, setRemoveMode] = useState(false);
   const [adjustMode, setAdjustMode] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
 
   const [addForm, setAddForm] = useState({ email: '', scope: 'global', region: '', score: 0 });
   const [removeForm, setRemoveForm] = useState({ email: '', scope: 'global', region: '' });
   const [adjustForm, setAdjustForm] = useState({ email: '', scope: 'global', region: '', amount: 0 });
+  const [resetForm, setResetForm] = useState({ scope: 'global', region: '', allWeeks: false });
 
   const [emailSearchResults, setEmailSearchResults] = useState(null);
   const [emailSearchLoading, setEmailSearchLoading] = useState(false);
@@ -98,19 +101,37 @@ export default function LeaderboardPage() {
     }
   };
 
+  const handleReset = async () => {
+    try {
+      const resp = await resetLeaderboard(resetForm.scope, resetForm.region || undefined, resetForm.allWeeks);
+      setActionResult({
+        type: 'success',
+        message: `Reset complete: ${resp.keys_deleted} keys deleted, ${resp.members_dropped} members dropped`,
+      });
+      setResetMode(false);
+      setResetForm({ scope: 'global', region: '', allWeeks: false });
+      loadScopes();
+    } catch (e) {
+      setActionResult({ type: 'error', message: e.message });
+    }
+  };
+
   const scopeLabels = { global: 'Global', country: 'Country', city: 'City', district: 'District' };
 
   return (
     <div className={styles.page}>
       <div className={styles.actions}>
-        <button className={styles.primaryBtn} onClick={() => { setAddMode(!addMode); setRemoveMode(false); setAdjustMode(false); setEmailSearchResults(null); }}>
+        <button className={styles.primaryBtn} onClick={() => { setAddMode(!addMode); setRemoveMode(false); setAdjustMode(false); setResetMode(false); setEmailSearchResults(null); }}>
           Add User
         </button>
-        <button className={styles.primaryBtn} onClick={() => { setRemoveMode(!removeMode); setAddMode(false); setAdjustMode(false); setEmailSearchResults(null); }}>
+        <button className={styles.primaryBtn} onClick={() => { setRemoveMode(!removeMode); setAddMode(false); setAdjustMode(false); setResetMode(false); setEmailSearchResults(null); }}>
           Remove User
         </button>
-        <button className={styles.primaryBtn} onClick={() => { setAdjustMode(!adjustMode); setAddMode(false); setRemoveMode(false); setEmailSearchResults(null); }}>
+        <button className={styles.primaryBtn} onClick={() => { setAdjustMode(!adjustMode); setAddMode(false); setRemoveMode(false); setResetMode(false); setEmailSearchResults(null); }}>
           Adjust Score
+        </button>
+        <button className={styles.dangerBtn} onClick={() => { setResetMode(!resetMode); setAddMode(false); setRemoveMode(false); setAdjustMode(false); }}>
+          Reset
         </button>
         <button className={styles.secondaryBtn} onClick={loadScopes}>
           Refresh Scopes
@@ -273,6 +294,45 @@ export default function LeaderboardPage() {
           <div className={styles.formActions}>
             <button className={styles.submitBtn} onClick={handleAdjustScore}>Adjust</button>
             <button className={styles.cancelBtn} onClick={() => { setAdjustMode(false); setEmailSearchResults(null); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {resetMode && (
+        <div className={styles.formCard}>
+          <h3 className={styles.formTitle}>Reset Leaderboard</h3>
+          <p style={{ margin: 0, fontSize: 13, color: 'var(--text-muted)' }}>
+            This will permanently delete the sorted set and all member data for the selected scope. This action cannot be undone.
+          </p>
+          <div className={styles.formRow}>
+            <select className={styles.select} value={resetForm.scope} onChange={(e) => setResetForm({ ...resetForm, scope: e.target.value })}>
+              <option value="global">Global</option>
+              <option value="country">Country</option>
+              <option value="city">City</option>
+              <option value="district">District</option>
+            </select>
+            {resetForm.scope !== 'global' && (
+              <input
+                className={styles.input}
+                placeholder="H3 region index (empty = all regions)"
+                value={resetForm.region}
+                onChange={(e) => setResetForm({ ...resetForm, region: e.target.value })}
+              />
+            )}
+          </div>
+          <div className={styles.formRow}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+              <input
+                type="checkbox"
+                checked={resetForm.allWeeks}
+                onChange={(e) => setResetForm({ ...resetForm, allWeeks: e.target.checked })}
+              />
+              Delete all weeks (not just current week)
+            </label>
+          </div>
+          <div className={styles.formActions}>
+            <button className={styles.dangerBtn} onClick={handleReset}>Reset Leaderboard</button>
+            <button className={styles.cancelBtn} onClick={() => setResetMode(false)}>Cancel</button>
           </div>
         </div>
       )}
