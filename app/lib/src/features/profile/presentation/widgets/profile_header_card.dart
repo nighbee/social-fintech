@@ -203,7 +203,7 @@ class ProfileHeaderCard extends StatelessWidget {
                   onUnblock: onUnblock,
                   onMessage: onMessage,
                 )
-              : const ProfileActionButtons(),
+              : ProfileActionButtons(userId: userId),
         ],
       ),
     );

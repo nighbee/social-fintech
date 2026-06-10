@@ -60,6 +60,7 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
   late final TextEditingController _commentController;
   late final FocusNode _focusNode;
   late final HomeBloc _bloc;
+  String? _replyTargetId;
 
   @override
   void initState() {
@@ -80,11 +81,12 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
   }
 
   String? _currentReplyTargetId() {
-    return _bloc.state.maybeWhen(
-      loading: (viewModel) => viewModel.replyingToCommentId,
-      loaded: (viewModel) => viewModel.replyingToCommentId,
-      orElse: () => null,
-    );
+    return _replyTargetId ??
+        _bloc.state.maybeWhen(
+          loading: (viewModel) => viewModel.replyingToCommentId,
+          loaded: (viewModel) => viewModel.replyingToCommentId,
+          orElse: () => null,
+        );
   }
 
   List<CommentComposerPhoto> _currentComposerPhotos() {
@@ -109,14 +111,19 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
     final photoFileNames =
         _currentComposerPhotos().map((photo) => photo.fileName).toList();
     if (text.isEmpty && photoFileNames.isEmpty) return;
+    final parentCommentId = _currentReplyTargetId();
 
     _bloc.add(
       HomeEvent.addComment(
         postId: widget.post.id,
         content: text,
-        parentCommentId: _currentReplyTargetId(),
+        parentCommentId: parentCommentId,
       ),
     );
+    _replyTargetId = null;
+    if (parentCommentId != null) {
+      _bloc.add(const HomeEvent.setReplyTarget(null));
+    }
     _commentController.clear();
   }
 
@@ -245,6 +252,7 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                                             viewModel: viewModel,
                                             depth: 0,
                                             onReply: (target) {
+                                              _replyTargetId = target.id;
                                               _bloc.add(
                                                 HomeEvent.setReplyTarget(
                                                   target.id,
@@ -270,6 +278,7 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                               );
                             },
                             onCancelReply: () {
+                              _replyTargetId = null;
                               _bloc.add(const HomeEvent.setReplyTarget(null));
                             },
                           ),

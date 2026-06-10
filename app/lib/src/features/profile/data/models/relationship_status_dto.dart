@@ -14,6 +14,8 @@ class RelationshipStatusDto extends BaseDto with _$RelationshipStatusDto {
     @JsonKey(name: 'i_follow_them') required bool iFollowThem,
     @JsonKey(name: 'i_restricted_them') required bool iRestrictedThem,
     @JsonKey(name: 'they_follow_me') required bool theyFollowMe,
+    @JsonKey(name: 'they_blocked_me', defaultValue: false)
+    required bool theyBlockedMe,
   }) = _RelationshipStatusDto;
 
   factory RelationshipStatusDto.fromJson(Map<String, dynamic> json) =>
@@ -25,5 +27,6 @@ class RelationshipStatusDto extends BaseDto with _$RelationshipStatusDto {
         iFollowThem: iFollowThem,
         iRestrictedThem: iRestrictedThem,
         theyFollowMe: theyFollowMe,
+        theyBlockedMe: theyBlockedMe,
       );
 }

@@ -43,7 +43,11 @@ abstract interface class IProfileRemote {
 
   Future<Either<DomainException, void>> unrestrictUser(UserIdRequest request);
 
-  Future<Either<DomainException, void>> reportUser(UserIdRequest request);
+  Future<Either<DomainException, void>> reportUser(
+    UserIdRequest request, {
+    String reason = 'other',
+    String description = '',
+  });
 
   Future<Either<DomainException, RelationshipStatusDto>> getRelationship(
     UserIdRequest request,

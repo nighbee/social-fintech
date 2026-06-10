@@ -505,6 +505,38 @@ class HomeRemoteImpl implements IHomeRemote {
   }
 
   @override
+  Future<Either<DomainException, void>> markNotificationRead(
+    String notificationId,
+  ) async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.notificationRead(notificationId),
+      );
+      return response.fold(
+        (error) => Left(error),
+        (_) => const Right(null),
+      );
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> markAllNotificationsRead() async {
+    try {
+      final response = await _restClient.post(
+        EndPoints.notificationsReadAll,
+      );
+      return response.fold(
+        (error) => Left(error),
+        (_) => const Right(null),
+      );
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
   Future<Either<DomainException, FeedStateDto>> getFeedState() async {
     try {
       final response = await _restClient.get(EndPoints.feedState);

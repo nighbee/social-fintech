@@ -83,9 +83,8 @@ class ProfileRepositoryImpl implements IProfileRepository {
       final result = await _profileRemote.searchProfiles(request);
 
       return result.fold((error) => Left(error), (profileDtoList) {
-        final List<ProfileSearchResultEntity> entities = profileDtoList
-            .map((dto) => dto.toEntity())
-            .toList();
+        final List<ProfileSearchResultEntity> entities =
+            profileDtoList.map((dto) => dto.toEntity()).toList();
         return Right(entities);
       });
     } catch (e) {
@@ -129,9 +128,8 @@ class ProfileRepositoryImpl implements IProfileRepository {
       final result = await _profileRemote.getAllies(request);
 
       return result.fold((error) => Left(error), (alliesDtoList) {
-        final List<AllyProfileEntity> entities = alliesDtoList
-            .map((dto) => dto.toEntity())
-            .toList();
+        final List<AllyProfileEntity> entities =
+            alliesDtoList.map((dto) => dto.toEntity()).toList();
         return Right(entities);
       });
     } catch (e) {
@@ -167,10 +165,16 @@ class ProfileRepositoryImpl implements IProfileRepository {
 
   @override
   Future<Either<DomainException, void>> reportUser(
-    UserIdRequest request,
-  ) async {
+    UserIdRequest request, {
+    String reason = 'other',
+    String description = '',
+  }) async {
     try {
-      return await _profileRemote.reportUser(request);
+      return await _profileRemote.reportUser(
+        request,
+        reason: reason,
+        description: description,
+      );
     } catch (e) {
       return Left(
         e is DomainException ? e : UnknownException(message: e.toString()),

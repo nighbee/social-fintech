@@ -72,6 +72,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   FeedEntity _myProfilePostsListCache = const FeedEntity.empty();
   String _profilePostsGridUserId = '';
   String _profilePostsListUserId = '';
+  String _activeCommentsPostId = '';
   final Set<String> _sendingSealPostIds = <String>{};
 
   FeedEntity get profilePostsGridCache => _profilePostsGridCache;
@@ -189,6 +190,7 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   }
 
   Future<void> _loadCommentsCompat(_LoadComments event, Emitter emit) async {
+    _activeCommentsPostId = event.postId;
     await _getPostComments(
       _GetPostComments(
         request: GetPostCommentsRequest(postId: event.postId),
@@ -257,12 +259,55 @@ class HomeBloc extends BaseBloc<HomeEvent, HomeState> {
   ) async {
     final current = _viewModel.expandedReplyCommentIds;
     final contains = current.contains(event.commentId);
+    if (contains) {
+      _viewModel = _viewModel.copyWith(
+        expandedReplyCommentIds: current
+            .where((id) => id != event.commentId)
+            .toList(growable: false),
+      );
+      emit(HomeState.loaded(viewModel: _viewModel));
+      return;
+    }
+
     _viewModel = _viewModel.copyWith(
-      expandedReplyCommentIds: contains
-          ? current.where((id) => id != event.commentId).toList(growable: false)
-          : <String>[...current, event.commentId],
+      expandedReplyCommentIds: <String>[...current, event.commentId],
     );
     emit(HomeState.loaded(viewModel: _viewModel));
+
+    final alreadyLoaded = _viewModel.comments.comments.any(
+      (comment) => comment.parentCommentId == event.commentId,
+    );
+    if (alreadyLoaded || _activeCommentsPostId.isEmpty) return;
+
+    final result = await _repository.getPostComments(
+      GetPostCommentsRequest(
+        postId: _activeCommentsPostId,
+        parentId: event.commentId,
+      ),
+    );
+    result.fold(
+      (_) {
+        _viewModel = _viewModel.copyWith(
+          expandedReplyCommentIds: _viewModel.expandedReplyCommentIds
+              .where((id) => id != event.commentId)
+              .toList(growable: false),
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+      (replies) {
+        final commentsById = <String, CommentResponseEntity>{
+          for (final comment in _viewModel.comments.comments)
+            comment.commentId: comment,
+          for (final reply in replies.comments) reply.commentId: reply,
+        };
+        _viewModel = _viewModel.copyWith(
+          comments: _viewModel.comments.copyWith(
+            comments: commentsById.values.toList(growable: false),
+          ),
+        );
+        emit(HomeState.loaded(viewModel: _viewModel));
+      },
+    );
   }
 
   Future<void> _likeCommentCompat(_LikeComment event, Emitter emit) async {

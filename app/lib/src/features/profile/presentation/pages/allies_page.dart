@@ -8,6 +8,7 @@ import 'package:app/src/features/profile/domain/entities/ally_profile_entity.dar
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/mixins/show_sort_bottom_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 
@@ -25,7 +26,8 @@ class AlliesPage extends StatefulWidget {
 }
 
 class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
-  String _selectedSort = 'По умолчанию';
+  String _selectedSort = 'Default: Earliest';
+  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -50,34 +52,45 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
         ),
         centerTitle: true,
         actions: [
-          Container(
-            height: 40,
-            padding: const EdgeInsets.symmetric(horizontal: 15),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF656565)),
-            ),
-            child: Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Assets.icons.personFavourites.svg(
-                    width: 24,
-                    height: 24,
-                    colorFilter: ColorFilter.mode(
-                      const Color(0xFFCACACA),
-                      BlendMode.srcIn,
-                    ),
+          BlocBuilder<ProfileBloc, ProfileState>(
+            bloc: getIt<ProfileBloc>(),
+            builder: (context, state) {
+              final count = state.maybeWhen(
+                loading: (viewModel) => viewModel.allies.length,
+                loaded: (viewModel) => viewModel.allies.length,
+                orElse: () => 0,
+              );
+              return Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 15),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6D6D6D).withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF656565)),
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Assets.icons.personFavourites.svg(
+                        width: 24,
+                        height: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFFCACACA),
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      const Gap(6),
+                      Text(
+                        '$count',
+                        style:
+                            TextStyles.titleTag.copyWith(color: Colors.white),
+                      ),
+                    ],
                   ),
-                  const Gap(6),
-                  Text(
-                    '0',
-                    style: TextStyles.titleTag.copyWith(color: Colors.white),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
           const Gap(20),
         ],
@@ -90,7 +103,11 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
             children: [
               _SearchBar(
                 controller: _searchController,
-                onChanged: (_) {},
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.trim().toLowerCase();
+                  });
+                },
               ),
               _SortButton(
                 selectedSort: _selectedSort,
@@ -134,6 +151,21 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
                     ),
                   ),
                   loaded: (viewModel) {
+                    final visibleAllies = viewModel.allies.where((ally) {
+                      if (_searchQuery.isEmpty) return true;
+                      return ally.displayName
+                              .trim()
+                              .toLowerCase()
+                              .contains(_searchQuery) ||
+                          ally.rankTier
+                              .trim()
+                              .toLowerCase()
+                              .contains(_searchQuery);
+                    }).toList(growable: false);
+                    final sortedAllies = _selectedSort == 'Default: Earliest'
+                        ? visibleAllies.reversed.toList(growable: false)
+                        : visibleAllies;
+
                     if (viewModel.allies.isEmpty) {
                       return Center(
                         child: Column(
@@ -146,7 +178,7 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
                             ),
                             const Gap(16),
                             Text(
-                              'У вас пока нет союзников',
+                              'You do not have any allies yet',
                               style: TextStyles.bodyMain.copyWith(
                                 color: const Color(0xFF6D6D6D),
                               ),
@@ -156,13 +188,24 @@ class _AlliesPageState extends State<AlliesPage> with ShowSortBottomSheet {
                       );
                     }
 
+                    if (sortedAllies.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No allies found',
+                          style: TextStyles.bodyMain.copyWith(
+                            color: const Color(0xFF838383),
+                          ),
+                        ),
+                      );
+                    }
+
                     return ListView.separated(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: viewModel.allies.length,
+                      itemCount: sortedAllies.length,
                       separatorBuilder: (context, index) =>
                           const Divider(color: Color(0xFF333333), height: 1),
                       itemBuilder: (context, index) {
-                        final ally = viewModel.allies[index];
+                        final ally = sortedAllies[index];
                         return _AllyCard(ally: ally);
                       },
                     );

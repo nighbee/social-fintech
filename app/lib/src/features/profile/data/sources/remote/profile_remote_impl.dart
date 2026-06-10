@@ -223,12 +223,17 @@ class ProfileRemoteImpl implements IProfileRemote {
 
   @override
   Future<Either<DomainException, void>> reportUser(
-    UserIdRequest request,
-  ) async {
+    UserIdRequest request, {
+    String reason = 'other',
+    String description = '',
+  }) async {
     try {
       final response = await _restClient.post(
         EndPoints.profileReport(request.userId),
-        data: {},
+        data: <String, dynamic>{
+          'reason': reason,
+          if (description.trim().isNotEmpty) 'description': description.trim(),
+        },
       );
 
       return response.fold((error) => Left(error), (_) => const Right(null));

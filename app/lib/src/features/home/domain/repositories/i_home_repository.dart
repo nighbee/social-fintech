@@ -88,6 +88,10 @@ abstract class IHomeRepository {
   Future<Either<DomainException, List<NotificationEntity>>> getNotifications({
     String? tab,
   });
+  Future<Either<DomainException, void>> markNotificationRead(
+    String notificationId,
+  );
+  Future<Either<DomainException, void>> markAllNotificationsRead();
   Future<Either<DomainException, FeedStateEntity>> getFeedState();
   Future<Either<DomainException, FeedStateEntity>> syncFeedState(
     FeedStateSyncRequest request,

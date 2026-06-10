@@ -45,12 +45,15 @@ class EndPoints {
 
   //* Notifications
   static const String notifications = '/notifications';
+  static const String notificationsReadAll = '/notifications/read-all';
   static String notificationRead(String notificationId) =>
       '/notifications/$notificationId/read';
 
   //* Gamification
   static const String gamificationRank = '/gamification/rank';
   static const String gamificationRanks = '/gamification/ranks';
+  static const String ranks = '/ranks';
+  static const String myRank = '/ranks/me';
 
   //* Leaderboard
   static const String leaderboard = '/leaderboard';

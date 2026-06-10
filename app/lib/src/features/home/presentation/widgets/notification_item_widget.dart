@@ -10,10 +10,12 @@ import 'package:go_router/go_router.dart';
 class NotificationItemWidget extends StatelessWidget {
   const NotificationItemWidget({
     required this.notification,
+    this.onOpened,
     super.key,
   });
 
   final NotificationEntity notification;
+  final VoidCallback? onOpened;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +67,8 @@ class NotificationItemWidget extends StatelessWidget {
   }
 
   void _handleTap(BuildContext context) {
+    onOpened?.call();
+
     if (notification.accentText.toLowerCase() == 'reason' &&
         notification.ctaValue.isNotEmpty) {
       _showReasonDialog(context);
@@ -104,8 +108,19 @@ class NotificationItemWidget extends StatelessWidget {
       case 'tasks':
         context.go(RoutePaths.map);
       case 'post':
-        // There is no dedicated post-details route yet.
-        return;
+        if (segments.length > 1 && segments[1].isNotEmpty) {
+          context.pushNamed(
+            RouteNames.profilePublications,
+            extra: <String, dynamic>{
+              'initialPostId': segments[1],
+              'isCurrentUser': true,
+            },
+          );
+        }
+      case 'settings':
+        if (segments.contains('security')) {
+          context.pushNamed(RouteNames.profileSecurity);
+        }
     }
   }
 
@@ -513,12 +528,15 @@ class _NotificationPresenter {
 
   String get badgeLabel {
     final status = notification.badgeStatus.toUpperCase();
+    if (notification.kind == 'rank_advanced' ||
+        notification.kind == 'ranking_up') {
+      return 'Rank advanced';
+    }
     if (status == 'MEDAL_UNLOCKED') return 'Medal unlocked';
     if (status == 'AREA_LEADER') return 'Area leader';
     if (status == 'ACCEPTED') return 'Completed';
     if (status == 'UNDER_REVIEW') return 'Under review';
     if (status == 'REJECTED') return 'Rejected';
-    if (notification.kind == 'rank_advanced') return 'Rank advanced';
     if (notification.kind == 'task_completed' ||
         notification.kind == 'reward_delivered') {
       return 'Completed';

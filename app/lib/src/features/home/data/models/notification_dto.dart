@@ -188,9 +188,11 @@ Map<String, dynamic> _normalizeBackendNotification(Map<String, dynamic> json) {
       'task_id',
       'conversation_id',
     ]),
-    'createdAt': _stringValue(json['created_at']).isEmpty
-        ? DateTime.now().toIso8601String()
-        : _stringValue(json['created_at']),
+    'createdAt': _stringValue(json['updated_at']).isNotEmpty
+        ? _stringValue(json['updated_at'])
+        : _stringValue(json['created_at']).isEmpty
+            ? DateTime.now().toIso8601String()
+            : _stringValue(json['created_at']),
     'isRead': json['read_at'] != null,
     'isImportant': json['is_important'] == true,
     'badgeStatus': badgeStatus,

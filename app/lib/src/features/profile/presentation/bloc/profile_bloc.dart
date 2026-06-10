@@ -245,9 +245,7 @@ class ProfileBloc extends BaseBloc<ProfileEvent, ProfileState> {
   ) async {
     try {
       emit(ProfileState.loading(viewModel: _viewModel));
-      final request = UserIdRequest(
-        userId: '5ff12d77-0c81-4b73-b168-85515b5d5180',
-      );
+      final request = UserIdRequest(userId: 'me');
       final result = await _repository.getAllies(request);
 
       result.fold((error) => emit(ProfileState.loadingError(error.message)), (

@@ -4,9 +4,15 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 class ProfileActionButtons extends StatelessWidget {
-  const ProfileActionButtons({super.key});
+  const ProfileActionButtons({
+    required this.userId,
+    super.key,
+  });
+
+  final String userId;
 
   static const Color _actionBtnFill = Color(0xFF303030);
   static const Color _primaryBtnBorder = Color.fromRGBO(101, 101, 101, 0.25);
@@ -28,7 +34,7 @@ class ProfileActionButtons extends StatelessWidget {
           flex: 152,
           child: _PrimaryActionPill(
             label: 'Share profile',
-            onTap: () {},
+            onTap: () => _shareProfile(context),
           ),
         ),
         const Gap(6),
@@ -36,6 +42,22 @@ class ProfileActionButtons extends StatelessWidget {
           onTap: () => context.push('/profile/allies'),
         ),
       ],
+    );
+  }
+
+  Future<void> _shareProfile(BuildContext context) async {
+    final normalizedUserId = userId.trim();
+    if (normalizedUserId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Profile link is not available yet')),
+      );
+      return;
+    }
+
+    await SharePlus.instance.share(
+      ShareParams(
+        text: 'https://brightbund.app/profile/$normalizedUserId',
+      ),
     );
   }
 }

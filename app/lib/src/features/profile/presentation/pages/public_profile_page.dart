@@ -10,6 +10,8 @@ import 'package:app/src/features/home/domain/entities/post_response_entity.dart'
 import 'package:app/src/features/home/domain/requests/get_profile_posts_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 import 'package:app/src/features/profile/domain/entities/public_profile_entity.dart';
+import 'package:app/src/features/profile/domain/repositories/i_profile_repository.dart';
+import 'package:app/src/features/profile/domain/requests/user_id_request.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:app/src/features/profile/presentation/mixins/show_profile_actions_bottom_sheet.dart';
 import 'package:app/src/features/profile/presentation/widgets/profile_header_card.dart';
@@ -18,6 +20,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PublicProfilePage extends StatefulWidget {
   final String userId;
@@ -82,12 +85,43 @@ class _PublicProfilePageState extends State<PublicProfilePage>
 
   Future<void> _shareProfileLink() async {
     final url = _profileShareUrl(widget.userId);
-    await Clipboard.setData(ClipboardData(text: url));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile link copied — paste it to share'),
+    await SharePlus.instance.share(
+      ShareParams(text: url),
+    );
+  }
+
+  Future<void> _openReportReasons() async {
+    final selection = await showModalBottomSheet<_ProfileReportReason>(
+      context: context,
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF202020),
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
+      builder: (context) => const _ProfileReportReasonsSheet(),
+    );
+    if (!mounted || selection == null) return;
+
+    final result = await getIt<IProfileRepository>().reportUser(
+      UserIdRequest(userId: widget.userId),
+      reason: selection.apiReason,
+      description: selection.label,
+    );
+    if (!mounted) return;
+
+    result.fold(
+      (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      },
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report submitted')),
+        );
+      },
     );
   }
 
@@ -233,9 +267,7 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                           onBlock: () {
                             bloc.add(ProfileEvent.blockUser(widget.userId));
                           },
-                          onReport: () {
-                            bloc.add(ProfileEvent.reportUser(widget.userId));
-                          },
+                          onReport: _openReportReasons,
                           onRestrict: () {
                             bloc.add(ProfileEvent.restrictUser(widget.userId));
                           },
@@ -305,7 +337,8 @@ class _PublicProfilePageState extends State<PublicProfilePage>
       listener: (context, state) {
         state.maybeWhen(
           loaded: (viewModel) {
-            if (viewModel.relationshipStatus.iBlockedThem) {
+            if (viewModel.relationshipStatus.iBlockedThem ||
+                viewModel.relationshipStatus.theyBlockedMe) {
               if (!mounted) return;
               setState(() {
                 _theirPosts = const [];
@@ -440,7 +473,8 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                             ),
                           ),
                         ),
-                        if (viewModel.relationshipStatus.iBlockedThem)
+                        if (viewModel.relationshipStatus.iBlockedThem ||
+                            viewModel.relationshipStatus.theyBlockedMe)
                           SliverFillRemaining(
                             hasScrollBody: false,
                             child: Column(
@@ -456,7 +490,9 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'You\'ve blocked this account',
+                                  viewModel.relationshipStatus.iBlockedThem
+                                      ? 'You\'ve blocked this account'
+                                      : 'This account is unavailable',
                                   style: TextStyles.titleMain.copyWith(
                                     color: Colors.white,
                                   ),
@@ -467,7 +503,9 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                                     horizontal: 48,
                                   ),
                                   child: Text(
-                                    'Unblock this account to see their photos and videos. When you unblock them, they\'ll also be able to find your profile, see your content and message you again.',
+                                    viewModel.relationshipStatus.iBlockedThem
+                                        ? 'Unblock this account to see their photos and videos. When you unblock them, they\'ll also be able to find your profile, see your content and message you again.'
+                                        : 'You cannot view this account\'s posts or contact this user.',
                                     style: TextStyles.bodyMain.copyWith(
                                       color: const Color(0xFF6D6D6D),
                                     ),
@@ -533,6 +571,107 @@ class _PublicProfilePageState extends State<PublicProfilePage>
           ],
         );
       },
+    );
+  }
+}
+
+class _ProfileReportReason {
+  const _ProfileReportReason({
+    required this.label,
+    required this.apiReason,
+  });
+
+  final String label;
+  final String apiReason;
+}
+
+class _ProfileReportReasonsSheet extends StatelessWidget {
+  const _ProfileReportReasonsSheet();
+
+  static const _reasons = <_ProfileReportReason>[
+    _ProfileReportReason(label: 'Spam or scam', apiReason: 'spam'),
+    _ProfileReportReason(label: 'Hate or harassment', apiReason: 'harassment'),
+    _ProfileReportReason(
+      label: 'Nudity or sexual content',
+      apiReason: 'inappropriate',
+    ),
+    _ProfileReportReason(label: 'Violence', apiReason: 'inappropriate'),
+    _ProfileReportReason(label: 'Illegal content', apiReason: 'other'),
+    _ProfileReportReason(label: 'Gambling promotion', apiReason: 'other'),
+    _ProfileReportReason(label: 'Copyright violation', apiReason: 'other'),
+    _ProfileReportReason(label: 'Fake account', apiReason: 'fake_account'),
+    _ProfileReportReason(label: 'Manipulation of Honor', apiReason: 'other'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 52,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Why are you reporting this account?',
+              textAlign: TextAlign.center,
+              style: TextStyles.titleMain.copyWith(
+                color: AppColors.textBrand,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your report is anonymous.',
+              textAlign: TextAlign.center,
+              style: TextStyles.bodyMain.copyWith(
+                color: const Color(0xFF838383),
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _reasons.length,
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  color: Colors.white.withValues(alpha: 0.08),
+                ),
+                itemBuilder: (context, index) {
+                  final reason = _reasons[index];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      reason.label,
+                      style: TextStyles.bodyLarge.copyWith(
+                        color: AppColors.textBrand,
+                      ),
+                    ),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFF838383),
+                    ),
+                    onTap: () => Navigator.of(context).pop(reason),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

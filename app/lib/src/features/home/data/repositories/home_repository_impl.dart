@@ -240,6 +240,18 @@ class HomeRepositoryImpl implements IHomeRepository {
   }
 
   @override
+  Future<Either<DomainException, void>> markNotificationRead(
+    String notificationId,
+  ) {
+    return _remote.markNotificationRead(notificationId);
+  }
+
+  @override
+  Future<Either<DomainException, void>> markAllNotificationsRead() {
+    return _remote.markAllNotificationsRead();
+  }
+
+  @override
   Future<Either<DomainException, FeedStateEntity>> getFeedState() async {
     final result = await _remote.getFeedState();
     return result.fold(

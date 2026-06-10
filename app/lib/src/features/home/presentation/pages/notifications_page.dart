@@ -94,6 +94,64 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
+  Future<void> _markNotificationRead(NotificationEntity notification) async {
+    if (notification.isRead || notification.id.isEmpty) return;
+
+    setState(() {
+      _notifications = _notifications
+          .map(
+            (item) =>
+                item.id == notification.id ? item.copyWith(isRead: true) : item,
+          )
+          .toList(growable: false);
+    });
+
+    final result = await _repository.markNotificationRead(notification.id);
+    if (!mounted) return;
+    result.fold(
+      (error) {
+        setState(() {
+          _notifications = _notifications
+              .map(
+                (item) => item.id == notification.id
+                    ? item.copyWith(isRead: false)
+                    : item,
+              )
+              .toList(growable: false);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      },
+      (_) {},
+    );
+  }
+
+  Future<void> _markAllNotificationsRead() async {
+    if (_notifications.every((item) => item.isRead)) return;
+
+    final previous = _notifications;
+    setState(() {
+      _notifications = _notifications
+          .map((item) => item.copyWith(isRead: true))
+          .toList(growable: false);
+    });
+
+    final result = await _repository.markAllNotificationsRead();
+    if (!mounted) return;
+    result.fold(
+      (error) {
+        setState(() {
+          _notifications = previous;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message)),
+        );
+      },
+      (_) {},
+    );
+  }
+
   void _selectFilter(NotificationFilter filter) {
     if (filter == _selectedFilter) return;
     setState(() {
@@ -112,6 +170,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             _NotificationsHeader(
               selectedFilter: _selectedFilter,
               onFilterChanged: _selectFilter,
+              onMarkAllRead: _markAllNotificationsRead,
             ),
             Expanded(
               child: RefreshIndicator(
@@ -122,6 +181,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   isLoading: _isLoading,
                   errorMessage: _errorMessage,
                   items: _notifications,
+                  onNotificationOpened: _markNotificationRead,
                 ),
               ),
             ),
@@ -136,10 +196,12 @@ class _NotificationsHeader extends StatelessWidget {
   const _NotificationsHeader({
     required this.selectedFilter,
     required this.onFilterChanged,
+    required this.onMarkAllRead,
   });
 
   final NotificationFilter selectedFilter;
   final ValueChanged<NotificationFilter> onFilterChanged;
+  final VoidCallback onMarkAllRead;
 
   @override
   Widget build(BuildContext context) {
@@ -173,14 +235,25 @@ class _NotificationsHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                IconButton(
+                PopupMenuButton<_NotificationMenuAction>(
                   tooltip: 'More',
-                  onPressed: () {},
+                  color: const Color(0xFF242424),
                   icon: const Icon(
                     Icons.more_vert_rounded,
                     color: AppColors.textBrand,
                     size: 24,
                   ),
+                  onSelected: (action) {
+                    if (action == _NotificationMenuAction.markAllRead) {
+                      onMarkAllRead();
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: _NotificationMenuAction.markAllRead,
+                      child: Text('Mark all as read'),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -239,11 +312,13 @@ class _NotificationsBody extends StatelessWidget {
     required this.isLoading,
     required this.errorMessage,
     required this.items,
+    required this.onNotificationOpened,
   });
 
   final bool isLoading;
   final String? errorMessage;
   final List<NotificationEntity> items;
+  final ValueChanged<NotificationEntity> onNotificationOpened;
 
   @override
   Widget build(BuildContext context) {
@@ -313,7 +388,10 @@ class _NotificationsBody extends StatelessWidget {
                 ),
               ),
               for (var index = 0; index < section.items.length; index++) ...[
-                NotificationItemWidget(notification: section.items[index]),
+                NotificationItemWidget(
+                  notification: section.items[index],
+                  onOpened: () => onNotificationOpened(section.items[index]),
+                ),
                 if (index != section.items.length - 1) const Gap(10),
               ],
             ],
@@ -326,11 +404,9 @@ class _NotificationsBody extends StatelessWidget {
   List<_NotificationDaySection> _groupByDay(
     List<NotificationEntity> notifications,
   ) {
-    final sorted = [...notifications]
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
     final groups = <String, List<NotificationEntity>>{};
 
-    for (final notification in sorted) {
+    for (final notification in notifications) {
       final label = _dayLabel(notification.createdAt);
       groups.putIfAbsent(label, () => <NotificationEntity>[]).add(notification);
     }
@@ -372,6 +448,8 @@ class _NotificationsBody extends StatelessWidget {
     return '${months[local.month - 1]} ${local.day}';
   }
 }
+
+enum _NotificationMenuAction { markAllRead }
 
 class _NotificationDaySection {
   const _NotificationDaySection({

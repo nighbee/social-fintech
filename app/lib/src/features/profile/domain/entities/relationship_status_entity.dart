@@ -13,6 +13,7 @@ class RelationshipStatusEntity extends BaseEntity
     required bool iFollowThem,
     required bool iRestrictedThem,
     required bool theyFollowMe,
+    @Default(false) bool theyBlockedMe,
   }) = _RelationshipStatusEntity;
 
   const factory RelationshipStatusEntity.empty({
@@ -21,6 +22,7 @@ class RelationshipStatusEntity extends BaseEntity
     @Default(false) bool iFollowThem,
     @Default(false) bool iRestrictedThem,
     @Default(false) bool theyFollowMe,
+    @Default(false) bool theyBlockedMe,
   }) = _RelationshipStatusEntityEmpty;
 
   factory RelationshipStatusEntity.fromJson(Map<String, dynamic> json) =>

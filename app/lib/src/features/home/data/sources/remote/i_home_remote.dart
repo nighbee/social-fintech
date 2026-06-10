@@ -97,6 +97,10 @@ abstract class IHomeRemote {
   Future<Either<DomainException, List<NotificationDto>>> getNotifications({
     String? tab,
   });
+  Future<Either<DomainException, void>> markNotificationRead(
+    String notificationId,
+  );
+  Future<Either<DomainException, void>> markAllNotificationsRead();
 
   // Feed state
   Future<Either<DomainException, FeedStateDto>> getFeedState();

@@ -39,6 +39,11 @@ class PublicUserActionButtons extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isBlocked = relationshipStatus?.iBlockedThem ?? false;
+    final wasBlockedByUser = relationshipStatus?.theyBlockedMe ?? false;
+
+    if (wasBlockedByUser) {
+      return const _UnavailableButton();
+    }
 
     if (isBlocked) {
       return _UnblockButton(onUnblock: onUnblock);
@@ -49,6 +54,33 @@ class PublicUserActionButtons extends StatelessWidget {
       onFollow: onFollow,
       onUnfollow: onUnfollow,
       onMessage: onMessage,
+    );
+  }
+}
+
+class _UnavailableButton extends StatelessWidget {
+  const _UnavailableButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: PublicUserActionButtons._pillHeight,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFF303030),
+        borderRadius: BorderRadius.circular(PublicUserActionButtons._radius),
+        border: Border.all(
+          color: PublicUserActionButtons._primaryBtnBorder,
+          width: 0.8,
+        ),
+      ),
+      child: Text(
+        'Profile unavailable',
+        style: PublicUserActionButtons._pillTextStyle(
+          const Color(0xFF838383),
+        ),
+      ),
     );
   }
 }

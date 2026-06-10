@@ -50,7 +50,11 @@ abstract interface class IProfileRepository {
 
   Future<Either<DomainException, void>> unrestrictUser(UserIdRequest request);
 
-  Future<Either<DomainException, void>> reportUser(UserIdRequest request);
+  Future<Either<DomainException, void>> reportUser(
+    UserIdRequest request, {
+    String reason = 'other',
+    String description = '',
+  });
 
   Future<Either<DomainException, RelationshipStatusEntity>> getRelationship(
     UserIdRequest request,
