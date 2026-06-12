@@ -1,6 +1,6 @@
 part of 'package:app/src/features/map/presentation/pages/map_page.dart';
 
-class _MapZoomHalfButton extends StatelessWidget {
+class _MapZoomHalfButton extends StatefulWidget {
   const _MapZoomHalfButton({
     required this.onTap,
     required this.icon,
@@ -10,22 +10,44 @@ class _MapZoomHalfButton extends StatelessWidget {
   final Widget icon;
 
   @override
+  State<_MapZoomHalfButton> createState() => _MapZoomHalfButtonState();
+}
+
+class _MapZoomHalfButtonState extends State<_MapZoomHalfButton> {
+  Timer? _repeatTimer;
+
+  void _startRepeating() {
+    widget.onTap();
+    _repeatTimer?.cancel();
+    _repeatTimer = Timer.periodic(
+      const Duration(milliseconds: 220),
+      (_) => widget.onTap(),
+    );
+  }
+
+  void _stopRepeating() {
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopRepeating();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        splashFactory: NoSplash.splashFactory,
-        splashColor: Colors.transparent,
-        highlightColor: Colors.transparent,
-        hoverColor: Colors.transparent,
-        focusColor: Colors.transparent,
-        overlayColor: WidgetStateProperty.all(Colors.transparent),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Center(child: icon),
-        ),
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      onLongPressStart: (_) => _startRepeating(),
+      onLongPressEnd: (_) => _stopRepeating(),
+      onLongPressCancel: _stopRepeating,
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Center(child: widget.icon),
       ),
     );
   }

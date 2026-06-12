@@ -1188,8 +1188,6 @@ class ChatMessageBubble extends StatelessWidget {
         .where((ChatMessageMediaItem m) => m.isImage || m.isVideo)
         .where((ChatMessageMediaItem m) => m.url.trim().isNotEmpty)
         .toList();
-    final textOnly = message.text.trim().isEmpty;
-
     return Row(
       mainAxisAlignment:
           isOutgoing ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -1207,13 +1205,6 @@ class ChatMessageBubble extends StatelessWidget {
             builder: (BuildContext context, BoxConstraints constraints) {
               final maxBubble = constraints.maxWidth;
               final mediaW = math.min(248.0, maxBubble);
-
-              final outgoingSingleImage = isOutgoing &&
-                  imageItems.length == 1 &&
-                  videoItems.isEmpty &&
-                  textOnly &&
-                  message.forwardedSnippet == null &&
-                  (imageItems.first.url).trim().isNotEmpty;
 
               void openViewer(ChatMessageMediaItem media) {
                 final initialIndex = viewableMedia.indexOf(media);
@@ -1236,12 +1227,10 @@ class ChatMessageBubble extends StatelessWidget {
 
               Widget buildImageTile(ChatMessageMediaItem item) {
                 final url = item.url.trim();
-                final tileHeight = outgoingSingleImage ? 196.0 : 220.0;
                 final img = CustomNetworkImage(
                   imageUrl: url,
                   width: mediaW,
-                  height: tileHeight,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                 );
                 final framed = isOutgoing
                     ? DecoratedBox(
@@ -1265,7 +1254,10 @@ class ChatMessageBubble extends StatelessWidget {
                   behavior: HitTestBehavior.opaque,
                   onTap: () => openViewer(item),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: mediaW),
+                    constraints: BoxConstraints(
+                      maxWidth: mediaW,
+                      maxHeight: 320,
+                    ),
                     child: framed,
                   ),
                 );
@@ -1405,34 +1397,58 @@ class ChatMessageBubble extends StatelessWidget {
                   ...imageSection,
                   for (final item in videoItems) ...[
                     Material(
-                      color: Colors.black.withValues(alpha: 0.35),
+                      color: const Color(0xFF222222),
                       borderRadius: BorderRadius.circular(4),
                       child: InkWell(
                         onTap: () => openViewer(item),
                         borderRadius: BorderRadius.circular(4),
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: mediaW),
-                          child: SizedBox(
-                            height: 160,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                if ((item.thumbnailUrl ?? '').trim().isNotEmpty)
-                                  CustomNetworkImage(
-                                    imageUrl: item.thumbnailUrl!.trim(),
-                                    fit: BoxFit.contain,
-                                  )
-                                else
-                                  const ColoredBox(color: Color(0xFF1A1A1E)),
-                                Center(
+                        child: Container(
+                          width: mediaW,
+                          height: math.min(300, mediaW * 1.2),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.22),
+                              width: 1.5,
+                            ),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if ((item.thumbnailUrl ?? '').trim().isNotEmpty)
+                                CustomNetworkImage(
+                                  imageUrl: item.thumbnailUrl!.trim(),
+                                  fit: BoxFit.cover,
+                                )
+                              else
+                                const ColoredBox(color: Color(0xFF1A1A1E)),
+                              Center(
+                                child: Container(
+                                  width: 54,
+                                  height: 54,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.58),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
                                   child: Icon(
-                                    Icons.play_circle_fill_rounded,
-                                    size: 44,
+                                    Icons.play_arrow_rounded,
+                                    size: 42,
                                     color: Colors.white.withValues(alpha: 0.88),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                              Positioned(
+                                right: 12,
+                                bottom: 12,
+                                child: Icon(
+                                  Icons.volume_off_rounded,
+                                  size: 22,
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -1502,7 +1518,7 @@ double chatThreadComposerStackBottomPadding(
   bool hasReplyDraft = false,
 }) {
   final safeBottom = MediaQuery.paddingOf(context).bottom;
-  const composerVertical = 6.0 + 44.0 + 10.0;
+  const composerVertical = 12.0 + 44.0 + 4.0;
   const pendingVertical = 6.0 + 64.0 + 6.0;
   const replyStrip = 56.0;
   const breathing = 24.0;
@@ -1523,7 +1539,7 @@ class ChatComposerBar extends StatelessWidget {
     this.hintText = 'Message',
     this.sendEnabled = true,
     this.hasPendingAttachment = false,
-    this.padding = const EdgeInsets.fromLTRB(20, 6, 20, 10),
+    this.padding = const EdgeInsets.fromLTRB(20, 12, 20, 4),
     this.useSafeArea = true,
   });
 
@@ -1547,7 +1563,7 @@ class ChatComposerBar extends StatelessWidget {
           onTap: onAttachmentTap,
           filled: true,
         ),
-        const Gap(10),
+        const Gap(8),
         Expanded(
           child: CustomTextField(
             controller: controller,
@@ -1556,24 +1572,24 @@ class ChatComposerBar extends StatelessWidget {
             showLabel: false,
             height: 44,
             borderRadius: 4,
-            backgroundColor: Colors.black.withValues(alpha: 0.22),
+            backgroundColor: const Color(0xFF171717),
             customBorder: Border.all(
-              color: const Color(0xFF3B3C40),
+              color: const Color(0xFF464646),
               width: 1,
             ),
             containerPadding: const EdgeInsets.symmetric(horizontal: 14),
             contentPadding: EdgeInsets.zero,
             textStyle: TextStyles.bodyLarge.copyWith(
               color: AppColors.textBrand,
-              fontSize: 13,
+              fontSize: 16,
             ),
             hintStyle: TextStyles.bodyLarge.copyWith(
               color: AppColors.textBrand.withValues(alpha: 0.38),
-              fontSize: 13,
+              fontSize: 16,
             ),
           ),
         ),
-        const Gap(10),
+        const Gap(8),
         ValueListenableBuilder<TextEditingValue>(
           valueListenable: controller,
           builder: (
@@ -1728,14 +1744,12 @@ class _ChatComposerActionButton extends StatelessWidget {
           height: 44,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: filled
-                ? const Color(0xFF4B4C50)
-                : Colors.black.withValues(alpha: 0.28),
+            color: filled ? const Color(0xFF464646) : const Color(0xFF151515),
             borderRadius: BorderRadius.circular(6),
             border: Border.all(
               color: filled
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : const Color(0xFF25262A),
+                  ? Colors.white.withValues(alpha: 0.16)
+                  : const Color(0xFF2E2E2E),
               width: 1,
             ),
           ),
@@ -1744,7 +1758,7 @@ class _ChatComposerActionButton extends StatelessWidget {
             color: AppColors.textBrand.withValues(
               alpha: onTap == null ? 0.32 : 0.92,
             ),
-            size: filled ? 24 : 28,
+            size: filled ? 26 : 28,
           ),
         ),
       ),

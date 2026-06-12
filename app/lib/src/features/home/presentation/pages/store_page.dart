@@ -813,10 +813,11 @@ class _StoreOfferCard extends StatelessWidget {
                       ),
                     ),
                     const Gap(8),
-                    Icon(
-                      Icons.workspace_premium_rounded,
-                      size: 18,
-                      color: AppColors.colorffb39600,
+                    Image.asset(
+                      'assets/images/patronBadge.png',
+                      width: 25,
+                      height: 25,
+                      filterQuality: FilterQuality.high,
                     ),
                   ],
                 ),

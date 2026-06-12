@@ -615,6 +615,7 @@ class MapPageController {
 
   void onMapCreated(MapboxMap map) {
     mapboxMap = map;
+    unawaited(_configureMapOrnaments(map));
     unawaited(
       map.location.updateSettings(
         LocationComponentSettings(enabled: false),
@@ -656,6 +657,27 @@ class MapPageController {
     unawaited(_initSelfMarker(map));
     unawaited(_watchForLateFirstGpsCameraSync());
     unawaited(_syncMarkerScaleToCamera(map));
+  }
+
+  Future<void> _configureMapOrnaments(MapboxMap map) async {
+    await Future.wait<void>([
+      map.scaleBar.updateSettings(ScaleBarSettings(enabled: false)),
+      map.compass.updateSettings(CompassSettings(enabled: false)),
+      map.logo.updateSettings(
+        LogoSettings(
+          position: OrnamentPosition.BOTTOM_LEFT,
+          marginLeft: 12,
+          marginBottom: 82,
+        ),
+      ),
+      map.attribution.updateSettings(
+        AttributionSettings(
+          position: OrnamentPosition.BOTTOM_RIGHT,
+          marginRight: 12,
+          marginBottom: 82,
+        ),
+      ),
+    ]);
   }
 
   void onStyleLoaded(StyleLoadedEventData _) {

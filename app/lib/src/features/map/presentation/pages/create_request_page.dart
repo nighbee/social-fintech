@@ -17,7 +17,6 @@ import 'package:app/src/features/map/presentation/constants/map_ui_palette.dart'
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter/services.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_core/theme.dart';
@@ -43,9 +42,6 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _heroesController =
-      TextEditingController(text: '1');
-
   double _reward = 2;
   bool _autoShutdown = false;
 
@@ -218,7 +214,6 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
     _descriptionController.removeListener(_onFormFieldChanged);
     _titleController.dispose();
     _descriptionController.dispose();
-    _heroesController.dispose();
     super.dispose();
   }
 
@@ -306,38 +301,21 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                                   .copyWith(color: Colors.white70),
                             ),
                             const SizedBox(height: 6),
-                            SizedBox(
+                            Container(
                               width: 44,
-                              child: TextField(
-                                controller: _heroesController,
-                                keyboardType: TextInputType.number,
-                                inputFormatters: <TextInputFormatter>[
-                                  FilteringTextInputFormatter.digitsOnly,
-                                  LengthLimitingTextInputFormatter(2),
-                                ],
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: MapUiPalette.createRequestFieldFill,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.14),
+                                ),
+                              ),
+                              child: Text(
+                                '1',
                                 style: TextStyles.bodyLarge
                                     .copyWith(color: Colors.white),
-                                textAlign: TextAlign.center,
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor:
-                                      MapUiPalette.createRequestFieldFill,
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(vertical: 8),
-                                  isDense: true,
-                                  enabledBorder: OutlineInputBorder(
-                                    borderSide: BorderSide(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.14),
-                                    ),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderSide:
-                                        const BorderSide(color: Colors.white54),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                ),
                               ),
                             ),
                             const SizedBox(height: 14),
@@ -420,26 +398,11 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                         }
                         final title = _titleController.text.trim();
                         final description = _descriptionController.text.trim();
-                        final rawHeroes =
-                            int.tryParse(_heroesController.text.trim()) ?? 0;
-                        final heroesCount = rawHeroes.clamp(1, 20);
                         final reward = _reward.round().clamp(1, 3);
 
                         if (_silverBalanceSeals != null &&
                             _silverBalanceSeals! < reward) {
                           unawaited(_showInsufficientHonorsDialog());
-                          return;
-                        }
-
-                        if (rawHeroes < 1 || rawHeroes > 20) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Number of heroes must be between 1 and 20.',
-                              ),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
                           return;
                         }
 
@@ -460,7 +423,7 @@ class _CreateRequestPageState extends State<CreateRequestPage> {
                             MapCreateTaskRequest(
                               title: title,
                               description: description,
-                              heroesCount: heroesCount,
+                              heroesCount: 1,
                               reward: reward,
                               latitude: widget.latitude,
                               longitude: widget.longitude,
