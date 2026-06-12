@@ -546,7 +546,6 @@ const commentSelectCommon = `
 `
 
 // GetComment finds a single comment representation
-// GetComment finds a single comment representation
 func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error) {
 	query := commentSelectCommon + `
 		WHERE c.id = $1

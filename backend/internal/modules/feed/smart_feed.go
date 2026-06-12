@@ -163,7 +163,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				COALESCE(p.report_control_level, 0) AS report_control_level,
 				COALESCE(p.distribution_multiplier, 1.0) AS distribution_multiplier,
 				COALESCE(p.current_strike_count, 0) AS strike_count,
-				CASE WHEN $6::uuid[] IS NOT NULL AND array_length($6::uuid[], 1) > 0 AND p.user_id = ANY($6::uuid[]) THEN true ELSE false END AS is_ally
+				CASE WHEN array_length($6::uuid[], 1) > 0 AND p.user_id = ANY($6::uuid[]) THEN true ELSE false END AS is_ally
 			FROM posts p
 			WHERE
 				p.is_archived = false
@@ -188,30 +188,6 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			  )
 			  AND p.created_at < $5
 			  AND (p.visibility = 'ANYONE' OR (array_length($6::uuid[], 1) > 0 AND p.user_id = ANY($6::uuid[])))
-			ORDER BY p.created_at DESC, p.id DESC
-			LIMIT 300
-		) p.is_archived = false
-			  AND p.is_deleted = false
-			  AND (
-				p.user_id = $1
-				OR NOT EXISTS (
-					SELECT 1
-					FROM users au
-					WHERE au.id = p.user_id
-					  AND au.is_shadow_banned = true
-				)
-			  )
-			  AND COALESCE(p.is_hidden_by_reports, false) = false
-			  AND COALESCE(p.report_control_level, 0) < 4
-			  AND p.user_id <> $1
-			  AND NOT EXISTS (
-				SELECT 1
-				FROM reported_post_hides rph
-				WHERE rph.post_id = p.id
-				  AND rph.reporter_id = $1
-			  )
-			  AND p.created_at < $5
-			  AND (p.visibility = 'ANYONE' OR p.user_id IN (SELECT ally_id FROM allies))
 			ORDER BY p.created_at DESC, p.id DESC
 			LIMIT 300
 		)
