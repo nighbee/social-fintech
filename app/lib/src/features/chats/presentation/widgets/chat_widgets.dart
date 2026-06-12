@@ -6,6 +6,7 @@ import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/glass_container.dart';
 import 'package:app/src/core/widgets/media_viewer_page.dart';
+import 'package:app/src/core/widgets/particle_animation.dart';
 import 'package:app/src/features/chats/presentation/models/chat_models.dart';
 import 'package:app/src/features/chats/presentation/styles/chat_conversation_styles.dart';
 import 'package:app/src/features/chats/presentation/styles/chat_sapphire_styles.dart';
@@ -97,18 +98,32 @@ class ChatPageBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0xFF0F1012),
-            AppColors.colorff19191A,
-          ],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[
+                Color(0xFF0F1012),
+                AppColors.colorff19191A,
+              ],
+            ),
+          ),
         ),
-      ),
-      child: child,
+        const IgnorePointer(
+          child: ParticleAnimation(
+            particleCount: 20,
+            particleColors: <Color>[Color(0xFFFFFFFF)],
+            minSize: 4,
+            maxSize: 8,
+            minDistanceBetweenParticles: 70,
+          ),
+        ),
+        child,
+      ],
     );
   }
 }
@@ -557,14 +572,15 @@ class ChatSearchField extends StatelessWidget {
       customBorder: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       containerPadding: const EdgeInsets.symmetric(horizontal: 16),
       contentPadding: EdgeInsets.zero,
+      prefixIconGap: 8,
       textStyle: TextStyles.bodyLarge.copyWith(color: AppColors.textBrand),
       hintStyle: TextStyles.bodyLarge.copyWith(
-        color: AppColors.textBrand.withValues(alpha: 0.4),
+        color: const Color(0xFFCACACA).withValues(alpha: 0.78),
       ),
       prefixIcon: Icon(
         Icons.search_rounded,
         size: 22,
-        color: AppColors.textBrand.withValues(alpha: 0.56),
+        color: const Color(0xFFCACACA),
       ),
     );
   }
@@ -591,37 +607,14 @@ class ChatSectionLabel extends StatelessWidget {
 }
 
 Widget _threadRankLineText(String rankLine) {
-  const prefix = 'Moonstone';
-  final baseStyle = TextStyles.bodyMain;
-  if (!rankLine.startsWith(prefix)) {
-    return Text(
-      rankLine,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: baseStyle.copyWith(
-        color: ChatSapphireStyles.rankLineMutedColor,
-      ),
-    );
-  }
-  return Text.rich(
-    TextSpan(
-      children: <InlineSpan>[
-        TextSpan(
-          text: prefix,
-          style: baseStyle.copyWith(
-            color: ChatSapphireStyles.rankLineColor,
-          ),
-        ),
-        TextSpan(
-          text: rankLine.substring(prefix.length),
-          style: baseStyle.copyWith(
-            color: ChatSapphireStyles.rankLineMutedColor,
-          ),
-        ),
-      ],
-    ),
+  return Text(
+    rankLine,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
+    style: TextStyles.bodyMain.copyWith(
+      color: ChatSapphireStyles.rankLineColor,
+      fontWeight: FontWeight.w600,
+    ),
   );
 }
 
@@ -741,8 +734,9 @@ class ChatThreadCard extends StatelessWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyles.bodyMain.copyWith(
-                                            color: AppColors.textBrand
-                                                .withValues(alpha: 0.82),
+                                            fontSize: 15,
+                                            height: 1,
+                                            color: const Color(0xFFCACACA),
                                           ),
                                         ),
                                       ],
@@ -1077,7 +1071,7 @@ class ChatDateChip extends StatelessWidget {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         child: Text(
           label,
           style: TextStyles.bodyMain.copyWith(
@@ -1156,7 +1150,7 @@ class ChatMessageBubble extends StatelessWidget {
     if (hasMedia && m.text.trim().isNotEmpty) {
       return const EdgeInsets.fromLTRB(10, 8, 10, 7);
     }
-    return const EdgeInsets.fromLTRB(11, 9, 11, 8);
+    return const EdgeInsets.fromLTRB(14, 9, 14, 14);
   }
 
   @override
@@ -1214,7 +1208,7 @@ class ChatMessageBubble extends StatelessWidget {
               final maxBubble = constraints.maxWidth;
               final mediaW = math.min(248.0, maxBubble);
 
-              final outgoingSingleImageOverlay = isOutgoing &&
+              final outgoingSingleImage = isOutgoing &&
                   imageItems.length == 1 &&
                   videoItems.isEmpty &&
                   textOnly &&
@@ -1242,7 +1236,7 @@ class ChatMessageBubble extends StatelessWidget {
 
               Widget buildImageTile(ChatMessageMediaItem item) {
                 final url = item.url.trim();
-                final tileHeight = outgoingSingleImageOverlay ? 196.0 : 220.0;
+                final tileHeight = outgoingSingleImage ? 196.0 : 220.0;
                 final img = CustomNetworkImage(
                   imageUrl: url,
                   width: mediaW,
@@ -1311,44 +1305,9 @@ class ChatMessageBubble extends StatelessWidget {
                   continue;
                 }
                 final tile = buildImageTile(item);
-                if (outgoingSingleImageOverlay) {
-                  imageSection.add(
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        tile,
-                        Positioned(
-                          right: 5,
-                          bottom: 5,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.42),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              child: buildMetaRow(
-                                timeColor: Colors.white.withValues(alpha: 0.92),
-                                receiptColor:
-                                    Colors.white.withValues(alpha: 0.88),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                } else {
-                  imageSection.add(tile);
-                  imageSection.add(const Gap(5));
-                }
+                imageSection.add(tile);
+                imageSection.add(const Gap(5));
               }
-
-              final showBottomMeta =
-                  !(outgoingSingleImageOverlay && imageItems.isNotEmpty);
 
               final content = Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1481,20 +1440,14 @@ class ChatMessageBubble extends StatelessWidget {
                     const Gap(5),
                   ],
                   if (message.text.trim().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        message.text,
-                        style: TextStyles.bodyLarge.copyWith(
-                          color: bodyColor,
-                          height: 1.35,
-                        ),
+                    Text(
+                      message.text,
+                      style: TextStyles.bodyLarge.copyWith(
+                        fontSize: 16,
+                        height: 15 / 16,
+                        color: bodyColor,
                       ),
                     ),
-                  if (showBottomMeta) ...[
-                    const Gap(5),
-                    buildMetaRow(),
-                  ],
                 ],
               );
 
@@ -1509,18 +1462,29 @@ class ChatMessageBubble extends StatelessWidget {
                 ),
               );
 
-              return Align(
-                alignment:
-                    isOutgoing ? Alignment.centerRight : Alignment.centerLeft,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxBubble),
-                  child: GestureDetector(
-                    onTap: onTap,
-                    onLongPress: onLongPress,
-                    onLongPressStart: onLongPressStart,
-                    child: wrapped,
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: isOutgoing
+                    ? CrossAxisAlignment.end
+                    : CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: isOutgoing
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxBubble),
+                      child: GestureDetector(
+                        onTap: onTap,
+                        onLongPress: onLongPress,
+                        onLongPressStart: onLongPressStart,
+                        child: wrapped,
+                      ),
+                    ),
                   ),
-                ),
+                  const Gap(4),
+                  buildMetaRow(),
+                ],
               );
             },
           ),

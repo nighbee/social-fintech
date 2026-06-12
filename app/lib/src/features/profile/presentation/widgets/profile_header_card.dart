@@ -159,8 +159,8 @@ class ProfileHeaderCard extends StatelessWidget {
                               fontFamily: 'CanelaDeckTrial',
                               fontWeight: FontWeight.w400,
                               color: const Color(0xFFCACACA),
-                              fontSize: 18,
-                              height: 16 / 18,
+                              fontSize: 20,
+                              height: 22 / 20,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -193,7 +193,7 @@ class ProfileHeaderCard extends StatelessWidget {
               );
             },
           ),
-          const Gap(21),
+          const Gap(24),
           isPublicProfile
               ? PublicUserActionButtons(
                   userId: userId,

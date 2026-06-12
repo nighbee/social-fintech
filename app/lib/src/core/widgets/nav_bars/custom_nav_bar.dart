@@ -25,7 +25,7 @@ class CustomNavBar extends StatelessWidget {
     ];
 
     final List<String> titles = [
-      'Home',
+      'Feed',
       'Map',
       'Rating',
       'Chats',
@@ -38,7 +38,7 @@ class CustomNavBar extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.vertical(top: Radius.circular(6)),
-        color: AppColors.colorff000000,
+        color: Color(0xFF101010),
         border: Border(top: BorderSide(color: AppColors.border, width: 1)),
       ),
       child: Padding(

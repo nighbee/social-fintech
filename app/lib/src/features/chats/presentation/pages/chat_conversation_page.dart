@@ -660,7 +660,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       transitionDuration: const Duration(milliseconds: 100),
       pageBuilder: (dialogContext, _, __) {
         return _ChatAttachmentPickerOverlay(
-          left: 40,
+          left: 20,
           bottom: MediaQuery.paddingOf(context).bottom + 52,
           onSelected: (value) => Navigator.of(dialogContext).pop(value),
         );
@@ -1069,7 +1069,7 @@ class _ChatAttachmentPickerOverlay extends StatelessWidget {
             bottom: bottom,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: const Color(0xFF18191C),
+                color: const Color(0xFF1E1F21),
                 borderRadius: BorderRadius.circular(2),
                 boxShadow: [
                   BoxShadow(
@@ -1080,18 +1080,18 @@ class _ChatAttachmentPickerOverlay extends StatelessWidget {
                 ],
               ),
               child: SizedBox(
-                width: 116,
+                width: 160,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ChatAttachmentMenuRow(
                       label: 'Media',
-                      icon: Icons.insert_drive_file_outlined,
+                      iconAssetPath: 'assets/images/Media.png',
                       onTap: () => onSelected('media'),
                     ),
                     _ChatAttachmentMenuRow(
                       label: 'Camera',
-                      icon: Icons.camera_alt_outlined,
+                      iconAssetPath: 'assets/images/Camera.png',
                       onTap: () => onSelected('camera'),
                     ),
                   ],
@@ -1108,12 +1108,12 @@ class _ChatAttachmentPickerOverlay extends StatelessWidget {
 class _ChatAttachmentMenuRow extends StatelessWidget {
   const _ChatAttachmentMenuRow({
     required this.label,
-    required this.icon,
+    required this.iconAssetPath,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
+  final String iconAssetPath;
   final VoidCallback onTap;
 
   @override
@@ -1121,9 +1121,9 @@ class _ChatAttachmentMenuRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: SizedBox(
-        height: 30,
+        height: 40,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
             children: [
               Expanded(
@@ -1131,15 +1131,16 @@ class _ChatAttachmentMenuRow extends StatelessWidget {
                   label,
                   style: TextStyles.bodyMain.copyWith(
                     color: AppColors.textBrand,
-                    fontSize: 11,
-                    height: 1,
+                    fontSize: 16,
+                    height: 22 / 16,
                   ),
                 ),
               ),
-              Icon(
-                icon,
-                color: AppColors.textBrand.withValues(alpha: 0.88),
-                size: 13,
+              Image.asset(
+                iconAssetPath,
+                width: 18,
+                height: 18,
+                filterQuality: FilterQuality.high,
               ),
             ],
           ),
