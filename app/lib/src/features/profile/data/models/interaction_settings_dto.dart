@@ -186,8 +186,7 @@ class BlockedUsersResponseDto {
     final items = raw is List
         ? raw
             .map(
-              (e) =>
-                  BlockedUserItemDto.fromJson(e as Map<String, dynamic>),
+              (e) => BlockedUserItemDto.fromJson(e as Map<String, dynamic>),
             )
             .toList()
         : <BlockedUserItemDto>[];
@@ -199,8 +198,7 @@ class BlockedUsersResponseDto {
   }
 }
 
-int effectiveFeedLimitMins(FeedSettingsDto dto) =>
-    dto.pendingMins ?? dto.currentMins;
+int effectiveFeedLimitMins(FeedSettingsDto dto) => dto.currentMins;
 
 String feedTimeLimitLabelFromMins(int mins) {
   switch (mins) {
@@ -266,8 +264,9 @@ class DeleteAccountReasonResponseDto {
 
   factory DeleteAccountReasonResponseDto.fromJson(Map<String, dynamic> json) {
     return DeleteAccountReasonResponseDto(
-      verificationMethod:
-          (json['verification_method'] as String? ?? 'password').trim().toLowerCase(),
+      verificationMethod: (json['verification_method'] as String? ?? 'password')
+          .trim()
+          .toLowerCase(),
     );
   }
 }
@@ -285,8 +284,9 @@ class DeleteAccountVerifyResponseDto {
     final rawExpires = json['expires_at'] as String?;
     return DeleteAccountVerifyResponseDto(
       verificationToken: (json['verification_token'] as String? ?? '').trim(),
-      expiresAt:
-          (rawExpires == null || rawExpires.isEmpty) ? null : DateTime.tryParse(rawExpires),
+      expiresAt: (rawExpires == null || rawExpires.isEmpty)
+          ? null
+          : DateTime.tryParse(rawExpires),
     );
   }
 }

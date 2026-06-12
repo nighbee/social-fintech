@@ -53,12 +53,16 @@ class _SilverBalanceChipState extends State<SilverBalanceChip> {
     super.didUpdateWidget(oldWidget);
 
     // Keep non-live chip in sync with parent updates (e.g. HomeBloc state).
-    if (!widget.useLiveBalance && widget.count != null && widget.count != _count) {
+    if (!widget.useLiveBalance &&
+        widget.count != null &&
+        widget.count != _count) {
       _count = widget.count!;
     }
 
     // If mode changed from live to static, reflect incoming value immediately.
-    if (oldWidget.useLiveBalance && !widget.useLiveBalance && widget.count != null) {
+    if (oldWidget.useLiveBalance &&
+        !widget.useLiveBalance &&
+        widget.count != null) {
       _count = widget.count!;
       _livePending = false;
       _liveFailed = false;
@@ -91,15 +95,18 @@ class _SilverBalanceChipState extends State<SilverBalanceChip> {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Assets.icons.silverCoin.svg(width: iconSize, height: iconSize),
-          Gap(compact ? 3 : 4),
+          Gap(compact ? 5 : 8),
           Text(
             _displayText,
+            textAlign: TextAlign.center,
             style: TextStyles.titleTag.copyWith(
               color: AppColors.colorffE5E5E5,
               fontWeight: FontWeight.w500,
               fontSize: fontSize,
+              height: 1,
             ),
           ),
         ],

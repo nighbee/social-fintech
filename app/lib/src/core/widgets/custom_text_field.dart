@@ -16,6 +16,7 @@ class CustomTextField extends StatefulWidget {
     this.obscureText = false,
     this.suffixIcon,
     this.prefixIcon,
+    this.prefixIconGap = 12,
     this.onTap,
     this.readOnly = false,
     this.inputFormatters,
@@ -52,6 +53,7 @@ class CustomTextField extends StatefulWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final Widget? prefixIcon;
+  final double prefixIconGap;
   final VoidCallback? onTap;
   final bool readOnly;
   final List<TextInputFormatter>? inputFormatters;
@@ -99,8 +101,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
     final inactive = widget.inactiveBorderColor;
     final active = widget.activeBorderColor;
     if (inactive != null && active != null) {
-      final highlighted =
-          _effectiveFocusNode.hasFocus || hasText;
+      final highlighted = _effectiveFocusNode.hasFocus || hasText;
       return Border.all(
         color: highlighted ? active : inactive,
         width: 1,
@@ -223,7 +224,10 @@ class _CustomTextFieldState extends State<CustomTextField> {
       crossAxisAlignment:
           isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
       children: [
-        if (widget.prefixIcon != null) ...[widget.prefixIcon!, const Gap(12)],
+        if (widget.prefixIcon != null) ...[
+          widget.prefixIcon!,
+          Gap(widget.prefixIconGap),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

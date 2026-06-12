@@ -7,6 +7,9 @@ import 'package:flutter/material.dart';
 class ProfilePostGrid extends StatelessWidget {
   /// Figma cell proportion (width × height).
   static const double _cellAspectRatio = 132 / 120;
+  static const BorderRadius _cellBorderRadius = BorderRadius.all(
+    Radius.circular(2),
+  );
 
   const ProfilePostGrid({
     required this.posts,
@@ -15,6 +18,7 @@ class ProfilePostGrid extends StatelessWidget {
   });
 
   final List<PostEntity> posts;
+
   /// Opens full publications list; [PostEntity.id] is used as anchor when non-null.
   final ValueChanged<String>? onPostTap;
 
@@ -66,6 +70,7 @@ class ProfilePostGrid extends StatelessWidget {
             final child = CustomNetworkImage(
               imageUrl: post.imageUrls.first,
               fit: BoxFit.cover,
+              borderRadius: _cellBorderRadius,
             );
             final onTap = onPostTap;
             if (onTap == null) {
@@ -73,8 +78,11 @@ class ProfilePostGrid extends StatelessWidget {
             }
             return Material(
               color: Colors.transparent,
+              borderRadius: _cellBorderRadius,
+              clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () => onTap(post.id),
+                borderRadius: _cellBorderRadius,
                 child: child,
               ),
             );

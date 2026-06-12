@@ -189,7 +189,7 @@ class _ChatsPageState extends State<ChatsPage> {
           onRefresh: _loadConversations,
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 52, 20, 24),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
             children: [
               ChatSearchField(
                 controller: _searchController,
@@ -230,7 +230,7 @@ class _ChatsPageState extends State<ChatsPage> {
                 ),
               ] else ...[
                 if (activeThreads.isNotEmpty) ...[
-                  const Gap(28),
+                  const Gap(24),
                   for (final thread in activeThreads) ...[
                     ChatThreadCard(
                       thread: thread,

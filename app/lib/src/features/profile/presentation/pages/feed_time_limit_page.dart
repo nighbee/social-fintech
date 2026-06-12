@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/service/storage/app_storage/storage_service.dart';
 import 'package:app/src/core/service/storage/key_store.dart';
@@ -41,6 +43,11 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
   bool _patching = false;
   late String _selectedLabel;
   DateTime? _localChangeLockedUntil;
+  int _currentMins = 20;
+  int? _pendingMins;
+  DateTime? _pendingApplyAt;
+  int? _requestedMins;
+  Timer? _confirmationTimer;
 
   @override
   void initState() {
@@ -61,8 +68,8 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
     setState(() => _loading = true);
     final result = await _remote.getFeedSettings();
     if (!mounted) return;
-    result.fold(
-      (e) {
+    await result.fold(
+      (e) async {
         setState(() => _loading = false);
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -72,25 +79,52 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
           ),
         );
       },
-      (dto) {
+      (dto) async {
+        final now = DateTime.now().toUtc();
         final pendingApplyAt = dto.pendingApplyAt?.toUtc();
-        if (pendingApplyAt != null && pendingApplyAt.isAfter(DateTime.now().toUtc())) {
-          _setLocalLock(lockUntilUtc: pendingApplyAt);
+        if (pendingApplyAt != null && pendingApplyAt.isAfter(now)) {
+          await _setLocalLock(lockUntilUtc: pendingApplyAt);
         }
+        final confirmedMins = _requestedMins;
+        final wasConfirmed = dto.pendingMins == null &&
+            confirmedMins != null &&
+            dto.currentMins == confirmedMins;
+
         setState(() {
           _loading = false;
-          _selectedLabel =
-              feedTimeLimitLabelFromMins(effectiveFeedLimitMins(dto));
+          _currentMins = dto.currentMins;
+          _pendingMins = dto.pendingMins;
+          _pendingApplyAt = pendingApplyAt;
+          _selectedLabel = feedTimeLimitLabelFromMins(
+            dto.pendingMins ?? dto.currentMins,
+          );
         });
+        _scheduleConfirmationRefresh();
+
+        if (dto.pendingMins == null) {
+          await _clearLocalChangeTracking();
+        }
+        if (wasConfirmed && mounted) {
+          await showStyledMessageDialog<void>(
+            context: context,
+            title: 'Feed time limit updated',
+            message:
+                '${feedTimeLimitLabelFromMins(dto.currentMins)} is now active.',
+            barrierColor: Colors.black.withValues(alpha: 0.72),
+          );
+        }
       },
     );
   }
 
   Future<void> _loadLocalLock() async {
     await prefsInstance.initialize();
-    final raw = prefsInstance.get<String>(KeyStore.feedTimeLimitChangeLockedUntil);
+    final raw =
+        prefsInstance.get<String>(KeyStore.feedTimeLimitChangeLockedUntil);
     final rawRequestedAt =
         prefsInstance.get<String>(KeyStore.feedTimeLimitChangeRequestedAt);
+    _requestedMins =
+        prefsInstance.get<int>(KeyStore.feedTimeLimitChangeRequestedMins);
 
     if ((raw == null || raw.isEmpty) &&
         rawRequestedAt != null &&
@@ -142,6 +176,28 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
     _localChangeLockedUntil = lockUntilUtc;
   }
 
+  Future<void> _clearLocalChangeTracking() async {
+    await prefsInstance.remove(KeyStore.feedTimeLimitChangeLockedUntil);
+    await prefsInstance.remove(KeyStore.feedTimeLimitChangeRequestedAt);
+    await prefsInstance.remove(KeyStore.feedTimeLimitChangeRequestedMins);
+    _localChangeLockedUntil = null;
+    _requestedMins = null;
+  }
+
+  void _scheduleConfirmationRefresh() {
+    _confirmationTimer?.cancel();
+    if (_pendingMins == null) {
+      return;
+    }
+
+    final now = DateTime.now().toUtc();
+    final applyAt = _pendingApplyAt;
+    final delay = applyAt != null && applyAt.isAfter(now)
+        ? applyAt.difference(now) + const Duration(seconds: 2)
+        : const Duration(minutes: 1);
+    _confirmationTimer = Timer(delay, _load);
+  }
+
   Duration _remainingLockDuration() {
     final lockUntil = _localChangeLockedUntil;
     if (lockUntil == null) {
@@ -154,7 +210,8 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
     return lockUntil.difference(now);
   }
 
-  bool get _isChangeLocked => _remainingLockDuration() > Duration.zero;
+  bool get _isChangeLocked =>
+      _pendingMins != null || _remainingLockDuration() > Duration.zero;
 
   String _lockLabel(Duration remaining) {
     final totalMinutes = remaining.inMinutes;
@@ -169,13 +226,14 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
 
     if (_isChangeLocked) {
       final remaining = _remainingLockDuration();
-      if (remaining > Duration.zero) {
-        await showStyledMessageDialog<void>(
-          context: context,
-          message: 'You can change feed time limit again in ${_lockLabel(remaining)}.',
-          barrierColor: Colors.black.withValues(alpha: 0.72),
-        );
-      }
+      final message = remaining > Duration.zero
+          ? 'Your change is scheduled. It should apply in ${_lockLabel(remaining)}.'
+          : 'Your change is waiting for server confirmation.';
+      await showStyledMessageDialog<void>(
+        context: context,
+        message: message,
+        barrierColor: Colors.black.withValues(alpha: 0.72),
+      );
       return;
     }
 
@@ -207,19 +265,32 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
       (_) async {
         final requestedAt = DateTime.now().toUtc();
         final lockUntil = DateTime.now().toUtc().add(_localChangeLockDuration);
+        await prefsInstance.set<int>(
+          KeyStore.feedTimeLimitChangeRequestedMins,
+          newMins,
+        );
+        _requestedMins = newMins;
         await _setLocalLock(
           lockUntilUtc: lockUntil,
           requestedAtUtc: requestedAt,
         );
-        setState(() => _patching = false);
+        await _load();
         if (!mounted) return;
+        setState(() => _patching = false);
         await showStyledMessageDialog<void>(
           context: context,
-          message: 'Changes apply in 24 hours. Next change will be available in 24 hours.',
+          message:
+              'Change scheduled. It becomes active only after server confirmation.',
           barrierColor: Colors.black.withValues(alpha: 0.72),
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _confirmationTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -228,7 +299,7 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          context.pop(_selectedLabel);
+          context.pop(feedTimeLimitLabelFromMins(_currentMins));
         }
       },
       child: Scaffold(
@@ -236,7 +307,8 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
         appBar: CustomAppBar(
           title: 'Feed time limit',
           backgroundColor: AppColors.colorff19191A,
-          onLeadingTap: () => context.pop(_selectedLabel),
+          onLeadingTap: () =>
+              context.pop(feedTimeLimitLabelFromMins(_currentMins)),
         ),
         body: SafeArea(
           top: false,
@@ -273,7 +345,7 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
                 if (!_loading && _isChangeLocked) ...[
                   const Gap(14),
                   Text(
-                    'Next available change in ${_lockLabel(_remainingLockDuration())}.',
+                    _pendingStatusLabel(),
                     style: TextStyles.bodyMain.copyWith(
                       color: AppColors.colorff838383,
                       fontSize: 13,
@@ -287,6 +359,24 @@ class _FeedTimeLimitPageState extends State<FeedTimeLimitPage> {
         ),
       ),
     );
+  }
+
+  String _pendingStatusLabel() {
+    final pendingMins = _pendingMins;
+    if (pendingMins == null) {
+      return 'Current limit: ${feedTimeLimitLabelFromMins(_currentMins)}.';
+    }
+
+    final applyAt = _pendingApplyAt;
+    final now = DateTime.now().toUtc();
+    final pendingLabel = feedTimeLimitLabelFromMins(pendingMins);
+    final currentLabel = feedTimeLimitLabelFromMins(_currentMins);
+    if (applyAt != null && applyAt.isAfter(now)) {
+      return 'Current: $currentLabel. $pendingLabel is scheduled in '
+          '${_lockLabel(applyAt.difference(now))}.';
+    }
+    return 'Current: $currentLabel. Waiting for server confirmation that '
+        '$pendingLabel is active.';
   }
 }
 

@@ -30,4 +30,6 @@ class KeyStore {
       'FEED_TIME_LIMIT_CHANGE_LOCKED_UNTIL';
   static const String feedTimeLimitChangeRequestedAt =
       'FEED_TIME_LIMIT_CHANGE_REQUESTED_AT';
+  static const String feedTimeLimitChangeRequestedMins =
+      'FEED_TIME_LIMIT_CHANGE_REQUESTED_MINS';
 }

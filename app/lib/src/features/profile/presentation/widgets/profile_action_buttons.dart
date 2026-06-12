@@ -78,7 +78,7 @@ class _PrimaryActionPill extends StatelessWidget {
       child: Container(
         height: 32,
         alignment: Alignment.center,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: ProfileActionButtons._actionBtnFill,
           borderRadius: BorderRadius.circular(6),
@@ -94,9 +94,9 @@ class _PrimaryActionPill extends StatelessWidget {
           textAlign: TextAlign.center,
           style: TextStyles.titleTag.copyWith(
             color: const Color(0xFFCACACA),
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: FontWeight.w400,
-            height: 14 / 12,
+            height: 16 / 14,
           ),
         ),
       ),

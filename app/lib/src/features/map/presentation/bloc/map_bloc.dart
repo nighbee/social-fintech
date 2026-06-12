@@ -44,8 +44,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       loadMap: () => _loadMap(emit),
       assignRegion: (_) => _assignRegion(event as _AssignRegion, emit),
       getChampions: (_) => _getChampions(event as _GetChampions, emit),
-      getRegionalChampions: () =>
-          _getRegionalChampions(emit),
+      getRegionalChampions: () => _getRegionalChampions(emit),
       createTask: (_) => _createTask(event as _CreateTask, emit),
       cancelTask: (_) => _cancelTask(event as _CancelTask, emit),
       applyToTask: (_) => _applyToTask(event as _ApplyToTask, emit),
@@ -169,7 +168,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       return;
     }
     if (event.request.title.trim().length > 50) {
-      emit(const MapState.loadingError('Title must be between 1 and 50 characters.'));
+      emit(const MapState.loadingError(
+          'Title must be between 1 and 50 characters.'));
       return;
     }
     if (event.request.description.trim().isEmpty) {
@@ -180,8 +180,8 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       emit(const MapState.loadingError('Reward must be 1, 2 or 3.'));
       return;
     }
-    if (event.request.heroesCount < 1 || event.request.heroesCount > 20) {
-      emit(const MapState.loadingError('Workers count must be between 1 and 20.'));
+    if (event.request.heroesCount != 1) {
+      emit(const MapState.loadingError('Workers count must be exactly 1.'));
       return;
     }
     if (!event.request.latitude.isFinite || !event.request.longitude.isFinite) {
@@ -619,7 +619,7 @@ class MapBloc extends BaseBloc<MapEvent, MapState> {
       return 'Reward must be 1, 2 or 3.';
     }
     if (message.contains('invalid_workers')) {
-      return 'Workers count must be between 1 and 20.';
+      return 'Workers count must be exactly 1.';
     }
     if (message.contains('invalid_coordinates')) {
       return 'Coordinates are invalid.';

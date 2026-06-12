@@ -115,7 +115,7 @@ class MapRemoteImpl implements IMapRemote {
         'title': request.title.trim(),
         'description': request.description.trim(),
         'reward': request.reward,
-        'workers_needed': request.heroesCount,
+        'workers_needed': 1,
         'latitude': request.latitude,
         'longitude': request.longitude,
         'auto_shutdown': request.autoShutdown,

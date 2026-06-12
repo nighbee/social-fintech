@@ -546,7 +546,7 @@ class _PublicProfilePageState extends State<PublicProfilePage>
                           else
                             SliverPadding(
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 20),
+                                  const EdgeInsets.symmetric(horizontal: 16),
                               sliver: ProfilePostGrid(
                                 posts: _theirPosts,
                                 onPostTap: (postId) => _openTheirPublications(

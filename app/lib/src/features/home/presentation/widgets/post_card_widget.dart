@@ -72,8 +72,10 @@ class PostCardWidget extends StatelessWidget
                   Flexible(
                     child: Text(
                       post.author.username,
-                      style: TextStyles.titleHeadline.copyWith(
-                        fontWeight: FontWeight.w600,
+                      style: TextStyles.titleTag.copyWith(
+                        fontSize: 15.4,
+                        height: 1,
+                        fontWeight: FontWeight.w400,
                         color: AppColors.textPrimary,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -192,7 +194,13 @@ class PostCardWidget extends StatelessWidget
           const Gap(12),
           Text(
             post.contentText,
-            style: TextStyles.bodyMain.copyWith(color: AppColors.textPrimary),
+            style: TextStyles.bodyLarge.copyWith(
+              fontSize: 15.4,
+              height: 1,
+              letterSpacing: 0.47,
+              fontWeight: FontWeight.w400,
+              color: AppColors.textPrimary,
+            ),
           ),
           if (hasMedia) ...[
             const Gap(12),

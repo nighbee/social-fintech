@@ -72,38 +72,58 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
+      titleSpacing: 12,
       title: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onSilverTap,
-            child: SilverBalanceChip(count: silverCount),
-          ),
-          const Gap(12),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onTimerTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  ShaderMask(
-                    shaderCallback: (bounds) =>
-                        _timerGradient().createShader(bounds),
-                    blendMode: BlendMode.srcIn,
-                    child: Assets.icons.timer.svg(width: 24, height: 24),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: onSilverTap,
+                    child: SilverBalanceChip(count: silverCount),
                   ),
-                  const Gap(4),
-                  ShaderMask(
-                    shaderCallback: (bounds) =>
-                        _timerGradient().createShader(bounds),
-                    blendMode: BlendMode.srcIn,
-                    child: Text(
-                      timerLabel,
-                      style: TextStyles.titleHeadline.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
+                  const Gap(12),
+                  Flexible(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onTimerTap,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ShaderMask(
+                              shaderCallback: (bounds) =>
+                                  _timerGradient().createShader(bounds),
+                              blendMode: BlendMode.srcIn,
+                              child:
+                                  Assets.icons.timer.svg(width: 24, height: 24),
+                            ),
+                            const Gap(6),
+                            Flexible(
+                              child: ShaderMask(
+                                shaderCallback: (bounds) =>
+                                    _timerGradient().createShader(bounds),
+                                blendMode: BlendMode.srcIn,
+                                child: Text(
+                                  timerLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.fade,
+                                  softWrap: false,
+                                  style: TextStyles.titleHeadline.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -111,38 +131,76 @@ class FeedAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
           ),
+          const Gap(8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onCreatePostTap,
+                child: Container(
+                  width: 34,
+                  height: 34,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        Color(0x405F5F5F),
+                        Color(0x33535252),
+                        Color(0x262A2A2B),
+                      ],
+                    ),
+                    border: Border.all(
+                      color: const Color(0xFF5F5F5F),
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Assets.icons.plusIcon.svg(width: 24, height: 24),
+                ),
+              ),
+              const Gap(8),
+              _FeedHeaderIconButton(
+                onTap: onNotificationsTap,
+                icon: Assets.icons.bell.svg(width: 24, height: 24),
+              ),
+              const Gap(4),
+              _FeedHeaderIconButton(
+                onTap: onSearchTap,
+                icon: Assets.icons.search.svg(width: 24, height: 24),
+              ),
+            ],
+          ),
         ],
       ),
-      actions: [
-        GestureDetector(
-          onTap: onCreatePostTap,
-          child: Container(
-            padding: EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              border: Border.all(color: AppColors.border, width: 1),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Assets.icons.plusIcon.svg(width: 24, height: 24),
-          ),
+    );
+  }
+}
+
+class _FeedHeaderIconButton extends StatelessWidget {
+  const _FeedHeaderIconButton({
+    required this.onTap,
+    required this.icon,
+  });
+
+  final VoidCallback? onTap;
+  final Widget icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: Center(
+          child: icon,
         ),
-        Gap(14),
-        GestureDetector(
-          onTap: onNotificationsTap,
-          child: Container(
-            padding: EdgeInsets.all(6),
-            child: Assets.icons.bell.svg(width: 24, height: 24),
-          ),
-        ),
-        Gap(7),
-        GestureDetector(
-          onTap: onSearchTap,
-          child: Container(
-            padding: EdgeInsets.all(6),
-            child: Assets.icons.search.svg(width: 24, height: 24),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

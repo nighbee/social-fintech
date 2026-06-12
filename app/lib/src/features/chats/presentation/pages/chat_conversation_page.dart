@@ -22,6 +22,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
+import 'package:video_compress/video_compress.dart';
 
 class ChatConversationPage extends StatefulWidget {
   const ChatConversationPage({
@@ -660,7 +661,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       transitionDuration: const Duration(milliseconds: 100),
       pageBuilder: (dialogContext, _, __) {
         return _ChatAttachmentPickerOverlay(
-          left: 40,
+          left: 20,
           bottom: MediaQuery.paddingOf(context).bottom + 52,
           onSelected: (value) => Navigator.of(dialogContext).pop(value),
         );
@@ -736,6 +737,14 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
       );
       return;
     }
+    String? thumbnailUrl = uploaded.thumbnailUrl;
+    if (_PendingMedia.isVideoFileName(fileName) &&
+        (thumbnailUrl ?? '').trim().isEmpty) {
+      thumbnailUrl = await _uploadVideoThumbnail(fileName);
+      if (!mounted) {
+        return;
+      }
+    }
     final trimmedCaption = caption.trim();
     final bodyForApi = _outgoingBodyForBackend(trimmedCaption);
     final idempotencyKey = const Uuid().v4();
@@ -747,7 +756,7 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         (
           type: uploaded.type,
           url: uploaded.url,
-          thumbnailUrl: uploaded.thumbnailUrl,
+          thumbnailUrl: thumbnailUrl,
         ),
       ]),
       replyToMessageId: _replyDraft?.replyToMessageId,
@@ -780,6 +789,29 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
         });
       },
     );
+  }
+
+  Future<String?> _uploadVideoThumbnail(String videoPath) async {
+    try {
+      final thumbnailBytes = await VideoCompress.getByteThumbnail(
+        videoPath,
+        quality: 82,
+        position: -1,
+      );
+      if (thumbnailBytes == null || thumbnailBytes.isEmpty) {
+        return null;
+      }
+      final thumbnailUpload = await _remote.uploadChatMedia(
+        bytes: thumbnailBytes,
+        fileName: 'chat_video_thumbnail.jpg',
+      );
+      return thumbnailUpload.fold(
+        (_) => null,
+        (uploaded) => uploaded.url.trim().isEmpty ? null : uploaded.url.trim(),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   void _onMicrophoneTap() {
@@ -877,7 +909,12 @@ class _ChatConversationPageState extends State<ChatConversationPage> {
           filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.02),
+              color: const Color(0xFF222222).withValues(alpha: 0.98),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.06),
+                ),
+              ),
             ),
             child: Material(
               type: MaterialType.transparency,
@@ -1033,6 +1070,10 @@ class _PendingMedia {
   final String fileName;
 
   bool get isVideo {
+    return isVideoFileName(fileName);
+  }
+
+  static bool isVideoFileName(String fileName) {
     final n = fileName.toLowerCase();
     return n.endsWith('.mp4') ||
         n.endsWith('.mov') ||
@@ -1069,7 +1110,7 @@ class _ChatAttachmentPickerOverlay extends StatelessWidget {
             bottom: bottom,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: const Color(0xFF18191C),
+                color: const Color(0xFF1E1F21),
                 borderRadius: BorderRadius.circular(2),
                 boxShadow: [
                   BoxShadow(
@@ -1080,18 +1121,18 @@ class _ChatAttachmentPickerOverlay extends StatelessWidget {
                 ],
               ),
               child: SizedBox(
-                width: 116,
+                width: 160,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _ChatAttachmentMenuRow(
                       label: 'Media',
-                      icon: Icons.insert_drive_file_outlined,
+                      iconAssetPath: 'assets/images/Media.png',
                       onTap: () => onSelected('media'),
                     ),
                     _ChatAttachmentMenuRow(
                       label: 'Camera',
-                      icon: Icons.camera_alt_outlined,
+                      iconAssetPath: 'assets/images/Camera.png',
                       onTap: () => onSelected('camera'),
                     ),
                   ],
@@ -1108,12 +1149,12 @@ class _ChatAttachmentPickerOverlay extends StatelessWidget {
 class _ChatAttachmentMenuRow extends StatelessWidget {
   const _ChatAttachmentMenuRow({
     required this.label,
-    required this.icon,
+    required this.iconAssetPath,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
+  final String iconAssetPath;
   final VoidCallback onTap;
 
   @override
@@ -1121,9 +1162,9 @@ class _ChatAttachmentMenuRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: SizedBox(
-        height: 30,
+        height: 40,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Row(
             children: [
               Expanded(
@@ -1131,15 +1172,16 @@ class _ChatAttachmentMenuRow extends StatelessWidget {
                   label,
                   style: TextStyles.bodyMain.copyWith(
                     color: AppColors.textBrand,
-                    fontSize: 11,
-                    height: 1,
+                    fontSize: 16,
+                    height: 22 / 16,
                   ),
                 ),
               ),
-              Icon(
-                icon,
-                color: AppColors.textBrand.withValues(alpha: 0.88),
-                size: 13,
+              Image.asset(
+                iconAssetPath,
+                width: 18,
+                height: 18,
+                filterQuality: FilterQuality.high,
               ),
             ],
           ),

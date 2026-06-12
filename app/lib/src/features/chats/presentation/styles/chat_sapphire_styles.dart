@@ -5,7 +5,7 @@ abstract final class ChatSapphireStyles {
 
   /// Сетка строки чата под обновлённый compact-макет.
   static const double threadCardPaddingTop = 12;
-  static const double threadCardPaddingBottom = 14;
+  static const double threadCardPaddingBottom = 12;
   static const double threadCardPaddingHorizontal = 14;
 
   /// Минимальная высота карточки (Figma ≈ 114).
@@ -49,11 +49,8 @@ abstract final class ChatSapphireStyles {
   /// Обводка в духе moonstone-виджетов приложения.
   static const Color threadCardBorderColor = Color(0x26D7E1EA);
 
-  /// Акцент «Moonstone» в строке ранга.
-  static const Color rankLineColor = Color(0xFF96BCDE);
-
-  /// Остаток строки ранга после префикса ранга.
-  static const Color rankLineMutedColor = Color(0xFF8A93A3);
+  /// Цвет строки ранга совпадает с карточками Feed.
+  static const Color rankLineColor = Color(0xFF4E92CE);
 
   static const Color searchFieldFill = Color(0xFF1E1E20);
 
