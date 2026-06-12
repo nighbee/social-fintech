@@ -321,6 +321,8 @@ type testCacheRepo struct {
 	fatigueState *FeedFatigueState
 	lastSetState *FeedFatigueState
 	dirtyUsers   []uuid.UUID
+	allyIDs      []uuid.UUID
+	allyHit      bool
 }
 
 func (t *testCacheRepo) GetFatigueState(ctx context.Context, userID uuid.UUID) (*FeedFatigueState, error) {
@@ -347,6 +349,19 @@ func (t *testCacheRepo) MarkDeviceOnFeed(ctx context.Context, userID uuid.UUID, 
 
 func (t *testCacheRepo) AnyDeviceOnFeed(ctx context.Context, userID uuid.UUID) (bool, error) {
 	return t.anyOnFeed, nil
+}
+
+func (t *testCacheRepo) GetAllyIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, bool, error) {
+	if t.allyIDs == nil {
+		return nil, false, nil
+	}
+	return t.allyIDs, true, nil
+}
+
+func (t *testCacheRepo) SetAllyIDs(ctx context.Context, userID uuid.UUID, allyIDs []uuid.UUID) error {
+	t.allyIDs = allyIDs
+	t.allyHit = true
+	return nil
 }
 
 func newTestService(anyOnFeed bool) *Service {

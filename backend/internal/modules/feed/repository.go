@@ -84,4 +84,6 @@ type CacheRepository interface {
 	MarkUserDirty(ctx context.Context, userID uuid.UUID) error
 	MarkDeviceOnFeed(ctx context.Context, userID uuid.UUID, deviceID string, ttl time.Duration) error
 	AnyDeviceOnFeed(ctx context.Context, userID uuid.UUID) (bool, error)
+	GetAllyIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, bool, error)
+	SetAllyIDs(ctx context.Context, userID uuid.UUID, allyIDs []uuid.UUID) error
 }

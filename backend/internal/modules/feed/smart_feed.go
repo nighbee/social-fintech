@@ -3,7 +3,6 @@ package feed
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"math"
 	"math/rand"
@@ -19,43 +18,155 @@ type localActivityStats struct {
 }
 
 type smartFeedCandidate struct {
-	post      PostResponse
-	createdAt time.Time
-	isAlly    bool
-	hasPoint  bool
-	lat       float64
-	lon       float64
+	post             PostResponse
+	createdAt        time.Time
+	isAlly           bool
+	hasPoint         bool
+	lat              float64
+	lon              float64
+	reportControl    int
+	distributionMult float64
+	strikeCount      int
 }
 
-// Add new dependencies to Repository interface in feed/repository.go logically
-// GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, cursor string, limit int) ([]PostResponse, string, error)
-// RecordLike(ctx context.Context, postID, userID uuid.UUID) error
-// GetInteractions(ctx context.Context, postID uuid.UUID, interactionType string, limit int) ([]InteractionResponse, error)
-// BatchFlushLikes(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
+type feedRow struct {
+	PostID                 uuid.UUID      `db:"id"`
+	Caption                string         `db:"caption"`
+	Visibility             string         `db:"visibility"`
+	CommentPermission      string         `db:"comment_permission"`
+	HideLikesCount         bool           `db:"hide_likes_count"`
+	LikesCount             int            `db:"likes_count"`
+	CommentsCount          int            `db:"comments_count"`
+	ShareCount             int            `db:"share_count"`
+	SealsCount             int            `db:"seals_count"`
+	CreatedAt              sql.NullTime   `db:"created_at"`
+	LocationLat            sql.NullFloat64 `db:"location_lat"`
+	LocationLon            sql.NullFloat64 `db:"location_lon"`
+	AuthorID               uuid.UUID      `db:"author_id"`
+	Username               string         `db:"username"`
+	FullName               string         `db:"full_name"`
+	ProfilePictureURL       string         `db:"profile_picture_url"`
+	AuthorReceivedCentinels int64          `db:"author_received_centinels"`
+	ViewerHasLiked         bool           `db:"viewer_has_liked"`
+	IsAlly                 bool           `db:"is_ally"`
+	IsLocal                bool           `db:"is_local"`
+	ReportControlLevel     int            `db:"report_control_level"`
+	DistributionMultiplier float64        `db:"distribution_multiplier"`
+	StrikeCount            int            `db:"strike_count"`
+}
 
-// GetSmartFeed implements the Allies/Local (80%) + World (20%) target weighted blending.
-func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error) {
-	// 1. Fetch Candidates (Limit 100 to sort and blend in memory)
-	// CTEs:
-	// - Allies: users we follow
-	// - Local: posts within 50km
-	// - World: fallback
+// batchFetchMedia fetches media attachments for the given post IDs in one query.
+func (r *repository) batchFetchMedia(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID][]MediaAttachment, error) {
+	if len(postIDs) == 0 {
+		return map[uuid.UUID][]MediaAttachment{}, nil
+	}
+
 	query := `
-		WITH allies AS (
-			SELECT target_user_id AS ally_id
-			FROM user_relationships
-			WHERE user_id = $1
-			  AND relationship_type = 'ally'
-		),
-		base_posts AS (
+		SELECT post_id, media_type, video_1080p_url, video_480p_url, thumbnail_url, media_order
+		FROM post_media
+		WHERE post_id = ANY($1::uuid[])
+		ORDER BY post_id, media_order
+	`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(postIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID][]MediaAttachment, len(postIDs))
+	for rows.Next() {
+		var postID uuid.UUID
+		var m MediaAttachment
+		var mediaOrder int
+		if err := rows.Scan(&postID, &m.Type, &m.URL_1080p, &m.URL_480p, &m.ThumbnailURL, &mediaOrder); err != nil {
+			return nil, err
+		}
+		m.URL = m.URL_1080p
+		m.ImageURL = m.URL_1080p
+		result[postID] = append(result[postID], m)
+	}
+
+	return result, nil
+}
+
+// hydratePostMedia applies buildURL to all media fields and assigns media to posts.
+func (r *repository) hydratePostMedia(posts []PostResponse, mediaMap map[uuid.UUID][]MediaAttachment) {
+	for i := range posts {
+		media, ok := mediaMap[posts[i].PostID]
+		if !ok {
+			posts[i].MediaAttachments = []MediaAttachment{}
+			continue
+		}
+		hydrated := make([]MediaAttachment, len(media))
+		copy(hydrated, media)
+		for j := range hydrated {
+			hydrated[j].URL_1080p = r.buildURL(hydrated[j].URL_1080p)
+			hydrated[j].URL = hydrated[j].URL_1080p
+			hydrated[j].ImageURL = hydrated[j].URL_1080p
+			hydrated[j].URL_480p = r.buildURL(hydrated[j].URL_480p)
+			hydrated[j].ThumbnailURL = r.buildURL(hydrated[j].ThumbnailURL)
+		}
+		posts[i].MediaAttachments = hydrated
+	}
+}
+
+// distributionPenalty returns a multiplier factor based on strike count.
+func distributionPenalty(strikes int) float64 {
+	switch {
+	case strikes >= 5:
+		return 0.4
+	case strikes >= 3:
+		return 0.7
+	default:
+		return 1.0
+	}
+}
+
+// getAllyIDsForFeed fetches the viewer's ally user IDs for feed visibility filtering.
+func (r *repository) getAllyIDsForFeed(ctx context.Context, viewerID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT target_user_id
+		FROM user_relationships
+		WHERE user_id = $1 AND relationship_type = 'ally'
+	`, viewerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uuid.UUID
+	for rows.Next() {
+		var id uuid.UUID
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	if ids == nil {
+		ids = []uuid.UUID{}
+	}
+	return ids, nil
+}
+
+// GetSmartFeed implements the Allies/Local + World target weighted blending.
+func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, lon float64, hasLocation bool, cursor time.Time, limit int) ([]PostResponse, string, error) {
+	allyIDs, err := r.getAllyIDsForFeed(ctx, viewerID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	query := `
+		WITH base_posts AS (
 			SELECT p.id, p.user_id, p.caption, p.visibility, p.comment_permission, p.hide_likes_count,
 				p.likes_count, p.comments_count, p.share_count, p.seals_count,
 				p.created_at, p.location_lat, p.location_lon,
 				COALESCE(p.report_control_level, 0) AS report_control_level,
 				COALESCE(p.distribution_multiplier, 1.0) AS distribution_multiplier,
-				(p.user_id IN (SELECT ally_id FROM allies)) AS is_ally
+				COALESCE(p.current_strike_count, 0) AS strike_count,
+				CASE WHEN $6::uuid[] IS NOT NULL AND array_length($6::uuid[], 1) > 0 AND p.user_id = ANY($6::uuid[]) THEN true ELSE false END AS is_ally
 			FROM posts p
-			WHERE p.is_archived = false
+			WHERE
+				p.is_archived = false
 			  AND p.is_deleted = false
 			  AND (
 				p.user_id = $1
@@ -67,39 +178,31 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 				)
 			  )
 			  AND COALESCE(p.is_hidden_by_reports, false) = false
-			  -- Hard exclusion from feed starts at level 4.
 			  AND COALESCE(p.report_control_level, 0) < 4
+			  AND p.user_id <> $1
+			  AND NOT EXISTS (
+				SELECT 1
+				FROM reported_post_hides rph
+				WHERE rph.post_id = p.id
+				  AND rph.reporter_id = $1
+			  )
+			  AND p.created_at < $5
+			  AND (p.visibility = 'ANYONE' OR (array_length($6::uuid[], 1) > 0 AND p.user_id = ANY($6::uuid[])))
+			ORDER BY p.created_at DESC, p.id DESC
+			LIMIT 300
+		) p.is_archived = false
+			  AND p.is_deleted = false
 			  AND (
-				-- DISTRIBUTION FILTER (NON-SILENT SHADOW-BAN)
-				-- If report_control_level > 0 (restricted/shadowbanned user):
-				--   probability of showing post = distribution_multiplier * penalty_factor
-				-- - distribution_multiplier ∈ [0.0, 1.0]: how much reputation damage (0=fully hidden, 1=normal)
-				-- - penalty_factor ∈ [0.4, 0.7, 1.0]: based on strike count in 30d
-				-- If ALL conditions fail, post is FILTERED OUT of feed (does NOT appear for any viewer)
-				-- This is NOT debug-only; it's live operational filtering to protect community
-				-- Users with distribution_multiplier=0.1 will see their posts in ~10% of feeds
-				COALESCE(p.report_control_level, 0) = 0
-				OR random() <= (
-					COALESCE(p.distribution_multiplier, 1.0) *
-					CASE
-						WHEN (
-							SELECT COUNT(1)
-							FROM author_policy_strikes aps
-							WHERE aps.author_id = p.user_id
-							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-							  AND aps.created_at >= NOW() - INTERVAL '30 days'
-						) >= 5 THEN 0.4
-						WHEN (
-							SELECT COUNT(1)
-							FROM author_policy_strikes aps
-							WHERE aps.author_id = p.user_id
-							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-							  AND aps.created_at >= NOW() - INTERVAL '30 days'
-						) >= 3 THEN 0.7
-						ELSE 1.0
-					END
+				p.user_id = $1
+				OR NOT EXISTS (
+					SELECT 1
+					FROM users au
+					WHERE au.id = p.user_id
+					  AND au.is_shadow_banned = true
 				)
 			  )
+			  AND COALESCE(p.is_hidden_by_reports, false) = false
+			  AND COALESCE(p.report_control_level, 0) < 4
 			  AND p.user_id <> $1
 			  AND NOT EXISTS (
 				SELECT 1
@@ -110,7 +213,7 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			  AND p.created_at < $5
 			  AND (p.visibility = 'ANYONE' OR p.user_id IN (SELECT ally_id FROM allies))
 			ORDER BY p.created_at DESC, p.id DESC
-			LIMIT 200
+			LIMIT 300
 		)
 		SELECT
 			p.id, p.caption, p.visibility, p.comment_permission, p.hide_likes_count,
@@ -121,45 +224,34 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name,
 			COALESCE(prof.avatar_url, '') as profile_picture_url,
 			COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-
-			-- Media as JSON array via LATERAL
-			COALESCE(media.media_json, '[]'::json) as media_json,
-
-			-- Whether viewer already liked this post
 			EXISTS (
 			    SELECT 1 FROM post_interactions pi
 			    WHERE pi.post_id = p.id
 			      AND pi.user_id = $1
 			      AND pi.interaction_type = 'like'
 			) AS viewer_has_liked,
-
 			p.is_ally,
 			CASE
 			    WHEN $4 THEN (
 			        p.location_lat IS NOT NULL AND p.location_lon IS NOT NULL AND
-			        ST_DWithin(
-			            ST_SetSRID(ST_MakePoint(p.location_lon, p.location_lat), 4326)::geography,
-			            ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography,
-			            50000
+			        EXISTS (
+			            SELECT 1 FROM posts geo_p
+			            WHERE geo_p.id = p.id
+			              AND ST_DWithin(
+			                  ST_SetSRID(ST_MakePoint(geo_p.location_lon, geo_p.location_lat), 4326)::geography,
+			                  ST_SetSRID(ST_MakePoint($3, $2), 4326)::geography,
+			                  50000
+			              )
 			        )
 			    )
 			    ELSE false
-			END AS is_local
+			END AS is_local,
+			p.report_control_level,
+			p.distribution_multiplier,
+			p.strike_count
 		FROM base_posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
-		LEFT JOIN LATERAL (
-			SELECT json_agg(json_build_object(
-				'type', pm.media_type,
-				'url', pm.video_1080p_url,
-				'image_url', pm.video_1080p_url,
-				'video_1080p_url', pm.video_1080p_url,
-				'video_480p_url', pm.video_480p_url,
-				'thumbnail_url', pm.thumbnail_url
-			) ORDER BY pm.media_order) as media_json
-			FROM post_media pm 
-			WHERE pm.post_id = p.id
-		) media ON true
 		ORDER BY p.created_at DESC, p.id DESC
 	`
 
@@ -167,59 +259,88 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		cursor = time.Now()
 	}
 
-	rows, err := r.db.QueryContext(ctx, query, viewerID, lat, lon, hasLocation, cursor)
+	rows, err := r.db.QueryContext(ctx, query, viewerID, lat, lon, hasLocation, cursor, pq.Array(allyIDs))
 	if err != nil {
 		return nil, "", err
 	}
 	defer rows.Close()
 
-	candidates := make([]smartFeedCandidate, 0, limit)
-	var alliesLocal []PostResponse
-	var world []PostResponse
-	createdAtMap := make(map[uuid.UUID]time.Time)
+	// Collect post IDs for batch media fetch
+	postIDs := make([]uuid.UUID, 0, 300)
+	var rawRows []feedRow
 
 	for rows.Next() {
-		var resp PostResponse
-		var mediaJSON []byte
-		var createdAt sql.NullTime
-		var isAlly, isLocal bool
-		var pLat, pLon sql.NullFloat64
-		var commentPerm string
-		var authorReceivedCentinels int64
-
+		var fr feedRow
 		err := rows.Scan(
-			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.HideLikesCount,
-			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers,
-			&createdAt, &pLat, &pLon,
-			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
-			&authorReceivedCentinels,
-			&mediaJSON,
-			&resp.ViewerHasLiked,
-			&isAlly, &isLocal,
+			&fr.PostID, &fr.Caption, &fr.Visibility, &fr.CommentPermission, &fr.HideLikesCount,
+			&fr.LikesCount, &fr.CommentsCount, &fr.ShareCount, &fr.SealsCount,
+			&fr.CreatedAt, &fr.LocationLat, &fr.LocationLon,
+			&fr.AuthorID, &fr.Username, &fr.FullName, &fr.ProfilePictureURL,
+			&fr.AuthorReceivedCentinels,
+			&fr.ViewerHasLiked,
+			&fr.IsAlly, &fr.IsLocal,
+			&fr.ReportControlLevel, &fr.DistributionMultiplier, &fr.StrikeCount,
 		)
 		if err != nil {
 			return nil, "", err
 		}
-		fillAuthorRank(&resp.Author, authorReceivedCentinels)
+		if fr.CreatedAt.Valid {
+			postIDs = append(postIDs, fr.PostID)
+			rawRows = append(rawRows, fr)
+		}
+	}
 
-		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
-		for i := range resp.MediaAttachments {
-			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
-			resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].ImageURL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
-			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
+	// Batch fetch all media in one query
+	mediaMap, err := r.batchFetchMedia(ctx, postIDs)
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Build candidates with Go-side distribution filtering
+	// Replace random() with deterministic single-seed sampling
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	candidates := make([]smartFeedCandidate, 0, limit)
+	createdAtMap := make(map[uuid.UUID]time.Time)
+
+	for _, fr := range rawRows {
+		// Go-side shadow-ban distribution check (replaces SQL random())
+		if fr.ReportControlLevel > 0 {
+			threshold := fr.DistributionMultiplier * distributionPenalty(fr.StrikeCount)
+			if rng.Float64() > threshold {
+				continue
+			}
 		}
 
-		// Derive computed fields
-		resp.CommentPermission = commentPerm
-		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
+		resp := PostResponse{
+			PostID:            fr.PostID,
+			ContentText:       fr.Caption,
+			Visibility:        fr.Visibility,
+			CommentPermission: fr.CommentPermission,
+			HideLikesCount:    fr.HideLikesCount,
+			Author: AuthorInfo{
+				ID:            fr.AuthorID,
+				Username:      fr.Username,
+				FullName:      fr.FullName,
+				ProfilePicURL: r.buildURL(fr.ProfilePictureURL),
+			},
+			ViewerHasLiked: fr.ViewerHasLiked,
+			Metrics: PostMetrics{
+				Likes:    fr.LikesCount,
+				Comments: fr.CommentsCount,
+				Shares:   fr.ShareCount,
+				Silvers:  int64(fr.SealsCount),
+			},
+			Permissions: Permissions{
+				CanComment: fr.CommentPermission != CommentPermNoOne,
+			},
+		}
+
+		fillAuthorRank(&resp.Author, fr.AuthorReceivedCentinels)
 		applyHiddenLikesForViewer(&resp, viewerID)
 
-		// time_ago is computed from createdAt
-		if createdAt.Valid {
-			createdAtMap[resp.PostID] = createdAt.Time
-			elapsed := time.Since(createdAt.Time)
+		if fr.CreatedAt.Valid {
+			createdAtMap[resp.PostID] = fr.CreatedAt.Time
+			elapsed := time.Since(fr.CreatedAt.Time)
 			switch {
 			case elapsed < time.Hour:
 				resp.TimeAgo = fmt.Sprintf("%dm", int(elapsed.Minutes()))
@@ -230,23 +351,39 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 			}
 		}
 
+		// Hydrate media from batch fetch
+		if media, ok := mediaMap[resp.PostID]; ok {
+			hydrated := make([]MediaAttachment, len(media))
+			copy(hydrated, media)
+			for j := range hydrated {
+				hydrated[j].URL_1080p = r.buildURL(hydrated[j].URL_1080p)
+				hydrated[j].URL = hydrated[j].URL_1080p
+				hydrated[j].ImageURL = hydrated[j].URL_1080p
+				hydrated[j].URL_480p = r.buildURL(hydrated[j].URL_480p)
+				hydrated[j].ThumbnailURL = r.buildURL(hydrated[j].ThumbnailURL)
+			}
+			resp.MediaAttachments = hydrated
+		}
+
 		candidate := smartFeedCandidate{
 			post:      resp,
-			createdAt: createdAt.Time,
-			isAlly:    isAlly,
+			createdAt: fr.CreatedAt.Time,
+			isAlly:    fr.IsAlly,
 		}
-		if hasLocation && pLat.Valid && pLon.Valid {
-			candidate.lat = pLat.Float64
-			candidate.lon = pLon.Float64
+		if hasLocation && fr.LocationLat.Valid && fr.LocationLon.Valid {
+			candidate.lat = fr.LocationLat.Float64
+			candidate.lon = fr.LocationLon.Float64
 			candidate.hasPoint = true
-		} else if isLocal {
-			// Fallback path for pre-existing distance-based local calculation.
+		} else if fr.IsLocal {
 			candidate.hasPoint = false
 		}
 
-		if createdAt.Valid {
-			candidates = append(candidates, candidate)
-		}
+		candidates = append(candidates, candidate)
+	}
+
+	// Cap at 200 for blending (matching old behavior after distribution filter)
+	if len(candidates) > 200 {
+		candidates = candidates[:200]
 	}
 
 	geoCfg := r.adaptiveGeo.normalize()
@@ -259,6 +396,9 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		effectiveKRing = selectLocalKRingWithConfig(statsByRing, geoCfg)
 		localShare = localShareForActivityWithConfig(statsByRing[effectiveKRing], geoCfg)
 	}
+
+	var alliesLocal []PostResponse
+	var world []PostResponse
 
 	for _, candidate := range candidates {
 		isLocalByRing := false
@@ -273,11 +413,9 @@ func (r *repository) GetSmartFeed(ctx context.Context, viewerID uuid.UUID, lat, 
 		}
 	}
 
-	// 2. Blend the results (target 80% Allies/Local, 20% World with fallback)
 	rand.Shuffle(len(world), func(i, j int) { world[i], world[j] = world[j], world[i] })
 	blended := blendSmartFeedCandidatesWithShare(alliesLocal, world, limit, localShare)
 
-	// Next cursor is the oldest created_at from the returned set
 	nextCursorStr := ""
 	if len(blended) > 0 {
 		var oldest time.Time
@@ -350,7 +488,6 @@ func blendSmartFeedCandidatesWithShare(alliesLocal, world []PostResponse, limit 
 	alliesAdded := 0
 	worldAdded := 0
 
-	// Phase 1: Try to hit quotas
 	for alliesAdded < alliesQuota && aIdx < len(alliesLocal) {
 		if tryAppend(alliesLocal[aIdx]) {
 			alliesAdded++
@@ -365,7 +502,6 @@ func blendSmartFeedCandidatesWithShare(alliesLocal, world []PostResponse, limit 
 		wIdx++
 	}
 
-	// Phase 2: Fill remaining limit from whatever is left, respecting author caps
 	for len(blended) < limit && (aIdx < len(alliesLocal) || wIdx < len(world)) {
 		addedInLoop := false
 
@@ -388,9 +524,6 @@ func blendSmartFeedCandidatesWithShare(alliesLocal, world []PostResponse, limit 
 		}
 	}
 
-	// Phase 3: Backfill when pool is small.
-	// If diversity cap prevented filling the page (e.g. single-author pool),
-	// finish with unseen posts regardless of per-author cap.
 	if len(blended) < limit {
 		appendWithoutAuthorCap := func(items []PostResponse) {
 			for _, item := range items {
@@ -512,7 +645,6 @@ func (r *repository) BatchFlushLikes(ctx context.Context, postID uuid.UUID, user
 	}
 	defer tx.Rollback()
 
-	// Using UNNEST for fast bulk inserts
 	queryInsert := `
 		INSERT INTO post_interactions (post_id, user_id, interaction_type, created_at)
 		SELECT $1, unnest($2::uuid[]), 'like', NOW()
@@ -527,7 +659,6 @@ func (r *repository) BatchFlushLikes(ctx context.Context, postID uuid.UUID, user
 	rowsAffected, _ := res.RowsAffected()
 
 	if rowsAffected > 0 {
-		// Batch increment likes_count on the post
 		queryUpdate := `UPDATE posts SET likes_count = likes_count + $1 WHERE id = $2`
 		if _, err := tx.ExecContext(ctx, queryUpdate, rowsAffected, postID); err != nil {
 			return err
@@ -537,23 +668,17 @@ func (r *repository) BatchFlushLikes(ctx context.Context, postID uuid.UUID, user
 	return tx.Commit()
 }
 
-// BatchFlushSeals handles the post denormalization. The actual Economy Ledger happened previously inline.
-// Made idempotent to prevent double increments under concurrency/retry scenarios.
+// BatchFlushSeals handles the post denormalization. Combined subquery for single ledger scan.
 func (r *repository) BatchFlushSeals(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error {
 	query := `
-		UPDATE posts 
-		SET seals_count = (
-				SELECT COUNT(1) FROM ledger_entries 
-				WHERE category = 'POST_SEAL' 
-				  AND metadata->>'post_id' = $1
-				  AND receiver_wallet_id IS NOT NULL
-			),
-		    seals_amount = (
-				SELECT COALESCE(SUM(amount), 0) FROM ledger_entries 
-				WHERE category = 'POST_SEAL' 
-				  AND metadata->>'post_id' = $1
-				  AND receiver_wallet_id IS NOT NULL
-			)
+		UPDATE posts
+		SET (seals_count, seals_amount) = (
+			SELECT COALESCE(COUNT(1), 0), COALESCE(SUM(amount), 0)
+			FROM ledger_entries
+			WHERE category = 'POST_SEAL'
+			  AND metadata->>'post_id' = $1
+			  AND receiver_wallet_id IS NOT NULL
+		)
 		WHERE id = $2
 	`
 	_, err := r.db.ExecContext(ctx, query, postID.String(), postID)

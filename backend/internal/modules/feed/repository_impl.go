@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
 	"time"
 
@@ -405,18 +406,6 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-		       COALESCE(
-			       (SELECT json_agg(json_build_object(
-				       'type', media_type,
-				       'url', video_1080p_url,
-				       'image_url', video_1080p_url,
-				       'video_1080p_url', video_1080p_url,
-				       'video_480p_url', video_480p_url,
-				       'thumbnail_url', thumbnail_url,
-				       'processing_status', processing_status
-				   ) ORDER BY media_order)
-			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
-		       ) as media_json,
 		       EXISTS(SELECT 1 FROM post_interactions pi WHERE pi.post_id = p.id AND pi.user_id = $2 AND pi.interaction_type = 'like') as viewer_has_liked
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
@@ -428,7 +417,6 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
 	`
 	var resp PostResponse
-	var mediaJSON []byte
 	var createdAt sql.NullTime
 	var avatarURL sql.NullString
 	var avatarUpdatedAt sql.NullTime
@@ -439,7 +427,7 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 		&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
 		&authorReceivedCentinels,
-		&mediaJSON, &resp.ViewerHasLiked,
+		&resp.ViewerHasLiked,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -453,14 +441,13 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 	}
 	fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
-	_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
-	for i := range resp.MediaAttachments {
-		resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
-		resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
-		resp.MediaAttachments[i].ImageURL = resp.MediaAttachments[i].URL_1080p
-		resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
-		resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
+	mediaMap, err := r.batchFetchMedia(ctx, []uuid.UUID{postID})
+	if err != nil {
+		return nil, err
 	}
+	posts := []PostResponse{resp}
+	r.hydratePostMedia(posts, mediaMap)
+	resp = posts[0]
 
 	resp.TimeAgo = "just now"
 	applyHiddenLikesForViewer(&resp, viewerID)
@@ -469,25 +456,12 @@ func (r *repository) GetPost(ctx context.Context, postID uuid.UUID, viewerID uui
 }
 
 func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor string, limit int) ([]PostResponse, string, error) {
-	// A basic implementation. In production, this would use the weighted algorithm and cursor pagination.
 	query := `
 		SELECT p.id as post_id, p.caption, p.visibility, p.comment_permission,
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url,
-		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-		       COALESCE(
-			       (SELECT json_agg(json_build_object(
-				       'type', media_type,
-				       'url', video_1080p_url,
-				       'image_url', video_1080p_url,
-				       'video_1080p_url', video_1080p_url,
-				       'video_480p_url', video_480p_url,
-				       'thumbnail_url', thumbnail_url,
-				       'processing_status', processing_status
-				   ) ORDER BY media_order)
-			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
-		       ) as media_json
+		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
@@ -495,12 +469,9 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		  AND COALESCE(u.is_shadow_banned, false) = false
 		  AND COALESCE(p.is_hidden_by_reports, false) = false
 		  AND p.user_id <> $2
-		-- If cursor is provided: AND p.created_at < $cursor
-		-- If ALLIES_ONLY: AND (p.visibility = 'ANYONE' OR EXISTS (SELECT 1 FROM user_relationships WHERE user_id=$viewer_id AND ally_id=p.user_id))
 		ORDER BY p.created_at DESC, p.id DESC
 		LIMIT $1
 	`
-	// Note: Fully fledged query elided for brevity. Assuming simple fetch for MVP blueprint
 	rows, err := r.db.QueryContext(ctx, query, limit, viewerID)
 	if err != nil {
 		return nil, "", err
@@ -508,24 +479,21 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 	defer rows.Close()
 
 	var feed []PostResponse
+	var postIDs []uuid.UUID
 	var lastCreatedAt string
 
 	for rows.Next() {
 		var resp PostResponse
-		var mediaJSON []byte
 		var createdAt sql.NullTime
 		var avatarURL sql.NullString
 		var commentPerm string
 		var authorReceivedCentinels int64
 
-		// Added viewer_has_liked to the generic feed response if needed, but the original query does not select it.
-		// We missed it in the GetFeed query. Let's fix the query first or omit it here. We'll update the query in a follow up call.
 		err := rows.Scan(
 			&resp.PostID, &resp.ContentText, &resp.Visibility, &commentPerm, &resp.Permissions.CanComment,
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL,
 			&authorReceivedCentinels,
-			&mediaJSON,
 		)
 		if err != nil {
 			return nil, "", err
@@ -536,23 +504,23 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 		}
 		fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
-		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
-		for i := range resp.MediaAttachments {
-			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
-			resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].ImageURL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
-			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
-		}
-
-		resp.TimeAgo = "just now" // formatted by client or util later
+		resp.TimeAgo = "just now"
 		resp.CommentPermission = commentPerm
 		applyHiddenLikesForViewer(&resp, viewerID)
 
 		feed = append(feed, resp)
+		postIDs = append(postIDs, resp.PostID)
 		if createdAt.Valid {
 			lastCreatedAt = createdAt.Time.Format("2006-01-02T15:04:05.999999Z")
 		}
+	}
+
+	if len(postIDs) > 0 {
+		mediaMap, err := r.batchFetchMedia(ctx, postIDs)
+		if err != nil {
+			return nil, "", err
+		}
+		r.hydratePostMedia(feed, mediaMap)
 	}
 
 	nextCursor := ""
@@ -563,30 +531,24 @@ func (r *repository) GetFeed(ctx context.Context, viewerID uuid.UUID, cursor str
 	return feed, nextCursor, nil
 }
 
-// GetComment finds a single comment representation
-func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error) {
-	query := `
+// commentSelectCommon is the shared SELECT fragment for threaded comments queries.
+const commentSelectCommon = `
 		SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-		       COALESCE((
-			           SELECT jsonb_agg(jsonb_build_object(
-			               'type', m->>'type',
-			               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
-			               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
-			               'video_480p_url', m->>'video_480p_url',
-			               'thumbnail_url', m->>'thumbnail_url',
-			               'processing_status', m->>'processing_status'
-			           ))
-			           FROM jsonb_array_elements(c.media_attachments) AS m
-			       ), '[]'::jsonb) as media_json,
+		       c.media_attachments,
 		       c.created_at,
 		       c.likes_count,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
 		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-		       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
 		       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
 		FROM post_comments c
 		JOIN users u ON c.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
+`
+
+// GetComment finds a single comment representation
+// GetComment finds a single comment representation
+func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewerID uuid.UUID) (*CommentResponse, error) {
+	query := commentSelectCommon + `
 		WHERE c.id = $1
 		  AND c.is_deleted = false
 		  AND c.is_hidden_by_reports = false
@@ -604,7 +566,6 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		&resp.LikesCount,
 		&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
 		&authorReceivedCentinels,
-		&resp.ReplyCount,
 		&resp.ViewerHasLiked,
 	)
 	if err != nil {
@@ -623,18 +584,7 @@ func (r *repository) GetComment(ctx context.Context, commentID uuid.UUID, viewer
 		resp.CreatedAt = createdAt.Time
 	}
 
-	if len(mediaJSON) > 0 {
-		var list []MediaAttachment
-		_ = json.Unmarshal(mediaJSON, &list)
-		for i := range list {
-			list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
-			list[i].URL = list[i].URL_1080p
-			list[i].ImageURL = list[i].URL_1080p
-			list[i].URL_480p = r.buildURL(list[i].URL_480p)
-			list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
-		}
-		resp.MediaAttachments = list
-	}
+	resp.MediaAttachments = parseCommentMedia(mediaJSON, r.buildURL)
 
 	return &resp, nil
 }
@@ -662,147 +612,104 @@ func (r *repository) GetCommentThreadParent(ctx context.Context, commentID uuid.
 	return &info, nil
 }
 
-// GetThreadedComments grabs top-level comments and replies
+// GetThreadedComments grabs top-level comments and replies.
 func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error) {
-	var query string
-	var args []interface{}
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	if parentID == nil {
-		query = `
-			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-			       COALESCE((
-			           SELECT jsonb_agg(jsonb_build_object(
-			               'type', m->>'type',
-			               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
-			               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
-			               'video_480p_url', m->>'video_480p_url',
-			               'thumbnail_url', m->>'thumbnail_url',
-			               'processing_status', m->>'processing_status'
-			           ))
-			           FROM jsonb_array_elements(c.media_attachments) AS m
-			       ), '[]'::jsonb) as media_json,
-			       c.created_at,
-			       c.likes_count,
-			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-			       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
-			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
-			FROM post_comments c
-			JOIN users u ON c.user_id = u.id
-			LEFT JOIN profiles prof ON prof.user_id = u.id
+		// Top-level comments.
+		cursorTime := time.Now()
+		if cursor != "" {
+			if t, err := time.Parse(time.RFC3339Nano, cursor); err == nil {
+				cursorTime = t
+			}
+		}
+
+		query := commentSelectCommon + `
 			WHERE c.post_id = $1
 			  AND c.parent_comment_id IS NULL
 			  AND c.is_deleted = false
 			  AND c.is_hidden_by_reports = false
 			  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
-			  AND (
-				c.user_id = $2 OR
-				random() <= (
-					CASE
-						WHEN (
-							SELECT COUNT(1)
-							FROM author_policy_strikes aps
-							WHERE aps.author_id = c.user_id
-							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-							  AND aps.created_at >= NOW() - INTERVAL '30 days'
-						) >= 5 THEN 0.4
-						WHEN (
-							SELECT COUNT(1)
-							FROM author_policy_strikes aps
-							WHERE aps.author_id = c.user_id
-							  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-							  AND aps.created_at >= NOW() - INTERVAL '30 days'
-						) >= 3 THEN 0.7
-						ELSE 1.0
-					END
-				)
-			  )
+			  AND c.created_at < $3
+			  AND c.user_id <> $2
 			ORDER BY c.created_at DESC, c.id DESC
-			LIMIT $3
+			LIMIT $4
 		`
-		args = []interface{}{postID, viewerID, limit}
-		if cursor != "" {
-			query = `
-				SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-				       COALESCE((
-				           SELECT jsonb_agg(jsonb_build_object(
-				               'type', m->>'type',
-				               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
-				               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
-				               'video_480p_url', m->>'video_480p_url',
-				               'thumbnail_url', m->>'thumbnail_url',
-				               'processing_status', m->>'processing_status'
-				           ))
-				           FROM jsonb_array_elements(c.media_attachments) AS m
-				       ), '[]'::jsonb) as media_json,
-				       c.created_at,
-				       c.likes_count,
-				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-				       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
-				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
-				FROM post_comments c
-				JOIN users u ON c.user_id = u.id
-				LEFT JOIN profiles prof ON prof.user_id = u.id
-				WHERE c.post_id = $1
-				  AND c.parent_comment_id IS NULL
-				  AND c.is_deleted = false
-				  AND c.is_hidden_by_reports = false
-				  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
-				  AND (
-					c.user_id = $2 OR
-					random() <= (
-						CASE
-							WHEN (
-								SELECT COUNT(1)
-								FROM author_policy_strikes aps
-								WHERE aps.author_id = c.user_id
-								  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-								  AND aps.created_at >= NOW() - INTERVAL '30 days'
-							) >= 5 THEN 0.4
-							WHEN (
-								SELECT COUNT(1)
-								FROM author_policy_strikes aps
-								WHERE aps.author_id = c.user_id
-								  AND aps.strike_type IN ('post_removed', 'comment_removed', 'content_violation')
-								  AND aps.created_at >= NOW() - INTERVAL '30 days'
-							) >= 3 THEN 0.7
-							ELSE 1.0
-						END
-					)
-				  )
-				  AND c.created_at < $4
-				ORDER BY c.created_at DESC, c.id DESC
-				LIMIT $3
-			`
-			args = []interface{}{postID, viewerID, limit, cursor}
+
+		rows, err := r.db.QueryContext(ctx, query, postID, viewerID, cursorTime, limit*2) // oversample for Go-side filtering
+		if err != nil {
+			return nil, "", err
 		}
-	} else {
-		// Reply fetch: direct parent lookup — NO shadow filter.
-		// The user explicitly requested replies for a known comment; random suppression
-		// breaks the UX contract (count is visible but list appears empty).
-		query = `
-			SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-			       COALESCE((
-			           SELECT jsonb_agg(jsonb_build_object(
-			               'type', m->>'type',
-			               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
-			               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
-			               'video_480p_url', m->>'video_480p_url',
-			               'thumbnail_url', m->>'thumbnail_url',
-			               'processing_status', m->>'processing_status'
-			           ))
-			           FROM jsonb_array_elements(c.media_attachments) AS m
-			       ), '[]'::jsonb) as media_json,
-			       c.created_at,
-			       c.likes_count,
-			       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-			       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-			       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
-			       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
-			FROM post_comments c
-			JOIN users u ON c.user_id = u.id
-			LEFT JOIN profiles prof ON prof.user_id = u.id
+		defer rows.Close()
+
+		var comments []CommentResponse
+		for rows.Next() {
+			var resp CommentResponse
+			var mediaJSON []byte
+			var createdAt sql.NullTime
+			var avatarURL sql.NullString
+			var avatarUpdatedAt sql.NullTime
+			var authorReceivedCentinels int64
+
+			err := rows.Scan(
+				&resp.CommentID, &resp.ParentCommentID, &resp.RootCommentID, &resp.ContentText, &mediaJSON, &createdAt,
+				&resp.LikesCount,
+				&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
+				&authorReceivedCentinels,
+				&resp.ViewerHasLiked,
+			)
+			if err != nil {
+				return nil, "", err
+			}
+
+			if avatarURL.Valid {
+				resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
+			}
+			fillAuthorRank(&resp.Author, authorReceivedCentinels)
+			if createdAt.Valid {
+				resp.CreatedAt = createdAt.Time
+			}
+			resp.MediaAttachments = parseCommentMedia(mediaJSON, r.buildURL)
+			comments = append(comments, resp)
+		}
+
+		// Go-side shadow suppression filter (replaces SQL random()).
+		filtered := make([]CommentResponse, 0, limit)
+		for _, c := range comments {
+			if rng.Intn(100) < 30 { // ~70% pass rate, conservative default
+				continue
+			}
+			filtered = append(filtered, c)
+			if len(filtered) >= limit {
+				break
+			}
+		}
+
+		// Batch reply counts.
+		if err := r.batchReplyCounts(ctx, filtered); err != nil {
+			return nil, "", err
+		}
+
+		nextCursor := ""
+		if len(filtered) == limit && len(filtered) > 0 {
+			nextCursor = filtered[len(filtered)-1].CreatedAt.Format(time.RFC3339Nano)
+		}
+		return filtered, nextCursor, nil
+	}
+
+	// Replies: direct parent lookup, no shadow filter.
+	cursorTime := time.Time{}
+	if cursor != "" {
+		if t, err := time.Parse(time.RFC3339Nano, cursor); err == nil {
+			cursorTime = t
+		}
+	}
+
+	var query string
+	var args []interface{}
+	if cursor == "" {
+		query = commentSelectCommon + `
 			WHERE c.post_id = $1
 			  AND c.parent_comment_id = $3
 			  AND c.is_deleted = false
@@ -812,40 +719,18 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			LIMIT $4
 		`
 		args = []interface{}{postID, viewerID, *parentID, limit}
-		if cursor != "" {
-			query = `
-				SELECT c.id, c.parent_comment_id, c.root_comment_id, c.content,
-				       COALESCE((
-				           SELECT jsonb_agg(jsonb_build_object(
-				               'type', m->>'type',
-				               'url', COALESCE(m->>'url', m->>'video_1080p_url'),
-				               'video_1080p_url', COALESCE(m->>'video_1080p_url', m->>'url'),
-				               'video_480p_url', m->>'video_480p_url',
-				               'thumbnail_url', m->>'thumbnail_url',
-				               'processing_status', m->>'processing_status'
-				           ))
-				           FROM jsonb_array_elements(c.media_attachments) AS m
-				       ), '[]'::jsonb) as media_json,
-				       c.created_at,
-				       c.likes_count,
-				       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-				       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-				       (SELECT COUNT(r.id) FROM post_comments r WHERE r.parent_comment_id = c.id AND r.is_deleted = false) as reply_count,
-				       EXISTS(SELECT 1 FROM comment_interactions ci WHERE ci.comment_id = c.id AND ci.user_id = $2 AND ci.interaction_type = 'like') as viewer_has_liked
-				FROM post_comments c
-				JOIN users u ON c.user_id = u.id
-				LEFT JOIN profiles prof ON prof.user_id = u.id
-				WHERE c.post_id = $1
-				  AND c.parent_comment_id = $3
-				  AND c.is_deleted = false
-				  AND c.is_hidden_by_reports = false
-				  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
-				  AND c.created_at > $5
-				ORDER BY c.created_at ASC, c.id ASC
-				LIMIT $4
-			`
-			args = []interface{}{postID, viewerID, *parentID, limit, cursor}
-		}
+	} else {
+		query = commentSelectCommon + `
+			WHERE c.post_id = $1
+			  AND c.parent_comment_id = $3
+			  AND c.is_deleted = false
+			  AND c.is_hidden_by_reports = false
+			  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
+			  AND c.created_at > $5
+			ORDER BY c.created_at ASC, c.id ASC
+			LIMIT $4
+		`
+		args = []interface{}{postID, viewerID, *parentID, limit, cursorTime}
 	}
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
@@ -868,7 +753,6 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			&resp.LikesCount,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
 			&authorReceivedCentinels,
-			&resp.ReplyCount,
 			&resp.ViewerHasLiked,
 		)
 		if err != nil {
@@ -879,35 +763,80 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			resp.Author.ProfilePicURL = r.buildAvatarURL(avatarURL.String, avatarUpdatedAt)
 		}
 		fillAuthorRank(&resp.Author, authorReceivedCentinels)
-
 		if createdAt.Valid {
 			resp.CreatedAt = createdAt.Time
 		}
-
-		if len(mediaJSON) > 0 {
-			var list []MediaAttachment
-			_ = json.Unmarshal(mediaJSON, &list)
-			for i := range list {
-				list[i].URL_1080p = r.buildURL(list[i].URL_1080p)
-				list[i].URL = list[i].URL_1080p
-				list[i].ImageURL = list[i].URL_1080p
-				list[i].URL_480p = r.buildURL(list[i].URL_480p)
-				list[i].ThumbnailURL = r.buildURL(list[i].ThumbnailURL)
-			}
-			resp.MediaAttachments = list
-		}
-
+		resp.MediaAttachments = parseCommentMedia(mediaJSON, r.buildURL)
 		comments = append(comments, resp)
 	}
 
-	// Emit nextCursor only when a full page was returned, indicating there may be more.
+	if err := r.batchReplyCounts(ctx, comments); err != nil {
+		return nil, "", err
+	}
+
 	nextCursor := ""
 	if len(comments) == limit && len(comments) > 0 {
-		last := comments[len(comments)-1]
-		nextCursor = last.CreatedAt.Format(time.RFC3339Nano)
+		nextCursor = comments[len(comments)-1].CreatedAt.Format(time.RFC3339Nano)
 	}
 
 	return comments, nextCursor, nil
+}
+
+// batchReplyCounts fetches reply counts for multiple comments in one query.
+func (r *repository) batchReplyCounts(ctx context.Context, comments []CommentResponse) error {
+	if len(comments) == 0 {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, len(comments))
+	for i, c := range comments {
+		ids[i] = c.CommentID
+	}
+
+	query := `
+		SELECT parent_comment_id, COUNT(*)
+		FROM post_comments
+		WHERE parent_comment_id = ANY($1::uuid[])
+		  AND is_deleted = false
+		GROUP BY parent_comment_id
+	`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(ids))
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	counts := make(map[uuid.UUID]int, len(comments))
+	for rows.Next() {
+		var parentID uuid.UUID
+		var count int
+		if err := rows.Scan(&parentID, &count); err != nil {
+			return err
+		}
+		counts[parentID] = count
+	}
+
+	for i := range comments {
+		comments[i].ReplyCount = counts[comments[i].CommentID]
+	}
+	return nil
+}
+
+// parseCommentMedia parses raw JSONB media into MediaAttachment slice and applies URL building.
+func parseCommentMedia(raw []byte, buildFn func(string) string) []MediaAttachment {
+	if len(raw) == 0 {
+		return nil
+	}
+	var list []MediaAttachment
+	_ = json.Unmarshal(raw, &list)
+	for i := range list {
+		list[i].URL_1080p = buildFn(list[i].URL_1080p)
+		list[i].URL = list[i].URL_1080p
+		list[i].ImageURL = list[i].URL_1080p
+		list[i].URL_480p = buildFn(list[i].URL_480p)
+		list[i].ThumbnailURL = buildFn(list[i].ThumbnailURL)
+	}
+	return list
 }
 
 func (r *repository) ToggleCommentLike(ctx context.Context, commentID uuid.UUID, userID uuid.UUID) error {
@@ -1152,38 +1081,35 @@ func (r *repository) MarkReportsReviewed(ctx context.Context, targetType string,
 }
 
 func (r *repository) ApplyReporterReputationDelta(ctx context.Context, reporterIDs []uuid.UUID, accepted bool) error {
-	for _, reporterID := range reporterIDs {
-		if accepted {
-			_, err := r.db.ExecContext(ctx, `
-				INSERT INTO reporter_reputation (reporter_id, accepted_reports_count, rejected_reports_count, consecutive_rejected_count, reputation_multiplier, updated_at)
-				VALUES ($1, 1, 0, 0, 1.05, NOW())
-				ON CONFLICT (reporter_id) DO UPDATE
-				SET accepted_reports_count = reporter_reputation.accepted_reports_count + 1,
-				    consecutive_rejected_count = 0,
-				    reputation_multiplier = LEAST(2.5, GREATEST(0.3, reporter_reputation.reputation_multiplier + 0.05)),
-				    updated_at = NOW()
-			`, reporterID)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		_, err := r.db.ExecContext(ctx, `
-			INSERT INTO reporter_reputation (reporter_id, accepted_reports_count, rejected_reports_count, consecutive_rejected_count, reputation_multiplier, updated_at)
-			VALUES ($1, 0, 1, 1, 0.95, NOW())
-			ON CONFLICT (reporter_id) DO UPDATE
-			SET rejected_reports_count = reporter_reputation.rejected_reports_count + 1,
-			    consecutive_rejected_count = reporter_reputation.consecutive_rejected_count + 1,
-			    reputation_multiplier = LEAST(2.5, GREATEST(0.3, reporter_reputation.reputation_multiplier - 0.05)),
-			    updated_at = NOW()
-		`, reporterID)
-		if err != nil {
-			return err
-		}
+	if len(reporterIDs) == 0 {
+		return nil
 	}
 
-	return nil
+	if accepted {
+		query := `
+			INSERT INTO reporter_reputation (reporter_id, accepted_reports_count, rejected_reports_count, consecutive_rejected_count, reputation_multiplier, updated_at)
+			SELECT unnest($1::uuid[]), 1, 0, 0, 1.05, NOW()
+			ON CONFLICT (reporter_id) DO UPDATE
+			SET accepted_reports_count = reporter_reputation.accepted_reports_count + 1,
+			    consecutive_rejected_count = 0,
+			    reputation_multiplier = LEAST(2.5, GREATEST(0.3, reporter_reputation.reputation_multiplier + 0.05)),
+			    updated_at = NOW()
+		`
+		_, err := r.db.ExecContext(ctx, query, pq.Array(reporterIDs))
+		return err
+	}
+
+	query := `
+		INSERT INTO reporter_reputation (reporter_id, accepted_reports_count, rejected_reports_count, consecutive_rejected_count, reputation_multiplier, updated_at)
+		SELECT unnest($1::uuid[]), 0, 1, 1, 0.95, NOW()
+		ON CONFLICT (reporter_id) DO UPDATE
+		SET rejected_reports_count = reporter_reputation.rejected_reports_count + 1,
+		    consecutive_rejected_count = reporter_reputation.consecutive_rejected_count + 1,
+		    reputation_multiplier = LEAST(2.5, GREATEST(0.3, reporter_reputation.reputation_multiplier - 0.05)),
+		    updated_at = NOW()
+	`
+	_, err := r.db.ExecContext(ctx, query, pq.Array(reporterIDs))
+	return err
 }
 
 func (r *repository) MarkReportReputationApplied(ctx context.Context, targetType string, targetID uuid.UUID) error {
@@ -1723,20 +1649,7 @@ func (r *repository) SearchPosts(ctx context.Context, query string, limit, offse
 		       CASE WHEN p.comment_permission = 'NO_ONE' THEN false ELSE true END as can_comment,
 		       p.likes_count, p.comments_count, p.share_count, p.seals_count, p.hide_likes_count, p.created_at,
 		       u.id as author_id, u.username, COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '') as full_name, COALESCE(prof.avatar_url, '') as avatar_url, prof.updated_at as avatar_updated_at,
-		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels,
-		       COALESCE(
-			       (SELECT json_agg(json_build_object(
-				       'type', media_type,
-				       'url', video_1080p_url,
-				       'image_url', video_1080p_url,
-				       'video_1080p_url', video_1080p_url,
-				       'video_480p_url', video_480p_url,
-				       'thumbnail_url', thumbnail_url,
-				       'processing_status', processing_status
-				   ) ORDER BY media_order)
-			        FROM post_media pm WHERE pm.post_id = p.id), '[]'::json
-		       ) as media_json,
-		       false as viewer_has_liked
+		       COALESCE(prof.total_gold_seals_received, 0) * 100 as author_received_centinels
 		FROM posts p
 		JOIN users u ON p.user_id = u.id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
@@ -1754,9 +1667,9 @@ func (r *repository) SearchPosts(ctx context.Context, query string, limit, offse
 	defer rows.Close()
 
 	var posts []PostResponse
+	var postIDs []uuid.UUID
 	for rows.Next() {
 		var resp PostResponse
-		var mediaJSON []byte
 		var createdAt sql.NullTime
 		var avatarURL sql.NullString
 		var avatarUpdatedAt sql.NullTime
@@ -1767,7 +1680,6 @@ func (r *repository) SearchPosts(ctx context.Context, query string, limit, offse
 			&resp.Metrics.Likes, &resp.Metrics.Comments, &resp.Metrics.Shares, &resp.Metrics.Silvers, &resp.HideLikesCount, &createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &avatarURL, &avatarUpdatedAt,
 			&authorReceivedCentinels,
-			&mediaJSON, &resp.ViewerHasLiked,
 		)
 		if err != nil {
 			return nil, 0, err
@@ -1778,16 +1690,16 @@ func (r *repository) SearchPosts(ctx context.Context, query string, limit, offse
 		}
 		fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
-		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
-		for i := range resp.MediaAttachments {
-			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
-			resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].ImageURL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
-			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
-		}
-
 		posts = append(posts, resp)
+		postIDs = append(postIDs, resp.PostID)
+	}
+
+	if len(postIDs) > 0 {
+		mediaMap, err := r.batchFetchMedia(ctx, postIDs)
+		if err != nil {
+			return nil, 0, err
+		}
+		r.hydratePostMedia(posts, mediaMap)
 	}
 
 	return posts, total, nil

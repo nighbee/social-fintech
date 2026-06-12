@@ -45,7 +45,6 @@ func (c *cacheRepo) SetFatigueState(ctx context.Context, state *FeedFatigueState
 		return err
 	}
 
-	// State expires in Redis after 7 days (well beyond the 2 hours decay limit)
 	return c.redis.Client.Set(ctx, key, bytes, 7*24*time.Hour).Err()
 }
 
@@ -79,4 +78,31 @@ func (c *cacheRepo) AnyDeviceOnFeed(ctx context.Context, userID uuid.UUID) (bool
 	}
 
 	return countCmd.Val() > 0, nil
+}
+
+func (c *cacheRepo) GetAllyIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, bool, error) {
+	key := fmt.Sprintf("feed_ally_list:%s", userID.String())
+
+	val, err := c.redis.Client.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	var ids []uuid.UUID
+	if err := json.Unmarshal([]byte(val), &ids); err != nil {
+		return nil, false, err
+	}
+	return ids, true, nil
+}
+
+func (c *cacheRepo) SetAllyIDs(ctx context.Context, userID uuid.UUID, allyIDs []uuid.UUID) error {
+	key := fmt.Sprintf("feed_ally_list:%s", userID.String())
+	bytes, err := json.Marshal(allyIDs)
+	if err != nil {
+		return err
+	}
+	return c.redis.Client.Set(ctx, key, bytes, 60*time.Second).Err()
 }

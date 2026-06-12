@@ -3,15 +3,14 @@ package feed
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // GetPostCreatedAt returns the created_at timestamp of a post.
-// Used by the service layer to resolve an anchor post ID into a cursor.
 func (r *repository) GetPostCreatedAt(ctx context.Context, postID uuid.UUID) (time.Time, error) {
 	var createdAt time.Time
 	err := r.db.QueryRowContext(ctx,
@@ -24,35 +23,49 @@ func (r *repository) GetPostCreatedAt(ctx context.Context, postID uuid.UUID) (ti
 	return createdAt, nil
 }
 
+// batchFetchGridMedia returns first media item per post for grid display in one query.
+func (r *repository) batchFetchGridMedia(ctx context.Context, postIDs []uuid.UUID) (map[uuid.UUID]*PostGridItem, error) {
+	if len(postIDs) == 0 {
+		return map[uuid.UUID]*PostGridItem{}, nil
+	}
+
+	query := `
+		SELECT DISTINCT ON (post_id)
+			post_id,
+			COALESCE(thumbnail_url, video_1080p_url, '') AS thumbnail_url,
+			COALESCE(media_type, '') AS media_type,
+			COUNT(*) OVER (PARTITION BY post_id) > 1 AS has_multiple_media
+		FROM post_media
+		WHERE post_id = ANY($1::uuid[])
+		ORDER BY post_id, media_order ASC
+	`
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(postIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID]*PostGridItem, len(postIDs))
+	for rows.Next() {
+		var postID uuid.UUID
+		var item PostGridItem
+		if err := rows.Scan(&postID, &item.ThumbnailURL, &item.MediaType, &item.HasMultipleMedia); err != nil {
+			return nil, err
+		}
+		item.ThumbnailURL = r.buildURL(item.ThumbnailURL)
+		result[postID] = &item
+	}
+	return result, nil
+}
+
 // GetUserPostsGrid returns lightweight thumbnail entries for the profile posts grid.
-//
-// Visibility rules:
-//   - viewer == author  → all non-archived posts
-//   - otherwise         → only 'ANYONE' posts OR posts where viewer is an ally of author
-//
-// Cursor is exclusive (created_at < cursor), consistent with GetSmartFeed.
 func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostGridItem, string, error) {
 	const query = `
 		SELECT
 			p.id AS post_id,
-			COALESCE(first_media.thumbnail_url, first_media.video_1080p_url, '') AS thumbnail_url,
-			COALESCE(first_media.media_type, '') AS media_type,
-			COALESCE(media_stats.media_count, 0) > 1 AS has_multiple_media,
 			p.created_at
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
-		JOIN LATERAL (
-			SELECT pm.thumbnail_url, pm.video_1080p_url, pm.media_type
-			FROM post_media pm
-			WHERE pm.post_id = p.id
-			ORDER BY pm.media_order ASC
-			LIMIT 1
-		) first_media ON true
-		LEFT JOIN LATERAL (
-			SELECT COUNT(*) AS media_count
-			FROM post_media pm
-			WHERE pm.post_id = p.id
-		) media_stats ON true
 		WHERE p.user_id    = $1
 		  AND p.is_archived = false
 		  AND p.is_deleted = false
@@ -79,19 +92,34 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 	}
 	defer rows.Close()
 
-	items := make([]PostGridItem, 0, limit)
+	type gridRow struct {
+		PostID    uuid.UUID
+		CreatedAt time.Time
+	}
+	var gridRows []gridRow
+	var postIDs []uuid.UUID
 	for rows.Next() {
-		var item PostGridItem
-		var createdAt sql.NullTime
-		if err := rows.Scan(
-			&item.PostID, &item.ThumbnailURL, &item.MediaType, &item.HasMultipleMedia, &createdAt,
-		); err != nil {
+		var gr gridRow
+		if err := rows.Scan(&gr.PostID, &gr.CreatedAt); err != nil {
 			return nil, "", err
 		}
-		if createdAt.Valid {
-			item.CreatedAt = createdAt.Time
+		gridRows = append(gridRows, gr)
+		postIDs = append(postIDs, gr.PostID)
+	}
+
+	mediaMap, err := r.batchFetchGridMedia(ctx, postIDs)
+	if err != nil {
+		return nil, "", err
+	}
+
+	items := make([]PostGridItem, 0, len(gridRows))
+	for _, gr := range gridRows {
+		item := PostGridItem{PostID: gr.PostID, CreatedAt: gr.CreatedAt}
+		if media, ok := mediaMap[gr.PostID]; ok {
+			item.ThumbnailURL = media.ThumbnailURL
+			item.MediaType = media.MediaType
+			item.HasMultipleMedia = media.HasMultipleMedia
 		}
-		item.ThumbnailURL = r.buildURL(item.ThumbnailURL)
 		items = append(items, item)
 	}
 
@@ -104,9 +132,6 @@ func (r *repository) GetUserPostsGrid(ctx context.Context, authorID, viewerID uu
 }
 
 // GetUserPostsList returns full PostResponse entries for the scrollable list view.
-//
-// The caller is responsible for passing cursor = anchorPost.CreatedAt + 1ns when
-// an anchor post should be the first item returned.
 func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uuid.UUID, cursor time.Time, limit int) ([]PostResponse, string, error) {
 	const query = `
 		SELECT
@@ -125,7 +150,6 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 			COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, '')     AS full_name,
 			COALESCE(prof.avatar_url, '')                                       AS profile_pic_url,
 			COALESCE(prof.total_gold_seals_received, 0) * 100                   AS author_received_centinels,
-			COALESCE(media.media_json, '[]'::json)                              AS media_json,
 			EXISTS (
 				SELECT 1 FROM post_interactions pi
 				WHERE pi.post_id = p.id
@@ -135,19 +159,6 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		FROM posts p
 		JOIN users    u    ON u.id    = p.user_id
 		LEFT JOIN profiles prof ON prof.user_id = u.id
-		LEFT JOIN LATERAL (
-			SELECT json_agg(json_build_object(
-				'type',              pm.media_type,
-				'url',               pm.video_1080p_url,
-				'image_url',         pm.video_1080p_url,
-				'video_1080p_url',   pm.video_1080p_url,
-				'video_480p_url',    pm.video_480p_url,
-				'thumbnail_url',     pm.thumbnail_url,
-				'processing_status', pm.processing_status
-			) ORDER BY pm.media_order) AS media_json
-			FROM post_media pm
-			WHERE pm.post_id = p.id
-		) media ON true
 		WHERE p.user_id     = $1
 		  AND p.is_archived  = false
 		  AND p.is_deleted   = false
@@ -175,10 +186,10 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 	defer rows.Close()
 
 	items := make([]PostResponse, 0, limit)
+	var postIDs []uuid.UUID
 	var lastCreatedAt sql.NullTime
 	for rows.Next() {
 		var resp PostResponse
-		var mediaJSON []byte
 		var createdAt sql.NullTime
 		var commentPerm string
 		var authorReceivedCentinels int64
@@ -189,21 +200,12 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 			&createdAt,
 			&resp.Author.ID, &resp.Author.Username, &resp.Author.FullName, &resp.Author.ProfilePicURL,
 			&authorReceivedCentinels,
-			&mediaJSON,
 			&resp.ViewerHasLiked,
 		); err != nil {
 			return nil, "", err
 		}
 		fillAuthorRank(&resp.Author, authorReceivedCentinels)
 
-		_ = json.Unmarshal(mediaJSON, &resp.MediaAttachments)
-		for i := range resp.MediaAttachments {
-			resp.MediaAttachments[i].URL_1080p = r.buildURL(resp.MediaAttachments[i].URL_1080p)
-			resp.MediaAttachments[i].URL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].ImageURL = resp.MediaAttachments[i].URL_1080p
-			resp.MediaAttachments[i].URL_480p = r.buildURL(resp.MediaAttachments[i].URL_480p)
-			resp.MediaAttachments[i].ThumbnailURL = r.buildURL(resp.MediaAttachments[i].ThumbnailURL)
-		}
 		resp.CommentPermission = commentPerm
 		resp.Permissions.CanComment = commentPerm != CommentPermNoOne
 		applyHiddenLikesForViewer(&resp, viewerID)
@@ -222,6 +224,15 @@ func (r *repository) GetUserPostsList(ctx context.Context, authorID, viewerID uu
 		}
 
 		items = append(items, resp)
+		postIDs = append(postIDs, resp.PostID)
+	}
+
+	if len(postIDs) > 0 {
+		mediaMap, err := r.batchFetchMedia(ctx, postIDs)
+		if err != nil {
+			return nil, "", err
+		}
+		r.hydratePostMedia(items, mediaMap)
 	}
 
 	nextCursor := ""
