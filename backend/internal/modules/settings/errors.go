@@ -22,4 +22,7 @@ var (
 	ErrInvalidContactCategory = errors.New("invalid_contact_category")
 	ErrMessageRequired        = errors.New("message_required")
 	ErrMessageTooLong         = errors.New("message_too_long")
+	ErrUsernameTaken          = errors.New("username_taken")
+	ErrInvalidUsername        = errors.New("invalid_username")
+	ErrUsernameTooLong        = errors.New("username_too_long")
 )

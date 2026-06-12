@@ -10,6 +10,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/brightbund-backend/internal/modules/auth"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -629,6 +630,49 @@ func (s *Service) ListBlockedUsers(ctx context.Context, userID, cursor string, l
 
 func (s *Service) UnblockUser(ctx context.Context, userID, targetUserID string) error {
 	return s.repo.UnblockUser(ctx, userID, targetUserID)
+}
+
+func (s *Service) UpdateUsername(ctx context.Context, userID, newUsername string) (*UpdateUsernameResponse, error) {
+	newUsername = strings.TrimSpace(newUsername)
+	if newUsername == "" {
+		return nil, ErrInvalidUsername
+	}
+
+	cleaned := auth.CleanUsername(newUsername)
+	if cleaned == "" || len(cleaned) < 2 {
+		return nil, ErrInvalidUsername
+	}
+	if len(cleaned) > auth.MaxUsernameLength {
+		return nil, ErrUsernameTooLong
+	}
+
+	var exists bool
+	var err error
+	if s.authProvider != nil {
+		exists, err = s.authProvider.UsernameExists(ctx, cleaned)
+	} else {
+		exists, err = s.repo.UsernameExists(ctx, cleaned)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, ErrUsernameTaken
+	}
+
+	now := time.Now()
+	if err := s.repo.UpdateUsername(ctx, userID, cleaned, now); err != nil {
+		return nil, err
+	}
+
+	_ = s.repo.CreateAuditLog(ctx, userID, "profile_username_changed", map[string]any{
+		"new_username": cleaned,
+	})
+
+	return &UpdateUsernameResponse{
+		Username:  cleaned,
+		UpdatedAt: now,
+	}, nil
 }
 
 func (s *Service) CreateBugReport(ctx context.Context, userID string, req *BugReportRequest) error {

@@ -30,7 +30,7 @@ const (
 	activationIPSuspiciousLimit        = 10
 	activationDeviceHardBlockLimit     = 10
 	activationIPHardBlockLimit         = 15
-	maxUsernameLength                  = 30
+	maxUsernameLength                  = MaxUsernameLength
 )
 
 // бизнес логика которая связывает jwt, repo, sms и verifiers
@@ -1338,8 +1338,8 @@ func (s *Service) generateUniqueUsername(ctx context.Context, firstName, lastNam
 	var base string
 	if firstName != "" && lastName != "" && dob != nil {
 		base = fmt.Sprintf("%s_%s_%02d",
-			cleanUsername(firstName),
-			cleanUsername(lastName),
+			CleanUsername(firstName),
+			CleanUsername(lastName),
 			dob.Day())
 	} else {
 		// Fallback for cases where name/dob is missing (e.g. initial OAuth)

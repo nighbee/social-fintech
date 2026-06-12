@@ -17,6 +17,7 @@ type AuthAdapter interface {
 	GetUserPasswordHash(ctx context.Context, userID string) (string, error)
 	UpdateUserPasswordHash(ctx context.Context, userID, passwordHash string, updatedAt time.Time) error
 	GetUserPhone(ctx context.Context, userID string) (string, string, error)
+	UsernameExists(ctx context.Context, username string) (bool, error)
 }
 
 type authRepositoryAdapter struct {
@@ -96,4 +97,8 @@ func (a *authRepositoryAdapter) UpdateUserPasswordHash(ctx context.Context, user
 
 func (a *authRepositoryAdapter) GetUserPhone(ctx context.Context, userID string) (string, string, error) {
 	return a.repo.GetUserPhoneByID(ctx, userID)
+}
+
+func (a *authRepositoryAdapter) UsernameExists(ctx context.Context, username string) (bool, error) {
+	return a.repo.UsernameExists(ctx, username)
 }

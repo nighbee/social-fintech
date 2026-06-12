@@ -1379,6 +1379,22 @@ definitions:
       user_id:
         type: string
     type: object
+  internal_modules_leaderboard.AdminResetLeaderboardRequest:
+    properties:
+      all_weeks:
+        type: boolean
+      region:
+        type: string
+      scope:
+        type: string
+    type: object
+  internal_modules_leaderboard.AdminResetLeaderboardResponse:
+    properties:
+      keys_deleted:
+        type: integer
+      members_dropped:
+        type: integer
+    type: object
   internal_modules_leaderboard.Entry:
     properties:
       avatar_url:
@@ -2238,6 +2254,18 @@ definitions:
       status:
         type: string
     type: object
+  internal_modules_settings.UpdateUsernameRequest:
+    properties:
+      username:
+        type: string
+    type: object
+  internal_modules_settings.UpdateUsernameResponse:
+    properties:
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
 info:
   contact:
     email: support@brightbund.com
@@ -2439,6 +2467,44 @@ paths:
       security:
       - Bearer: []
       summary: Remove user from leaderboard
+      tags:
+      - Leaderboard Admin
+  /admin/leaderboard/reset:
+    post:
+      consumes:
+      - application/json
+      description: Deletes the entire sorted set (and associated first_seen hash)
+        for a given scope and optional region. Defaults to current week only; set
+        all_weeks=true to wipe all weeks for the scope.
+      parameters:
+      - description: Reset leaderboard request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_leaderboard.AdminResetLeaderboardRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_leaderboard.AdminResetLeaderboardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Reset leaderboard scope
       tags:
       - Leaderboard Admin
   /admin/leaderboard/scopes:
@@ -6228,6 +6294,49 @@ paths:
       security:
       - Bearer: []
       summary: Send a Contact Us message to support
+      tags:
+      - Settings
+  /settings/username:
+    patch:
+      consumes:
+      - application/json
+      description: Changes the display username. The value is cleaned (only a-z, 0-9,
+        _), checked for uniqueness, and capped at 30 characters.
+      parameters:
+      - description: New username
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_modules_settings.UpdateUsernameRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_modules_settings.UpdateUsernameResponse'
+        "400":
+          description: invalid_username or username_too_long
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: username_taken
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - Bearer: []
+      summary: Update the authenticated user's username
       tags:
       - Settings
   /tasks:

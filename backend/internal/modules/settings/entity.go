@@ -291,6 +291,15 @@ type BlockedUsersResponse struct {
 	NextCursor string            `json:"next_cursor,omitempty"`
 }
 
+type UpdateUsernameRequest struct {
+	Username string `json:"username"`
+}
+
+type UpdateUsernameResponse struct {
+	Username string    `json:"username"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 // PublicService is exported for cross-module usage.
 type PublicService interface {
 	GetFeedTimeLimit(ctx context.Context, userID string) (int, error)

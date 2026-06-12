@@ -82,6 +82,9 @@ type Repository interface {
 
 	CreateAuditLog(ctx context.Context, userID, action string, details map[string]any) error
 
+	UsernameExists(ctx context.Context, username string) (bool, error)
+	UpdateUsername(ctx context.Context, userID, newUsername string, updatedAt time.Time) error
+
 	GetFeedTimeLimit(ctx context.Context, userID string) (int, error)
 	GetCommentPrivacy(ctx context.Context, userID string) (string, bool, error)
 	GetMessagePrivacy(ctx context.Context, userID string) (string, bool, bool, error)
@@ -883,4 +886,19 @@ func (r *PostgresRepository) GetNotificationPreferences(ctx context.Context, use
 	prefs["comments_replies"] = comments
 	prefs["likes_reactions"] = likes
 	return prefs, nil
+}
+
+func (r *PostgresRepository) UsernameExists(ctx context.Context, username string) (bool, error) {
+	var exists bool
+	err := r.db.GetContext(ctx, &exists, `
+		SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND deleted_at IS NULL)
+	`, username)
+	return exists, err
+}
+
+func (r *PostgresRepository) UpdateUsername(ctx context.Context, userID, newUsername string, updatedAt time.Time) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE users SET username = $2, updated_at = $3 WHERE id = $1 AND deleted_at IS NULL
+	`, userID, newUsername, updatedAt)
+	return err
 }

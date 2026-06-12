@@ -303,6 +303,7 @@ func New(cfg *config.Config, authHandler *auth.Handler, economyHandler *economy.
 	settingsGroup.Patch("/interactions/mentions", settingsHandler.PatchMentionsSettings)
 	settingsGroup.Get("/interactions/blocked", settingsHandler.GetBlockedUsers)
 	settingsGroup.Delete("/interactions/blocked/:userId", settingsHandler.UnblockUser)
+	settingsGroup.Patch("/username", settingsHandler.UpdateUsername)
 	settingsGroup.Get("/notifications", settingsHandler.GetNotificationSettings)
 	settingsGroup.Patch("/notifications", settingsHandler.PatchNotificationSettings)
 

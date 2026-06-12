@@ -250,6 +250,10 @@ func (r *testRepo) UpdateNotificationSettings(ctx context.Context, userID string
 	return nil
 }
 
+func (r *testRepo) UsernameExists(ctx context.Context, username string) (bool, error) { return false, nil }
+
+func (r *testRepo) UpdateUsername(ctx context.Context, userID, newUsername string, updatedAt time.Time) error { return nil }
+
 type testSMSSender struct {
 	to      string
 	message string

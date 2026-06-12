@@ -2,9 +2,9 @@ package auth
 
 import "strings"
 
+const MaxUsernameLength = 30
 
-//отдельно вывел этот фанк для нормализации юзернейма
-func cleanUsername(input string) string {
+func CleanUsername(input string) string {
 	var b strings.Builder
 	b.Grow(len(input))
 	for i := 0; i < len(input); i++ {
@@ -17,4 +17,9 @@ func cleanUsername(input string) string {
 		}
 	}
 	return b.String()
+}
+
+// Deprecated: use CleanUsername instead.
+func cleanUsername(input string) string {
+	return CleanUsername(input)
 }

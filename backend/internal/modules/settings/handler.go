@@ -421,6 +421,44 @@ func (h *Handler) UnblockUser(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// UpdateUsername godoc
+// @Summary Update the authenticated user's username
+// @Description Changes the display username. The value is cleaned (only a-z, 0-9, _), checked for uniqueness, and capped at 30 characters.
+// @Tags Settings
+// @Accept json
+// @Produce json
+// @Security Bearer
+// @Param request body UpdateUsernameRequest true "New username"
+// @Success 200 {object} UpdateUsernameResponse
+// @Failure 400 {object} map[string]string "invalid_username or username_too_long"
+// @Failure 401 {object} map[string]string "unauthorized"
+// @Failure 409 {object} map[string]string "username_taken"
+// @Router /settings/username [patch]
+func (h *Handler) UpdateUsername(c *fiber.Ctx) error {
+	userID, _, err := getUserAndSession(c)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
+	var req UpdateUsernameRequest
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_body"})
+	}
+	resp, err := h.service.UpdateUsername(c.Context(), userID, req.Username)
+	if err != nil {
+		switch err {
+		case ErrInvalidUsername:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_username"})
+		case ErrUsernameTooLong:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "username_too_long"})
+		case ErrUsernameTaken:
+			return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "username_taken"})
+		default:
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "username_update_failed"})
+		}
+	}
+	return c.JSON(resp)
+}
+
 func (h *Handler) ReportBug(c *fiber.Ctx) error {
 	userID, _, err := getUserAndSession(c)
 	if err != nil {

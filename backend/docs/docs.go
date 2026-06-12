@@ -318,6 +318,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/leaderboard/reset": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes the entire sorted set (and associated first_seen hash) for a given scope and optional region. Defaults to current week only; set all_weeks=true to wipe all weeks for the scope.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Leaderboard Admin"
+                ],
+                "summary": "Reset leaderboard scope",
+                "parameters": [
+                    {
+                        "description": "Reset leaderboard request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_leaderboard.AdminResetLeaderboardRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_leaderboard.AdminResetLeaderboardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/admin/leaderboard/scopes": {
             "get": {
                 "security": [
@@ -6099,6 +6156,72 @@ const docTemplate = `{
                 }
             }
         },
+        "/settings/username": {
+            "patch": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Changes the display username. The value is cleaned (only a-z, 0-9, _), checked for uniqueness, and capped at 30 characters.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Settings"
+                ],
+                "summary": "Update the authenticated user's username",
+                "parameters": [
+                    {
+                        "description": "New username",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_settings.UpdateUsernameRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_modules_settings.UpdateUsernameResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid_username or username_too_long",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "username_taken",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/tasks": {
             "post": {
                 "security": [
@@ -9282,6 +9405,31 @@ const docTemplate = `{
                 }
             }
         },
+        "internal_modules_leaderboard.AdminResetLeaderboardRequest": {
+            "type": "object",
+            "properties": {
+                "all_weeks": {
+                    "type": "boolean"
+                },
+                "region": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_leaderboard.AdminResetLeaderboardResponse": {
+            "type": "object",
+            "properties": {
+                "keys_deleted": {
+                    "type": "integer"
+                },
+                "members_dropped": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_modules_leaderboard.Entry": {
             "type": "object",
             "properties": {
@@ -10497,6 +10645,25 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_settings.UpdateUsernameRequest": {
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_modules_settings.UpdateUsernameResponse": {
+            "type": "object",
+            "properties": {
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }

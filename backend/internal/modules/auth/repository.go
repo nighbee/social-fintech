@@ -105,7 +105,7 @@ func (r *PostgresRepository) GetUserByPhone(ctx context.Context, countryCode, ph
 
 func (r *PostgresRepository) UsernameExists(ctx context.Context, username string) (bool, error) {
 	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE username = $1 AND deleted_at IS NULL)`
 	if err := r.db.GetContext(ctx, &exists, query, username); err != nil {
 		return false, err
 	}
