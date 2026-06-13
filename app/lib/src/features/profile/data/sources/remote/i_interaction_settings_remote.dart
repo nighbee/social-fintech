@@ -31,6 +31,20 @@ abstract interface class IInteractionSettingsRemote {
 
   Future<Either<DomainException, void>> patchFeedSettings(int newLimitMins);
 
+  Future<Either<DomainException, NotificationSettingsDto>>
+      getNotificationSettings();
+
+  Future<Either<DomainException, void>> patchNotificationSettings({
+    bool? notifyGoldHonor,
+    bool? notifyMedal,
+    bool? notifyRank,
+    bool? notifyTasks,
+    bool? notifyComments,
+    bool? notifyLikes,
+    String? quietHoursStart,
+    String? quietHoursEnd,
+  });
+
   Future<Either<DomainException, InteractionsSettingsDto>> getInteractions();
 
   Future<Either<DomainException, MessagesSettingsDto>> getMessagesSettings();

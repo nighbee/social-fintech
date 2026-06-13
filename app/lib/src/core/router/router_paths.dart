@@ -23,6 +23,7 @@ class RoutePaths {
   static const String home = '/home';
   static const String createPost = '/create-post';
   static const String notifications = '/notifications';
+  static const String notificationSettings = '$notifications/settings';
   static const String search = '/search';
   static const String store = '/store';
 

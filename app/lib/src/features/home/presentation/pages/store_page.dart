@@ -349,18 +349,6 @@ class _StorePageState extends State<StorePage> {
           appBar: CustomAppBar(
             title: 'Store',
             backgroundColor: AppColors.colorff19191A,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: Center(
-                  child: Assets.icons.more.svg(
-                    width: 24,
-                    height: 24,
-                    color: AppColors.colorffffffff,
-                  ),
-                ),
-              ),
-            ],
           ),
           body: SafeArea(
             top: false,

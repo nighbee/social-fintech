@@ -4,36 +4,36 @@ import 'package:flutter/material.dart';
 /// A widget that displays animated particles that fade in and out.
 /// Particles stay in fixed positions and create an elegant ambient effect.
 class ParticleAnimation extends StatefulWidget {
-  /// Number of particles to display (default: 18)
+  /// Number of particles to display.
   final int particleCount;
 
   /// Colors to use for particles (default: white and gray)
   /// Each particle will randomly pick one color from this list
   final List<Color> particleColors;
 
-  /// Minimum particle size in pixels (default: 4)
+  /// Minimum particle size in logical pixels.
   final double minSize;
 
-  /// Maximum particle size in pixels (default: 8)
+  /// Maximum particle size in logical pixels.
   final double maxSize;
 
-  /// Duration of one animation cycle in seconds (default: 6.5)
+  /// Duration of one animation cycle in seconds.
   final double animationDurationSeconds;
 
-  /// Minimum distance between particles in pixels (default: 50)
+  /// Minimum distance between particles in logical pixels.
   final double minDistanceBetweenParticles;
 
   const ParticleAnimation({
     super.key,
-    this.particleCount = 18,
+    this.particleCount = 14,
     this.particleColors = const [
       Color(0xFFFFFFFF), // White
       Color(0xFF838383), // Gray
     ],
-    this.minSize = 4.0,
-    this.maxSize = 8.0,
-    this.animationDurationSeconds = 6.5,
-    this.minDistanceBetweenParticles = 50.0,
+    this.minSize = 1.0,
+    this.maxSize = 3.0,
+    this.animationDurationSeconds = 10.5,
+    this.minDistanceBetweenParticles = 92.0,
   });
 
   @override
@@ -51,7 +51,9 @@ class _ParticleAnimationState extends State<ParticleAnimation>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: widget.animationDurationSeconds.toInt()),
+      duration: Duration(
+        milliseconds: (widget.animationDurationSeconds * 1000).round(),
+      ),
     )..repeat();
 
     _particles = _generateParticles();
@@ -67,7 +69,7 @@ class _ParticleAnimationState extends State<ParticleAnimation>
     }
     if (oldWidget.animationDurationSeconds != widget.animationDurationSeconds) {
       _controller.duration = Duration(
-        seconds: widget.animationDurationSeconds.toInt(),
+        milliseconds: (widget.animationDurationSeconds * 1000).round(),
       );
     }
   }
@@ -193,7 +195,7 @@ class ParticlesPainter extends CustomPainter {
       final paint = Paint()
         ..color = particle.color.withValues(alpha: opacity)
         ..style = PaintingStyle.fill
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.8);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.35);
 
       canvas.drawCircle(particle.position, particle.size / 2, paint);
     }
@@ -209,20 +211,22 @@ class ParticlesPainter extends CustomPainter {
     if (adjustedValue < 0) adjustedValue += 1.0;
 
     // Animation curve with appearing/disappearing effect:
-    // 0.0 - 0.20: Fade in (0% -> 42%)
-    // 0.20 - 0.50: Stay visible (42%)
-    // 0.50 - 0.70: Fade out (42% -> 0%)
-    // 0.70 - 1.0: Invisible (0%)
+    // Slow ambient pulse: long fade in/out with a short visible plateau.
+    const fadeInEnd = 0.32;
+    const visibleEnd = 0.50;
+    const fadeOutEnd = 0.82;
+    const maxOpacity = 0.22;
 
-    if (adjustedValue < 0.20) {
+    if (adjustedValue < fadeInEnd) {
       // Fade in phase
-      return (adjustedValue / 0.20) * 0.42;
-    } else if (adjustedValue < 0.50) {
+      return (adjustedValue / fadeInEnd) * maxOpacity;
+    } else if (adjustedValue < visibleEnd) {
       // Stay visible phase
-      return 0.42;
-    } else if (adjustedValue < 0.70) {
+      return maxOpacity;
+    } else if (adjustedValue < fadeOutEnd) {
       // Fade out phase
-      return ((0.70 - adjustedValue) / 0.20) * 0.42;
+      return ((fadeOutEnd - adjustedValue) / (fadeOutEnd - visibleEnd)) *
+          maxOpacity;
     } else {
       // Invisible phase
       return 0.0;

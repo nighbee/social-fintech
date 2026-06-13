@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/models/ally_profile_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_search_result_dto.dart';
+import 'package:app/src/features/profile/data/models/profile_season_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_stats_dto.dart';
 import 'package:app/src/features/profile/data/models/public_profile_dto.dart';
@@ -22,6 +23,12 @@ abstract interface class IProfileRemote {
   Future<Either<DomainException, ProfileStatsDto>> getPublicStats(
     UserIdRequest request,
   );
+
+  Future<Either<DomainException, CurrentSeasonDto>> getCurrentSeason();
+
+  Future<Either<DomainException, List<SeasonArchiveDto>>> getSeasonArchive({
+    String? userId,
+  });
 
   Future<Either<DomainException, List<ProfileSearchResultDto>>> searchProfiles(
     SearchProfilesRequest request,

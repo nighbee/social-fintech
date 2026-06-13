@@ -169,11 +169,11 @@ class _ProfilePublicationsPageState extends State<ProfilePublicationsPage> {
             color: AppColors.colorff19191A,
             child: const IgnorePointer(
               child: ParticleAnimation(
-                particleCount: 20,
+                particleCount: 14,
                 particleColors: [Color(0xFFFFFFFF)],
-                minSize: 4,
-                maxSize: 8,
-                minDistanceBetweenParticles: 70,
+                minSize: 1.0,
+                maxSize: 3.0,
+                minDistanceBetweenParticles: 92.0,
               ),
             ),
           ),

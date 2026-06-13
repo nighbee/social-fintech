@@ -391,3 +391,38 @@ String _formatSessionLastActive(DateTime t) {
   if (diff.inDays < 7) return '${diff.inDays}d ago';
   return '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}';
 }
+
+class NotificationSettingsDto {
+  const NotificationSettingsDto({
+    required this.notifyGoldHonor,
+    required this.notifyMedalUnlocked,
+    required this.notifyRankIncreased,
+    required this.notifyTaskUpdates,
+    required this.notifyCommentsReplies,
+    required this.notifyLikesReactions,
+    this.quietHoursStart,
+    this.quietHoursEnd,
+  });
+
+  final bool notifyGoldHonor;
+  final bool notifyMedalUnlocked;
+  final bool notifyRankIncreased;
+  final bool notifyTaskUpdates;
+  final bool notifyCommentsReplies;
+  final bool notifyLikesReactions;
+  final String? quietHoursStart;
+  final String? quietHoursEnd;
+
+  factory NotificationSettingsDto.fromJson(Map<String, dynamic> json) {
+    return NotificationSettingsDto(
+      notifyGoldHonor: json['notify_gold_honor'] as bool? ?? true,
+      notifyMedalUnlocked: json['notify_medal_unlocked'] as bool? ?? true,
+      notifyRankIncreased: json['notify_rank_increased'] as bool? ?? true,
+      notifyTaskUpdates: json['notify_task_updates'] as bool? ?? true,
+      notifyCommentsReplies: json['notify_comments_replies'] as bool? ?? true,
+      notifyLikesReactions: json['notify_likes_reactions'] as bool? ?? false,
+      quietHoursStart: json['quiet_hours_start'] as String?,
+      quietHoursEnd: json['quiet_hours_end'] as String?,
+    );
+  }
+}

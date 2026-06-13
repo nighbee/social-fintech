@@ -7,6 +7,7 @@ import 'package:app/src/core/api/client/endpoints.dart';
 import 'package:app/src/core/exceptions/domain_exception.dart';
 import 'package:app/src/features/profile/data/models/ally_profile_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_search_result_dto.dart';
+import 'package:app/src/features/profile/data/models/profile_season_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_dto.dart';
 import 'package:app/src/features/profile/data/models/profile_stats_dto.dart';
 import 'package:app/src/features/profile/data/models/public_profile_dto.dart';
@@ -101,6 +102,49 @@ class ProfileRemoteImpl implements IProfileRemote {
           result.data as Map<String, dynamic>,
         );
         return Right(dto);
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, CurrentSeasonDto>> getCurrentSeason() async {
+    try {
+      final response = await _restClient.get(EndPoints.currentSeason);
+      return response.fold(
+        Left.new,
+        (result) => Right(
+          CurrentSeasonDto.fromJson(result.data as Map<String, dynamic>),
+        ),
+      );
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, List<SeasonArchiveDto>>> getSeasonArchive({
+    String? userId,
+  }) async {
+    try {
+      final normalizedUserId = userId?.trim() ?? '';
+      final endpoint = normalizedUserId.isEmpty
+          ? EndPoints.mySeasonArchive
+          : EndPoints.userSeasonArchive(normalizedUserId);
+      final response = await _restClient.get(endpoint);
+      return response.fold(Left.new, (result) {
+        final data = result.data as Map<String, dynamic>;
+        final items = data['items'] as List<dynamic>? ?? const [];
+        return Right(
+          items
+              .map(
+                (item) => SeasonArchiveDto.fromJson(
+                  item as Map<String, dynamic>,
+                ),
+              )
+              .toList(growable: false),
+        );
       });
     } catch (e) {
       return Left(UnknownException(message: e.toString()));

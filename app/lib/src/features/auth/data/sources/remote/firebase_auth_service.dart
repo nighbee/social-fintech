@@ -51,6 +51,13 @@ class FirebaseAuthService {
             errorMessage = 'SMS quota exceeded';
           } else if (e.code == 'network-request-failed') {
             errorMessage = 'Network error. Please check your connection';
+          } else if (e.code == 'operation-not-allowed' &&
+              (e.message ?? '').contains('region enabled')) {
+            errorMessage =
+                'SMS sign-in is not enabled for this phone number region.';
+          } else if (e.code == 'operation-not-allowed') {
+            errorMessage =
+                'Phone sign-in is not enabled for this Firebase project.';
           }
           debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
           onError(errorMessage);

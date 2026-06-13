@@ -5,6 +5,8 @@ import 'package:app/src/features/home/domain/repositories/i_home_repository.dart
 import 'package:app/src/features/home/presentation/widgets/notification_item_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
+import 'package:app/src/core/router/router.dart';
 
 enum NotificationFilter { all, recognition, activity, tasks, rank, system }
 
@@ -127,31 +129,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
-  Future<void> _markAllNotificationsRead() async {
-    if (_notifications.every((item) => item.isRead)) return;
-
-    final previous = _notifications;
-    setState(() {
-      _notifications = _notifications
-          .map((item) => item.copyWith(isRead: true))
-          .toList(growable: false);
-    });
-
-    final result = await _repository.markAllNotificationsRead();
-    if (!mounted) return;
-    result.fold(
-      (error) {
-        setState(() {
-          _notifications = previous;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error.message)),
-        );
-      },
-      (_) {},
-    );
-  }
-
   void _selectFilter(NotificationFilter filter) {
     if (filter == _selectedFilter) return;
     setState(() {
@@ -170,7 +147,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
             _NotificationsHeader(
               selectedFilter: _selectedFilter,
               onFilterChanged: _selectFilter,
-              onMarkAllRead: _markAllNotificationsRead,
             ),
             Expanded(
               child: RefreshIndicator(
@@ -196,12 +172,10 @@ class _NotificationsHeader extends StatelessWidget {
   const _NotificationsHeader({
     required this.selectedFilter,
     required this.onFilterChanged,
-    required this.onMarkAllRead,
   });
 
   final NotificationFilter selectedFilter;
   final ValueChanged<NotificationFilter> onFilterChanged;
-  final VoidCallback onMarkAllRead;
 
   @override
   Widget build(BuildContext context) {
@@ -235,25 +209,15 @@ class _NotificationsHeader extends StatelessWidget {
                     ),
                   ),
                 ),
-                PopupMenuButton<_NotificationMenuAction>(
+                IconButton(
                   tooltip: 'More',
-                  color: const Color(0xFF242424),
+                  onPressed: () =>
+                      context.pushNamed(RouteNames.notificationSettings),
                   icon: const Icon(
                     Icons.more_vert_rounded,
                     color: AppColors.textBrand,
                     size: 24,
                   ),
-                  onSelected: (action) {
-                    if (action == _NotificationMenuAction.markAllRead) {
-                      onMarkAllRead();
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: _NotificationMenuAction.markAllRead,
-                      child: Text('Mark all as read'),
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -448,8 +412,6 @@ class _NotificationsBody extends StatelessWidget {
     return '${months[local.month - 1]} ${local.day}';
   }
 }
-
-enum _NotificationMenuAction { markAllRead }
 
 class _NotificationDaySection {
   const _NotificationDaySection({

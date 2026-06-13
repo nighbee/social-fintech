@@ -45,14 +45,14 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
             Positioned.fill(
               child: IgnorePointer(
                 child: ParticleAnimation(
-                  particleCount: 25,
+                  particleCount: 14,
                   particleColors: [
                     // AppColors.textGray2.withValues(0.2),
                     const Color(0xFFFFFFFF),
                   ],
-                  minSize: 4.0,
-                  maxSize: 8.0,
-                  minDistanceBetweenParticles: 70.0,
+                  minSize: 1.0,
+                  maxSize: 3.0,
+                  minDistanceBetweenParticles: 92.0,
                 ),
               ),
             ),

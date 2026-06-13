@@ -1,6 +1,6 @@
 part of 'router.dart';
 
-NoTransitionPage<void> _authPage(
+NoTransitionPage<void> _darkPage(
   GoRouterState state,
   Widget child,
 ) {
@@ -12,6 +12,12 @@ NoTransitionPage<void> _authPage(
     ),
   );
 }
+
+NoTransitionPage<void> _authPage(
+  GoRouterState state,
+  Widget child,
+) =>
+    _darkPage(state, child);
 
 class _AppBackNavigationScope extends StatefulWidget {
   const _AppBackNavigationScope({
@@ -145,7 +151,18 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
         path: RoutePaths.notifications,
         name: RouteNames.notifications,
         redirect: AuthGuard,
-        builder: (context, state) => const NotificationsPage(),
+        pageBuilder: (context, state) =>
+            _darkPage(state, const NotificationsPage()),
+        routes: [
+          GoRoute(
+            path: 'settings',
+            name: RouteNames.notificationSettings,
+            parentNavigatorKey: rootNavigatorKey,
+            redirect: AuthGuard,
+            pageBuilder: (context, state) =>
+                _darkPage(state, const NotificationSettingsPage()),
+          ),
+        ],
       ),
 
       // Main app routes wrapped in StatefulShellRoute for LogPushButton
@@ -466,20 +483,23 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                     name: RouteNames.settings,
                     parentNavigatorKey: rootNavigatorKey,
                     redirect: AuthGuard,
-                    builder: (context, state) {
+                    pageBuilder: (context, state) {
                       final extra = state.extra;
                       final map = extra is Map<String, dynamic>
                           ? extra
                           : <String, dynamic>{};
                       final userId = map['userId'] as String?;
-                      return SettingsPage(currentUserId: userId);
+                      return _darkPage(
+                        state,
+                        SettingsPage(currentUserId: userId),
+                      );
                     },
                     routes: [
                       GoRoute(
                         path: 'feed-time-limit',
                         name: RouteNames.profileFeedTimeLimit,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) {
+                        pageBuilder: (context, state) {
                           final extra = state.extra;
                           final map = extra is Map<String, dynamic>
                               ? extra
@@ -487,8 +507,11 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                           final initial =
                               map['initialSelectionLabel'] as String? ??
                                   'No limit';
-                          return FeedTimeLimitPage(
-                            initialSelectionLabel: initial,
+                          return _darkPage(
+                            state,
+                            FeedTimeLimitPage(
+                              initialSelectionLabel: initial,
+                            ),
                           );
                         },
                       ),
@@ -496,7 +519,7 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                         path: 'location-access',
                         name: RouteNames.profileLocationAccess,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) {
+                        pageBuilder: (context, state) {
                           final extra = state.extra;
                           final map = extra is Map<String, dynamic>
                               ? extra
@@ -507,9 +530,12 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                           final initialPrecise =
                               map['initialPreciseLocationEnabled'] as bool? ??
                                   false;
-                          return LocationAccessPage(
-                            initialSelectionLabel: initialLabel,
-                            initialPreciseLocationEnabled: initialPrecise,
+                          return _darkPage(
+                            state,
+                            LocationAccessPage(
+                              initialSelectionLabel: initialLabel,
+                              initialPreciseLocationEnabled: initialPrecise,
+                            ),
                           );
                         },
                       ),
@@ -517,59 +543,71 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                         path: 'invite-golden-honor',
                         name: RouteNames.profileInviteGoldenHonor,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) {
+                        pageBuilder: (context, state) {
                           final extra = state.extra;
                           final map = extra is Map<String, dynamic>
                               ? extra
                               : <String, dynamic>{};
                           final userId = map['userId'] as String?;
-                          return InviteGoldenHonorPage(currentUserId: userId);
+                          return _darkPage(
+                            state,
+                            InviteGoldenHonorPage(currentUserId: userId),
+                          );
                         },
                       ),
                       GoRoute(
                         path: 'enter-invite-code',
                         name: RouteNames.profileEnterInviteCode,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) =>
-                            const EnterInviteCodePage(),
+                        pageBuilder: (context, state) => _darkPage(
+                          state,
+                          const EnterInviteCodePage(),
+                        ),
                       ),
                       GoRoute(
                         path: 'contact-us',
                         name: RouteNames.profileContactUs,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => const ContactUsPage(),
+                        pageBuilder: (context, state) =>
+                            _darkPage(state, const ContactUsPage()),
                       ),
                       GoRoute(
                         path: 'report-bug',
                         name: RouteNames.profileReportBug,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => const ReportBugPage(),
+                        pageBuilder: (context, state) =>
+                            _darkPage(state, const ReportBugPage()),
                       ),
                       GoRoute(
                         path: 'terms-conditions',
                         name: RouteNames.profileTermsConditions,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) =>
-                            const TermsConditionsPage(),
+                        pageBuilder: (context, state) => _darkPage(
+                          state,
+                          const TermsConditionsPage(),
+                        ),
                       ),
                       GoRoute(
                         path: 'security',
                         name: RouteNames.profileSecurity,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => const SecurityPage(),
+                        pageBuilder: (context, state) =>
+                            _darkPage(state, const SecurityPage()),
                         routes: [
                           GoRoute(
                             path: 'change-password',
                             name: RouteNames.profileSecurityChangePassword,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) =>
-                                const ProfileChangePasswordPage(),
+                            pageBuilder: (context, state) => _darkPage(
+                              state,
+                              const ProfileChangePasswordPage(),
+                            ),
                           ),
                           GoRoute(
                             path: 'two-factor',
                             name: RouteNames.profileSecurityTwoFactor,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) {
+                            pageBuilder: (context, state) {
                               final extra = state.extra;
                               final map = extra is Map<String, dynamic>
                                   ? extra
@@ -579,8 +617,11 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                                           ?.whereType<String>()
                                           .toList() ??
                                       <String>[];
-                              return TwoFactorAuthenticationPage(
-                                initialSelectedMethodIds: ids,
+                              return _darkPage(
+                                state,
+                                TwoFactorAuthenticationPage(
+                                  initialSelectedMethodIds: ids,
+                                ),
                               );
                             },
                           ),
@@ -588,7 +629,7 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                             path: 'active-sessions',
                             name: RouteNames.profileSecurityActiveSessions,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) {
+                            pageBuilder: (context, state) {
                               final extra = state.extra;
                               final map = extra is Map<String, dynamic>
                                   ? extra
@@ -603,17 +644,22 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                                       )
                                       .toList()
                                   : <Map<String, dynamic>>[];
-                              return ActiveSessionsPage(sessions: sessions);
+                              return _darkPage(
+                                state,
+                                ActiveSessionsPage(sessions: sessions),
+                              );
                             },
                           ),
                           GoRoute(
                             path: 'delete-account',
                             name: RouteNames.profileSecurityDeleteAccount,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) =>
-                                DeleteAccountReasonPage(
-                              flowData: DeleteAccountFlowData.fromExtra(
-                                state.extra,
+                            pageBuilder: (context, state) => _darkPage(
+                              state,
+                              DeleteAccountReasonPage(
+                                flowData: DeleteAccountFlowData.fromExtra(
+                                  state.extra,
+                                ),
                               ),
                             ),
                             routes: [
@@ -622,10 +668,12 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                                 name: RouteNames
                                     .profileSecurityDeleteAccountPassword,
                                 parentNavigatorKey: rootNavigatorKey,
-                                builder: (context, state) =>
-                                    DeleteAccountPasswordPage(
-                                  flowData: DeleteAccountFlowData.fromExtra(
-                                    state.extra,
+                                pageBuilder: (context, state) => _darkPage(
+                                  state,
+                                  DeleteAccountPasswordPage(
+                                    flowData: DeleteAccountFlowData.fromExtra(
+                                      state.extra,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -634,10 +682,12 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                                 name:
                                     RouteNames.profileSecurityDeleteAccountOtp,
                                 parentNavigatorKey: rootNavigatorKey,
-                                builder: (context, state) =>
-                                    DeleteAccountOtpPage(
-                                  flowData: DeleteAccountFlowData.fromExtra(
-                                    state.extra,
+                                pageBuilder: (context, state) => _darkPage(
+                                  state,
+                                  DeleteAccountOtpPage(
+                                    flowData: DeleteAccountFlowData.fromExtra(
+                                      state.extra,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -646,10 +696,12 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                                 name: RouteNames
                                     .profileSecurityDeleteAccountConfirm,
                                 parentNavigatorKey: rootNavigatorKey,
-                                builder: (context, state) =>
-                                    DeleteAccountConfirmationPage(
-                                  flowData: DeleteAccountFlowData.fromExtra(
-                                    state.extra,
+                                pageBuilder: (context, state) => _darkPage(
+                                  state,
+                                  DeleteAccountConfirmationPage(
+                                    flowData: DeleteAccountFlowData.fromExtra(
+                                      state.extra,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -661,21 +713,26 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                         path: 'interactions',
                         name: RouteNames.profileInteractions,
                         parentNavigatorKey: rootNavigatorKey,
-                        builder: (context, state) => const InteractionsPage(),
+                        pageBuilder: (context, state) =>
+                            _darkPage(state, const InteractionsPage()),
                         routes: [
                           GoRoute(
                             path: 'messages',
                             name: RouteNames.profileInteractionMessages,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) =>
-                                const MessagesInteractionPage(),
+                            pageBuilder: (context, state) => _darkPage(
+                              state,
+                              const MessagesInteractionPage(),
+                            ),
                             routes: [
                               GoRoute(
                                 path: 'keywords',
                                 name: RouteNames.profileMessageFilteredKeywords,
                                 parentNavigatorKey: rootNavigatorKey,
-                                builder: (context, state) =>
-                                    const FilteredKeywordsPage(),
+                                pageBuilder: (context, state) => _darkPage(
+                                  state,
+                                  const FilteredKeywordsPage(),
+                                ),
                               ),
                             ],
                           ),
@@ -683,22 +740,28 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                             path: 'comments',
                             name: RouteNames.profileInteractionComments,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) =>
-                                const CommentsInteractionPage(),
+                            pageBuilder: (context, state) => _darkPage(
+                              state,
+                              const CommentsInteractionPage(),
+                            ),
                           ),
                           GoRoute(
                             path: 'mentions',
                             name: RouteNames.profileInteractionMentions,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) =>
-                                const MentionsInteractionPage(),
+                            pageBuilder: (context, state) => _darkPage(
+                              state,
+                              const MentionsInteractionPage(),
+                            ),
                           ),
                           GoRoute(
                             path: 'blocked',
                             name: RouteNames.profileBlockedAccounts,
                             parentNavigatorKey: rootNavigatorKey,
-                            builder: (context, state) =>
-                                const BlockedAccountsPage(),
+                            pageBuilder: (context, state) => _darkPage(
+                              state,
+                              const BlockedAccountsPage(),
+                            ),
                           ),
                         ],
                       ),

@@ -57,10 +57,10 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   }
 
   @override
-  Future<Either<DomainException, List<SessionItemDto>>>
-      listSessions() async {
+  Future<Either<DomainException, List<SessionItemDto>>> listSessions() async {
     try {
-      final response = await _restClient.get(EndPoints.settingsSecuritySessions);
+      final response =
+          await _restClient.get(EndPoints.settingsSecuritySessions);
       return response.fold((e) => Left(e), (result) {
         final raw = result.data;
         if (raw is! List) {
@@ -173,6 +173,53 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
     }
   }
 
+  @override
+  Future<Either<DomainException, NotificationSettingsDto>>
+      getNotificationSettings() async {
+    try {
+      final response = await _restClient.get(EndPoints.settingsNotifications);
+      return response.fold((e) => Left(e), (result) {
+        return Right(
+          NotificationSettingsDto.fromJson(_asMap(result.data)),
+        );
+      });
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<DomainException, void>> patchNotificationSettings({
+    bool? notifyGoldHonor,
+    bool? notifyMedal,
+    bool? notifyRank,
+    bool? notifyTasks,
+    bool? notifyComments,
+    bool? notifyLikes,
+    String? quietHoursStart,
+    String? quietHoursEnd,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        if (notifyGoldHonor != null) 'notify_gold_honor': notifyGoldHonor,
+        if (notifyMedal != null) 'notify_medal': notifyMedal,
+        if (notifyRank != null) 'notify_rank': notifyRank,
+        if (notifyTasks != null) 'notify_tasks': notifyTasks,
+        if (notifyComments != null) 'notify_comments': notifyComments,
+        if (notifyLikes != null) 'notify_likes': notifyLikes,
+        if (quietHoursStart != null) 'quiet_hours_start': quietHoursStart,
+        if (quietHoursEnd != null) 'quiet_hours_end': quietHoursEnd,
+      };
+      final response = await _restClient.patch(
+        EndPoints.settingsNotifications,
+        data: body,
+      );
+      return response.fold((e) => Left(e), (_) => const Right(null));
+    } catch (e) {
+      return Left(UnknownException(message: e.toString()));
+    }
+  }
+
   Map<String, dynamic> _messagesPatchBody({
     String? whoCanMessage,
     bool? readStatus,
@@ -192,7 +239,8 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   }
 
   @override
-  Future<Either<DomainException, InteractionsSettingsDto>> getInteractions() async {
+  Future<Either<DomainException, InteractionsSettingsDto>>
+      getInteractions() async {
     try {
       final response = await _restClient.get(EndPoints.settingsInteractions);
       return response.fold((e) => Left(e), (result) {
@@ -205,7 +253,8 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   }
 
   @override
-  Future<Either<DomainException, MessagesSettingsDto>> getMessagesSettings() async {
+  Future<Either<DomainException, MessagesSettingsDto>>
+      getMessagesSettings() async {
     try {
       final response = await _restClient.get(EndPoints.settingsInteractions);
       return response.fold((e) => Left(e), (result) {
@@ -241,7 +290,8 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   }
 
   @override
-  Future<Either<DomainException, CommentsSettingsDto>> getCommentsSettings() async {
+  Future<Either<DomainException, CommentsSettingsDto>>
+      getCommentsSettings() async {
     try {
       final response =
           await _restClient.get(EndPoints.settingsInteractionsComments);
@@ -278,7 +328,8 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   }
 
   @override
-  Future<Either<DomainException, MentionsSettingsDto>> getMentionsSettings() async {
+  Future<Either<DomainException, MentionsSettingsDto>>
+      getMentionsSettings() async {
     try {
       final response =
           await _restClient.get(EndPoints.settingsInteractionsMentions);
@@ -341,7 +392,8 @@ class InteractionSettingsRemoteImpl implements IInteractionSettingsRemote {
   }
 
   @override
-  Future<Either<DomainException, String>> addMessageKeyword(String keyword) async {
+  Future<Either<DomainException, String>> addMessageKeyword(
+      String keyword) async {
     try {
       final response = await _restClient.post(
         EndPoints.settingsInteractionsMessageKeywords,

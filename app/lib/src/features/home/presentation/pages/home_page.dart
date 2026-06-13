@@ -412,11 +412,11 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             color: AppColors.mainBackground,
             child: const IgnorePointer(
               child: ParticleAnimation(
-                particleCount: 20,
+                particleCount: 14,
                 particleColors: [Color(0xFFFFFFFF)],
-                minSize: 4.0,
-                maxSize: 8.0,
-                minDistanceBetweenParticles: 70.0,
+                minSize: 1.0,
+                maxSize: 3.0,
+                minDistanceBetweenParticles: 92.0,
               ),
             ),
           ),

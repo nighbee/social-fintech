@@ -26,6 +26,7 @@ class RouteNames {
   static const String store = 'store';
   static const String profilePublications = 'profilePublications';
   static const String notifications = 'notifications';
+  static const String notificationSettings = 'notificationSettings';
 
   // Map routes
   static const String map = 'map';

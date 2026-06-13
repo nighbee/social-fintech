@@ -54,6 +54,10 @@ class EndPoints {
   static const String gamificationRanks = '/gamification/ranks';
   static const String ranks = '/ranks';
   static const String myRank = '/ranks/me';
+  static const String currentSeason = '/seasons/current';
+  static const String mySeasonArchive = '/seasons/me/archive';
+  static String userSeasonArchive(String userId) =>
+      '/seasons/users/$userId/archive';
 
   //* Leaderboard
   static const String leaderboard = '/leaderboard';
@@ -152,6 +156,9 @@ class EndPoints {
 
   //* Settings — feed (see backend /settings/feed)
   static const String settingsFeed = '/settings/feed';
+
+  //* Settings — notifications
+  static const String settingsNotifications = '/settings/notifications';
 
   //* Settings — security (see backend /settings/security/*)
   static const String settingsSecurity = '/settings/security';
