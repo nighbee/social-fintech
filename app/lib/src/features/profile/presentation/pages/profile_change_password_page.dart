@@ -1,5 +1,6 @@
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/utils/password_policy.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
@@ -41,29 +42,24 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
     _confirmPasswordController.addListener(_handleTextChanged);
   }
 
-  bool get _hasRequiredLength =>
-      _newPasswordController.text.trim().length >= 6;
-
-  bool get _hasLetter =>
-      RegExp(r'[A-Za-z]').hasMatch(_newPasswordController.text.trim());
-
-  bool get _hasNumber =>
-      RegExp(r'\d').hasMatch(_newPasswordController.text.trim());
-
-  bool get _hasSpecial =>
-      RegExp(r'[!$@%#^&*()_+\-=\[\]{};:\\|,.<>\/?]').hasMatch(
-        _newPasswordController.text.trim(),
-      );
-
   bool get _isFormValid {
     return _currentPasswordController.text.trim().isNotEmpty &&
-        _newPasswordController.text.trim().isNotEmpty &&
+        PasswordPolicy.isValid(_newPasswordController.text) &&
         _confirmPasswordController.text.trim().isNotEmpty &&
-        _hasRequiredLength &&
-        _hasLetter &&
-        _hasNumber &&
-        _hasSpecial &&
         _newPasswordController.text == _confirmPasswordController.text;
+  }
+
+  String? get _newPasswordError {
+    if (_newPasswordController.text.isEmpty) return null;
+    return PasswordPolicy.validationMessage(_newPasswordController.text);
+  }
+
+  String? get _confirmationError {
+    if (_confirmPasswordController.text.isEmpty) return null;
+    if (_newPasswordController.text != _confirmPasswordController.text) {
+      return 'Passwords do not match';
+    }
+    return null;
   }
 
   void _handleTextChanged() {
@@ -141,9 +137,8 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
               ),
               const Gap(12),
               Text(
-                'Your password must be at least 6 characters and should include '
-                'a combination of numbers, letters and special characters '
-                '(!\$@%).',
+                'Use at least 8 characters with uppercase and lowercase '
+                'letters, a number and a special character.',
                 style: TextStyles.bodyMain.copyWith(
                   color: AppColors.colorff838383,
                   fontSize: 13,
@@ -178,6 +173,8 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
                 inactiveBorderColor: _borderIdle,
                 activeBorderColor: _borderActive,
               ),
+              if (_newPasswordError case final error?)
+                _PasswordValidationMessage(error),
               const Gap(12),
               _PasswordInputField(
                 controller: _confirmPasswordController,
@@ -192,6 +189,8 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
                 inactiveBorderColor: _borderIdle,
                 activeBorderColor: _borderActive,
               ),
+              if (_confirmationError case final error?)
+                _PasswordValidationMessage(error),
               const Gap(24),
               CustomButton(
                 text: 'Continue',
@@ -237,6 +236,28 @@ class _ProfileChangePasswordPageState extends State<ProfileChangePasswordPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PasswordValidationMessage extends StatelessWidget {
+  const _PasswordValidationMessage(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, left: 2),
+      child: Text(
+        message,
+        style: TextStyles.bodyMain.copyWith(
+          color: AppColors.colorffEF4444,
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          height: 1.3,
         ),
       ),
     );

@@ -6,6 +6,7 @@ import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_outlined_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
 import 'package:app/src/core/widgets/particle_animation.dart';
+import 'package:app/src/core/widgets/styled_message_dialog.dart';
 import 'package:app/src/features/auth/domain/requests/login_request.dart';
 import 'package:app/src/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:app/src/features/profile/presentation/bloc/profile_bloc.dart';
@@ -194,9 +195,12 @@ class _LoginWithEmailPageState extends State<LoginWithEmailPage> {
                           Align(
                             alignment: Alignment.centerLeft,
                             child: GestureDetector(
-                              onTap: () {
-                                context.pushNamed(RouteNames.changePassword);
-                              },
+                              onTap: () => showStyledMessageDialog<void>(
+                                context: context,
+                                message:
+                                    'Password recovery is not available yet. '
+                                    'Please contact support.',
+                              ),
                               child: Text(
                                 "Forgot your password?",
                                 style: TextStyles.bodyMain.copyWith(

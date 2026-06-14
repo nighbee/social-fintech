@@ -31,13 +31,13 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
     super.dispose();
   }
 
-  void _sendMagicLink() {
+  void _continueWithEmail() {
     if (_formKey.currentState!.validate()) {
       context.read<AuthBloc>().add(
-        AuthEvent.sendEmailMagicLink(
-          email: _emailController.text.trim(),
-        ),
-      );
+            AuthEvent.checkEmail(
+              email: _emailController.text.trim(),
+            ),
+          );
     }
   }
 
@@ -51,217 +51,234 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
           key: _formKey,
           child: Stack(
             children: [
-            // Layer 1: Fixed particle background (doesn't scroll)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: ParticleAnimation(
-                  particleCount: 14,
-                  particleColors: const [Color(0xFFFFFFFF)],
-                  minSize: 1.0,
-                  maxSize: 3.0,
-                  minDistanceBetweenParticles: 92.0,
+              // Layer 1: Fixed particle background (doesn't scroll)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: ParticleAnimation(
+                    particleCount: 14,
+                    particleColors: const [Color(0xFFFFFFFF)],
+                    minSize: 1.0,
+                    maxSize: 3.0,
+                    minDistanceBetweenParticles: 92.0,
+                  ),
                 ),
               ),
-            ),
-            // Layer 2: Scrollable content (scrolls independently)
-            BlocListener<AuthBloc, AuthState>(
-              listener: (context, state) {
-                state.when(
-                  initial: () {},
-                  loading: () {},
-                  loadingFailure: (message) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(message),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  },
-                  goRegister: () {
-                    final authBloc = context.read<AuthBloc>();
-                    final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
-                    final firebaseAuthProvider =
-                        authBloc.viewModel.firebaseAuthProvider;
-                    if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
-                      return;
-                    }
-                    context.pushNamed(
-                      RouteNames.info,
-                      extra: {
-                        'firebaseIdToken': firebaseIdToken,
-                        'firebaseAuthProvider': firebaseAuthProvider,
-                      },
-                    );
-                  },
-                  loaded: (viewModel) {},
-                  authenticated: (loginEntity) {
-                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
-                      return;
-                    }
-                    context.go(RoutePaths.home);
-                  },
-                  phoneVerificationStarted: (verificationId, phoneNumber) {},
-                  emailChecked: (exists, email) {},
-                  magicLinkSent: (email) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Check your email: $email'),
-                      ),
-                    );
-                  },
-                );
-              },
-              child: SafeArea(
-                child: BlocBuilder<AuthBloc, AuthState>(
-                  builder: (context, state) {
-                    final isLoading = state.maybeWhen(
-                      loading: () => true,
-                      loaded: (viewModel) => viewModel.isLoading,
-                      orElse: () => false,
-                    );
+              // Layer 2: Scrollable content (scrolls independently)
+              BlocListener<AuthBloc, AuthState>(
+                listener: (context, state) {
+                  state.when(
+                    initial: () {},
+                    loading: () {},
+                    loadingFailure: (message) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(message),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    },
+                    goRegister: () {
+                      final authBloc = context.read<AuthBloc>();
+                      final firebaseIdToken =
+                          authBloc.viewModel.firebaseIdToken;
+                      final firebaseAuthProvider =
+                          authBloc.viewModel.firebaseAuthProvider;
+                      if (firebaseIdToken == null || firebaseIdToken.isEmpty) {
+                        return;
+                      }
+                      context.pushNamed(
+                        RouteNames.info,
+                        extra: {
+                          'firebaseIdToken': firebaseIdToken,
+                          'firebaseAuthProvider': firebaseAuthProvider,
+                        },
+                      );
+                    },
+                    loaded: (viewModel) {},
+                    authenticated: (loginEntity) {
+                      if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                        return;
+                      }
+                      context.go(RoutePaths.home);
+                    },
+                    phoneVerificationStarted: (verificationId, phoneNumber) {},
+                    emailChecked: (exists, email) {
+                      if (exists) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'An account with this email already exists. '
+                              'Please log in.',
+                            ),
+                          ),
+                        );
+                        context.pushReplacementNamed(RouteNames.loginWithEmail);
+                        return;
+                      }
+                      context.read<AuthBloc>().add(
+                            AuthEvent.sendEmailMagicLink(email: email),
+                          );
+                    },
+                    magicLinkSent: (email) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Check your email: $email'),
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: SafeArea(
+                  child: BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      final isLoading = state.maybeWhen(
+                        loading: () => true,
+                        loaded: (viewModel) => viewModel.isLoading,
+                        orElse: () => false,
+                      );
 
-                    return SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 18,
-                      ),
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.1,
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              TextButton(
-                                onPressed: () {
-                                  context.pushReplacementNamed(
-                                    RouteNames.loginWithEmail,
-                                  );
-                                },
-                                child: Text(
-                                  "Log in",
-                                  style: TextStyles.titleBig,
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.1,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    context.pushReplacementNamed(
+                                      RouteNames.loginWithEmail,
+                                    );
+                                  },
+                                  child: Text(
+                                    "Log in",
+                                    style: TextStyles.titleBig,
+                                  ),
                                 ),
-                              ),
-                              Text("or", style: TextStyles.titleBig),
-                              TextButton(
-                                onPressed: () {},
-                                child: Text(
-                                  "Sign up",
-                                  style: TextStyles.titleBig,
+                                Text("or", style: TextStyles.titleBig),
+                                TextButton(
+                                  onPressed: () {},
+                                  child: Text(
+                                    "Sign up",
+                                    style: TextStyles.titleBig,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          Gap(63),
-                          CustomTextField(
-                            controller: _emailController,
-                            labelText: "Email",
-                            hintText: "Email",
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              final email = value?.trim() ?? '';
-                              if (email.isEmpty) return 'Please enter email';
-                              if (!RegexConstants.email.hasMatch(email)) {
-                                return 'Please enter a valid email';
-                              }
-                              return null;
-                            },
-                          ),
-                          Gap(28),
-                          CustomButton(
-                            text: isLoading ? "Loading..." : "Continue",
-                            isDisabled: isLoading,
-                            onTap: _sendMagicLink,
-                          ),
-                          Gap(57),
-                          Row(
-                            spacing: 12,
-                            children: [
-                              Expanded(
-                                child: Container(
-                                  width: double.infinity,
-                                  height: 1,
-                                  color: AppColors.colorff838383,
+                              ],
+                            ),
+                            Gap(63),
+                            CustomTextField(
+                              controller: _emailController,
+                              labelText: "Email",
+                              hintText: "Email",
+                              keyboardType: TextInputType.emailAddress,
+                              validator: (value) {
+                                final email = value?.trim() ?? '';
+                                if (email.isEmpty) return 'Please enter email';
+                                if (!RegexConstants.email.hasMatch(email)) {
+                                  return 'Please enter a valid email';
+                                }
+                                return null;
+                              },
+                            ),
+                            Gap(28),
+                            CustomButton(
+                              text: isLoading ? "Loading..." : "Continue",
+                              isDisabled: isLoading,
+                              onTap: _continueWithEmail,
+                            ),
+                            Gap(57),
+                            Row(
+                              spacing: 12,
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 1,
+                                    color: AppColors.colorff838383,
+                                  ),
                                 ),
-                              ),
-                              Text("or", style: TextStyles.titleTag),
-                              Expanded(
-                                child: Container(
-                                  width: double.infinity,
-                                  height: 1,
-                                  color: AppColors.colorff838383,
+                                Text("or", style: TextStyles.titleTag),
+                                Expanded(
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: 1,
+                                    color: AppColors.colorff838383,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          Gap(57),
-                          Column(
-                            spacing: 16,
-                            children: [
-                              CustomOutlinedButton(
-                                text: "Continue with phone",
-                                onTap: () {
-                                  context.pushNamed(RouteNames.signup);
-                                },
-                              ),
-                              CustomButton(
-                                text: "Continue with Apple",
-                                prefixIcon: Assets.icons.appleLogo.svg(),
-                                isDisabled: isLoading,
-                                onTap: () {
-                                  context.read<AuthBloc>().add(
-                                    AuthEvent.login(
-                                      request: LoginRequest.social(
-                                        provider: SocialProvider.apple,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                textStyle: TextStyles.titleMain.copyWith(
-                                  fontSize: 17,
+                              ],
+                            ),
+                            Gap(57),
+                            Column(
+                              spacing: 16,
+                              children: [
+                                CustomOutlinedButton(
+                                  text: "Continue with phone",
+                                  onTap: () {
+                                    context.pushNamed(RouteNames.signup);
+                                  },
                                 ),
-                              ),
-                              CustomButton(
-                                text: "Continue with Google",
-                                prefixIcon: Assets.icons.googleLogo.svg(),
-                                isDisabled: isLoading,
-                                onTap: () {
-                                  context.read<AuthBloc>().add(
-                                    AuthEvent.login(
-                                      request: LoginRequest.social(
-                                        provider: SocialProvider.google,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                textStyle: TextStyles.titleMain.copyWith(
-                                  fontSize: 17,
+                                CustomButton(
+                                  text: "Continue with Apple",
+                                  prefixIcon: Assets.icons.appleLogo.svg(),
+                                  isDisabled: isLoading,
+                                  onTap: () {
+                                    context.read<AuthBloc>().add(
+                                          AuthEvent.login(
+                                            request: LoginRequest.social(
+                                              provider: SocialProvider.apple,
+                                            ),
+                                          ),
+                                        );
+                                  },
+                                  padding: EdgeInsets.symmetric(vertical: 10),
+                                  textStyle: TextStyles.titleMain.copyWith(
+                                    fontSize: 17,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                "Continuing, I agree with\nTerms and conditions.",
-                                textAlign: TextAlign.center,
-                                style: TextStyles.bodyMain.copyWith(
-                                  fontSize: 14,
+                                CustomButton(
+                                  text: "Continue with Google",
+                                  prefixIcon: Assets.icons.googleLogo.svg(),
+                                  isDisabled: isLoading,
+                                  onTap: () {
+                                    context.read<AuthBloc>().add(
+                                          AuthEvent.login(
+                                            request: LoginRequest.social(
+                                              provider: SocialProvider.google,
+                                            ),
+                                          ),
+                                        );
+                                  },
+                                  padding: EdgeInsets.symmetric(vertical: 10),
+                                  textStyle: TextStyles.titleMain.copyWith(
+                                    fontSize: 17,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(
-                            height:
-                                MediaQuery.of(context).viewInsets.bottom + 20,
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                                Text(
+                                  "Continuing, I agree with\nTerms and conditions.",
+                                  textAlign: TextAlign.center,
+                                  style: TextStyles.bodyMain.copyWith(
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(
+                              height:
+                                  MediaQuery.of(context).viewInsets.bottom + 20,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
             ],
           ),
         ),
@@ -269,4 +286,3 @@ class _SignupWithEmailPageState extends State<SignupWithEmailPage> {
     );
   }
 }
-

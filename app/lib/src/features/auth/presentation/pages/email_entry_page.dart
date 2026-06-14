@@ -38,7 +38,8 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
       value: getIt<AuthBloc>(),
       child: Scaffold(
         backgroundColor: context.theme.mainBackground,
-        appBar: const CustomAppBar(title: 'Email', backgroundColor: Colors.transparent),
+        appBar: const CustomAppBar(
+            title: 'Email', backgroundColor: Colors.transparent),
         body: Stack(
           children: [
             Positioned.fill(
@@ -85,8 +86,7 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                   },
                   loaded: (viewModel) {},
                   authenticated: (loginEntity) {},
-                  phoneVerificationStarted:
-                      (verificationId, phoneNumber) {},
+                  phoneVerificationStarted: (verificationId, phoneNumber) {},
                   emailChecked: (exists, email) {
                     context.pushNamed(
                       RouteNames.emailPassword,
@@ -120,8 +120,7 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SizedBox(
-                              height:
-                                  MediaQuery.of(context).size.height * 0.1),
+                              height: MediaQuery.of(context).size.height * 0.1),
                           Text("Enter your email", style: TextStyles.titleXBig),
                           Gap(16),
                           Text(
@@ -139,8 +138,8 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                           Gap(40),
                           CustomButton(
                             text: isLoading ? "Loading..." : "Continue",
-                            isDisabled:
-                                isLoading || !_isValidEmail(_emailController.text),
+                            isDisabled: isLoading ||
+                                !_isValidEmail(_emailController.text),
                             backgroundColor: Colors.transparent,
                             border: Border.all(color: Colors.white38),
                             textStyle: TextStyles.titleMain.copyWith(
@@ -149,16 +148,17 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                             onTap: () {
                               if (_isValidEmail(_emailController.text)) {
                                 context.read<AuthBloc>().add(
-                                  AuthEvent.sendEmailMagicLink(
-                                    email: _emailController.text.trim(),
-                                  ),
-                                );
+                                      AuthEvent.checkEmail(
+                                        email: _emailController.text.trim(),
+                                      ),
+                                    );
                               }
                             },
                           ),
                           Gap(20),
                           SizedBox(
-                            height: MediaQuery.of(context).viewInsets.bottom + 20,
+                            height:
+                                MediaQuery.of(context).viewInsets.bottom + 20,
                           ),
                         ],
                       ),

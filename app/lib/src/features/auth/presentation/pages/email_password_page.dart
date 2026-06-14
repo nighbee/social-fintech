@@ -2,6 +2,7 @@ import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/service/injectable/injectable_service.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/utils/password_policy.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
@@ -42,9 +43,25 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
   }
 
   bool _isValidPassword() {
-    if (_passwordController.text.length < 8) return false;
+    if (_passwordController.text.isEmpty) return false;
     if (!widget.isNewUser) return true;
-    return _passwordController.text == _confirmPasswordController.text;
+    return PasswordPolicy.isValid(_passwordController.text) &&
+        _passwordController.text == _confirmPasswordController.text;
+  }
+
+  String? get _passwordError {
+    if (!widget.isNewUser || _passwordController.text.isEmpty) return null;
+    return PasswordPolicy.validationMessage(_passwordController.text);
+  }
+
+  String? get _confirmationError {
+    if (!widget.isNewUser || _confirmPasswordController.text.isEmpty) {
+      return null;
+    }
+    if (_passwordController.text != _confirmPasswordController.text) {
+      return 'Passwords do not match';
+    }
+    return null;
   }
 
   @override
@@ -175,6 +192,16 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                               ),
                             ),
                           ),
+                          if (_passwordError case final error?)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6, left: 2),
+                              child: Text(
+                                error,
+                                style: TextStyles.titleTag.copyWith(
+                                  color: AppColors.colorffEF4444,
+                                ),
+                              ),
+                            ),
                           if (widget.isNewUser) ...[
                             Gap(16),
                             CustomTextField(
@@ -212,6 +239,16 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                                 ),
                               ),
                             ),
+                            if (_confirmationError case final error?)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6, left: 2),
+                                child: Text(
+                                  error,
+                                  style: TextStyles.titleTag.copyWith(
+                                    color: AppColors.colorffEF4444,
+                                  ),
+                                ),
+                              ),
                           ],
                           Gap(40),
                           CustomButton(
@@ -223,33 +260,19 @@ class _EmailPasswordPageState extends State<EmailPasswordPage> {
                               if (!_isValidPassword()) return;
 
                               if (widget.isNewUser) {
-                                context.read<AuthBloc>().add(
-                                      AuthEvent.checkEmail(email: widget.email),
-                                    );
-
-                                final bloc = context.read<AuthBloc>();
-                                bloc.add(
-                                    AuthEvent.checkEmail(email: widget.email));
-
-                                Future.delayed(
-                                    const Duration(milliseconds: 100), () {
-                                  if (!mounted) return;
-                                  context.pushNamed(
-                                    RouteNames.info,
-                                    extra: {
-                                      'email': widget.email,
-                                      'password':
-                                          _passwordController.text.trim(),
-                                    },
-                                  );
-                                });
+                                context.pushNamed(
+                                  RouteNames.info,
+                                  extra: {
+                                    'email': widget.email,
+                                    'password': _passwordController.text,
+                                  },
+                                );
                               } else {
                                 context.read<AuthBloc>().add(
                                       AuthEvent.login(
                                         request: LoginRequest.email(
                                           email: widget.email,
-                                          password:
-                                              _passwordController.text.trim(),
+                                          password: _passwordController.text,
                                         ),
                                       ),
                                     );

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -8,9 +7,8 @@ class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   static const String _pendingMagicEmailKey = 'pending_magic_email';
   static const String _defaultMagicLinkUrl =
-      'https://brightbund-7784f.firebaseapp.com/__/auth/handler';
+      'https://brightbund-7784f.firebaseapp.com';
 
-  String? _verificationId;
   int? _resendToken;
 
   Future<String> verifyPhoneNumber({
@@ -22,14 +20,6 @@ class FirebaseAuthService {
     final completer = Completer<String>();
 
     try {
-      // Configure Firebase Auth settings for Android
-      if (Platform.isAndroid) {
-        await _auth.setSettings(
-          appVerificationDisabledForTesting: kDebugMode,
-          forceRecaptchaFlow: false, // Disable web reCAPTCHA flow
-        );
-      }
-
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
@@ -42,7 +32,9 @@ class FirebaseAuthService {
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          String errorMessage = 'Verification failed';
+          String errorMessage = e.message?.trim().isNotEmpty == true
+              ? e.message!.trim()
+              : 'Verification failed (${e.code})';
           if (e.code == 'invalid-phone-number') {
             errorMessage = 'Invalid phone number format';
           } else if (e.code == 'too-many-requests') {
@@ -66,17 +58,13 @@ class FirebaseAuthService {
           }
         },
         codeSent: (String verificationId, int? resendToken) {
-          _verificationId = verificationId;
           _resendToken = resendToken; // Save for potential resend
           onCodeSent(verificationId);
           if (!completer.isCompleted) {
             completer.complete(verificationId);
           }
         },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          // Timeout for automatic SMS code retrieval
-          _verificationId = verificationId;
-        },
+        codeAutoRetrievalTimeout: (String verificationId) {},
       );
 
       return await completer.future;

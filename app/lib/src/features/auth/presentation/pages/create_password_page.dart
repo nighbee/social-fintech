@@ -1,5 +1,6 @@
 import 'package:app/src/core/router/router.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/utils/password_policy.dart';
 import 'package:app/src/core/widgets/custom_app_bar.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_text_field.dart';
@@ -42,22 +43,14 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
     super.dispose();
   }
 
-  bool get _isFormValid {
-    return _pwController.text.isNotEmpty &&
-        _confirmPwController.text.isNotEmpty;
-  }
-
   String? _passwordValidator(String? value) {
-    final password = value?.trim() ?? '';
-    if (password.isEmpty) return 'Please enter password';
-    if (password.length < 8) return 'Password must be at least 8 characters';
-    return null;
+    return PasswordPolicy.validationMessage(value ?? '');
   }
 
   String? _confirmPasswordValidator(String? value) {
-    final confirm = value?.trim() ?? '';
+    final confirm = value ?? '';
     if (confirm.isEmpty) return 'Please confirm password';
-    if (confirm != _pwController.text.trim()) return 'Passwords do not match';
+    if (confirm != _pwController.text) return 'Passwords do not match';
     return null;
   }
 
@@ -68,7 +61,7 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
       RouteNames.info,
       extra: {
         'email': widget.email,
-        'password': _pwController.text.trim(),
+        'password': _pwController.text,
       },
     );
   }
@@ -113,7 +106,8 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
                     Text("Create a password", style: TextStyles.titleXBig),
                     Gap(16),
                     Text(
-                      "It needs to be at least 8 characters long and contain a number or symbol",
+                      "Use at least 8 characters with uppercase and lowercase "
+                      "letters, a number and a special character.",
                       style: TextStyles.bodyLarge,
                     ),
                     Gap(40),
@@ -144,7 +138,7 @@ class _CreatePasswordPageState extends State<CreatePasswordPage> {
                     CustomButton(
                       text: "Create",
                       onTap: _onCreateTap,
-                      isDisabled: !_isFormValid,
+                      isDisabled: false,
                     ),
                     Gap(20),
                     SizedBox(
