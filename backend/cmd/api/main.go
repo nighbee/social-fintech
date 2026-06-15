@@ -300,6 +300,7 @@ func main() {
 	settingsHandler := settings.NewHandler(settingsService)
 	settingsWorker := settings.NewWorker(settingsService)
 	settingsWorker.Start()
+	feedService.SetSettingsService(settingsService)
 	logger.Info("settings module initialized")
 
 	chatRepo := chat.NewRepository(db.DB)
