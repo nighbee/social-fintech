@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -613,10 +612,9 @@ func (r *repository) GetCommentThreadParent(ctx context.Context, commentID uuid.
 
 // GetThreadedComments grabs top-level comments and replies.
 func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error) {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-
 	if parentID == nil {
-		// Top-level comments.
+		// Top-level comments — shadow-ban filter is deterministic (SQL only).
+		// Own comments are always included; random suppression has been removed.
 		cursorTime := time.Now()
 		if cursor != "" {
 			if t, err := time.Parse(time.RFC3339Nano, cursor); err == nil {
@@ -631,12 +629,11 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			  AND c.is_hidden_by_reports = false
 			  AND (u.id = $2 OR COALESCE(u.is_shadow_banned, false) = false)
 			  AND c.created_at < $3
-			  AND c.user_id <> $2
 			ORDER BY c.created_at DESC, c.id DESC
 			LIMIT $4
 		`
 
-		rows, err := r.db.QueryContext(ctx, query, postID, viewerID, cursorTime, limit*2) // oversample for Go-side filtering
+		rows, err := r.db.QueryContext(ctx, query, postID, viewerID, cursorTime, limit+1)
 		if err != nil {
 			return nil, "", err
 		}
@@ -673,28 +670,15 @@ func (r *repository) GetThreadedComments(ctx context.Context, postID uuid.UUID, 
 			comments = append(comments, resp)
 		}
 
-		// Go-side shadow suppression filter (replaces SQL random()).
-		filtered := make([]CommentResponse, 0, limit)
-		for _, c := range comments {
-			if rng.Intn(100) < 30 { // ~70% pass rate, conservative default
-				continue
-			}
-			filtered = append(filtered, c)
-			if len(filtered) >= limit {
-				break
-			}
+		var nextCursor string
+		if len(comments) > limit {
+			nextCursor = comments[limit-1].CreatedAt.Format(time.RFC3339Nano)
+			comments = comments[:limit]
 		}
-
-		// Batch reply counts.
-		if err := r.batchReplyCounts(ctx, filtered); err != nil {
+		if err := r.batchReplyCounts(ctx, comments); err != nil {
 			return nil, "", err
 		}
-
-		nextCursor := ""
-		if len(filtered) == limit && len(filtered) > 0 {
-			nextCursor = filtered[len(filtered)-1].CreatedAt.Format(time.RFC3339Nano)
-		}
-		return filtered, nextCursor, nil
+		return comments, nextCursor, nil
 	}
 
 	// Replies: direct parent lookup, no shadow filter.

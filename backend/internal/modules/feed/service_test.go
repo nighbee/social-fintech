@@ -35,7 +35,8 @@ type testRepo struct {
 	createPolicyStrikeFn    func(ctx context.Context, targetType string, targetID uuid.UUID, expiresAt time.Time) error
 	hardBlockAuthorFn       func(ctx context.Context, targetType string, targetID uuid.UUID) error
 	isUserAdminFn           func(ctx context.Context, userID uuid.UUID) (bool, error)
-	deleteCommentFn         func(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error
+	deleteCommentFn             func(ctx context.Context, commentID, actorID uuid.UUID, isModerator bool) error
+	getThreadedCommentsFn       func(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error)
 
 	batchFlushLikesFn             func(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID) error
 	batchFlushSealsFn             func(ctx context.Context, postID uuid.UUID, count int, totalAmount int64) error
@@ -128,6 +129,9 @@ func (r *testRepo) GetCommentThreadParent(ctx context.Context, commentID uuid.UU
 }
 
 func (r *testRepo) GetThreadedComments(ctx context.Context, postID uuid.UUID, viewerID uuid.UUID, parentID *uuid.UUID, cursor string, limit int) ([]CommentResponse, string, error) {
+	if r.getThreadedCommentsFn != nil {
+		return r.getThreadedCommentsFn(ctx, postID, viewerID, parentID, cursor, limit)
+	}
 	return nil, "", nil
 }
 
