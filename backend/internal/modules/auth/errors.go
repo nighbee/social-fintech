@@ -22,6 +22,7 @@ var (
 
 	ErrPhoneExists          = errors.New("phone_exists")
 	ErrInvalidPhone         = errors.New("invalid_phone")
+	ErrMissingPhoneNumber   = errors.New("missing_phone_number")
 	ErrInvalidCode          = errors.New("invalid_code")
 	ErrVerificationExpired  = errors.New("verification_expired")
 	ErrVerificationConsumed = errors.New("verification_consumed")

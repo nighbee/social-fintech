@@ -479,6 +479,8 @@ func (h *Handler) FirebasePhoneAuth(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
 		case ErrAccountBlocked:
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "account_blocked"})
+		case ErrInvalidPhone, ErrMissingPhoneNumber:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_phone_number"})
 		default:
 			log.Printf("FirebasePhoneAuth unexpected error: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})
@@ -534,6 +536,8 @@ func (h *Handler) FirebasePhoneRegister(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "captcha_invalid"})
 		case ErrInvalidCredentials:
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "missing_required_fields"})
+		case ErrInvalidPhone, ErrMissingPhoneNumber:
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid_phone_number"})
 		default:
 			log.Printf("FirebasePhoneRegister unexpected error: %v", err)
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "server_error"})

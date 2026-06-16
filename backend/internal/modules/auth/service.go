@@ -1070,7 +1070,7 @@ func (s *Service) FirebasePhoneAuth(ctx context.Context, req FirebasePhoneAuthRe
 	// Extract phone number from token
 	phoneNumber, ok := token.Claims["phone_number"].(string)
 	if !ok || phoneNumber == "" {
-		return nil, fmt.Errorf("phone number not found in token")
+		return nil, ErrMissingPhoneNumber
 	}
 
 	s.logger.Info("firebase_phone_auth_attempt",
@@ -1078,28 +1078,11 @@ func (s *Service) FirebasePhoneAuth(ctx context.Context, req FirebasePhoneAuthRe
 		zap.String("uid", token.UID),
 	)
 
-	// Parse phone number (format: +1234567890)
-	if len(phoneNumber) < 3 || phoneNumber[0] != '+' {
-		return nil, fmt.Errorf("invalid phone number format")
+	countryCode, number, err := parseE164(phoneNumber)
+	if err != nil {
+		s.logger.Warn("firebase_phone_auth_parse_failed", zap.String("phone", phoneNumber), zap.Error(err))
+		return nil, ErrInvalidPhone
 	}
-
-	// Extract country code and number
-	// Assuming format like +1234567890 where +1 is country code
-	var countryCode, number string
-	if len(phoneNumber) > 2 {
-		// Try common country codes
-		if phoneNumber[1:3] == "1 " || phoneNumber[1:2] == "1" {
-			countryCode = "+1"
-			number = phoneNumber[2:]
-		} else if len(phoneNumber) > 3 {
-			countryCode = phoneNumber[0:3] // +XX format
-			number = phoneNumber[3:]
-		}
-	}
-
-	// Clean the number
-	number = strings.ReplaceAll(number, " ", "")
-	number = strings.ReplaceAll(number, "-", "")
 
 	// Look up user by phone
 	user, err := s.repo.GetUserByPhone(ctx, countryCode, number)
@@ -1182,7 +1165,7 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 	// Extract phone number from token
 	phoneNumber, ok := token.Claims["phone_number"].(string)
 	if !ok || phoneNumber == "" {
-		return fail("phone_missing", fmt.Errorf("phone number not found in token"))
+		return fail("phone_missing", ErrMissingPhoneNumber)
 	}
 
 	s.logger.Info("firebase_phone_register_attempt",
@@ -1190,24 +1173,11 @@ func (s *Service) FirebasePhoneRegister(ctx context.Context, req FirebasePhoneRe
 		zap.String("uid", token.UID),
 	)
 
-	// Parse phone number
-	if len(phoneNumber) < 3 || phoneNumber[0] != '+' {
-		return fail("invalid_phone_format", fmt.Errorf("invalid phone number format"))
+	countryCode, number, err := parseE164(phoneNumber)
+	if err != nil {
+		s.logger.Warn("firebase_phone_register_parse_failed", zap.String("phone", phoneNumber), zap.Error(err))
+		return fail("invalid_phone_format", ErrInvalidPhone)
 	}
-
-	var countryCode, number string
-	if len(phoneNumber) > 2 {
-		if phoneNumber[1:2] == "1" {
-			countryCode = "+1"
-			number = phoneNumber[2:]
-		} else if len(phoneNumber) > 3 {
-			countryCode = phoneNumber[0:3]
-			number = phoneNumber[3:]
-		}
-	}
-
-	number = strings.ReplaceAll(number, " ", "")
-	number = strings.ReplaceAll(number, "-", "")
 
 	// Check if phone already exists
 	if _, err := s.repo.GetUserByPhone(ctx, countryCode, number); err == nil {
