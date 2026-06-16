@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "561457994081-8rl167q3ke9agtimptp55ott5mo6ipd4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.brightbund.brightbundapp",
+            "certificate_hash": "b1f4bea57aef0a30ed043257c2afc4b61dadf4ac"
+          }
+        },
+        {
           "client_id": "561457994081-b195ql62k5jtrbtqktu31r2h5ti14rec.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
