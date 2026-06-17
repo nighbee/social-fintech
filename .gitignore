@@ -10,3 +10,13 @@ spa/.env
 spa/.env.local
 spa/routes.md
 spa/implementation-plan.md
+
+#backend
+backend/.env 
+.env
+/google/
+/fail2ban/
+/docs/ 
+backend/firebase-service-account.json
+.claude/
+.cursor/
