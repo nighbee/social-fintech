@@ -32,12 +32,12 @@ FutureOr<String?> AuthGuard(BuildContext context, GoRouterState state) async {
     );
 
     if (accessToken == null || accessToken.isEmpty) {
-      return RoutePaths.loginWithEmail;
+      return RoutePaths.login;
     }
 
     return null;
   } catch (e) {
     Log.debug('AuthGuard', 'error: $e');
-    return RoutePaths.loginWithEmail;
+    return RoutePaths.login;
   }
 }

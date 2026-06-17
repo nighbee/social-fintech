@@ -86,14 +86,14 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     return getIt<ProfileBloc>().state.maybeWhen(
-      loaded: (viewModel) => viewModel.profile.userId,
-      orElse: () => null,
-    );
+          loaded: (viewModel) => viewModel.profile.userId,
+          orElse: () => null,
+        );
   }
 
   void _logout() {
     getIt<AuthBloc>().add(const AuthEvent.logout());
-    context.go(RoutePaths.loginWithEmail);
+    context.go(RoutePaths.login);
   }
 
   Future<void> _openReportBug() async {
@@ -462,6 +462,7 @@ class _SettingsRow extends StatelessWidget {
   final bool destructive;
   final bool? switchValue;
   final ValueChanged<bool>? onSwitchChanged;
+
   /// Второстепенная строка (меньше шрифт) — например «Have you been invited?»
   final bool compact;
 
@@ -481,9 +482,7 @@ class _SettingsRow extends StatelessWidget {
                 : onTap,
         child: Padding(
           padding: EdgeInsets.symmetric(
-            vertical: switchValue != null
-                ? 4
-                : (compact ? 4 : 10),
+            vertical: switchValue != null ? 4 : (compact ? 4 : 10),
           ),
           child: Row(
             children: [

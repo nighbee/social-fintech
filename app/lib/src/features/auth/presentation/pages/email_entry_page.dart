@@ -21,6 +21,7 @@ class EmailEntryPage extends StatefulWidget {
 
 class _EmailEntryPageState extends State<EmailEntryPage> {
   final TextEditingController _emailController = TextEditingController();
+  bool _isSendingLink = false;
 
   @override
   void dispose() {
@@ -61,6 +62,7 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                   initial: () {},
                   loading: () {},
                   loadingFailure: (message) {
+                    setState(() => _isSendingLink = false);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(message),
@@ -69,6 +71,9 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                     );
                   },
                   goRegister: () {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
                     final authBloc = context.read<AuthBloc>();
                     final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
                     final firebaseAuthProvider =
@@ -85,18 +90,20 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                     );
                   },
                   loaded: (viewModel) {},
-                  authenticated: (loginEntity) {},
-                  phoneVerificationStarted: (verificationId, phoneNumber) {},
-                  emailChecked: (exists, email) {
-                    context.pushNamed(
-                      RouteNames.emailPassword,
-                      extra: {'email': email, 'isNewUser': !exists},
-                    );
+                  authenticated: (loginEntity) {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
+                    context.go(RoutePaths.home);
                   },
+                  phoneVerificationStarted: (verificationId, phoneNumber) {},
+                  emailChecked: (exists, email) {},
                   magicLinkSent: (email) {
+                    setState(() => _isSendingLink = false);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Check your email: $email'),
+                        content:
+                            Text('Check your email for a sign-in link: $email'),
                       ),
                     );
                   },
@@ -105,12 +112,6 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
               child: SafeArea(
                 child: BlocBuilder<AuthBloc, AuthState>(
                   builder: (context, state) {
-                    final isLoading = state.maybeWhen(
-                      loading: () => true,
-                      loaded: (viewModel) => viewModel.isLoading,
-                      orElse: () => false,
-                    );
-
                     return SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
@@ -124,7 +125,7 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                           Text("Enter your email", style: TextStyles.titleXBig),
                           Gap(16),
                           Text(
-                            "We'll check if you have an account",
+                            "We'll send you a secure sign-in link",
                             style: TextStyles.bodyLarge,
                           ),
                           Gap(40),
@@ -137,8 +138,8 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                           ),
                           Gap(40),
                           CustomButton(
-                            text: isLoading ? "Loading..." : "Continue",
-                            isDisabled: isLoading ||
+                            text: _isSendingLink ? "Sending..." : "Continue",
+                            isDisabled: _isSendingLink ||
                                 !_isValidEmail(_emailController.text),
                             backgroundColor: Colors.transparent,
                             border: Border.all(color: Colors.white38),
@@ -147,8 +148,9 @@ class _EmailEntryPageState extends State<EmailEntryPage> {
                             ),
                             onTap: () {
                               if (_isValidEmail(_emailController.text)) {
+                                setState(() => _isSendingLink = true);
                                 context.read<AuthBloc>().add(
-                                      AuthEvent.checkEmail(
+                                      AuthEvent.sendEmailMagicLink(
                                         email: _emailController.text.trim(),
                                       ),
                                     );

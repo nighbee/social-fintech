@@ -363,7 +363,12 @@ class _StorePageState extends State<StorePage> {
                       context,
                       title: 'Silver Honor',
                       message:
-                          'Honors are rare and valuable. To keep the system fair, repeated honors to the same user are limited. Any attempts to manipulate stats will result in a reset.',
+                          'Silver Honors help recognize people for meaningful '
+                          'actions and contributions.\n\n'
+                          'To keep rankings fair, repeated Honors to the same '
+                          'person have limited impact.\n\n'
+                          'Honors are designed to reward genuine recognition '
+                          'from different people.',
                       buttonLabel: 'Ok',
                       messageColor: const Color(0xFFA3A3A3),
                       backgroundColor: AppColors.colorff202020.withValues(

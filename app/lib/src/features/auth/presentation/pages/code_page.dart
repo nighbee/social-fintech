@@ -70,10 +70,11 @@ class _CodePageState extends State<CodePage> {
                     );
                   },
                   goRegister: () {
-                    final firebaseIdToken = context
-                        .read<AuthBloc>()
-                        .viewModel
-                        .firebaseIdToken;
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
+                    final firebaseIdToken =
+                        context.read<AuthBloc>().viewModel.firebaseIdToken;
                     context.pushNamed(
                       RouteNames.info,
                       extra: {
@@ -137,12 +138,12 @@ class _CodePageState extends State<CodePage> {
                             onTap: () {
                               if (_code.length == 6) {
                                 context.read<AuthBloc>().add(
-                                  AuthEvent.verifyOtpCode(
-                                    verificationId: widget.verificationId,
-                                    code: _code,
-                                    isLogin: widget.isLogin,
-                                  ),
-                                );
+                                      AuthEvent.verifyOtpCode(
+                                        verificationId: widget.verificationId,
+                                        code: _code,
+                                        isLogin: widget.isLogin,
+                                      ),
+                                    );
                               }
                             },
                           ),

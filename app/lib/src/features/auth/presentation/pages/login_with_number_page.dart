@@ -28,6 +28,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
     text: 'Kazakhstan (+7)',
   );
   String _selectedCountryCode = '+7';
+  bool _isPhoneSubmitting = false;
 
   @override
   void initState() {
@@ -129,6 +130,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                   initial: () {},
                   loading: () {},
                   loadingFailure: (message) {
+                    setState(() => _isPhoneSubmitting = false);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(message),
@@ -137,6 +139,9 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                     );
                   },
                   goRegister: () {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
                     final authBloc = context.read<AuthBloc>();
                     final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
                     final firebaseAuthProvider =
@@ -161,6 +166,10 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                     context.go(RoutePaths.home);
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
+                    setState(() => _isPhoneSubmitting = false);
                     context.pushNamed(
                       RouteNames.loginCode,
                       extra: {
@@ -177,11 +186,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
               child: SafeArea(
                 child: BlocBuilder<AuthBloc, AuthState>(
                   builder: (context, state) {
-                    final isLoading = state.maybeWhen(
-                      loading: () => true,
-                      loaded: (viewModel) => viewModel.isLoading,
-                      orElse: () => false,
-                    );
+                    final isLoading = _isPhoneSubmitting;
 
                     return SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
@@ -258,6 +263,7 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
                                 return;
                               }
 
+                              setState(() => _isPhoneSubmitting = true);
                               context.read<AuthBloc>().add(
                                     AuthEvent.startPhoneVerification(
                                       phoneNumber: phoneNumber,
@@ -355,4 +361,3 @@ class _LoginWithNumberPageState extends State<LoginWithNumberPage> {
     );
   }
 }
-

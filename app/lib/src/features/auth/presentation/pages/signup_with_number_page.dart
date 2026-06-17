@@ -27,6 +27,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
     text: 'Kazakhstan (+7)',
   );
   String _selectedCountryCode = '+7';
+  bool _isPhoneSubmitting = false;
 
   @override
   void initState() {
@@ -128,6 +129,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                   initial: () {},
                   loading: () {},
                   loadingFailure: (message) {
+                    setState(() => _isPhoneSubmitting = false);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(message),
@@ -136,6 +138,9 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                     );
                   },
                   goRegister: () {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
                     final authBloc = context.read<AuthBloc>();
                     final firebaseIdToken = authBloc.viewModel.firebaseIdToken;
                     final firebaseAuthProvider =
@@ -159,6 +164,10 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                     context.go(RoutePaths.home);
                   },
                   phoneVerificationStarted: (verificationId, phoneNumber) {
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
+                    setState(() => _isPhoneSubmitting = false);
                     context.pushNamed(
                       RouteNames.code,
                       extra: {
@@ -175,11 +184,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
               child: SafeArea(
                 child: BlocBuilder<AuthBloc, AuthState>(
                   builder: (context, state) {
-                    final isLoading = state.maybeWhen(
-                      loading: () => true,
-                      loaded: (viewModel) => viewModel.isLoading,
-                      orElse: () => false,
-                    );
+                    final isLoading = _isPhoneSubmitting;
 
                     return SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
@@ -256,6 +261,7 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
                                 return;
                               }
 
+                              setState(() => _isPhoneSubmitting = true);
                               context.read<AuthBloc>().add(
                                     AuthEvent.startPhoneVerification(
                                       phoneNumber: phoneNumber,
@@ -353,4 +359,3 @@ class _SignupWithNumberPageState extends State<SignupWithNumberPage> {
     );
   }
 }
-

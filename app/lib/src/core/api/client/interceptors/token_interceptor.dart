@@ -214,7 +214,7 @@ class TokenInterceptor extends Interceptor {
     // Navigate to auth screen
     final context = rootNavigatorKey.currentContext;
     if (context != null && context.mounted) {
-      context.go(RoutePaths.loginWithEmail);
+      context.go(RoutePaths.login);
     }
 
     handler.next(

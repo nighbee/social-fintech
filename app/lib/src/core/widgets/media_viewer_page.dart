@@ -65,6 +65,7 @@ class _MediaViewerPageState extends State<MediaViewerPage> {
   late int _index;
   bool _downloading = false;
   double? _downloadProgress;
+  bool _isImageZoomed = false;
 
   @override
   void initState() {
@@ -198,14 +199,30 @@ class _MediaViewerPageState extends State<MediaViewerPage> {
           children: [
             PageView.builder(
               controller: _pageController,
+              physics: _isImageZoomed
+                  ? const NeverScrollableScrollPhysics()
+                  : const PageScrollPhysics(),
               itemCount: widget.items.length,
-              onPageChanged: (value) => setState(() => _index = value),
+              onPageChanged: (value) {
+                setState(() {
+                  _index = value;
+                  _isImageZoomed = false;
+                });
+              },
               itemBuilder: (context, index) {
                 final item = widget.items[index];
                 if (item.isVideo) {
                   return _FullscreenVideo(item: item);
                 }
-                return _FullscreenImage(url: item.url);
+                return _FullscreenImage(
+                  key: ValueKey(item.url),
+                  url: item.url,
+                  onZoomChanged: (isZoomed) {
+                    if (mounted && _isImageZoomed != isZoomed) {
+                      setState(() => _isImageZoomed = isZoomed);
+                    }
+                  },
+                );
               },
             ),
             Positioned(
@@ -256,36 +273,93 @@ class _MediaViewerPageState extends State<MediaViewerPage> {
   }
 }
 
-class _FullscreenImage extends StatelessWidget {
-  const _FullscreenImage({required this.url});
+class _FullscreenImage extends StatefulWidget {
+  const _FullscreenImage({
+    super.key,
+    required this.url,
+    required this.onZoomChanged,
+  });
 
   final String url;
+  final ValueChanged<bool> onZoomChanged;
+
+  @override
+  State<_FullscreenImage> createState() => _FullscreenImageState();
+}
+
+class _FullscreenImageState extends State<_FullscreenImage> {
+  late final TransformationController _transformationController;
+  Offset _doubleTapPosition = Offset.zero;
+  bool _isZoomed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transformationController = TransformationController()
+      ..addListener(_handleTransformChanged);
+  }
+
+  void _handleTransformChanged() {
+    final isZoomed = _transformationController.value.getMaxScaleOnAxis() > 1.01;
+    if (_isZoomed == isZoomed) return;
+    _isZoomed = isZoomed;
+    widget.onZoomChanged(isZoomed);
+  }
+
+  void _handleDoubleTap() {
+    if (_isZoomed) {
+      _transformationController.value = Matrix4.identity();
+      return;
+    }
+    const scale = 2.5;
+    final position = _doubleTapPosition;
+    _transformationController.value = Matrix4.identity()
+      ..setEntry(0, 0, scale)
+      ..setEntry(1, 1, scale)
+      ..setEntry(0, 3, -position.dx * (scale - 1))
+      ..setEntry(1, 3, -position.dy * (scale - 1));
+  }
+
+  @override
+  void dispose() {
+    _transformationController
+      ..removeListener(_handleTransformChanged)
+      ..dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: InteractiveViewer(
-        minScale: 1,
-        maxScale: 5,
-        child: Image.network(
-          url,
-          fit: BoxFit.contain,
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return const Center(
-              child: CircularProgressIndicator(
-                color: Colors.white70,
-                strokeWidth: 2,
-              ),
-            );
-          },
-          errorBuilder: (_, __, ___) {
-            return const Icon(
-              Icons.broken_image_outlined,
-              color: Colors.white54,
-              size: 48,
-            );
-          },
+      child: GestureDetector(
+        onDoubleTapDown: (details) {
+          _doubleTapPosition = details.localPosition;
+        },
+        onDoubleTap: _handleDoubleTap,
+        child: InteractiveViewer(
+          transformationController: _transformationController,
+          minScale: 1,
+          maxScale: 5,
+          child: Image.network(
+            widget.url,
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white70,
+                  strokeWidth: 2,
+                ),
+              );
+            },
+            errorBuilder: (_, __, ___) {
+              return const Icon(
+                Icons.broken_image_outlined,
+                color: Colors.white54,
+                size: 48,
+              );
+            },
+          ),
         ),
       ),
     );
