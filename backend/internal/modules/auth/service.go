@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"strings"
 	"time"
@@ -544,19 +543,10 @@ func (s *Service) LoginEmail(ctx context.Context, req EmailLoginRequest, ip stri
 		return nil, err
 	}
 
-	hashPrefix := user.PasswordHash
-	if len(hashPrefix) > 10 {
-		hashPrefix = hashPrefix[:10]
-	}
-	log.Printf("LoginEmail: comparing password for user: %s, hash length: %d, hash prefix: %s",
-		user.Email, len(user.PasswordHash), hashPrefix)
-
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		s.logger.Warn("email_login_invalid_password", zap.String("email", req.Email))
 		return nil, ErrInvalidCredentials
 	}
-
-	log.Printf("LoginEmail: successful login for user: %s (id: %s)", user.Email, user.ID)
 
 	session := &Session{
 		ID:           uuid.NewString(),

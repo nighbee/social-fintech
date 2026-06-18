@@ -28,8 +28,7 @@ func NewNoopSMSSender() *NoopSMSSender {
 
 // проверка статуса отправки
 func (s *NoopSMSSender) Send(ctx context.Context, to, message string) error {
-	// Placeholder: log instead of sending SMS.
-	log.Printf("sms_placeholder to=%s msg=%s", to, message)
+	log.Printf("sms_placeholder to=%s", to)
 	return nil
 }
 
