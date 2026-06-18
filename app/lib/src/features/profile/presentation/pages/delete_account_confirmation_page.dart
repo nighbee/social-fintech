@@ -67,7 +67,7 @@ class _DeleteAccountConfirmationPageState
     }
 
     getIt<AuthBloc>().add(const AuthEvent.logout());
-    context.go(RoutePaths.loginWithEmail);
+    context.go(RoutePaths.login);
   }
 
   @override
@@ -104,8 +104,7 @@ class _DeleteAccountConfirmationPageState
                     'deleted.',
               ),
               const _DeleteAccountBullet(
-                text:
-                    'Your district ranking and history will be completely '
+                text: 'Your district ranking and history will be completely '
                     'deleted with no option to recover them.',
               ),
               const Gap(32),
@@ -253,7 +252,8 @@ class _DeleteAccountCheckboxIndicator extends StatelessWidget {
         color: value ? AppColors.backgroundBrandLight : Colors.transparent,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: value ? AppColors.backgroundBrandLight : const Color(0xFFF0F1F2),
+          color:
+              value ? AppColors.backgroundBrandLight : const Color(0xFFF0F1F2),
           width: 1.4,
         ),
       ),

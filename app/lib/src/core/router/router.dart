@@ -34,7 +34,6 @@ import 'package:app/src/core/theme/theme.dart';
 import 'package:app/src/features/auth/presentation/pages/signup_with_number_page.dart';
 import 'package:app/src/features/auth/presentation/pages/signup_with_email_page.dart';
 import 'package:app/src/features/auth/presentation/pages/login_with_number_page.dart';
-import 'package:app/src/features/auth/presentation/pages/login_with_email_page.dart';
 import 'package:app/src/features/auth/presentation/pages/login_code_page.dart';
 import 'package:app/src/features/auth/presentation/pages/code_page.dart';
 import 'package:app/src/features/auth/presentation/pages/email_entry_page.dart';
@@ -89,7 +88,7 @@ GoRouter routerProvider(AppFlavor flavor) {
     debugLogDiagnostics: flavor == AppFlavor.development,
     navigatorKey: rootNavigatorKey,
     // App Links pass the full Firebase Hosting URL as the route; go_router
-    // only knows paths like /home. Land on email login while app_links + AuthBloc
+    // only knows paths like /home. Land on email entry while app_links + AuthBloc
     // complete the magic link (see MainApp._resolveMagicLink).
     redirect: (context, state) {
       final uri = state.uri;
@@ -97,7 +96,7 @@ GoRouter routerProvider(AppFlavor flavor) {
           (uri.host.contains('firebaseapp.com') ||
               uri.host.contains('web.app')) &&
           uri.path.contains('/__/auth')) {
-        return RoutePaths.loginWithEmail;
+        return RoutePaths.emailEntry;
       }
       return null;
     },

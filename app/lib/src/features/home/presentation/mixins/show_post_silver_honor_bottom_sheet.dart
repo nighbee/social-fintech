@@ -1,5 +1,6 @@
 import 'package:app/gen/assets.gen.dart';
 import 'package:app/src/core/theme/theme.dart';
+import 'package:app/src/core/utils/honor_message_policy.dart';
 import 'package:app/src/core/widgets/action_bottom_sheet.dart';
 import 'package:app/src/core/widgets/custom_button.dart';
 import 'package:app/src/core/widgets/custom_network_image.dart';
@@ -67,7 +68,8 @@ class _PostSilverHonorBottomSheetState
   int? _availableSilverCountOverride;
 
   int _resolveAvailableSilverCount(HomeViewModel viewModel) {
-    return _availableSilverCountOverride ?? viewModel.storeSummary.silverHonorsCount;
+    return _availableSilverCountOverride ??
+        viewModel.storeSummary.silverHonorsCount;
   }
 
   bool _hasAvailableSilver(HomeViewModel viewModel) {
@@ -467,8 +469,6 @@ class _SilverHonorComposerDialog extends StatefulWidget {
 
 class _SilverHonorComposerDialogState
     extends State<_SilverHonorComposerDialog> {
-  static const int _maxMessageLength = 500;
-
   late final TextEditingController _messageController;
   bool _isSending = false;
   bool _isBalanceLoading = true;
@@ -537,7 +537,7 @@ class _SilverHonorComposerDialogState
 
   Future<void> _handleSend() async {
     final trimmedMessage = _messageController.text.trim();
-    if (trimmedMessage.isEmpty || _isSending) return;
+    if (!HonorMessagePolicy.isValid(trimmedMessage) || _isSending) return;
     if (_isBalanceLoading) {
       setState(() {
         _submitError = 'Checking silver balance. Please wait...';
@@ -589,6 +589,18 @@ class _SilverHonorComposerDialogState
     if (message.contains('cooldown_active')) {
       return 'You recently sent an honor to this user. Please try again later.';
     }
+    if (message.contains('seal_reason_too_short') ||
+        message.contains('reason too short')) {
+      return 'Write at least ${HonorMessagePolicy.minimumLength} characters.';
+    }
+    if (message.contains('seal_reason_too_long') ||
+        message.contains('reason too long')) {
+      return 'Keep the message under '
+          '${HonorMessagePolicy.maximumLength} characters.';
+    }
+    if (message.contains('cannot_seal_own_post')) {
+      return 'You cannot send an honor to your own post.';
+    }
     if (message.contains('transaction_conflict')) {
       return 'The transfer is in progress. Please retry in a moment.';
     }
@@ -605,11 +617,12 @@ class _SilverHonorComposerDialogState
   @override
   Widget build(BuildContext context) {
     final message = _messageController.text;
-    final canSend = message.trim().isNotEmpty &&
+    final validationError = HonorMessagePolicy.validationMessage(message);
+    final canSend = HonorMessagePolicy.isValid(message) &&
         !_isSending &&
         !_isBalanceLoading &&
         _availableSilverCount > 0;
-    final currentLength = message.length;
+    final currentLength = HonorMessagePolicy.length(message);
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -677,7 +690,6 @@ class _SilverHonorComposerDialogState
                       height: 176,
                       minLines: null,
                       maxLines: null,
-                      maxLength: _maxMessageLength,
                       expands: true,
                       textCapitalization: TextCapitalization.sentences,
                       textStyle: TextStyles.bodyMain.copyWith(
@@ -695,13 +707,37 @@ class _SilverHonorComposerDialogState
                       ),
                       borderRadius: 12,
                       footer: Align(
-                        alignment: Alignment.centerRight,
-                        child: Text(
-                          '$currentLength/$_maxMessageLength',
-                          style: TextStyles.titleTag.copyWith(
-                            color:
-                                AppColors.colorffffffff.withValues(alpha: 0.72),
-                          ),
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                validationError ??
+                                    'Use ${HonorMessagePolicy.minimumLength}-'
+                                        '${HonorMessagePolicy.maximumLength} '
+                                        'characters.',
+                                style: TextStyles.bodyMain.copyWith(
+                                  color: validationError == null
+                                      ? AppColors.colorffffffff
+                                          .withValues(alpha: 0.62)
+                                      : const Color(0xFFE5484D),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '$currentLength/'
+                              '${HonorMessagePolicy.maximumLength}',
+                              style: TextStyles.bodyMain.copyWith(
+                                color: currentLength >
+                                        HonorMessagePolicy.maximumLength
+                                    ? const Color(0xFFE5484D)
+                                    : AppColors.colorffffffff
+                                        .withValues(alpha: 0.72),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),

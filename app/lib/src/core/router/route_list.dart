@@ -277,7 +277,7 @@ List<RouteBase> _routes({required Talker talker, required AppFlavor flavor}) =>
                 path: RoutePaths.loginWithEmail,
                 name: RouteNames.loginWithEmail,
                 pageBuilder: (context, state) =>
-                    _authPage(state, const LoginWithEmailPage()),
+                    _authPage(state, const EmailEntryPage()),
               ),
               GoRoute(
                 path: RoutePaths.emailEntry,

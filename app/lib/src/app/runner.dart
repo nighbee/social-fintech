@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
 import 'application.dart';
@@ -15,7 +16,7 @@ class Runner {
     WidgetsFlutterBinding.ensureInitialized();
 
     await _initializeFirebase();
-    
+
     await KeyValueStorageImpl().initialize();
 
     await configureDependencies();
@@ -88,6 +89,12 @@ class Runner {
   Future<void> _initializeMobileFirebase() async {
     try {
       await Firebase.initializeApp();
+      if (kDebugMode) {
+        await FirebaseAuth.instance.setSettings(
+          appVerificationDisabledForTesting: true,
+        );
+        debugPrint('Firebase Auth app verification disabled for debug testing');
+      }
       debugPrint('Firebase initialized successfully');
       return;
     } catch (e) {

@@ -9,8 +9,6 @@ class FirebaseAuthService {
   static const String _defaultMagicLinkUrl =
       'https://brightbund-7784f.firebaseapp.com';
 
-  int? _resendToken;
-
   Future<String> verifyPhoneNumber({
     required String phoneNumber,
     required Function(String verificationId) onCodeSent,
@@ -23,7 +21,6 @@ class FirebaseAuthService {
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         timeout: const Duration(seconds: 60),
-        forceResendingToken: _resendToken, // Use previous token for resending
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Auto-verification completed (Android only)
           // This happens when SMS is automatically read
@@ -50,6 +47,11 @@ class FirebaseAuthService {
           } else if (e.code == 'operation-not-allowed') {
             errorMessage =
                 'Phone sign-in is not enabled for this Firebase project.';
+          } else if (e.code == 'internal-error' ||
+              e.code == 'missing-client-identifier' ||
+              (e.message ?? '').contains('Error code:39')) {
+            errorMessage = 'Phone verification is temporarily unavailable. '
+                'Please continue with email or try again later.';
           }
           debugPrint('Firebase Auth Error: ${e.code} - ${e.message}');
           onError(errorMessage);
@@ -58,7 +60,6 @@ class FirebaseAuthService {
           }
         },
         codeSent: (String verificationId, int? resendToken) {
-          _resendToken = resendToken; // Save for potential resend
           onCodeSent(verificationId);
           if (!completer.isCompleted) {
             completer.complete(verificationId);

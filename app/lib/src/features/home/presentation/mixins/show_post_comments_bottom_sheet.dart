@@ -17,6 +17,9 @@ import 'package:app/src/core/widgets/custom_network_image.dart';
 import 'package:app/src/core/widgets/extensions/build_context_ext.dart';
 import 'package:app/src/features/home/domain/entities/comment_entity.dart';
 import 'package:app/src/features/home/domain/entities/post_entity.dart';
+import 'package:app/src/features/home/domain/requests/create_comment_request.dart';
+import 'package:app/src/features/home/domain/requests/media_attachment_request.dart';
+import 'package:app/src/features/home/domain/requests/upload_feed_media_request.dart';
 import 'package:app/src/features/home/presentation/bloc/home_bloc.dart';
 
 mixin ShowPostCommentsBottomSheet {
@@ -61,11 +64,15 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
   late final FocusNode _focusNode;
   late final HomeBloc _bloc;
   String? _replyTargetId;
+  CommentComposerPhoto? _selectedPhoto;
+  bool _isSubmitting = false;
+  String? _composerError;
 
   @override
   void initState() {
     super.initState();
     _commentController = TextEditingController();
+    _commentController.addListener(_handleComposerChanged);
     _focusNode = FocusNode();
     _bloc = getIt<HomeBloc>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -75,9 +82,16 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
 
   @override
   void dispose() {
+    _commentController.removeListener(_handleComposerChanged);
     _commentController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  void _handleComposerChanged() {
+    if (mounted) {
+      setState(() => _composerError = null);
+    }
   }
 
   String? _currentReplyTargetId() {
@@ -90,40 +104,91 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
   }
 
   List<CommentComposerPhoto> _currentComposerPhotos() {
-    return _bloc.state.maybeWhen(
-      loading: (viewModel) => viewModel.composerPhotos,
-      loaded: (viewModel) => viewModel.composerPhotos,
-      orElse: () => const [],
-    );
+    final photo = _selectedPhoto;
+    return photo == null ? const [] : [photo];
   }
 
   Future<void> _pickPhoto() async {
+    if (_isSubmitting) return;
     await ImagePickerHelper.showImagePicker(
       context: context,
       onImageSelected: (bytes, fileName) {
-        _bloc.add(HomeEvent.addCommentPhoto(bytes, fileName));
+        if (!mounted) return;
+        setState(() {
+          _selectedPhoto = CommentComposerPhoto(
+            bytes: bytes,
+            fileName: fileName,
+          );
+          _composerError = null;
+        });
       },
     );
   }
 
-  void _onSendComment() {
+  Future<void> _onSendComment() async {
     final text = _commentController.text.trim();
-    final photoFileNames =
-        _currentComposerPhotos().map((photo) => photo.fileName).toList();
-    if (text.isEmpty && photoFileNames.isEmpty) return;
+    final photo = _selectedPhoto;
+    if ((text.isEmpty && photo == null) || _isSubmitting) return;
     final parentCommentId = _currentReplyTargetId();
 
-    _bloc.add(
-      HomeEvent.addComment(
-        postId: widget.post.id,
-        content: text,
-        parentCommentId: parentCommentId,
+    setState(() {
+      _isSubmitting = true;
+      _composerError = null;
+    });
+
+    MediaAttachmentRequest? uploadedMedia;
+    if (photo != null) {
+      final uploadResult = await _bloc.uploadCommentMediaDirect(
+        UploadFeedMediaRequest(
+          bytes: photo.bytes,
+          fileName: photo.fileName,
+        ),
+      );
+      String? uploadError;
+      uploadResult.fold(
+        (error) => uploadError = error.message,
+        (media) => uploadedMedia = media,
+      );
+      if (uploadError != null) {
+        if (!mounted) return;
+        setState(() {
+          _isSubmitting = false;
+          _composerError = uploadError;
+        });
+        return;
+      }
+    }
+
+    final createResult = await _bloc.createPostCommentDirect(
+      widget.post.id,
+      CreateCommentRequest(
+        parentId: parentCommentId,
+        contentText: text,
+        mediaAttachments: uploadedMedia == null ? const [] : [uploadedMedia!],
       ),
     );
-    _replyTargetId = null;
-    if (parentCommentId != null) {
-      _bloc.add(const HomeEvent.setReplyTarget(null));
+    String? createError;
+    createResult.fold(
+      (error) => createError = error.message,
+      (_) {},
+    );
+
+    if (!mounted) return;
+    if (createError != null) {
+      setState(() {
+        _isSubmitting = false;
+        _composerError = createError;
+      });
+      return;
     }
+
+    setState(() {
+      _replyTargetId = null;
+      _selectedPhoto = null;
+      _isSubmitting = false;
+      _composerError = null;
+    });
+    _bloc.add(const HomeEvent.setReplyTarget(null));
     _commentController.clear();
   }
 
@@ -271,13 +336,21 @@ class _PostCommentsBottomSheetState extends State<PostCommentsBottomSheet> {
                             onSend: _onSendComment,
                             onPickPhoto: _pickPhoto,
                             replyToUsername: replyTarget?.username,
-                            composerPhotos: viewModel.composerPhotos,
-                            onRemovePhoto: (fileName) {
-                              _bloc.add(
-                                HomeEvent.removeCommentPhoto(fileName),
-                              );
+                            composerPhotos: _currentComposerPhotos(),
+                            isSubmitting: _isSubmitting,
+                            canSend:
+                                _commentController.text.trim().isNotEmpty ||
+                                    _selectedPhoto != null,
+                            errorText: _composerError,
+                            onRemovePhoto: (_) {
+                              if (_isSubmitting) return;
+                              setState(() {
+                                _selectedPhoto = null;
+                                _composerError = null;
+                              });
                             },
                             onCancelReply: () {
+                              if (_isSubmitting) return;
                               _replyTargetId = null;
                               _bloc.add(const HomeEvent.setReplyTarget(null));
                             },
@@ -708,16 +781,22 @@ class _CommentInputBar extends StatelessWidget {
     required this.onPickPhoto,
     required this.composerPhotos,
     required this.onRemovePhoto,
+    required this.isSubmitting,
+    required this.canSend,
+    this.errorText,
     this.replyToUsername,
     this.onCancelReply,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
-  final VoidCallback onSend;
+  final Future<void> Function() onSend;
   final VoidCallback onPickPhoto;
   final List<CommentComposerPhoto> composerPhotos;
   final ValueChanged<String> onRemovePhoto;
+  final bool isSubmitting;
+  final bool canSend;
+  final String? errorText;
   final String? replyToUsername;
   final VoidCallback? onCancelReply;
 
@@ -738,17 +817,51 @@ class _CommentInputBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (hasReply) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Replying to @$replyToUsername',
+                    style: TextStyles.bodyMain.copyWith(
+                      color: const Color(0xFFE6E6E6),
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Cancel reply',
+                  onPressed: isSubmitting ? null : onCancelReply,
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    size: 18,
+                    color: Color(0xFFA3A3A3),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+          ],
           Row(
             children: [
-              GestureDetector(
-                onTap: onPickPhoto,
+              InkWell(
+                onTap: isSubmitting ? null : onPickPhoto,
+                borderRadius: BorderRadius.circular(6),
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: Colors.white),
+                    border: Border.all(
+                      color: isSubmitting ? Colors.white38 : Colors.white,
+                    ),
                   ),
-                  child: Assets.icons.plusIcon.svg(),
+                  child: Assets.icons.plusIcon.svg(
+                    colorFilter: ColorFilter.mode(
+                      isSubmitting ? Colors.white38 : Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                  ),
                 ),
               ),
               Expanded(
@@ -800,14 +913,19 @@ class _CommentInputBar extends StatelessWidget {
                               focusedErrorBorder: InputBorder.none,
                               contentPadding: EdgeInsets.zero,
                               hintText: hasReply
-                                  ? 'Replying to $replyToUsername'
+                                  ? 'Write a reply...'
                                   : 'Add a comment...',
                               hintStyle: TextStyles.bodyMain.copyWith(
                                 color: const Color(0xFF8C8C8C),
                                 fontSize: 14,
                               ),
                             ),
-                            onSubmitted: (_) => onSend(),
+                            enabled: !isSubmitting,
+                            onSubmitted: (_) {
+                              if (canSend && !isSubmitting) {
+                                onSend();
+                              }
+                            },
                           ),
                         ),
                       ),
@@ -822,12 +940,50 @@ class _CommentInputBar extends StatelessWidget {
                   ),
                 ),
               ),
-              GestureDetector(
-                onTap: onSend,
-                child: Assets.icons.sendIcon.svg(),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 160),
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: canSend && !isSubmitting
+                      ? Colors.white
+                      : const Color(0xFF2A2A2A),
+                  shape: BoxShape.circle,
+                ),
+                child: isSubmitting
+                    ? const Padding(
+                        padding: EdgeInsets.all(9),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white70,
+                        ),
+                      )
+                    : IconButton(
+                        padding: EdgeInsets.zero,
+                        tooltip: hasReply ? 'Send reply' : 'Send comment',
+                        onPressed: canSend ? onSend : null,
+                        icon: Icon(
+                          Icons.send_rounded,
+                          size: 19,
+                          color: canSend ? Colors.black : Colors.white30,
+                        ),
+                      ),
               ),
             ].addGap(13),
           ),
+          if (errorText != null && errorText!.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                errorText!,
+                style: TextStyles.bodyMain.copyWith(
+                  color: const Color(0xFFE5484D),
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

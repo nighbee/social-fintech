@@ -62,14 +62,16 @@ class _LoginCodePageState extends State<LoginCodePage> {
                   loading: () {},
                   loadingFailure: (message) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(message), backgroundColor: Colors.red),
+                      SnackBar(
+                          content: Text(message), backgroundColor: Colors.red),
                     );
                   },
                   goRegister: () {
-                    final firebaseIdToken = context
-                        .read<AuthBloc>()
-                        .viewModel
-                        .firebaseIdToken;
+                    if (!(ModalRoute.of(context)?.isCurrent ?? false)) {
+                      return;
+                    }
+                    final firebaseIdToken =
+                        context.read<AuthBloc>().viewModel.firebaseIdToken;
                     context.pushNamed(
                       RouteNames.info,
                       extra: {
@@ -134,18 +136,19 @@ class _LoginCodePageState extends State<LoginCodePage> {
                             onTap: () {
                               if (_code.length == 6) {
                                 context.read<AuthBloc>().add(
-                                  AuthEvent.verifyOtpCode(
-                                    verificationId: widget.verificationId,
-                                    code: _code,
-                                    isLogin: widget.isLogin,
-                                  ),
-                                );
+                                      AuthEvent.verifyOtpCode(
+                                        verificationId: widget.verificationId,
+                                        code: _code,
+                                        isLogin: widget.isLogin,
+                                      ),
+                                    );
                               }
                             },
                           ),
                           Gap(20),
                           SizedBox(
-                            height: MediaQuery.of(context).viewInsets.bottom + 20,
+                            height:
+                                MediaQuery.of(context).viewInsets.bottom + 20,
                           ),
                         ],
                       ),

@@ -84,6 +84,7 @@ class _PostReportFlowSheetState extends State<_PostReportFlowSheet> {
     instanceName: 'ProfileRepositoryImpl',
   );
   PostReportReason? _selectedReason;
+  bool _reportSubmitted = false;
   bool _isSubmitting = false;
   String? _errorText;
 
@@ -94,10 +95,12 @@ class _PostReportFlowSheetState extends State<_PostReportFlowSheet> {
         normalized.contains('already reported');
   }
 
-  Future<void> _submitReport(PostReportReason reason) async {
+  Future<void> _submitReport() async {
     if (_isSubmitting) {
       return;
     }
+    final reason = _selectedReason;
+    if (reason == null) return;
 
     setState(() {
       _isSubmitting = true;
@@ -117,7 +120,7 @@ class _PostReportFlowSheetState extends State<_PostReportFlowSheet> {
       (error) {
         if (_isDuplicateReportError(error.message)) {
           setState(() {
-            _selectedReason = reason;
+            _reportSubmitted = true;
             _isSubmitting = false;
             _errorText = null;
           });
@@ -131,7 +134,7 @@ class _PostReportFlowSheetState extends State<_PostReportFlowSheet> {
       },
       (_) {
         setState(() {
-          _selectedReason = reason;
+          _reportSubmitted = true;
           _isSubmitting = false;
           _errorText = null;
         });
@@ -197,7 +200,27 @@ class _PostReportFlowSheetState extends State<_PostReportFlowSheet> {
       return _PostReportReasonSheet(
         isSubmitting: _isSubmitting,
         errorText: _errorText,
-        onReasonTap: _submitReport,
+        onReasonTap: (reason) {
+          setState(() {
+            _selectedReason = reason;
+            _errorText = null;
+          });
+        },
+      );
+    }
+
+    if (!_reportSubmitted) {
+      return _PostReportConfirmationSheet(
+        reason: _selectedReason!,
+        errorText: _errorText,
+        isSubmitting: _isSubmitting,
+        onSubmitTap: _submitReport,
+        onCancelTap: () {
+          setState(() {
+            _selectedReason = null;
+            _errorText = null;
+          });
+        },
       );
     }
 
@@ -220,7 +243,7 @@ class _PostReportReasonSheet extends StatelessWidget {
     this.errorText,
   });
 
-  final Future<void> Function(PostReportReason reason) onReasonTap;
+  final ValueChanged<PostReportReason> onReasonTap;
   final bool isSubmitting;
   final String? errorText;
 
@@ -297,6 +320,118 @@ class _PostReportReasonSheet extends StatelessWidget {
                     height: 22,
                     child: CircularProgressIndicator(strokeWidth: 2))),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PostReportConfirmationSheet extends StatelessWidget {
+  const _PostReportConfirmationSheet({
+    required this.reason,
+    required this.errorText,
+    required this.isSubmitting,
+    required this.onSubmitTap,
+    required this.onCancelTap,
+  });
+
+  final PostReportReason reason;
+  final String? errorText;
+  final bool isSubmitting;
+  final Future<void> Function() onSubmitTap;
+  final VoidCallback onCancelTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 52,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Submit this report?',
+            textAlign: TextAlign.center,
+            style: TextStyles.titleHeadline.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Selected reason: ${reason.label}',
+            textAlign: TextAlign.center,
+            style: TextStyles.bodyMain.copyWith(
+              color: const Color(0xFFA3A3A3),
+              height: 1.35,
+            ),
+          ),
+          if (errorText != null && errorText!.trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF5F1D1D),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF9A4747)),
+              ),
+              child: Text(
+                errorText!,
+                style: TextStyles.bodyMain.copyWith(
+                  color: const Color(0xFFFFE0E0),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: isSubmitting ? null : onSubmitTap,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(46),
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              disabledBackgroundColor: Colors.white24,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            child: isSubmitting
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white70,
+                    ),
+                  )
+                : const Text('Submit report'),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: isSubmitting ? null : onCancelTap,
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(46),
+              side: BorderSide(
+                color: Colors.white.withValues(alpha: 0.35),
+              ),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(6),
+              ),
+            ),
+            child: const Text('Cancel'),
+          ),
         ],
       ),
     );
