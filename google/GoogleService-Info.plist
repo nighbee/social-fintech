@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>561457994081-jf9c6nj0ag5sfkl73id6ad2hgck8mp5u.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.561457994081-jf9c6nj0ag5sfkl73id6ad2hgck8mp5u</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>561457994081-b195ql62k5jtrbtqktu31r2h5ti14rec.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBxAvv0ZSTudtnqiPZkrbCVudn8p_sEvoE</string>
+	<key>GCM_SENDER_ID</key>
+	<string>561457994081</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.brightbund.brightbundapp</string>
+	<key>PROJECT_ID</key>
+	<string>brightbund-7784f</string>
+	<key>STORAGE_BUCKET</key>
+	<string>brightbund-7784f.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:561457994081:ios:c350ee3d6e12fe2f2b4d20</string>
+</dict>
+</plist>

@@ -1,0 +1,179 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.back {
+  font-size: 14px;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.authorRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.authorAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  object-fit: cover;
+}
+
+.authorName {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.authorUsername {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.caption {
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+}
+
+.mediaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.mediaItem {
+  width: 100%;
+  border-radius: 4px;
+  object-fit: cover;
+  max-height: 300px;
+  background: #f0f0f0;
+}
+
+.metrics {
+  display: flex;
+  gap: 24px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.metric {
+  font-size: 14px;
+}
+
+.metricLabel {
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.metricValue {
+  font-weight: 600;
+}
+
+.deleteBtn {
+  padding: 8px 20px;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.deleteBtn:hover {
+  background: #a80000;
+}
+
+.deleteBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.msg {
+  font-size: 14px;
+  padding: 4px 12px;
+  border-radius: var(--radius);
+}
+
+.success {
+  background: #e6f9e6;
+  color: var(--success);
+}
+
+.error {
+  background: #fff0f0;
+  color: var(--danger);
+}
+
+.commentItem {
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.commentItem:last-child {
+  border-bottom: none;
+}
+
+.commentAuthor {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.commentText {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.commentMeta {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  gap: 16px;
+}
+
+.commentDeleteBtn {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 12px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.commentDeleteBtn:hover {
+  text-decoration: underline;
+}
