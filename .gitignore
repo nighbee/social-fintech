@@ -20,3 +20,5 @@ backend/.env
 backend/firebase-service-account.json
 .claude/
 .cursor/
+/spa/ 
+GEMINI.md
