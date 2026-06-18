@@ -261,6 +261,10 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./account-deletion-info.html:/usr/share/nginx/html/account-deletion.html:ro
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./privacy.html:/usr/share/nginx/html/privacy.html:ro
+      - ./terms.html:/usr/share/nginx/html/terms.html:ro
+      - ./404.html:/usr/share/nginx/html/404.html:ro
       - ./nginx/logs:/var/log/nginx
       - ./spa/dist:/usr/share/nginx/html/admin:ro
     depends_on:

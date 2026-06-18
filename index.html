@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrightBund — High-Integrity Social Graph & Economy</title>
+    <meta name="description" content="BrightBund is a geo-aware, high-integrity social platform built with double-entry ledger security, anti-doomscroll pacing, and progression ranks.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2fe;
+            --secondary: #7000ff;
+            --bg: #0a0a0c;
+            --surface: #131317;
+            --surface-hover: #1c1c24;
+            --text: #f0f0f2;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --accent-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            --glow: 0 0 20px rgba(0, 242, 254, 0.15);
+            --glow-purple: 0 0 25px rgba(112, 0, 255, 0.25);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background: rgba(10, 10, 12, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: var(--glow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--text);
+        }
+
+        .nav-btn {
+            background: var(--accent-gradient);
+            color: #fff;
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--glow-purple);
+        }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background-color: var(--text);
+            margin: 5px 0;
+            transition: 0.3s;
+        }
+
+        /* Hero Section */
+        .hero {
+            position: relative;
+            padding: 10rem 1.5rem 6rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 90vh;
+            justify-content: center;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(112, 0, 255, 0.08) 0%, rgba(0, 242, 254, 0.03) 50%, rgba(0,0,0,0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 2rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hero-badge-dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 10px var(--primary); }
+            100% { transform: scale(0.9); opacity: 0.6; }
+        }
+
+        .hero h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+            margin-bottom: 1.5rem;
+            max-width: 900px;
+        }
+
+        .gradient-text {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline-block;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 650px;
+            margin-bottom: 3rem;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 1.25rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.875rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+            cursor: pointer;
+        }
+
+        .cta-primary {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(112, 0, 255, 0.2);
+        }
+
+        .cta-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--glow-purple);
+        }
+
+        .cta-secondary {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .cta-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* Section Global */
+        .section-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 6rem 1.5rem;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Bento Grid */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .bento-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .bento-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0) 100%);
+            pointer-events: none;
+        }
+
+        .bento-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(0, 242, 254, 0.3);
+            box-shadow: var(--glow);
+        }
+
+        .bento-card.col-span-2 {
+            grid-column: span 2;
+        }
+
+        .bento-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: rgba(0, 242, 254, 0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(0, 242, 254, 0.1);
+        }
+
+        .bento-card:nth-child(even) .bento-icon {
+            background: rgba(112, 0, 255, 0.05);
+            color: #b070ff;
+            border-color: rgba(112, 0, 255, 0.1);
+        }
+
+        .bento-card h3 {
+            font-size: 1.35rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+        }
+
+        .bento-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* Widgets Area Grid */
+        .widget-section {
+            background: radial-gradient(100% 100% at top right, rgba(112, 0, 255, 0.05) 0%, rgba(0,0,0,0) 60%);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .widgets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        /* Rank Viewer Widget */
+        .widget-container {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+        }
+
+        .widget-title {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .widget-title::before {
+            content: '';
+            width: 4px;
+            height: 1.5rem;
+            background: var(--accent-gradient);
+            border-radius: 2px;
+        }
+
+        .rank-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+
+        .rank-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            padding: 0.75rem;
+            border-radius: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .rank-btn:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            color: var(--text);
+        }
+
+        .rank-btn.active {
+            background: rgba(0, 242, 254, 0.06);
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: var(--glow);
+        }
+
+        .rank-display-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 1.5rem;
+            border-radius: 16px;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .rank-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .rank-name {
+            font-size: 1.25rem;
+            color: var(--text);
+            font-weight: 700;
+        }
+
+        .rank-badge {
+            background: var(--accent-gradient);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+        }
+
+        .rank-desc {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .rank-requirements {
+            font-size: 0.85rem;
+            color: var(--primary);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Ledger Simulator Widget */
+        .ledger-simulator {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .simulator-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .simulator-btn {
+            flex: 1;
+            padding: 0.875rem;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent-gradient);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .simulator-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--glow-purple);
+        }
+
+        .ledger-flow {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            min-height: 250px;
+            justify-content: center;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            opacity: 0.4;
+            transition: all 0.3s ease;
+        }
+
+        .flow-step.active {
+            opacity: 1;
+            background: rgba(0, 242, 254, 0.05);
+            border-color: var(--primary);
+            transform: scale(1.02);
+        }
+
+        .flow-step.completed {
+            opacity: 0.8;
+            border-color: rgba(112, 0, 255, 0.3);
+            background: rgba(112, 0, 255, 0.02);
+        }
+
+        .flow-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #27272a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+        }
+
+        .flow-step.active .flow-icon {
+            background: var(--accent-gradient);
+        }
+
+        .flow-step.completed .flow-icon {
+            background: var(--secondary);
+        }
+
+        .flow-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            background: #070709;
+            padding: 4rem 1.5rem 2rem;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .footer-brand p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            max-width: 320px;
+        }
+
+        .footer-links-col h4 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05rem;
+            margin-bottom: 1.25rem;
+            color: var(--text);
+        }
+
+        .footer-links-col ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .footer-links-col a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links-col a:hover {
+            color: var(--text);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 1024px) {
+            .bento-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .bento-card.col-span-2 {
+                grid-column: span 2;
+            }
+            .widgets-grid {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.75rem;
+            }
+            .bento-grid {
+                grid-template-columns: 1fr;
+            }
+            .bento-card.col-span-2 {
+                grid-column: span 1;
+            }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: #0a0a0c;
+                border-bottom: 1px solid var(--border);
+                flex-direction: column;
+                padding: 1.5rem;
+                gap: 1.25rem;
+                box-shadow: 0 10px 15px rgba(0,0,0,0.5);
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            .hamburger {
+                display: block;
+            }
+            .footer-container {
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .footer-container {
+                grid-template-columns: 1fr;
+            }
+            .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+            .rank-selector {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                BrightBund<span class="logo-dot"></span>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Toggle Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-links" id="nav-links">
+                <li><a href="/" class="active">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#ranks">Progression</a></li>
+                <li><a href="/privacy">Privacy Policy</a></li>
+                <li><a href="/terms">Terms of Service</a></li>
+                <li><a href="/account-deletion">Account Deletion</a></li>
+                <li><a href="/admin" class="nav-btn">Admin Portal</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="hero-badge">
+            <span class="hero-badge-dot"></span> App Store Compliant Suite
+        </div>
+        <h1>Economic Security Meets <br><span class="gradient-text">Social Discovery</span></h1>
+        <p>BrightBund is a modular, high-integrity social platform utilizing double-entry bookkeeping ledgers, PostGIS task routing, and anti-abuse safeguards to protect the social graph.</p>
+        <div class="hero-ctas">
+            <a href="#features" class="cta-btn cta-primary">Explore Platform Features</a>
+            <a href="/account-deletion" class="cta-btn cta-secondary">Account Controls</a>
+        </div>
+    </header>
+
+    <!-- Bento Grid Features Section -->
+    <section class="section-container" id="features">
+        <div class="section-header">
+            <h2>Crafted For System Integrity</h2>
+            <p>Engineered with server-side safety checks, ledger accounting, and anti-farming protocols.</p>
+        </div>
+        <div class="bento-grid">
+            <!-- Feature 1 -->
+            <div class="bento-card col-span-2">
+                <div class="bento-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                </div>
+                <h3>Ledger-Based Transaction Security</h3>
+                <p>All Silver & Gold Seal currency transfers are guarded by an immutable, server-controlled double-entry bookkeeping ledger system. We enforce strict database-level ACID transactions to ensure zero inflation, prevent double-spending, and isolate virtual transfers.</p>
+            </div>
+            <!-- Feature 2 -->
+            <div class="bento-card">
+                <div class="bento-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </div>
+                <h3>Anti-Doomscroll Feed degradation</h3>
+                <p>Our backend monitors session durations in real time. Browsing past 20 minutes triggers natural latency increases and organic content degradation to protect mental health and encourage offline productivity.</p>
+            </div>
+            <!-- Feature 3 -->
+            <div class="bento-card">
+                <div class="bento-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+                </div>
+                <h3>PostGIS Geospatial Routing</h3>
+                <p>Discover real-world tasks and interactions directly on an interactive map. Utilizing spatial indexing and geo-radius optimization, coordinate queries complete within milliseconds.</p>
+            </div>
+            <!-- Feature 4 -->
+            <div class="bento-card col-span-2">
+                <div class="bento-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                </div>
+                <h3>High-Integrity Social Graph Progression</h3>
+                <p>Recalculated asynchronously via background worker nodes. Tiers represent real participation and anti-abuse score thresholds. High-value privileges and tasks are locked behind validated reputation stages.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Widgets Section -->
+    <section class="widget-section" id="ranks">
+        <div class="section-container">
+            <div class="widgets-grid">
+                
+                <!-- Left Widget: Rank Progression -->
+                <div class="widget-container">
+                    <h3 class="widget-title">Reputation Ranks Progression</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">Select a tier to explore required milestones and system access rewards.</p>
+                    
+                    <div class="rank-selector">
+                        <button class="rank-btn active" onclick="selectRank('quartz')">Quartz</button>
+                        <button class="rank-btn" onclick="selectRank('bronze')">Bronze</button>
+                        <button class="rank-btn" onclick="selectRank('silver')">Silver</button>
+                        <button class="rank-btn" onclick="selectRank('gold')">Gold</button>
+                        <button class="rank-btn" onclick="selectRank('platinum')">Platinum</button>
+                        <button class="rank-btn" onclick="selectRank('sovereign')">Sovereign</button>
+                    </div>
+
+                    <div class="rank-display-card">
+                        <div class="rank-header">
+                            <span class="rank-name" id="display-rank-name">Quartz Rank</span>
+                            <span class="rank-badge" id="display-rank-badge">Entry Tier</span>
+                        </div>
+                        <p class="rank-desc" id="display-rank-desc">The entry-level status for newly registered users. Allows full access to basic chat and public map task viewing.</p>
+                        <div class="rank-requirements">
+                            <span>Requirements: Account Creation</span>
+                            <span style="color: var(--secondary);" id="display-rank-reward">Reward: Post creation & comment access</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Widget: Ledger Flow Simulator -->
+                <div class="widget-container">
+                    <h3 class="widget-title">Ledger Transaction Simulator</h3>
+                    <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">Trigger a simulated economic transfer to verify backend consensus flow.</p>
+                    
+                    <div class="ledger-simulator">
+                        <div class="simulator-actions">
+                            <button class="simulator-btn" onclick="runSimulation()">Initiate 50 Silver Seals Transfer</button>
+                        </div>
+
+                        <div class="ledger-flow">
+                            <!-- Step 1 -->
+                            <div class="flow-step" id="step-rate-limit">
+                                <div class="flow-icon">1</div>
+                                <div>
+                                    <div class="flow-text">Rate Limiting check</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Redis checking IP & token requests limits</div>
+                                </div>
+                            </div>
+                            <!-- Step 2 -->
+                            <div class="flow-step" id="step-balance">
+                                <div class="flow-icon">2</div>
+                                <div>
+                                    <div class="flow-text">Double-Entry Ledger Integrity</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">Atomic lock verification of debit/credit accounts</div>
+                                </div>
+                            </div>
+                            <!-- Step 3 -->
+                            <div class="flow-step" id="step-commit">
+                                <div class="flow-icon">3</div>
+                                <div>
+                                    <div class="flow-text">Consensus Commit & Write</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted);">PostgreSQL logs appended securely in transaction</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>BrightBund</h3>
+                <p>Protecting the economic security and anti-abuse architecture of the social web.</p>
+            </div>
+            <div class="footer-links-col">
+                <h4>Platform</h4>
+                <ul>
+                    <li><a href="#features">Features</a></li>
+                    <li><a href="#ranks">Ranks Progression</a></li>
+                    <li><a href="/admin">Admin Portal</a></li>
+                </ul>
+            </div>
+            <div class="footer-links-col">
+                <h4>Compliance</h4>
+                <ul>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/account-deletion">Account Deletion</a></li>
+                </ul>
+            </div>
+            <div class="footer-links-col">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="mailto:support@brightbund.com">Contact Support</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 BrightBund. All rights reserved.</p>
+            <p>Designed for Google Play Data Safety Compliance.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Hamburger Menu Logic
+        const hamburger = document.getElementById('hamburger');
+        const navLinks = document.getElementById('nav-links');
+
+        hamburger.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            hamburger.querySelectorAll('span').forEach((bar, idx) => {
+                if (navLinks.classList.contains('open')) {
+                    if (idx === 0) bar.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                    if (idx === 1) bar.style.opacity = '0';
+                    if (idx === 2) bar.style.transform = 'rotate(-45deg) translate(6px, -6px)';
+                } else {
+                    bar.style.transform = 'none';
+                    bar.style.opacity = '1';
+                }
+            });
+        });
+
+        // Ranks Data
+        const ranksData = {
+            quartz: {
+                name: 'Quartz Rank',
+                badge: 'Entry Tier',
+                desc: 'The entry-level status for newly registered users. Allows full access to basic chat and public map task viewing.',
+                reqs: 'Requirements: Account Creation',
+                reward: 'Reward: Post creation & comment access'
+            },
+            bronze: {
+                name: 'Bronze Rank',
+                badge: 'Active User',
+                desc: 'Earned by completing introductory tasks and confirming user verification nodes.',
+                reqs: 'Requirements: 5 Completed Tasks, 100 Silver Seals spent',
+                reward: 'Reward: Creation of custom map tasks'
+            },
+            silver: {
+                name: 'Silver Rank',
+                badge: 'Trusted Ally',
+                desc: 'Awarded to users demonstrating consistent positive participation. Expands the local geo-radius search limits.',
+                reqs: 'Requirements: 20 completed tasks, 5 active days',
+                reward: 'Reward: +20% radius task querying limit'
+            },
+            gold: {
+                name: 'Gold Rank',
+                badge: 'Eminent Peer',
+                desc: 'A prominent reputation rank with access to high-value daily reward pools and localized community voting.',
+                reqs: 'Requirements: 50 Gold Seals earned, 0 anti-abuse flag counts',
+                reward: 'Reward: Global Leaderboard listing eligibility'
+            },
+            platinum: {
+                name: 'Platinum Rank',
+                badge: 'Sentinel Network',
+                desc: 'Reserved for veteran stewards. Grants basic post reporting moderation permissions and queue priority.',
+                reqs: 'Requirements: 200 Gold Seals, 50 verification audits',
+                reward: 'Reward: Moderate community post queues'
+            },
+            sovereign: {
+                name: 'Sovereign Rank',
+                badge: 'System Guardian',
+                desc: 'The peak social graph prestige tier. Sovereign status provides veto power on disputed tasks and consensus governance weight.',
+                reqs: 'Requirements: 1000 Gold Seals, top 1% season rating',
+                reward: 'Reward: Direct governance veto capability'
+            }
+        };
+
+        function selectRank(key) {
+            // Update active button state
+            const buttons = document.querySelectorAll('.rank-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.innerText.toLowerCase() === key) {
+                    btn.classList.add('active');
+                }
+            });
+
+            // Update display fields
+            const data = ranksData[key];
+            document.getElementById('display-rank-name').innerText = data.name;
+            document.getElementById('display-rank-badge').innerText = data.badge;
+            document.getElementById('display-rank-desc').innerText = data.desc;
+            document.getElementById('display-rank-reward').previousElementSibling.innerText = data.reqs;
+            document.getElementById('display-rank-reward').innerText = data.reward;
+        }
+
+        // Ledger Simulator Logic
+        let simRunning = false;
+        function runSimulation() {
+            if (simRunning) return;
+            simRunning = true;
+
+            const step1 = document.getElementById('step-rate-limit');
+            const step2 = document.getElementById('step-balance');
+            const step3 = document.getElementById('step-commit');
+
+            // Reset classes
+            [step1, step2, step3].forEach(s => {
+                s.className = 'flow-step';
+            });
+
+            // Start step 1
+            setTimeout(() => {
+                step1.classList.add('active');
+            }, 100);
+
+            // Transition step 1 -> step 2
+            setTimeout(() => {
+                step1.classList.remove('active');
+                step1.classList.add('completed');
+                step2.classList.add('active');
+            }, 1200);
+
+            // Transition step 2 -> step 3
+            setTimeout(() => {
+                step2.classList.remove('active');
+                step2.classList.add('completed');
+                step3.classList.add('active');
+            }, 2400);
+
+            // Transition step 3 -> Success
+            setTimeout(() => {
+                step3.classList.remove('active');
+                step3.classList.add('completed');
+                
+                // Temporary success state indicator
+                const simBtn = document.querySelector('.simulator-btn');
+                const origText = simBtn.innerText;
+                simBtn.innerText = 'Consensus Committed ✔';
+                simBtn.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+                simBtn.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.4)';
+
+                setTimeout(() => {
+                    // Reset simulator
+                    simBtn.innerText = origText;
+                    simBtn.style.background = '';
+                    simBtn.style.boxShadow = '';
+                    [step1, step2, step3].forEach(s => {
+                        s.className = 'flow-step';
+                    });
+                    simRunning = false;
+                }, 2000);
+
+            }, 3600);
+        }
+    </script>
+</body>
+</html>

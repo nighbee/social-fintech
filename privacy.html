@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy — BrightBund</title>
+    <meta name="description" content="Privacy Policy for the BrightBund social platform. Details data safety, PostGIS coordinates storage, and double-entry ledger audits.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f2fe;
+            --secondary: #7000ff;
+            --bg: #0a0a0c;
+            --surface: #131317;
+            --surface-hover: #1c1c24;
+            --text: #f0f0f2;
+            --text-muted: #94a3b8;
+            --border: #27272a;
+            --accent-gradient: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            --glow: 0 0 20px rgba(0, 242, 254, 0.15);
+            --glow-purple: 0 0 25px rgba(112, 0, 255, 0.25);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            background: rgba(10, 10, 12, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-decoration: none;
+            letter-spacing: -0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            box-shadow: var(--glow);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--text);
+        }
+
+        .nav-btn {
+            background: var(--accent-gradient);
+            color: #fff;
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 24px;
+            height: 2px;
+            background-color: var(--text);
+            margin: 5px 0;
+            transition: 0.3s;
+        }
+
+        /* Hero / Header Page */
+        .page-header {
+            padding: 10rem 1.5rem 4rem;
+            background: linear-gradient(180deg, rgba(112, 0, 255, 0.05) 0%, rgba(0,0,0,0) 100%);
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-header h1 {
+            font-size: 3rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        /* Layout with Sticky Sidebar */
+        .content-layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 4rem;
+            align-items: start;
+        }
+
+        .sidebar {
+            position: sticky;
+            top: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .sidebar h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .sidebar-link {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.95rem;
+            padding: 0.5rem 0.75rem;
+            border-left: 2px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .sidebar-link:hover {
+            color: var(--text);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-link.active {
+            color: var(--primary);
+            border-color: var(--primary);
+            font-weight: 600;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 3.5rem;
+        }
+
+        .policy-section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        .policy-section p {
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+            font-size: 1.05rem;
+            line-height: 1.7;
+        }
+
+        .policy-section ul {
+            margin-left: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .policy-section li strong {
+            color: var(--text);
+        }
+
+        .highlight-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .highlight-box h4 {
+            color: var(--primary);
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .highlight-box p {
+            margin-bottom: 0;
+            font-size: 0.95rem;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            background: #070709;
+            padding: 4rem 1.5rem 2rem;
+        }
+
+        .footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .footer-brand p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            max-width: 320px;
+        }
+
+        .footer-links-col h4 {
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05rem;
+            margin-bottom: 1.25rem;
+            color: var(--text);
+        }
+
+        .footer-links-col ul {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .footer-links-col a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .footer-links-col a:hover {
+            color: var(--text);
+        }
+
+        .footer-bottom {
+            max-width: 1200px;
+            margin: 0 auto;
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 900px) {
+            .content-layout {
+                grid-template-columns: 1fr;
+                gap: 2.5rem;
+            }
+            .sidebar {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .page-header h1 {
+                font-size: 2.5rem;
+            }
+            .nav-links {
+                display: none;
+                position: absolute;
+                top: 100%;
+                left: 0;
+                width: 100%;
+                background: #0a0a0c;
+                border-bottom: 1px solid var(--border);
+                flex-direction: column;
+                padding: 1.5rem;
+                gap: 1.25rem;
+                box-shadow: 0 10px 15px rgba(0,0,0,0.5);
+            }
+            .nav-links.open {
+                display: flex;
+            }
+            .hamburger {
+                display: block;
+            }
+            .footer-container {
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .footer-container {
+                grid-template-columns: 1fr;
+            }
+            .footer-bottom {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Navbar -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="logo">
+                BrightBund<span class="logo-dot"></span>
+            </a>
+            <button class="hamburger" id="hamburger" aria-label="Toggle Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+            <ul class="nav-links" id="nav-links">
+                <li><a href="/">Home</a></li>
+                <li><a href="/#features">Features</a></li>
+                <li><a href="/#ranks">Progression</a></li>
+                <li><a href="/privacy" class="active">Privacy Policy</a></li>
+                <li><a href="/terms">Terms of Service</a></li>
+                <li><a href="/account-deletion">Account Deletion</a></li>
+                <li><a href="/admin" class="nav-btn">Admin Portal</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Page Title -->
+    <header class="page-header">
+        <h1>Privacy Policy</h1>
+        <p>Effective Date: June 18, 2026. Last Updated: June 18, 2026</p>
+    </header>
+
+    <!-- Layout with Sticky Sidebar & Main Content -->
+    <main class="content-layout">
+        
+        <aside class="sidebar">
+            <h3>Sections</h3>
+            <a href="#intro" class="sidebar-link active">1. Scope & Overview</a>
+            <a href="#collection" class="sidebar-link">2. Data We Collect</a>
+            <a href="#usage" class="sidebar-link">3. How We Use Data</a>
+            <a href="#sharing" class="sidebar-link">4. Sharing Disclosures</a>
+            <a href="#retention" class="sidebar-link">5. Data Retention</a>
+            <a href="#rights" class="sidebar-link">6. Your Privacy Rights</a>
+            <a href="#contact" class="sidebar-link">7. Support & Contact</a>
+        </aside>
+
+        <div class="main-content">
+            
+            <!-- Section 1 -->
+            <section class="policy-section" id="intro">
+                <h2>1. Scope & Overview</h2>
+                <p>Welcome to BrightBund. We are committed to protecting the integrity of your personal details and system interactions. This Privacy Policy details how we gather, utilize, store, and safeguard your data when using the BrightBund mobile app or our online services.</p>
+                <p>BrightBund is designed as a Modular Monolith with server-controlled transaction verification. This architectural philosophy ensures that data remains locked on secure environments, minimizing the potential for interceptive leaks.</p>
+            </section>
+
+            <!-- Section 2 -->
+            <section class="policy-section" id="collection">
+                <h2>2. Data We Collect</h2>
+                <p>We process information required to maintain the economic safety, anti-abuse, and gamification layers of our platform:</p>
+                <ul>
+                    <li><strong>Account Identity Information:</strong> E-mail address, display username, password tokens, and avatar image managed securely via Firebase Authentication integration.</li>
+                    <li><strong>Ledger & Transaction Logs:</strong> An append-only record of Seal balances (wallet values, debit/credit transactions, and progression indices) for double-entry bookkeeping validation.</li>
+                    <li><strong>Geospatial Coordinates:</strong> PostGIS coordinates representing map tasks and location anchors. We only query location boundaries within local in-memory queries with your explicit permission. We do not track background user travel logs.</li>
+                    <li><strong>Device Telemetry:</strong> IP addresses, unique device identifiers, and hardware parameters to protect against automated farming and fake accounts.</li>
+                </ul>
+            </section>
+
+            <!-- Section 3 -->
+            <section class="policy-section" id="usage">
+                <h2>3. How We Use Data</h2>
+                <p>All processing is handled server-side to guarantee system integrity:</p>
+                <ul>
+                    <li><strong>Double-Entry Accounting:</strong> Validating transfer balances and preventing virtual inflation.</li>
+                    <li><strong>Geospatial Discovery:</strong> Serving task lists using PostGIS indexation ranges.</li>
+                    <li><strong>Anti-Abuse Engine:</strong> Running heuristics checks on device metadata and transaction frequency limits to detect circular manipulation.</li>
+                    <li><strong>Anti-Doomscroll pacing:</strong> Tracking active session durations in Redis to apply gradual feed degradation flag.</li>
+                </ul>
+            </section>
+
+            <!-- Section 4 -->
+            <section class="policy-section" id="sharing">
+                <h2>4. Sharing Disclosures</h2>
+                <p>BrightBund is built to protect your economic social graph. We do not sell or monetize personal data. We disclose your data only to trust-verified service layers necessary to run the infrastructure:</p>
+                <ul>
+                    <li><strong>Authentication Infrastructure:</strong> Firebase Auth layers to secure registration and token renewal.</li>
+                    <li><strong>Object Storage:</strong> Secure cloud storage buckets (MinIO/S3 compatible) containing user avatars and uploaded feed media.</li>
+                    <li><strong>Legal & Compliance:</strong> When required by regulatory, audit, or law enforcement bodies.</li>
+                </ul>
+            </section>
+
+            <!-- Section 5 -->
+            <section class="policy-section" id="retention">
+                <h2>5. Data Retention & Erasure</h2>
+                <p>We believe in data minimization and respect your right to deletion:</p>
+                <p>When you trigger account deletion via settings or manually:</p>
+                <ul>
+                    <li>Profile identities and credentials are revoked immediately.</li>
+                    <li>A 30-day grace period is activated for activity logs, media assets, and ledger references before permanent deletion, enabling recovery in case of accidental requests.</li>
+                </ul>
+                <div class="highlight-box">
+                    <h4>Audit Ledger Retention</h4>
+                    <p>Financial ledger statements and in-app purchase validation records may be kept beyond the 30-day window to comply with international tax, audit, and corporate integrity regulations.</p>
+                </div>
+            </section>
+
+            <!-- Section 6 -->
+            <section class="policy-section" id="rights">
+                <h2>6. Your Privacy Rights</h2>
+                <p>Depending on your jurisdiction (such as GDPR, CCPA, and COPPA mandates), you have full access to these choices:</p>
+                <ul>
+                    <li><strong>Right to Deletion:</strong> You can completely erase your data. The easiest way is to request it inside app settings or visit the dedicated portal: <a href="/account-deletion" style="color: var(--primary); text-decoration: none; font-weight: 600;">Account Deletion Portal</a>.</li>
+                    <li><strong>Right to Portability:</strong> Obtain an export copy of your account profile and ledger histories.</li>
+                    <li><strong>Right of Correction:</strong> Edit profiles directly inside the app.</li>
+                </ul>
+            </section>
+
+            <!-- Section 7 -->
+            <section class="policy-section" id="contact">
+                <h2>7. Support & Contact</h2>
+                <p>If you have any questions regarding this policy, or wish to submit manual data erasure requests, please contact our support representatives:</p>
+                <p>Email: <a href="mailto:support@brightbund.com" style="color: var(--primary); text-decoration: none; font-weight: 600;">support@brightbund.com</a></p>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <div class="footer-brand">
+                <h3>BrightBund</h3>
+                <p>Protecting the economic security and anti-abuse architecture of the social web.</p>
+            </div>
+            <div class="footer-links-col">
+                <h4>Platform</h4>
+                <ul>
+                    <li><a href="/#features">Features</a></li>
+                    <li><a href="/#ranks">Ranks Progression</a></li>
+                    <li><a href="/admin">Admin Portal</a></li>
+                </ul>
+            </div>
+            <div class="footer-links-col">
+                <h4>Compliance</h4>
+                <ul>
+                    <li><a href="/privacy">Privacy Policy</a></li>
+                    <li><a href="/terms">Terms of Service</a></li>
+                    <li><a href="/account-deletion">Account Deletion</a></li>
+                </ul>
+            </div>
+            <div class="footer-links-col">
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="mailto:support@brightbund.com">Contact Support</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 BrightBund. All rights reserved.</p>
+            <p>Designed for Google Play Data Safety Compliance.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Hamburger Menu Logic
+        const hamburger = document.getElementById('hamburger');
+        const navLinks = document.getElementById('nav-links');
+
+        hamburger.addEventListener('click', () => {
+            navLinks.classList.toggle('open');
+            hamburger.querySelectorAll('span').forEach((bar, idx) => {
+                if (navLinks.classList.contains('open')) {
+                    if (idx === 0) bar.style.transform = 'rotate(45deg) translate(5px, 5px)';
+                    if (idx === 1) bar.style.opacity = '0';
+                    if (idx === 2) bar.style.transform = 'rotate(-45deg) translate(6px, -6px)';
+                } else {
+                    bar.style.transform = 'none';
+                    bar.style.opacity = '1';
+                }
+            });
+        });
+
+        // Sidebar active link scroll observer
+        window.addEventListener('DOMContentLoaded', () => {
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    const id = entry.target.getAttribute('id');
+                    const link = document.querySelector(`.sidebar-link[href="#${id}"]`);
+                    if (!link) return;
+                    if (entry.intersectionRatio > 0) {
+                        document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+                        link.classList.add('active');
+                    }
+                });
+            }, { rootMargin: '-10% 0px -70% 0px' });
+
+            document.querySelectorAll('.policy-section').forEach(section => {
+                observer.observe(section);
+            });
+        });
+    </script>
+</body>
+</html>

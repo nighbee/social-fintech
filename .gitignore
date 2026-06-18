@@ -12,13 +12,16 @@ spa/routes.md
 spa/implementation-plan.md
 
 #backend
+/docs/ 
+.claude/
+.cursor/
+
+GEMINI.md 
+
+
 backend/.env 
 .env
 /google/
 /fail2ban/
-/docs/ 
 backend/firebase-service-account.json
-.claude/
-.cursor/
 /spa/ 
-GEMINI.md
