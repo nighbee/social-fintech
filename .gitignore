@@ -19,3 +19,9 @@ spa/implementation-plan.md
 GEMINI.md 
 
 
+backend/.env 
+.env
+/google/
+/fail2ban/
+backend/firebase-service-account.json
+/spa/ 
