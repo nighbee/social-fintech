@@ -33,7 +33,7 @@ func NewNoopEmailSender() *NoopEmailSender {
 }
 
 func (s *NoopEmailSender) Send(ctx context.Context, to, subject, body string) error {
-	log.Printf("email_placeholder to=%s subject=%q body=%q", to, subject, body)
+	log.Printf("email_placeholder to=%s subject=%q", to, subject)
 	return nil
 }
 
