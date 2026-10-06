@@ -1,0 +1,18 @@
+🖥️ Backend & Infrastructure Level Issues
+These issues are related to API endpoints, external service configurations (Firebase Console, Dynamic Links, SMTP servers), database rules, or missing business logic.
+
+Issue Description	Root Cause / Technical Context	Potential Severity
+Sign-in link sends "request action is invalid"
+Sign in просит почту, отправляет в почту письмо с ссылкой, которая выдает error.	Firebase Auth configuration mismatch. The link's action code settings (redirect URLs) do not match the deep link configuration or authorized domains in Firebase.	🔴 Critical
+Google Sign-In fails after selecting account
+Continue with Google: после выбора нужной почты выдает ошибку.	Missing/Incorrect SHA-1 fingerprint in Firebase. The Google OAuth client configuration requires the Android build's SHA-1 fingerprint to be registered in the Firebase Console.	🔴 Critical
+Phone number registration verification failed
+При регистрации через номер телефона выдает ошибку: verification failed.	APNs/FCM or Play Integrity/SafetyNet configuration issue. Firebase Phone Auth needs SafetyNet or Play Integrity configured on Android to bypass reCAPTCHA and send the SMS.	🔴 Critical
+Password change allowed without email verification
+Можно изменить пароль, не вводя имейл.	Missing Backend Validation. The backend endpoint for resetting or updating passwords lacks validation of a secure token linked to the verified email address.	🔴 Critical
+Translation in comments does not work
+Translation не работает в комментариях.	Feature Not Implemented. There is no translation endpoint or service built in the backend modules.	🟡 Medium
+Repost button does not work
+Кнопка репоста не работает.	Backend sharing / repost logic or endpoints are missing or incomplete.	🟡 Medium
+Cannot send/give honor
+Нельзя скинуть honor.	Ledger Constraints / Transaction logic. The double-entry ledger requires exactly 1 seal, cooldown constraints may block it, or the API rejects the request.	🔴 Critical

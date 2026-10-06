@@ -1,0 +1,31 @@
+almaztok8@bb-medium:~/brightbund$ docker-compose up -d --build 
+Building api
+[+] Building 36.9s (18/24)                                                                                                                                                                       
+ => [internal] load build definition from Dockerfile                                                                                                                                        0.0s
+ => => transferring dockerfile: 38B                                                                                                                                                         0.0s
+ => [internal] load .dockerignore                                                                                                                                                           0.0s
+ => => transferring context: 35B                                                                                                                                                            0.0s
+ => resolve image config for docker.io/docker/dockerfile:1                                                                                                                                  0.4s
+ => CACHED docker-image://docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89                                                             0.0s
+ => [internal] load build definition from Dockerfile                                                                                                                                        0.0s
+ => [internal] load metadata for docker.io/library/golang:1.25-alpine                                                                                                                       0.3s
+ => [internal] load metadata for docker.io/library/alpine:latest                                                                                                                            0.3s
+ => [internal] load .dockerignore                                                                                                                                                           0.0s
+ => [base 1/6] FROM docker.io/library/golang:1.25-alpine@sha256:c05ba4b73604069d376c4f41346b05374335b5ca0c46fb6dfede5a59f5196931                                                            0.0s
+ => [internal] load build context                                                                                                                                                           0.1s
+ => => transferring context: 18.48kB                                                                                                                                                        0.0s
+ => [stage-3 1/7] FROM docker.io/library/alpine:latest@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11                                                              0.0s
+ => CACHED [base 2/6] WORKDIR /app                                                                                                                                                          0.0s
+ => CACHED [base 3/6] RUN apk add --no-cache git gcc musl-dev libc-dev make                                                                                                                 0.0s
+ => CACHED [base 4/6] COPY go.mod go.sum ./                                                                                                                                                 0.0s
+ => CACHED [base 5/6] RUN --mount=type=cache,target=/go/pkg/mod go mod download                                                                                                             0.0s
+ => [base 6/6] COPY . .                                                                                                                                                                     0.4s
+ => ERROR [builder-api 1/1] RUN --mount=type=cache,target=/root/.cache/go-build     --mount=type=cache,target=/go/pkg/mod     CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /main  32.6s
+ => [builder-worker 1/1] RUN --mount=type=cache,target=/root/.cache/go-build     --mount=type=cache,target=/go/pkg/mod     CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /main-wo  30.9s
+------
+ > [builder-api 1/1] RUN --mount=type=cache,target=/root/.cache/go-build     --mount=type=cache,target=/go/pkg/mod     CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /main-api ./cmd/api:
+#19 32.47 # github.com/brightbund-backend/cmd/api
+#19 32.47 cmd/api/main.go:282:28: undefined: translation
+------
+executor failed running [/bin/sh -c CGO_ENABLED=1 GOOS=linux go build -ldflags="-s -w" -o /main-api ./cmd/api]: exit code: 1
+ERROR: Service 'api' failed to build : Build failed 

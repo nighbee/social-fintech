@@ -1,27 +1,7 @@
-issues/
-.commandcode
-.claude/
-backend\internal\modules\feed\optimization.md
-
-# SPA
+node_modules/
 spa/node_modules/
 spa/dist/
-spa/.env
-spa/.env.local
-spa/routes.md
-spa/implementation-plan.md
 
-#backend
-/docs/ 
-.claude/
-.cursor/
-
-GEMINI.md 
-
-
-backend/.env 
-.env
-/google/
-/fail2ban/
-backend/firebase-service-account.json
-/spa/ 
+# Go binaries
+backend/bin/
+backend/api

@@ -1,0 +1,105 @@
+    level=error
+    timestamp=2026-06-12T09:11:44.100Z
+    caller=feed/handler.go:632
+    message=failed to fetch feed
+    error=pq: syntax error at or near "p"
+    stacktrace=github.com/brightbund-backend/internal/modules/feed.(*Handler).GetFeed /app/internal/modules/feed/handler.go:632 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/brightbund-backend/internal/server.New.TouchSession.func25 /app/internal/server/middleware/session_touch.go:13 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.RequireAuth.func24 /app/internal/server/middleware/auth.go:49 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/gofiber/fiber/v2/middleware/cors.New.func1 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/cors/cors.go:173 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.Logger.func9 /app/internal/server/middleware/logger.go:31 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197
+
+    level=error
+    timestamp=2026-06-12T09:11:44.109Z
+    caller=v2@v2.52.10/ctx.go:1039
+    message=request_completed_with_server_error
+    method=GET
+    path=/api/v1/feed
+    status=500
+    duration=0.062833715
+    ip=172.22.0.6
+    request_id=18bbc635-1340-48d7-808b-c9e007f396e6
+    stacktrace=github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197
+
+    level=info
+    timestamp=2026-06-12T09:11:56.771Z
+    caller=v2@v2.52.10/ctx.go:1039
+    message=incoming_request
+    method=GET
+    path=/api/v1/feed
+    ip=172.22.0.6
+    user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0
+    request_id=1abbc635-1340-48d7-808b-c9e007f396e6
+
+    level=error
+    timestamp=2026-06-12T09:11:56.777Z
+    caller=feed/handler.go:632
+    message=failed to fetch feed
+    error=pq: syntax error at or near "p"
+    stacktrace=github.com/brightbund-backend/internal/modules/feed.(*Handler).GetFeed /app/internal/modules/feed/handler.go:632 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/brightbund-backend/internal/server.New.TouchSession.func25 /app/internal/server/middleware/session_touch.go:13 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.RequireAuth.func24 /app/internal/server/middleware/auth.go:49 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/gofiber/fiber/v2/middleware/cors.New.func1 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/cors/cors.go:173 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.Logger.func9 /app/internal/server/middleware/logger.go:31 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197
+
+    level=error
+    timestamp=2026-06-12T09:11:56.781Z
+    caller=v2@v2.52.10/ctx.go:1039
+    message=request_completed_with_server_error
+    method=GET
+    path=/api/v1/feed
+    status=500
+    duration=0.010339883
+    ip=172.22.0.6
+    request_id=1abbc635-1340-48d7-808b-c9e007f396e6
+    stacktrace=github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197
+
+    level=info
+    timestamp=2026-06-12T09:12:18.127Z
+    caller=v2@v2.52.10/ctx.go:1039
+    message=incoming_request
+    method=GET
+    path=/api/v1/feed
+    ip=172.22.0.6
+    user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0
+    request_id=1dbbc635-1340-48d7-808b-c9e007f396e6
+
+    level=error
+    timestamp=2026-06-12T09:12:18.131Z
+    caller=feed/handler.go:632
+    message=failed to fetch feed
+    error=pq: syntax error at or near "p"
+    stacktrace=github.com/brightbund-backend/internal/modules/feed.(*Handler).GetFeed /app/internal/modules/feed/handler.go:632 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/brightbund-backend/internal/server.New.TouchSession.func25 /app/internal/server/middleware/session_touch.go:13 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.RequireAuth.func24 /app/internal/server/middleware/auth.go:49 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/gofiber/fiber/v2/middleware/cors.New.func1 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/cors/cors.go:173 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.Logger.func9 /app/internal/server/middleware/logger.go:31 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197
+
+    level=error
+    timestamp=2026-06-12T09:12:18.137Z
+    caller=v2@v2.52.10/ctx.go:1039
+    message=request_completed_with_server_error
+    method=GET
+    path=/api/v1/feed
+    status=500
+    duration=0.010110426
+    ip=172.22.0.6
+    request_id=1dbbc635-1340-48d7-808b-c9e007f396e6
+    stacktrace=github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197
+
+    level=info
+    timestamp=2026-06-12T09:12:33.764Z
+    caller=v2@v2.52.10/ctx.go:1039
+    message=incoming_request
+    method=GET
+    path=/api/v1/feed
+    ip=172.22.0.6
+    user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:151.0) Gecko/20100101 Firefox/151.0
+    request_id=1fbbc635-1340-48d7-808b-c9e007f396e6
+
+    level=error
+    timestamp=2026-06-12T09:12:33.768Z
+    caller=feed/handler.go:632
+    message=failed to fetch feed
+    error=pq: syntax error at or near "p"
+    stacktrace=github.com/brightbund-backend/internal/modules/feed.(*Handler).GetFeed /app/internal/modules/feed/handler.go:632 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/brightbund-backend/internal/server.New.TouchSession.func25 /app/internal/server/middleware/session_touch.go:13 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.RequireAuth.func24 /app/internal/server/middleware/auth.go:49 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1042 github.com/gofiber/fiber/v2/middleware/cors.New.func1 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/cors/cors.go:173 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.Logger.func9 /app/internal/server/middleware/logger.go:31 github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197
+
+    level=error
+    timestamp=2026-06-12T09:12:33.771Z
+    caller=v2@v2.52.10/ctx.go:1039
+    message=request_completed_with_server_error
+    method=GET
+    path=/api/v1/feed
+    status=500
+    duration=0.00752765
+    ip=172.22.0.6
+    request_id=1fbbc635-1340-48d7-808b-c9e007f396e6
+    stacktrace=github.com/gofiber/fiber/v2.(*Ctx).Next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/ctx.go:1039 github.com/brightbund-backend/internal/server.New.New.func8 /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/middleware/requestid/requestid.go:31 github.com/gofiber/fiber/v2.(*App).next /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:143 github.com/gofiber/fiber/v2.(*App).handler /go/pkg/mod/github.com/gofiber/fiber/v2@v2.52.10/router.go:170 github.com/valyala/fasthttp.(*Server).serveConn /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/server.go:2465 github.com/valyala/fasthttp.(*workerPool).workerFunc /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:225 github.com/valyala/fasthttp.(*workerPool).getCh.func1 /go/pkg/mod/github.com/valyala/fasthttp@v1.69.0/workerpool.go:197

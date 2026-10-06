@@ -1,0 +1,10 @@
+cd brightbund/spa
+npm install
+npm run build
+
+
+chmod -R 755 ./spa/dist
+
+
+docker-compose down nginx
+docker-compose up -d nginx
