@@ -2,8 +2,6 @@
 
 <div align="center">
 
-![BrightBund Banner](docs/image.png)
-
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://golang.org)
 [![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
@@ -24,7 +22,8 @@
 
 **BrightBund** is a next-generation social ecosystem designed to eliminate social graph farming, engagement manipulation, and endless doomscrolling. Built upon a **dual-currency economy** (*Silver Seals* and *Gold Seals*) and an asynchronous **Rank Progression System**, BrightBund aligns incentives so that authentic community interaction, localized challenges, and high-value contributions are rewarded.
 
-### Core Tenets:
+### Core Tenets
+
 - **Server as Source of Truth**: All economic calculations, balances, transactions, and status evaluations are strictly enforced server-side.
 - **Double-Entry Ledger**: Complete immutability and financial integrity for all virtual currency operations.
 - **Anti-Doomscroll Feed**: Geospatially-aware content distribution prioritizing local and quality community engagement over algorithmic addiction loops.
@@ -104,14 +103,14 @@ The platform follows a **Modular Monolith** architecture with strict **Clean Arc
 The backend is partitioned into isolated domain packages inside [`backend/internal/modules/`](backend/internal/modules/):
 
 | Module | Responsibilities |
-|---|---|
+| --- | --- |
 | **`auth`** | Multi-factor registration, Firebase Auth / OIDC session issuance, JWT rotation, and device binding. |
 | **`profiles`** | User metadata, avatar management, and privacy preferences. |
 | **`economy`** | Idempotent double-entry ledger for Silver and Gold seals, cooldown enforcement, and store transactions. |
 | **`feed`** | Geo-aware post creation, reactions, comments, media attachments, and anti-doomscroll pacing. |
 | **`map`** | PostGIS spatial queries, region bounding, territory champions, and location-bound challenges. |
 | **`ranks`** | Asynchronous rank calculation, status level shifts, and seasonal progression. |
-| **`leaderboards`**| High-performance Redis ZSET leaderboards (regional, national, global). |
+| **`leaderboards`** | High-performance Redis ZSET leaderboards (regional, national, global). |
 | **`chat`** | Real-time WebSocket 1:1 messaging, presence tracking, and delivery receipts. |
 | **`payment`** | App Store / Play Store IAP receipt validation and ledger balance fulfillment. |
 
@@ -122,6 +121,7 @@ The backend is partitioned into isolated domain packages inside [`backend/intern
 ### Prerequisites
 
 Ensure you have the following installed on your host machine:
+
 - **Go**: 1.24+ (recommended 1.25)
 - **Docker** and **Docker Compose**
 - **Flutter SDK**: `>=3.1.5 <4.0.0`
@@ -147,6 +147,7 @@ docker-compose -f infras/docker-compose.yml up -d
 ### 2. Run Backend Services
 
 #### API Server
+
 ```powershell
 cd backend
 go run cmd/api/main.go
@@ -155,6 +156,7 @@ air
 ```
 
 #### Background Worker
+
 ```powershell
 cd backend
 go run cmd/worker/main.go
@@ -182,6 +184,7 @@ cd spa
 npm install
 npm run dev
 ```
+
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
@@ -213,6 +216,7 @@ bash tests/test_ranks.sh        # Gamification & rank logic
 ```
 
 Unit tests for backend modules:
+
 ```powershell
 cd backend
 go test -v ./internal/modules/...
