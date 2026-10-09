@@ -1,3 +1,23 @@
+# Secrets — never track keys, env files, or service credentials
+.env
+.env.*
+!.env.example
+app/.env
+app/.env.*
+backend/.env
+backend/.env.*
+backend/firebase-service-account.json
+google/
+**/google-services.json
+**/GoogleService-Info.plist
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*keystore*
+.firebaserc
+
 node_modules/
 spa/node_modules/
 spa/dist/
