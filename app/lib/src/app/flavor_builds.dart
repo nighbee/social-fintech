@@ -16,7 +16,7 @@ Widget _buildApp({
 MaterialApp _devApp(GoRouter router, String languageCode, AppFlavor flavor) =>
     _buildMaterialApp(
       router: router,
-      title: 'BrightBund Dev',
+      title: 'Social-Fintech Dev',
       languageCode: languageCode,
       flavor: flavor,
     );
@@ -24,7 +24,7 @@ MaterialApp _devApp(GoRouter router, String languageCode, AppFlavor flavor) =>
 MaterialApp _prodApp(GoRouter router, String languageCode, AppFlavor flavor) =>
     _buildMaterialApp(
       router: router,
-      title: 'BrightBund',
+      title: 'Social-Fintech',
       languageCode: languageCode,
       flavor: flavor,
     );

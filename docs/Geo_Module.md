@@ -1,4 +1,4 @@
-# BrightBund — Geo Module Technical Design
+# Social-Fintech — Geo Module Technical Design
 
 **Status:** Draft
 
@@ -29,9 +29,9 @@ The founder's vision requires dividing the world map into competitive regions wh
 
 ## 3. Resolution Mapping
 
-H3 has 16 resolution levels (0–15). The relevant ones for BrightBund:
+H3 has 16 resolution levels (0–15). The relevant ones for Social-Fintech:
 
-| H3 Resolution | Avg Cell Area | BrightBund Use |
+| H3 Resolution | Avg Cell Area | Social-Fintech Use |
 |---|---|---|
 | 2 | ~86,700 km² | Country-scale zone |
 | 4 | ~1,770 km² | Large city |

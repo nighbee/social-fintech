@@ -1,8 +1,8 @@
-# BrightBund
+# Social-Fintech
 
 - Technical Design Document
 
-  # BrightBund — Backend Architecture & Technical Design (MVP)
+  # Social-Fintech — Backend Architecture & Technical Design (MVP)
 
   **Author:** Almaz Team Lead / Architect
 
@@ -12,7 +12,7 @@
 
   ## 1. Document Goals
 
-  This document defines the target technical architecture for BrightBund MVP.
+  This document defines the target technical architecture for Social-Fintech MVP.
   It establishes the principles for server-side logic, domain modeling,
   and key technical decisions aimed at:
 
@@ -186,7 +186,7 @@
 
 - Code of Conduct
 
-  # BrightBund MVP Decomposition
+  # Social-Fintech MVP Decomposition
 
   **MVP workload**, decomposed into **Epics → Features → Engineering Work**,
 
@@ -651,7 +651,7 @@
   Production-ready MVP containing all business logic, monetization, and social features,
   ready for submission to Apple App Store and Google Play.
 
-[BrightBund MVP Tasks](https://www.notion.so/2e389788f5bf80c7aa2ddfba06110c9c?pvs=21)
+[Social-Fintech MVP Tasks](https://www.notion.so/2e389788f5bf80c7aa2ddfba06110c9c?pvs=21)
 
 Simple tracking
 

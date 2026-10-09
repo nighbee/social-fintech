@@ -1,8 +1,8 @@
-# BrightBund Economy Module - Transaction Storage & Processing
+# Social-Fintech Economy Module - Transaction Storage & Processing
 
 ## Overview
 
-The BrightBund economy system is a dual-currency financial platform that manages user wallets, transactions, and enforces anti-abuse measures. This document explains how transactions are stored and processed throughout the system.
+The Social-Fintech economy system is a dual-currency financial platform that manages user wallets, transactions, and enforces anti-abuse measures. This document explains how transactions are stored and processed throughout the system.
 
 ---
 
@@ -860,7 +860,7 @@ The economy module exposes these key endpoints (defined in [handler.go](backend/
 
 ## Summary
 
-The BrightBund economy system uses a **dual-table architecture**:
+The Social-Fintech economy system uses a **dual-table architecture**:
 
 1. **`wallets`** table stores the **current state** (balances, versions)
 2. **`ledger_entries`** table stores the **immutable transaction history**

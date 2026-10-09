@@ -2,7 +2,7 @@
 
 ## Overview
 
-The BrightBund geo-logic system uses H3 hexagonal indexing with administrative boundary integration to map posts, tasks, and user locations to cities, regions, and countries.
+The Social-Fintech geo-logic system uses H3 hexagonal indexing with administrative boundary integration to map posts, tasks, and user locations to cities, regions, and countries.
 
 ## Core Parameters
 
