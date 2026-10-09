@@ -651,7 +651,7 @@ Blockchain ledger export, wallet snapshots, reversal entries (refunds as new row
 
 ## 16. Documentation & References
 
-- [Product Requirements & Architecture (RPD)](docs/BrightBund_RPD.md) — modular monolith, 10 epics (auth → profiles → feed → economy → ranks → map → chat → payments → infra → store readiness), staged plan
+- [Product Requirements & Architecture (RPD)](docs/Social-Fintech_RPD.md) — modular monolith, 10 epics (auth → profiles → feed → economy → ranks → map → chat → payments → infra → store readiness), staged plan
 - [Economy & Transaction System](docs/Economy_Transaction_System.md) — wallets/ledger schema, centinels, categories, atomic flows, history queries, fraud SQL
 - [Feed Module Design](docs/Feed_Module_Changes.md) — doomscroll machine, profile posts endpoints, flush reliability, sanction ladder + adaptive geo params
 - [Geospatial Architecture & Maps](docs/Geo_Module.md) — H3 mapping, assignment, champion cycle, radius search, tile path, definition of done

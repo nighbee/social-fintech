@@ -18,9 +18,9 @@ const List<TermsSectionData> kTermsSections = <TermsSectionData>[
   TermsSectionData(
     title: '1. Introduction',
     summary:
-        'In short: Welcome to BrightBund! By using our app, you agree to these rules.',
+        'In short: Welcome to Social-Fintech! By using our app, you agree to these rules.',
     paragraphs: <String>[
-      'Welcome to BrightBund ("Company", "we", "our", "us"). These Terms and Conditions ("Terms", "Agreement") govern your use of our mobile application (the "App") and services operated by BrightBund.',
+      'Welcome to Social-Fintech ("Company", "we", "our", "us"). These Terms and Conditions ("Terms", "Agreement") govern your use of our mobile application (the "App") and services operated by Social-Fintech.',
       'By accessing or using the App, you agree to be bound by these Terms. If you disagree with any part of the terms, then you may not access the Service.',
     ],
   ),
@@ -50,9 +50,9 @@ const List<TermsSectionData> kTermsSections = <TermsSectionData>[
   TermsSectionData(
     title: '4. Intellectual Property',
     summary:
-        'In short: We own the BrightBund logo, design, and code. You own your personal data.',
+        'In short: We own the Social-Fintech logo, design, and code. You own your personal data.',
     paragraphs: <String>[
-      'The Service and its original content (excluding Content provided by users), features, and functionality are and will remain the exclusive property of BrightBund and its licensors. The Service is protected by copyright, trademark, and other laws of both [Your Country] and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of BrightBund.',
+      'The Service and its original content (excluding Content provided by users), features, and functionality are and will remain the exclusive property of Social-Fintech and its licensors. The Service is protected by copyright, trademark, and other laws of both [Your Country] and foreign countries. Our trademarks and trade dress may not be used in connection with any product or service without the prior written consent of Social-Fintech.',
     ],
   ),
   TermsSectionData(
@@ -70,7 +70,7 @@ const List<TermsSectionData> kTermsSections = <TermsSectionData>[
     summary:
         'In short: If you click a link to another site, we are not responsible for what happens there.',
     paragraphs: <String>[
-      'Our Service may contain links to third-party web sites or services that are not owned or controlled by BrightBund. BrightBund has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third-party web sites or services.',
+      'Our Service may contain links to third-party web sites or services that are not owned or controlled by Social-Fintech. Social-Fintech has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third-party web sites or services.',
     ],
   ),
   TermsSectionData(
@@ -85,7 +85,7 @@ const List<TermsSectionData> kTermsSections = <TermsSectionData>[
     summary:
         'In short: If something goes wrong with the app, we are not liable for lost profits or data damages.',
     paragraphs: <String>[
-      'In no event shall BrightBund, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.',
+      'In no event shall Social-Fintech, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.',
     ],
   ),
   TermsSectionData(

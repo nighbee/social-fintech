@@ -1,6 +1,6 @@
 # Flutter Developer Integration Guide: Firebase Magic Links
 
-This guide outlines the exact steps and API payloads the Flutter developer needs to implement to integrate the new Firebase Email Authentication (Magic Link) flow with the BrightBund Go backend.
+This guide outlines the exact steps and API payloads the Flutter developer needs to implement to integrate the new Firebase Email Authentication (Magic Link) flow with the Social-Fintech Go backend.
 
 ## 1. Firebase Setup & Deep Linking
 To make Magic Links work, the app needs to be able to catch the URL when the user clicks it in their email client.
@@ -28,8 +28,8 @@ When the app catches the deep link:
   final idToken = await user?.getIdToken();
   ```
 
-## 4. Authenticating with the BrightBund Backend
-Once you have the `idToken`, you need to exchange it for a BrightBund JWT Session.
+## 4. Authenticating with the Social-Fintech Backend
+Once you have the `idToken`, you need to exchange it for a Social-Fintech JWT Session.
 
 ### Scenario A: Login (Existing User)
 Try to log the user in first. 

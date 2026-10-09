@@ -1,9 +1,9 @@
-# BrightBund - Instructional Context
+# Social-Fintech - Instructional Context
 
-This file provides foundational mandates and project-specific context for Gemini CLI when interacting with the BrightBund codebase.
+This file provides foundational mandates and project-specific context for Gemini CLI when interacting with the Social-Fintech codebase.
 
 ## Project Overview
-BrightBund is a high-integrity social platform designed with a focus on economic security, anti-abuse, and gamification. It centers around a dual-currency system ("Silver Seals" and "Gold Seals") and a progression system ("Ranks") to incentivize meaningful interactions and protect the social graph.
+Social-Fintech is a high-integrity social platform designed with a focus on economic security, anti-abuse, and gamification. It centers around a dual-currency system ("Silver Seals" and "Gold Seals") and a progression system ("Ranks") to incentivize meaningful interactions and protect the social graph.
 
 ### Core Architecture
 - **Strategy:** Modular Monolith with Clean Architecture principles.
